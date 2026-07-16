@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "player_hud",
+  "widgets": [
+    {
+      "id": "player_health_panel",
+      "type": "panel",
+      "anchor": "top_left",
+      "offset": [32, 32],
+      "size": [500, 110]
+    },
+    {
+      "id": "player_health",
+      "type": "bar",
+      "anchor": "top_left",
+      "offset": [48, 64],
+      "size": [440, 32],
+      "bind": "player.health",
+      "maxBind": "player.healthMax",
+      "label": "Health"
+    },
+    {
+      "id": "player_health_text",
+      "type": "text",
+      "anchor": "top_left",
+      "offset": [48, 104],
+      "size": [440, 34],
+      "bind": "player.healthText"
+    },
+    {
+      "id": "quest_objective_text",
+      "type": "text",
+      "anchor": "top_left",
+      "offset": [32, 160],
+      "size": [640, 40],
+      "bind": "quest.objectiveText"
+    }
+  ]
+}

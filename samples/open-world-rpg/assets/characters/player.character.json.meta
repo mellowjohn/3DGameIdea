@@ -1,0 +1,5 @@
+{
+  "dependencies": [
+    "assets/prefabs/player/player.prefab.json"
+  ]
+}

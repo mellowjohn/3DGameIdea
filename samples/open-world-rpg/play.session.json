@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "characterAsset": "assets/characters/player.character.json",
+  "cameraAsset": "assets/cameras/game.camera.json"
+}

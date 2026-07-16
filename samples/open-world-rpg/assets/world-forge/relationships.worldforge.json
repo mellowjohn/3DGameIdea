@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 1,
+  "id": "tessera_relationships",
+  "nodes": [
+    {
+      "id": "luceran_the_hollow",
+      "kind": "person",
+      "displayName": "Luceran the Hollow",
+      "canonStatus": "established",
+      "summary": "Former King of Tessera; Imperium leader known as the Usurper after taking the Nefarium Shroud.",
+      "storyRef": "context/story/factions.md#chaotic-imperium",
+      "tags": [
+        "imperium",
+        "usurper"
+      ],
+      "openQuestions": [
+        "How much agency Luceran retains vs Shroud/Frangitur control",
+        "Precise authority link between Imperium, Frangitur, and the Shroud"
+      ]
+    },
+    {
+      "id": "asher_the_brittle",
+      "kind": "person",
+      "displayName": "King Asher the Brittle",
+      "canonStatus": "draft",
+      "summary": "Current King of Tessera after Luceran's fall; drafts settlements into the war against the Imperium. Twine Act 0 draft: Luceran's fragile half-brother; stalls rear support at Calrenoth.",
+      "storyRef": "context/story/the-squire.md",
+      "tags": [
+        "kingdom",
+        "throne"
+      ],
+      "openQuestions": [
+        "Legitimacy, personality, and full relationship to Luceran beyond draft half-brother status"
+      ]
+    },
+    {
+      "id": "arkand",
+      "kind": "person",
+      "displayName": "Arkand",
+      "canonStatus": "draft",
+      "summary": "Knight of Tessera / King's Guard; guide and emotional support companion. Act 0 intro: found under a wheelbarrow on the approach to Calrenoth.",
+      "storyRef": "context/story/companions.md#arkand",
+      "tags": [
+        "companion",
+        "knight"
+      ],
+      "openQuestions": [
+        "Personal stakes in the war and loyalty-breaking points"
+      ]
+    },
+    {
+      "id": "commander_grenge",
+      "kind": "person",
+      "displayName": "Commander Grenge",
+      "canonStatus": "draft",
+      "summary": "Calrenoth commander during the Imperium siege; green shroud over plate; assigns rear-drawbridge mission.",
+      "storyRef": "context/story/campaign-beat-sheet.md#named-cast-introduced-by-act-0-draft",
+      "tags": [
+        "act0",
+        "calrenoth",
+        "kingdom"
+      ],
+      "openQuestions": [
+        "Survival after Act 0 and role in later acts"
+      ]
+    },
+    {
+      "id": "sergeant_larrell",
+      "kind": "person",
+      "displayName": "Sergeant Larrell",
+      "canonStatus": "draft",
+      "summary": "Rear drawbridge NCO at Calrenoth; player choice may save or abandon him as Imperium overruns the rear.",
+      "storyRef": "context/story/campaign-beat-sheet.md#named-cast-introduced-by-act-0-draft",
+      "tags": [
+        "act0",
+        "calrenoth",
+        "kingdom"
+      ],
+      "openQuestions": [
+        "Whether survival of Larrell is a consequential flag beyond Act 0"
+      ]
+    },
+    {
+      "id": "damius",
+      "kind": "person",
+      "displayName": "Damius",
+      "canonStatus": "draft",
+      "summary": "Scout berated by Grenge over the fall of Rinos during the Calrenoth siege.",
+      "storyRef": "context/story/campaign-beat-sheet.md#named-cast-introduced-by-act-0-draft",
+      "tags": [
+        "act0",
+        "calrenoth"
+      ],
+      "openQuestions": [
+        "Whether Damius reappears after Act 0"
+      ]
+    },
+    {
+      "id": "vanessa",
+      "kind": "person",
+      "displayName": "Vanessa",
+      "canonStatus": "draft",
+      "summary": "Mage from central Tessera academies; pragmatic counterweight companion.",
+      "storyRef": "context/story/companions.md#vanessa",
+      "tags": [
+        "companion",
+        "mage"
+      ],
+      "openQuestions": [
+        "Whether her arcs map strictly to Cristallo/tribal factions or broader conduct",
+        "Loyalty-breaking points and death rules outside hardcore"
+      ]
+    },
+    {
+      "id": "frangitur",
+      "kind": "deity",
+      "displayName": "Frangitur",
+      "canonStatus": "established",
+      "summary": "The Great Evil; opponent/corrupting force tied to Nefarium and the Shroud narrative.",
+      "storyRef": "context/story/frangitur-the-great-evil.md",
+      "tags": [
+        "great-evil"
+      ],
+      "openQuestions": [
+        "Exact mechanism of influence over Luceran and Imperium authority"
+      ]
+    },
+    {
+      "id": "creotar",
+      "kind": "deity",
+      "displayName": "Creotar",
+      "canonStatus": "draft",
+      "summary": "Vision-space being who warns the protagonist about Luceran and the Nefarium Shroud (Twine-backed draft).",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "tags": [
+        "vision",
+        "knowledge"
+      ],
+      "openQuestions": [
+        "Canon status vs Creo; whether Creotar is established god identity or draft alias"
+      ]
+    },
+    {
+      "id": "nefarium_shroud",
+      "kind": "artifact",
+      "displayName": "Nefarium Shroud",
+      "canonStatus": "established",
+      "summary": "Corruptive relic tied to Nefarium; worn by Luceran; central to Imperium conflict.",
+      "storyRef": "context/story/nefarium-and-the-shroud.md",
+      "tags": [
+        "nefarium",
+        "relic"
+      ],
+      "openQuestions": [
+        "Prison-vs-control interpretations of the Shroud remain unresolved draft tensions"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "luceran_leads_imperium",
+      "from": {
+        "target": "node",
+        "id": "luceran_the_hollow"
+      },
+      "to": {
+        "target": "faction",
+        "id": "chaotic_imperium"
+      },
+      "kind": "leads",
+      "canonStatus": "established",
+      "bidirectional": false,
+      "summary": "Luceran the Hollow is the current leader of the Chaotic Imperium.",
+      "storyRef": "context/story/factions.md#chaotic-imperium",
+      "openQuestions": []
+    },
+    {
+      "id": "asher_kin_luceran",
+      "from": {
+        "target": "node",
+        "id": "asher_the_brittle"
+      },
+      "to": {
+        "target": "node",
+        "id": "luceran_the_hollow"
+      },
+      "kind": "kin",
+      "canonStatus": "draft",
+      "bidirectional": true,
+      "summary": "Asher is Luceran's fragile half-brother on the throne (Twine-backed draft).",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "openQuestions": [
+        "Confirm half-brother kinship as established canon"
+      ]
+    },
+    {
+      "id": "arkand_member_kingdom",
+      "from": {
+        "target": "node",
+        "id": "arkand"
+      },
+      "to": {
+        "target": "faction",
+        "id": "kingdom_tessera"
+      },
+      "kind": "member_of",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "summary": "Arkand is a knight of the Kingdom of Tessera / King's Guard context.",
+      "storyRef": "context/story/companions.md#arkand",
+      "openQuestions": [
+        "Precise membership vs employment under Asher vs memorial loyalty to Luceran"
+      ]
+    },
+    {
+      "id": "grenge_member_kingdom",
+      "from": {
+        "target": "node",
+        "id": "commander_grenge"
+      },
+      "to": {
+        "target": "faction",
+        "id": "kingdom_tessera"
+      },
+      "kind": "member_of",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "summary": "Grenge commands Kingdom forces at Calrenoth under Asher's war effort.",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "openQuestions": []
+    },
+    {
+      "id": "larrell_member_kingdom",
+      "from": {
+        "target": "node",
+        "id": "sergeant_larrell"
+      },
+      "to": {
+        "target": "faction",
+        "id": "kingdom_tessera"
+      },
+      "kind": "member_of",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "summary": "Larrell serves under Grenge at the Calrenoth rear drawbridge.",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "openQuestions": []
+    },
+    {
+      "id": "arkand_vouches_to_grenge",
+      "from": {
+        "target": "node",
+        "id": "arkand"
+      },
+      "to": {
+        "target": "node",
+        "id": "commander_grenge"
+      },
+      "kind": "related",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "summary": "Arkand vouches for the player to Commander Grenge at Calrenoth (Twine Act 0).",
+      "storyRef": "context/story/sources/wrathful-conquest-act0.twee",
+      "openQuestions": []
+    },
+    {
+      "id": "cristallo_rival_arrotrebae",
+      "from": {
+        "target": "faction",
+        "id": "cristallo"
+      },
+      "to": {
+        "target": "faction",
+        "id": "arrotrebae"
+      },
+      "kind": "rival",
+      "canonStatus": "draft",
+      "bidirectional": true,
+      "summary": "Cristallo and Arrotrebae are openly adversarial.",
+      "storyRef": "context/story/factions.md#the-cristallo",
+      "openQuestions": []
+    },
+    {
+      "id": "frangitur_influences_luceran",
+      "from": {
+        "target": "node",
+        "id": "frangitur"
+      },
+      "to": {
+        "target": "node",
+        "id": "luceran_the_hollow"
+      },
+      "kind": "influences",
+      "canonStatus": "open",
+      "bidirectional": false,
+      "summary": "Frangitur is narratively tied to Luceran's corruption and Shroud conflict; mechanism unresolved.",
+      "storyRef": "context/story/prologue-and-opening.md",
+      "openQuestions": [
+        "Agency vs control; prison proposal vs established Shroud wearing account"
+      ]
+    },
+    {
+      "id": "luceran_wears_shroud",
+      "from": {
+        "target": "node",
+        "id": "luceran_the_hollow"
+      },
+      "to": {
+        "target": "node",
+        "id": "nefarium_shroud"
+      },
+      "kind": "related",
+      "canonStatus": "established",
+      "bidirectional": false,
+      "summary": "Luceran wears / is corrupted by the Nefarium Shroud.",
+      "storyRef": "context/story/nefarium-and-the-shroud.md",
+      "openQuestions": []
+    }
+  ]
+}

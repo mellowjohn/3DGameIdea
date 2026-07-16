@@ -1,0 +1,27 @@
+---
+description: Editor lookup/reference fields must use dropdown selects, not free text
+alwaysApply: true
+---
+
+# Lookup Fields Use Dropdowns
+
+When a field stores an ID or reference to another authored object (entity, node, quest, region, dialogue tree, prefab, canvas, etc.), the editor UI must use a **dropdown / combo** populated from current valid options—not a free-text ID box.
+
+## Rules
+
+- Prefer selectable lists from loaded project data (same session assets / catalogs).
+- Always include an explicit empty choice when the field is optional (`(none)`, `(end)`, etc.).
+- If the current value is missing from the option list (stale/orphan), still show it as selected and keep it in the list until the user changes it.
+- Free text remains for display names, prose, tags, flags, and paths that are not ID lookups.
+- Enums already use combos; keep that pattern.
+
+## Examples
+
+```text
+❌ BAD: InputText for nextNodeId / parentQuestId / regionId / dialogue.startId
+✅ GOOD: BeginCombo populated from tree nodes / quests / regions / dialogue trees
+```
+
+## Scope
+
+Applies to World Forge panes, inspectors, canvas editors, and any new editor surface. When adding a new cross-reference field, add the dropdown in the same change.

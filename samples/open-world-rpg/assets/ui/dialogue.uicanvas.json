@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "id": "dialogue",
+  "designResolution": [1920, 1080],
+  "widgets": [
+    {
+      "id": "dialogue_panel",
+      "type": "panel",
+      "anchor": "bottom_left",
+      "offset": [160, 80],
+      "size": [1600, 280],
+      "color": [18, 22, 34, 240]
+    },
+    {
+      "id": "dialogue_speaker",
+      "type": "text",
+      "anchor": "bottom_left",
+      "offset": [200, 280],
+      "size": [600, 48],
+      "bind": "dialogue.speaker",
+      "text": "Traveler",
+      "textAlign": "left",
+      "textVAlign": "middle",
+      "fontSize": 36,
+      "color": [255, 210, 120, 255]
+    },
+    {
+      "id": "dialogue_body",
+      "type": "text",
+      "anchor": "bottom_left",
+      "offset": [200, 160],
+      "size": [1200, 100],
+      "bind": "dialogue.body",
+      "text": "The path ahead forks. One leads to the village, the other into the mist.",
+      "textAlign": "left",
+      "textVAlign": "top",
+      "fontSize": 28,
+      "color": [230, 235, 245, 255]
+    },
+    {
+      "id": "dialogue_continue",
+      "type": "button",
+      "anchor": "bottom_right",
+      "offset": [200, 100],
+      "size": [220, 48],
+      "bind": "dialogue.continue",
+      "text": "Continue",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 28,
+      "color": [48, 58, 78, 255]
+    }
+  ]
+}

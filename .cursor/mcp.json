@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "ai-rpg-engine": {
+      "command": "C:/Users/johnr/Documents/3DGameIdea/build/windows-msvc-debug/Debug/engine.exe",
+      "args": [
+        "mcp",
+        "--project",
+        "C:/Users/johnr/Documents/3DGameIdea/samples/open-world-rpg"
+      ]
+    }
+  }
+}

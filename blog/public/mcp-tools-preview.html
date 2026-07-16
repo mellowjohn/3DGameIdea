@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Wrathful Conquest MCP tools</title>
+  <style>
+    :root {
+      --bg: #0c1218;
+      --panel: #151d26;
+      --line: rgba(197, 212, 224, 0.16);
+      --ink: #e8eef3;
+      --muted: #9aafbf;
+      --ember: #e07040;
+      --steel: #c5d4e0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(900px 500px at 85% -10%, rgba(224,112,64,0.18), transparent 50%),
+                  linear-gradient(180deg, #0c1218, #121a22);
+      color: var(--ink);
+      font: 15px/1.45 "Segoe UI", system-ui, sans-serif;
+      padding: 2rem;
+    }
+    .shell {
+      max-width: 920px;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      background: rgba(21, 29, 38, 0.92);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    header {
+      padding: 1.1rem 1.25rem;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: baseline;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 650;
+    }
+    header span { color: var(--muted); font-size: 0.9rem; }
+    .lede {
+      padding: 1rem 1.25rem 0.25rem;
+      color: var(--muted);
+      max-width: 62ch;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0 0;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.7rem 1.25rem;
+      border-top: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    code {
+      color: var(--ember);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.92rem;
+    }
+    .desc { color: var(--steel); }
+    footer {
+      padding: 0.9rem 1.25rem 1.15rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--line);
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <h1>Custom MCP server · Wrathful Conquest</h1>
+      <span>ai-rpg-engine</span>
+    </header>
+    <p class="lede">
+      These are the live tools an AI agent can call against the project and editor.
+      Same command paths the editor uses for World Forge and scene work.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Tool</th><th>What it does</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>engine_editor_status</code></td><td class="desc">Is the editor live and automation connected?</td></tr>
+        <tr><td><code>engine_scene_plan</code></td><td class="desc">Route work: scene, prefab, terrain, World Forge, Lua, UI…</td></tr>
+        <tr><td><code>engine_scene_apply</code></td><td class="desc">Mutate the live scene through the editor command history</td></tr>
+        <tr><td><code>engine_entity_component_apply</code></td><td class="desc">Add or edit components on scene entities</td></tr>
+        <tr><td><code>engine_prefab_apply</code> / <code>engine_prefab_component_apply</code></td><td class="desc">Create or update prefabs and their components</td></tr>
+        <tr><td><code>engine_asset_apply</code></td><td class="desc">Write prefab/material JSON and refresh catalogs</td></tr>
+        <tr><td><code>engine_lua_apply</code> / <code>engine_lua_call</code></td><td class="desc">Edit gameplay scripts and call Lua handlers</td></tr>
+        <tr><td><code>engine_hud_apply</code> / <code>engine_ui_canvas_mutate</code> / <code>engine_ui_stack</code></td><td class="desc">HUD and UI canvas authoring / stack control</td></tr>
+        <tr><td><code>engine_terrain_apply</code></td><td class="desc">Sculpt, paint, and foliage strokes</td></tr>
+        <tr><td><code>engine_world_forge_apply</code></td><td class="desc">Read/validate/write factions, relationships, map, quests, dialogues</td></tr>
+        <tr><td><code>engine_project_validate</code></td><td class="desc">Validate project data and surface actionable diagnostics</td></tr>
+      </tbody>
+    </table>
+    <footer>Project MCP for Wrathful Conquest · not a generic third-party plugin list</footer>
+  </div>
+</body>
+</html>

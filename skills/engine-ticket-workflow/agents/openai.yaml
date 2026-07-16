@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engine Ticket Workflow"
+  short_description: "Pick up, implement, and close assigned TICKET-#### work"
+  default_prompt: "Use $engine-ticket-workflow to find my assigned Ready/Active ticket and work it end-to-end."

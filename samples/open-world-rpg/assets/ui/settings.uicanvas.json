@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "id": "settings",
+  "designResolution": [1920, 1080],
+  "scaleMode": "letterbox",
+  "widgets": [
+    {
+      "id": "settings_dim",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [1920, 1080],
+      "opacity": 0.72,
+      "color": [6, 8, 14, 255]
+    },
+    {
+      "id": "settings_panel",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [560, 480],
+      "color": [22, 28, 42, 245]
+    },
+    {
+      "id": "settings_title",
+      "type": "text",
+      "anchor": "center",
+      "offset": [0, -190],
+      "size": [480, 56],
+      "bind": "settings.title",
+      "text": "Settings",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 44,
+      "color": [235, 240, 250, 255]
+    },
+    {
+      "id": "settings_music",
+      "type": "toggle",
+      "anchor": "center",
+      "offset": [0, -100],
+      "size": [400, 40],
+      "bind": "settings.music",
+      "text": "Music",
+      "fontSize": 28
+    },
+    {
+      "id": "settings_sfx",
+      "type": "toggle",
+      "anchor": "center",
+      "offset": [0, -40],
+      "size": [400, 40],
+      "bind": "settings.sfx",
+      "text": "Sound Effects",
+      "fontSize": 28
+    },
+    {
+      "id": "settings_volume",
+      "type": "slider",
+      "anchor": "center",
+      "offset": [0, 30],
+      "size": [400, 28],
+      "bind": "settings.volume",
+      "label": "Master Volume",
+      "fontSize": 22
+    },
+    {
+      "id": "settings_back",
+      "type": "button",
+      "anchor": "center",
+      "offset": [0, 140],
+      "size": [280, 48],
+      "bind": "settings.back",
+      "text": "Back",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 30,
+      "color": [48, 58, 78, 255]
+    }
+  ]
+}

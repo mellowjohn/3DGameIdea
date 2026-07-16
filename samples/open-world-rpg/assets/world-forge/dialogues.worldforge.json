@@ -1,0 +1,801 @@
+{
+  "schemaVersion": 1,
+  "id": "tessera_dialogues",
+  "trees": [
+    {
+      "id": "dlg_act0_wrathful_conquest",
+      "parentQuestId": "mq_act0_calrenoth",
+      "displayName": "Act 0 — Wrathful Conquest (Twine)",
+      "canonStatus": "draft",
+      "summary": "Imported from Twine Act 0 Harlowe source. Full Calrenoth → Creotar spine; draft until beat-sheet review.",
+      "storyRef": "context/story/sources/wrathful-conquest-act0.twee",
+      "entryNodeId": "prologue",
+      "nodes": [
+        {
+          "id": "prologue",
+          "speakerId": "narrator",
+          "line": "Frangitur Whispers: “Luceran… oh Luceran, you find your sanguine thirst for control justified by your righteous claim of the shroud. A fool's folly, as for your torment shall be ever prolonged by the Imperium’s own unstoppable tide. It is only I, Luceran, who really knows the truth behind Tessera’s never ending onslaught and self-destruction. As for you who seeks to control the chaos, it cannot be controlled. I gave Tessera its freedom long ago, only to be betrayed by those who misuse my gift for their own perverted gains. \n\nDo you understand adventurers? This clown believed he could withstand the Shrouds' corruption! To save Tessera, you must rip it apart, you have to!\n\nPlease, if you don’t then I will! \n\nTheThrone Room, Usurper is shown sitting on the throne.\n\nThe camera slowly zooms out as we can slowly hear Frangitur’s whispers come to life.\n\nWhen Frangitur talks about himself, the camera then cuts to a glass panel full of blood.\n\nAfter, once he talks directly to the adventurers, the background disappears into a white silhouette with the shroud floating above a gray figure\n\nThe last sentence will ignite the background into flames as it transitions into the character creation screen.",
+          "choices": [
+            {
+              "id": "prologue_c1",
+              "text": "Tutorial",
+              "nextNodeId": "tutorial",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "tutorial",
+          "speakerId": "arkand",
+          "line": "Player enters in the world, there is a backdrop of a castle under siege, the main character find themselves running up to the castle as they find Arkand crushed under the wheelbarrow. The player helps move the wheelbarrow as Arkand grunts and states\n\n\"Cough... Cough...\"\n\n\"Thank you so very much, yep I was definately going to die.\"\n\nHe manages to get up, as he is slowly stumbles but manages to stand and wiggles his hand out\n\n\"The names Arkand, Knight of Tessera, Proud member of the Kings Guard.\"",
+          "choices": [
+            {
+              "id": "tutorial_c1",
+              "text": "Okay Arkand, Glad to meet you but for now I need to know whats happening at that keep!",
+              "nextNodeId": "okay_arkand_glad_to_meet_you_but_for_now_i_need_to_know_whats_happening_at_that_keep",
+              "setFlags": []
+            },
+            {
+              "id": "tutorial_c2",
+              "text": "Whatever, whats going on with those catapults destroying that castle?",
+              "nextNodeId": "whatever_whats_going_on_with_those_catapults_destroying_that_castle",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "entering_calrenoth",
+          "speakerId": "commander_grenge",
+          "line": "Player enters into the great fortress of Calrenoth after fighting waves of imperium soldiers that have been blocking there way.\n\nThe player is walking besides Arkand, as they are currently navigating the road up to the main part of the Fortress.\n\nPlayer notices the continueing rain of chaos as fireballs shatter towers and arrows fly out of the sky. They urgently make there way across multiple pathways and they enter the main inner fortress of Calrenoth\n\nThey are then immediately haulted by 2 guards, one of the guardsmen state.\n\n\"Hold it!\"\n\nArkand steps infront of you\n\n\"Its alright soldier, there part of the backup company requested by the Commander, of which have recently saved my life!\"\n\nThe guardsmen then step away with their swords, opening up the passageway.\n\nThe player can hear yelling in the distance \"How in the hell did the Chaotic Imperium manage to assemble all there forces here!\" That Orc scum was demolished milennia ago and scouts haven't once reported of any whereabouts of the Imperium!\"\n\nBoth the player and Arkand approach further, it appears a man draped with a green shroud over plated armor is shaking what appears to be a squire furiously back and forth\n\n\"It was your job Damius, yours to watch of any influence! You let Rinos fall with no signal fire, no letters, nothing!\" If we had any form of notice we could of prepared!\"\n\nDamius, trys to manage to get a phrase out as he is riling in pain fromthe Commanders Squeeze.\n\n\"It all happened at once Commander, we had no way of knowing...\"\n\nHe lets go of Damius and throws a book that was sitting on the command table infront of them into a Banner of Tessera that floats down.\n\n\"Dammit!\" he shouts\n\nHe breathes furiously for a moment, before noticing Arkand and his companion. Then with some hesitation of relief.\n\n\"Arkand! Your still alive! After the Chaotic Imperium swarm of Orcs and Shadows I am impressed you had made it out of there alive!\"\n\nArkand goes to give the Commander a firm handshake.\n\n\"I am glad to be alive Commander, as well the king has sent some formidable backup to assist.\"\n\nCommander Grenge stares directly at the player, confused.\n\n\"King Asher, that twig, he was supposed to send us a Batallion of soldiers and all he had sent was you, where is the rest of them?",
+          "choices": [
+            {
+              "id": "entering_calrenoth_c1",
+              "text": "The King had decided it was not worth his time to send any assistance to Calrenoth, as he believed it was doomed to fall",
+              "nextNodeId": "the_king_had_decided_it_was_not_worth_his_time_to_send_any_assistance_to_calrenoth_as_he_believed_it_was_doomed_to_fall",
+              "setFlags": []
+            },
+            {
+              "id": "entering_calrenoth_c2",
+              "text": "I was with the battallion, but we had gotten ambushed and I was the only member who had made it to the keep",
+              "nextNodeId": "i_was_with_the_battallion_but_we_had_gotten_ambushed_and_i_was_the_only_member_who_had_made_it_to_the_keep",
+              "setFlags": []
+            },
+            {
+              "id": "entering_calrenoth_c3",
+              "text": "I am all the help you are going to need buddy",
+              "nextNodeId": "i_am_all_the_help_you_are_going_to_need_buddy",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "calrenoth_drawbridge",
+          "speakerId": "commander_grenge",
+          "line": "Player exits the main fortress and as they are heading down to the lower rear part of the castle, they run into falling burning buildings and fireballs that torch buildings and people, filling up everything with ash and smoke..\n\nThe player manage's to fight off a couple Chaotic Imperium as they approach the rear drawbridge and they see Sergeant Larrell, with several soldiers defending the rear.\n\nAs the player makes there way over to the Sergeant, they notice the Drawbridge is not fully down flatside connected to the otherside, with many chaotic imperium corpses as well as shadows surronding there rear.\n\nArkand runs ahead and impales a nearby orc, of which almost cut off Larrell's head with a double bladed axe.\n\n\"Woah, Arkand! *Cough* Just in the nick of time you managed to come here while we were getting our butts kicked in!\"\n\nArkand rests his hand on her shoulder and states \"It isn't the first instance of saving we had to deal with today Larrell, I am glad you are doing okay, from the order's of Commander Grenge, were gonna need to get that Drawbridge Lowered for the retreat!\"\n\nLarrell then frustrated, replies \"Well, that would be grand if we could, however we are going to need some time as the chains are currently jammed and I have a couple of units removing the wooden splinters from the jam.\"\n\nArkand then replies, \"Sounds good, Adventurer lets by her some time\"",
+          "choices": [
+            {
+              "id": "calrenoth_drawbridge_c1",
+              "text": "Combat Sequence: Lowering the Drawbridge",
+              "nextNodeId": "combat_sequence_lowering_the_drawbridge",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "combat_sequence_lowering_the_drawbridge",
+          "speakerId": "commander_grenge",
+          "line": "Player fights through numerous waves of Chaotic Imperium Orcs and Shadowy soldiers as the drawbridge is finally lowered to the ground\n\nArkand Shouts at you \"Hurry Adventurer, we must signal to Commander Grenge that the Drawbridge is down!\"\n\nYou both make your way up to top left tower to ignite the Signal Fire from up top, as the pyre ignites, the Commander as well as his remaining troops rush down from the center fortress to make an exit.\n\nWith the Majority of the Commander's forces nearly gone as both you and Arkand are waving them towards the drawbridge, you notice on your way down that Larrell's soldiers are now beginning to become overrun, but there is little time to escape and you may not make it if you choose to save her. You choose to shout out",
+          "choices": [
+            {
+              "id": "combat_sequence_lowering_the_drawbridge_c1",
+              "text": "Arkand, Larrell has no soldiers left and there is very little time, you must retreat while I help Larrell!",
+              "nextNodeId": "arkand_larrell_has_no_soldiers_left_and_there_is_very_little_time_you_must_retreat_while_i_help_larrell",
+              "setFlags": []
+            },
+            {
+              "id": "combat_sequence_lowering_the_drawbridge_c2",
+              "text": "Arkand, we have to leave at once, lets hurry to the drawbridge!",
+              "nextNodeId": "arkand_we_have_to_leave_at_once_lets_hurry_to_the_drawbridge",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "realm_of_darkness_frangitur_segment_1",
+          "speakerId": "frangitur",
+          "line": "It appears infront of you that you have woken up, however you don't recognize all of this smoke and fog from before, as you look around you are unable to identify any objects as the whole landscape is consumed by darkness.\n\nFrom the shadows, a beam of light hails infront of you, you gasp as your barely hold yourself together and a tall individual forms from the searing flame.\n\nYou shout out to the silhouette of the figure",
+          "choices": [
+            {
+              "id": "realm_of_darkness_frangitur_segment_1_c1",
+              "text": "Hello, is anyone there?",
+              "nextNodeId": "hello_is_anyone_there",
+              "setFlags": []
+            },
+            {
+              "id": "realm_of_darkness_frangitur_segment_1_c2",
+              "text": "I demand you to show yourself!",
+              "nextNodeId": "i_demand_you_to_show_yourself",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "tutorial_completion",
+          "speakerId": "narrator",
+          "line": "Game continues to next level",
+          "choices": []
+        },
+        {
+          "id": "absolutely_commander_anything_to_help_the_kingdom",
+          "speakerId": "commander_grenge",
+          "line": "He smiles back, his arms now at ease to his sides\n\n\"The Kingdom appreciates your help, and Arkand, make sure to not get yourself almost killed again.\"\n\nArkland smirks, and waves back at the Commander.\n\n\"Ill try!\"\n\nYou both leave the Commanders Quarters",
+          "choices": [
+            {
+              "id": "absolutely_commander_anything_to_help_the_kingdom_c1",
+              "text": "Close 2",
+              "nextNodeId": "close_2",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "arkand_larrell_has_no_soldiers_left_and_there_is_very_little_time_you_must_retreat_while_i_help_larrell",
+          "speakerId": "sergeant_larrell",
+          "line": "Arkand acknowledges your urgency and makes haste to the Drawbridge while you make your way to help Larrell.\n\nWhen you jump all the way down to the gate, there are many legionaire's that you slay as you open a path for Larrell, she replies\n\n\"Thank you\" she wheezes to catch some air, but as you both group together, you notice the cobblestone ground becomes all consumed by a dense black fog, the imperium halt there advance as you then suddenly feel within your heart an overwhelming sense of dread as the Air gets thicker.\n\nYou suddenly collapsed for a second, as Larrell manages to catch you by your arm. The clamping of hooves can be heard shattering the ground, echoing a continous earthquake through your soul. Larrell makes it urgent to grab a hold of you and escort you out of the drawbridge as you then hear the cry of a horse in agony. You see Arkand shout \"Adventurer!\" quickly by the other edge of the drawbridge. While he run towards you, you feel the sound of a large broadswoard scrapping away at the cobblestone tearing into you heart.\n\nYou hear \"Usurper...\" as you loose conciousness and fall into utter darkness.",
+          "choices": [
+            {
+              "id": "arkand_larrell_has_no_soldiers_left_and_there_is_very_little_time_you_must_retreat_while_i_help_larrell_c1",
+              "text": "Realm of Darkness: Frangitur Segment 1",
+              "nextNodeId": "realm_of_darkness_frangitur_segment_1",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "arkand_we_have_to_leave_at_once_lets_hurry_to_the_drawbridge",
+          "speakerId": "sergeant_larrell",
+          "line": "Arkand nods but then notices Larrell is cornered between a wall and several Chaos Imperium Forces, he says\n\n\"Larrell needs help adventurer, we must help her!\"\n\nYou then respond",
+          "choices": [
+            {
+              "id": "arkand_we_have_to_leave_at_once_lets_hurry_to_the_drawbridge_c1",
+              "text": "Leave her be, we have no time!",
+              "nextNodeId": "leave_her_be_we_have_no_time",
+              "setFlags": []
+            },
+            {
+              "id": "arkand_we_have_to_leave_at_once_lets_hurry_to_the_drawbridge_c2",
+              "text": "Okay, lets go!",
+              "nextNodeId": "okay_lets_go",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "close",
+          "speakerId": "narrator",
+          "line": "((Close))",
+          "choices": [
+            {
+              "id": "close_c1",
+              "text": "Entering Calrenoth",
+              "nextNodeId": "entering_calrenoth",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "close_2",
+          "speakerId": "narrator",
+          "line": "((Close 2))",
+          "choices": [
+            {
+              "id": "close_2_c1",
+              "text": "Calrenoth Drawbridge",
+              "nextNodeId": "calrenoth_drawbridge",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "commander_as_much_as_you_assume_i_can_t_be_of_much_help_i_can_assist_in_any_way_that_i_can_i_know_we_can_manage_something_if_we_just_believe",
+          "speakerId": "commander_grenge",
+          "line": "He smirks at your response, folding his arms over and begins to ponder\n\n\"Well, if anything both you and Arkand can assist in our retreat as we manage to get most of the garrison away from their forces.\n\nHowever, we will just need assistance from you to cover the back drawbridge as we head towards the O'hlundian evergreens, that duty was assigned to Sergeant Larrell, but assuming the amount of pushback we are receiving he may not be there any more unless you manage to get there in time, can you do that for me and I will consider you helpful.\"",
+          "choices": [
+            {
+              "id": "commander_as_much_as_you_assume_i_can_t_be_of_much_help_i_can_assist_in_any_way_that_i_can_i_know_we_can_manage_something_if_we_just_believe_c1",
+              "text": "Absolutely Commander, anything to help the Kingdom!",
+              "nextNodeId": "absolutely_commander_anything_to_help_the_kingdom",
+              "setFlags": []
+            },
+            {
+              "id": "commander_as_much_as_you_assume_i_can_t_be_of_much_help_i_can_assist_in_any_way_that_i_can_i_know_we_can_manage_something_if_we_just_believe_c2",
+              "text": "Uhuh, and risk my life for the lots of them, is there anything extra for me?\"",
+              "nextNodeId": "uhuh_and_risk_my_life_for_the_lots_of_them_is_there_anything_extra_for_me",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "do_we_know_where_this_crystal_is_located_i_am_suprised_since_you_are_a_god_of_knowledge_there_really_shouldn_t_be_anything_you_wouldn_t_know",
+          "speakerId": "narrator",
+          "line": "((Do we know where this Crystal is located, I am suprised since you are a god of knowledge there really shouldn't be anything you wouldn't know.))",
+          "choices": []
+        },
+        {
+          "id": "goodbye_then",
+          "speakerId": "narrator",
+          "line": "The silhouette slowly fades away as you find the light that surronds you dissapates into total darkness.",
+          "choices": [
+            {
+              "id": "goodbye_then_c1",
+              "text": "Tutorial Completion",
+              "nextNodeId": "tutorial_completion",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "hello_is_anyone_there",
+          "speakerId": "narrator",
+          "line": "You don't hear a response at first, as the silhouette keeps its humanly shape, its form appears to vibrate and echo itself as you then suddenly hear a slow humm that builds up into a louder vibration\n\n\"I am here child, you must not worry as you are safe\"\n\nAs you feel the words physically and spiritually stimiluate your body and soul, you find yourself still confused",
+          "choices": [
+            {
+              "id": "hello_is_anyone_there_c1",
+              "text": "\"Well, thanks for saving me, whats your name?",
+              "nextNodeId": "well_thanks_for_saving_me_whats_your_name",
+              "setFlags": []
+            },
+            {
+              "id": "hello_is_anyone_there_c2",
+              "text": "Saved me... from what?",
+              "nextNodeId": "saved_me_from_what",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "hey_but_whats_your_name",
+          "speakerId": "creotar",
+          "line": "As the silhouette, slowly fades away, it reaches out to you once more, whispering\n\n\"My name?... my name is...Creotar...\"\n\nIt's voice faulters as the light ahead of you dissapates and you find yourself now surrond by the darkness.",
+          "choices": [
+            {
+              "id": "hey_but_whats_your_name_c1",
+              "text": "Tutorial Completion",
+              "nextNodeId": "tutorial_completion",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "hey_don_t_you_underestimate_me_grenge_if_there_s_a_will_there_s_a_way",
+          "speakerId": "commander_grenge",
+          "line": "Commander Greene tries to believe in your enthusiam, but he still continue's to shake his head.\n\n\"Well, if you believe you can help, then lets put you to the test. Sergeant Larrell hasn't made any communication on securing the back drawbridge for our retreat and I am going to need you adventurer, as well as Arkand to report to her about what has happened.\"\n\nArkand replies \"You can count on us Commander! It shoudn't take long\"",
+          "choices": [
+            {
+              "id": "hey_don_t_you_underestimate_me_grenge_if_there_s_a_will_there_s_a_way_c1",
+              "text": "It will be done!",
+              "nextNodeId": "it_will_be_done",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "i_am_all_the_help_you_are_going_to_need_buddy",
+          "speakerId": "commander_grenge",
+          "line": "The Commander laughs at your hubris\n\n\"Alright *Buddy*, sure thing.\n\nHe then looks at Arkand\n\n\"There were supposed to be more then this dunce, are you sure you didn't run into anyone else?\"\n\nArkand shakes his head in dissappointment as the Commander then replies\n\n\"Oh well, if thats the case then we'll just have to figure out what we can do with you.\"",
+          "choices": [
+            {
+              "id": "i_am_all_the_help_you_are_going_to_need_buddy_c1",
+              "text": "Hey, don't you underestimate me Grenge! If there's a will, there's a way",
+              "nextNodeId": "hey_don_t_you_underestimate_me_grenge_if_there_s_a_will_there_s_a_way",
+              "setFlags": []
+            },
+            {
+              "id": "i_am_all_the_help_you_are_going_to_need_buddy_c2",
+              "text": "\"Trust me, whatever your doing here ain't working, so like it or not your gonna need me\"\"",
+              "nextNodeId": "trust_me_whatever_your_doing_here_ain_t_working_so_like_it_or_not_your_gonna_need_me",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "i_am_only_to_make_sure_that_you_don_t_get_yourself_killed_again_arkand",
+          "speakerId": "commander_grenge",
+          "line": "Arkand smiles and replies \"I appreciate that friend, and you as well I hope.\"\n\nThe Commander waves and says \"Goodbye\" as you both make your way out of the inner fortress",
+          "choices": [
+            {
+              "id": "i_am_only_to_make_sure_that_you_don_t_get_yourself_killed_again_arkand_c1",
+              "text": "Close 2",
+              "nextNodeId": "close_2",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "i_am_proud_to_be_within_your_presence_lord_creotar_i_will_seek_to_destroy_the_shroud_if_it_means_the_end_to_luceran_s_corrupted_reign",
+          "speakerId": "narrator",
+          "line": "Lord Creotar is pleased with your response\n\n\"Good, then you must make haste at once, there is rumor of a rystal that can tear through the shroud, however that crystal was stolen from me long ago after the creation of the world had taken place. Goodbye child, as we will see each other again.\n\nThe light suddenly fades into the shadows as you now find yourself in complete darkness",
+          "choices": [
+            {
+              "id": "i_am_proud_to_be_within_your_presence_lord_creotar_i_will_seek_to_destroy_the_shroud_if_it_means_the_end_to_luceran_s_corrupted_reign_c1",
+              "text": "Tutorial Completion",
+              "nextNodeId": "tutorial_completion",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "i_demand_you_to_show_yourself",
+          "speakerId": "narrator",
+          "line": "The Silhouette doesn't change its shape, however your first here a slight hum, that then suddenly builds and vibrates to form these words\n\n\"Hello Child, do not be startled as I am but your greatest ally.\"\n\nYou feel uneasy as the vibration of his words release a wave a stimulation throughout your body and soul.",
+          "choices": [
+            {
+              "id": "i_demand_you_to_show_yourself_c1",
+              "text": "\"Who are you stranger, where are we?\"",
+              "nextNodeId": "who_are_you_stranger_where_are_we",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "i_guess_i_could_do_what_i_can_it_seems_you_all_need_as_much_help_as_you_can_get_and_i_would_be_happy_to_oblige",
+          "speakerId": "commander_grenge",
+          "line": "The Commander Nods at your response\n\n\"As quick as you can, I fear she has limited time.\"\n\nHe then looks at Arkand, he grins.\n\n\"Arkand, continue to assist this adventurer and for all the god's sake, please do come back this time, I don't want to hear you got stuck under another cart again.\"\n\nArkand as well nods as he states \"For sure Commander, and if I do, I have this one to pull me out\" He pats (the player) on the shoulder\n\n\"Lets go friend.\"",
+          "choices": [
+            {
+              "id": "i_guess_i_could_do_what_i_can_it_seems_you_all_need_as_much_help_as_you_can_get_and_i_would_be_happy_to_oblige_c1",
+              "text": "Close 2",
+              "nextNodeId": "close_2",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "i_trust_the_shroud_must_be_destroyed_but_i_am_still_unable_to_see_who_you_are_creotar_are_you_able_to_show_yourself",
+          "speakerId": "creotar",
+          "line": "Creotar's echo slow's down even further\n\n\"I apologize adventurer, as for I am not able to show my form to you, as I would risk injurying you. Within this realm, it is only the light that I create that can pierce the veil of what you are able to see, you must go now my child... you must.\"\n\nThe silhouette slowly disappates into the shadows as you now find yourself within complete darkness.",
+          "choices": [
+            {
+              "id": "i_trust_the_shroud_must_be_destroyed_but_i_am_still_unable_to_see_who_you_are_creotar_are_you_able_to_show_yourself_c1",
+              "text": "Tutorial Completion",
+              "nextNodeId": "tutorial_completion",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "i_understand_we_must_locate_the_crystal_do_you_happen_know_the_the_last_location",
+          "speakerId": "narrator",
+          "line": "((\"I understand, we must locate the crystal, do you happen know the the last location?))",
+          "choices": []
+        },
+        {
+          "id": "i_was_with_the_battallion_but_we_had_gotten_ambushed_and_i_was_the_only_member_who_had_made_it_to_the_keep",
+          "speakerId": "commander_grenge",
+          "line": "The Commander looks suprised at your response\n\n\"So, there was a whole battalion and you somehow managed to escape with no one else? What, are you made out of Nefarium or something, it would be impossible to be undetected by a full force Chaos Legion.\"\n\nArkand replies, \"I guess we know what were up against Commander, there's no way we are going to be able to respond to what they have at are walls now, and especially for what this adventurer says may be true, we must plan our retreat before another Legion makes there way to Calrenoth.\"\n\nCommander Grenge Looks at the map and ponders for a bit and a little suspicious looks back at me and states\n\n\"How did you manage to survive that attack?\"",
+          "choices": [
+            {
+              "id": "i_was_with_the_battallion_but_we_had_gotten_ambushed_and_i_was_the_only_member_who_had_made_it_to_the_keep_c1",
+              "text": "It was just shear luck, they just kept coming and coming, I killed each and every one I saw. There coming from the hills, the woods, the plains, everywhere we were, we were surronded.",
+              "nextNodeId": "it_was_just_shear_luck_they_just_kept_coming_and_coming_i_killed_each_and_every_one_i_saw_there_coming_from_the_hills_the_woods_the_plains_everywhere_we_were_we_were_surronded",
+              "setFlags": []
+            },
+            {
+              "id": "i_was_with_the_battallion_but_we_had_gotten_ambushed_and_i_was_the_only_member_who_had_made_it_to_the_keep_c2",
+              "text": "What can I say, I'm a badass, everyone else just ate the dirt and I made it alive.",
+              "nextNodeId": "what_can_i_say_i_m_a_badass_everyone_else_just_ate_the_dirt_and_i_made_it_alive",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "it_was_just_shear_luck_they_just_kept_coming_and_coming_i_killed_each_and_every_one_i_saw_there_coming_from_the_hills_the_woods_the_plains_everywhere_we_were_we_were_surronded",
+          "speakerId": "commander_grenge",
+          "line": "Arklands responds \"Oh man, it definately was a chaos legion then, we are never going to know when they arrive before Calrenoth crumbles to the ground.\"\n\nCommander Grenge responds \"Knowing this now, we must quickly reinforce the rear drawbridge before Sergeant Larrell is overwhelmed by the chaos, adventurer you and Arkand must assist her before it is too late!\"\n\nArkand then says to you \"Adventurer are you coming or not?\"",
+          "choices": [
+            {
+              "id": "it_was_just_shear_luck_they_just_kept_coming_and_coming_i_killed_each_and_every_one_i_saw_there_coming_from_the_hills_the_woods_the_plains_everywhere_we_were_we_were_surronded_c1",
+              "text": "\"Of course Arkand, we must help her at once!\"",
+              "nextNodeId": "of_course_arkand_we_must_help_her_at_once",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "it_will_be_done",
+          "speakerId": "arkand",
+          "line": "Both you and Arkand make way to the drawbridge\n\nAs you are walking away you hear\n\n\"Oh by the way, Arkand please if you can, try to make it back here by your own means, I don't want to hear that you got stuck under a cart again.\"\n\nArkand laughs and shouts\n\n\"If that's the case, you will know then if the Drawbridge is secure or not!\"\n\nYou both exit.",
+          "choices": [
+            {
+              "id": "it_will_be_done_c1",
+              "text": "Close 2",
+              "nextNodeId": "close_2",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "leave_her_be_we_have_no_time",
+          "speakerId": "sergeant_larrell",
+          "line": "Arkand then Shouts back \"We must make time, we have to!\"\n\nYou insist that you cannot and You both jump down from Causeway onto the drawbridge.\n\nAs you are running away, your character suddenly collapses from an immense unnatural force of pressure, you hear a whisper \"The Usurper is near...\" as a dark rider on a pale black armored horse is heard galloping from within the castle.\n\nEvery single stomp from the horses hooves irritates your soul, as you barely manage to retrieve yourself from such a strange feeling, Arkand grabs a hold of you as your then collapse again, your vision falling into utter darkness as you hear Larrell's scream from the thrust of that shadowy figures sword.",
+          "choices": [
+            {
+              "id": "leave_her_be_we_have_no_time_c1",
+              "text": "Realm of Darkness: Frangitur Segment 1",
+              "nextNodeId": "realm_of_darkness_frangitur_segment_1",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "of_course_arkand_we_must_help_her_at_once",
+          "speakerId": "commander_grenge",
+          "line": "Arkand appreciates your enthusiam and then states\n\n\"Allright, we will meet with you Grenge once it is secured, lets go!\"\n\nYou both head out to the rear drawbridge",
+          "choices": [
+            {
+              "id": "of_course_arkand_we_must_help_her_at_once_c1",
+              "text": "Close 2",
+              "nextNodeId": "close_2",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "of_course_i_am_here_to_help_what_do_i_look_like_to_you_some_straggler",
+          "speakerId": "commander_grenge",
+          "line": "He backs away from your aggressive shout\n\n\"No no no, you look like you have definately seem some battle in your time, Ill take you over to the Commander right away!\"",
+          "choices": [
+            {
+              "id": "of_course_i_am_here_to_help_what_do_i_look_like_to_you_some_straggler_c1",
+              "text": "Close",
+              "nextNodeId": "close",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "of_course_you_bafoon",
+          "speakerId": "narrator",
+          "line": "He definately did not appreciate your response and looks away at you in fear, rushing ahead.\n\n\"You are one rude fellow for have saving my life.\"",
+          "choices": [
+            {
+              "id": "of_course_you_bafoon_c1",
+              "text": "Close",
+              "nextNodeId": "close",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "okay_arkand_glad_to_meet_you_but_for_now_i_need_to_know_whats_happening_at_that_keep",
+          "speakerId": "commander_grenge",
+          "line": "He immediately grabs his equipment and reports\n\n\"Absolutely, Commander Grenge is currently preoccupied with those Imperium scum and he needs immediate assistance, I can show you at once\"",
+          "choices": [
+            {
+              "id": "okay_arkand_glad_to_meet_you_but_for_now_i_need_to_know_whats_happening_at_that_keep_c1",
+              "text": "Well, what the hell are you waiting for, take me right to him!",
+              "nextNodeId": "well_what_the_hell_are_you_waiting_for_take_me_right_to_him",
+              "setFlags": []
+            },
+            {
+              "id": "okay_arkand_glad_to_meet_you_but_for_now_i_need_to_know_whats_happening_at_that_keep_c2",
+              "text": "Take me right to him then, I'l be more then glad to help Commander Grenge.",
+              "nextNodeId": "take_me_right_to_him_then_i_l_be_more_then_glad_to_help_commander_grenge",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "okay_lets_go",
+          "speakerId": "arkand",
+          "line": "Both you and Arkand manage to quickly make haste down the ramparts as you find Larrell outumbered by Legionnaries and Orcs alike.\n\nSlaughtering through, you make your way to Larrell as she can barely hold her breath, she says\n\n\"Thank you both, I would have died\"\n\nArkand urgently replies \"No matter Larrell, the time for thanks is later, we must get out of here now!\"\n\nAs you all make your way to the drawbridge, you notice the sudden build up of a dense black fog that covers the cobblestone street, the air gets thicker as with all the smoke and ash makes it even harder to breath.\n\nThe Drawbridge becomes a traslucent image as you suddenly feel within echoes of the earth fearce hoofstops that collide within each and every stone. Dread overwhelms your mind, as you notice your ability walk across becomes every so diminished, Larrell catches you by your shoulder as your body slowly starts to collapse from its unwillingness to proceed.\n\nYour hear Arkand Shout \"Luceran! King Luceran?!\"\n\nThe screeching cry of a dark pale horse suddenly evelops your mind as the scratching of the riders broadsword echos into your sudden slumber.\n\nYou see only darkness.",
+          "choices": [
+            {
+              "id": "okay_lets_go_c1",
+              "text": "Realm of Darkness: Frangitur Segment 1",
+              "nextNodeId": "realm_of_darkness_frangitur_segment_1",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "saved_me_from_what",
+          "speakerId": "narrator",
+          "line": "It slowly responds, as its voice echos out\n\n\"Luceran of course, formally know as King Luceran of Tessera, he now has a reputation of being known as the Fallen King Luceran the Hollow, it is believed when he usurped the Shroud from Grul'thaz the Black Howl, the former Warcheif of the Shadowpaw clan.\"\n\n\"Luceran had slain him to protect his people from the Chaotic Imperium, however little did he know that he would become a shadow of his former self and be inflicted by the power of the Nefarium Shroud.\"\n\nYou suddenly hear the voice of the being ever so increase in its power and speed.\n\n\"The Nefarium shroud controls whomever in its own will, it must be destroyed, AT ALL COSTS!!\"",
+          "choices": [
+            {
+              "id": "saved_me_from_what_c1",
+              "text": "Woah, I understand how important the shroud is, for what Luceran had done to those people he must be stopped.",
+              "nextNodeId": "woah_i_understand_how_important_the_shroud_is_for_what_luceran_had_done_to_those_people_he_must_be_stopped",
+              "setFlags": []
+            },
+            {
+              "id": "saved_me_from_what_c2",
+              "text": "Slow down here, I don't even know who you are, why should I trust you?",
+              "nextNodeId": "slow_down_here_i_don_t_even_know_who_you_are_why_should_i_trust_you",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "slow_down_here_i_don_t_even_know_who_you_are_why_should_i_trust_you",
+          "speakerId": "narrator",
+          "line": "The being of lights voice slows down, it echos out\n\n\"Apologies at I didn't mean to overwhelm you. I am Creotar, god and gifter of knowledge and creation. I seek only to warn you my child of Luceran's ill intent to take over all of Tessera for his own.\"\n\nCreotar's voice then mellows out, you feel at ease as he further replies\n\n\"You must destroy the Nefarium shroud as it has been created to control the very power I put on this world. The Imperium would have never gotten out of control like this, now that it has fallen into the wrong hands. The shroud is a prison for Luceran and you must free him, you must free us from this agony\"",
+          "choices": [
+            {
+              "id": "slow_down_here_i_don_t_even_know_who_you_are_why_should_i_trust_you_c1",
+              "text": "I am proud to be within your presence, Lord Creotar, I will seek to destroy the shroud if it means the end to Luceran's corrupted reign.",
+              "nextNodeId": "i_am_proud_to_be_within_your_presence_lord_creotar_i_will_seek_to_destroy_the_shroud_if_it_means_the_end_to_luceran_s_corrupted_reign",
+              "setFlags": []
+            },
+            {
+              "id": "slow_down_here_i_don_t_even_know_who_you_are_why_should_i_trust_you_c2",
+              "text": "I trust the shroud must be destroyed, but I am still unable to see who you are Creotar, are you able to show yourself?",
+              "nextNodeId": "i_trust_the_shroud_must_be_destroyed_but_i_am_still_unable_to_see_who_you_are_creotar_are_you_able_to_show_yourself",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "sure_thing_bud_commander_s_requested_me_personally",
+          "speakerId": "commander_grenge",
+          "line": "He notices your not that enthusastic in your response\n\n\"Well, if you are going to meet the Commander, you are going to have to make it up that hill over there yonder, Let me accompany you over there stranger!",
+          "choices": [
+            {
+              "id": "sure_thing_bud_commander_s_requested_me_personally_c1",
+              "text": "Close",
+              "nextNodeId": "close",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "take_me_right_to_him_then_i_l_be_more_then_glad_to_help_commander_grenge",
+          "speakerId": "commander_grenge",
+          "line": "He appreciates your enthusiam,\n\n\"Of course traveller, right away!\"",
+          "choices": [
+            {
+              "id": "take_me_right_to_him_then_i_l_be_more_then_glad_to_help_commander_grenge_c1",
+              "text": "Close",
+              "nextNodeId": "close",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "the_king_had_decided_it_was_not_worth_his_time_to_send_any_assistance_to_calrenoth_as_he_believed_it_was_doomed_to_fall",
+          "speakerId": "commander_grenge",
+          "line": "The commander shakes his head as he moves back to the command table, rest both hands onto its surface\n\n\"King Asher is going to regret assuming the throne if he is going to treat us like this, Considering we our outnumbered 3 to 1, what can you do to help us push back utter hell!\"",
+          "choices": [
+            {
+              "id": "the_king_had_decided_it_was_not_worth_his_time_to_send_any_assistance_to_calrenoth_as_he_believed_it_was_doomed_to_fall_c1",
+              "text": "\"Commander, as much as you assume I can't be of much help, I can assist in any way that I can. I know we can manage something if we just believe\"",
+              "nextNodeId": "commander_as_much_as_you_assume_i_can_t_be_of_much_help_i_can_assist_in_any_way_that_i_can_i_know_we_can_manage_something_if_we_just_believe",
+              "setFlags": []
+            },
+            {
+              "id": "the_king_had_decided_it_was_not_worth_his_time_to_send_any_assistance_to_calrenoth_as_he_believed_it_was_doomed_to_fall_c2",
+              "text": "\"Your right, I am not sure what Asher was thinking sending just me here, but I can do what I can to assist.\"",
+              "nextNodeId": "your_right_i_am_not_sure_what_asher_was_thinking_sending_just_me_here_but_i_can_do_what_i_can_to_assist",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "they_aren_t_gonna_know_what_hit_em_arkand_its_time_to_kick_some_ass",
+          "speakerId": "commander_grenge",
+          "line": "Arkand appreciates your enthusiam while the Commander is just disturbed\n\n\"Alright adventurer, it is time to make haste!\"\n\nYou both make an exit to the rear drawbridge",
+          "choices": [
+            {
+              "id": "they_aren_t_gonna_know_what_hit_em_arkand_its_time_to_kick_some_ass_c1",
+              "text": "Close 2",
+              "nextNodeId": "close_2",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "this_sounds_like_a_suicide_mission_don_t_you_think_the_chaotic_imperium_would_have_already_noticed_the_back_entrance_by_now_it_s_best_we_just_make_a_run_for_it_and_leave_them_be",
+          "speakerId": "commander_grenge",
+          "line": "The Commander looks towards Arkand to think for a moment, but then shortly responds.\n\n\"We don't have anything left to depend on adventurer, other then that exit point I fear we would be left to be torn to pieces by the Imperium and I can't watch for that to happen. This fortress is going to fall with or without us and I just don't have the time for another solution.\"\n\nHe grunts and then looks at Arkand,\n\n\"Arkand, try not to do anything risky this time, I want you and this adventurer alive in one piece after the battle is over\"\n\nArkand smiles, and replies \"Don't worry commander, none of me is going to get stuck anywhere else, at least I hope\" He laughs\n\nHe then walks away as he waves at me \"Let go adventurer, we have no time to waste.",
+          "choices": [
+            {
+              "id": "this_sounds_like_a_suicide_mission_don_t_you_think_the_chaotic_imperium_would_have_already_noticed_the_back_entrance_by_now_it_s_best_we_just_make_a_run_for_it_and_leave_them_be_c1",
+              "text": "Close 2",
+              "nextNodeId": "close_2",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "trust_me_whatever_your_doing_here_ain_t_working_so_like_it_or_not_your_gonna_need_me",
+          "speakerId": "commander_grenge",
+          "line": "Commander Greene laughs at your response.\n\n\"Alright pal, with an ego like your's if you had experienced what I had experienced you would know what limited options we have left here.\"\n\nHe then ignores you as he looks over to Arkand\n\n\"Arkand, if you can, bring this *know it all* over to Sergeant Larrell, he may prove to be of some use for assistance with the rear Drawbridge, if we can get that secured then we will be able to retreat with whatever remaining forces we have left.\"\n\nArkand replies \"We will be there at once, adventurer, are you coming?\"",
+          "choices": [
+            {
+              "id": "trust_me_whatever_your_doing_here_ain_t_working_so_like_it_or_not_your_gonna_need_me_c1",
+              "text": "I am, only to make sure that you don't get yourself killed again, Arkand",
+              "nextNodeId": "i_am_only_to_make_sure_that_you_don_t_get_yourself_killed_again_arkand",
+              "setFlags": []
+            },
+            {
+              "id": "trust_me_whatever_your_doing_here_ain_t_working_so_like_it_or_not_your_gonna_need_me_c2",
+              "text": "With an attitude like that Grenge, no wonder you forces were unable to hold back the Chaotic Imperium",
+              "nextNodeId": "with_an_attitude_like_that_grenge_no_wonder_you_forces_were_unable_to_hold_back_the_chaotic_imperium",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "uhuh_and_risk_my_life_for_the_lots_of_them_is_there_anything_extra_for_me",
+          "speakerId": "commander_grenge",
+          "line": "The Commander seems annoyed at you, he looks over to Arkand and states\n\n\"How about the fact that we will get out of this alive alright?\"\n\nHe then tells Arkand\n\n\"Please try not to get yourself killed. Even though King Asher wouldn't miss the lot of us.\"\n\nArkand smiles and replies\n\n\"I will definately try to do that Commander, but I can't make any promises\"\n\nYou both leave the Commanders Quarters.",
+          "choices": [
+            {
+              "id": "uhuh_and_risk_my_life_for_the_lots_of_them_is_there_anything_extra_for_me_c1",
+              "text": "Close 2",
+              "nextNodeId": "close_2",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "well_thanks_for_saving_me_whats_your_name",
+          "speakerId": "creotar",
+          "line": "Its voice once more slowly echoes out,\n\n\"My name...your people call me Creotar. I am formally known as the god and gifter of knowledge, as I now bestow upon you. I am here with a warning child, as for if you do not take every word you risk Armegeddon for all of Tessera.\"\n\nCreotar's voice becomes more clear, as the the vibrations are able to settle.\n\n\"That dark rider, the presence you felt, was none other then Luceran, known now as Luceran the hollow. He was named hollow for the shadow of himself that exists now as he is no longer the King of Tessera, ruled now by his fragile half-brother Asher.\"\n\n\"Luceran, along with the Nefarium Shroud that he has doned on his shoulders, will corrupt everything if the Shroud is not shredded into two. You see child, there is a crystal of unknown origin behest to myself, that can destroy the shroud.\"\n\n\"Free Luceran from the Shroud, and you will free all of Tessera.\"",
+          "choices": [
+            {
+              "id": "well_thanks_for_saving_me_whats_your_name_c1",
+              "text": "Do we know where this Crystal is located, I am suprised since you are a god of knowledge there really shouldn't be anything you wouldn't know.",
+              "nextNodeId": "do_we_know_where_this_crystal_is_located_i_am_suprised_since_you_are_a_god_of_knowledge_there_really_shouldn_t_be_anything_you_wouldn_t_know",
+              "setFlags": []
+            },
+            {
+              "id": "well_thanks_for_saving_me_whats_your_name_c2",
+              "text": "\"I understand, we must locate the crystal, do you happen know the the last location?",
+              "nextNodeId": "i_understand_we_must_locate_the_crystal_do_you_happen_know_the_the_last_location",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "well_what_the_hell_are_you_waiting_for_take_me_right_to_him",
+          "speakerId": "narrator",
+          "line": "He is intimidated by your aggressive presence, he tremors in fear as he responsds\n\n\"Uh... I'll take you to him then.\"",
+          "choices": [
+            {
+              "id": "well_what_the_hell_are_you_waiting_for_take_me_right_to_him_c1",
+              "text": "Of course you bafoon!",
+              "nextNodeId": "of_course_you_bafoon",
+              "setFlags": []
+            },
+            {
+              "id": "well_what_the_hell_are_you_waiting_for_take_me_right_to_him_c2",
+              "text": "Close",
+              "nextNodeId": "close",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "what_can_i_say_i_m_a_badass_everyone_else_just_ate_the_dirt_and_i_made_it_alive",
+          "speakerId": "commander_grenge",
+          "line": "Commander Grenge is utterly suprised by what you just said \"Okay then...\"\n\nHe looks at Arkand, Arkand puts his hands out, showing he is just as confused as the Commander is.\n\nThe Commander then follows up \"If they are all dead then there's nothing much we can do other then sound for a retreat, Arkand you are going to have to bring your *Friend* over to Sergeant Larrell to secure the rear drawbridge before the Chaos Imperium slaughters all of us. \n\nArkand nods and then replies \"Of course Commander, adventurer will you assist?\"",
+          "choices": [
+            {
+              "id": "what_can_i_say_i_m_a_badass_everyone_else_just_ate_the_dirt_and_i_made_it_alive_c1",
+              "text": "\"Will definately do buddy, it is... time to go.\"",
+              "nextNodeId": "will_definately_do_buddy_it_is_time_to_go",
+              "setFlags": []
+            },
+            {
+              "id": "what_can_i_say_i_m_a_badass_everyone_else_just_ate_the_dirt_and_i_made_it_alive_c2",
+              "text": "\"They aren't gonna know what hit em Arkand, its time to kick some ass!\"",
+              "nextNodeId": "they_aren_t_gonna_know_what_hit_em_arkand_its_time_to_kick_some_ass",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "whatever_whats_going_on_with_those_catapults_destroying_that_castle",
+          "speakerId": "commander_grenge",
+          "line": "\"Those catapults belong to the Chaotic Imperium, they have laid siege to the great castle of Calrenoth, that demonic scum.\"\n\n\"Are you part of the backup that was called in by Commander Grenge?\"",
+          "choices": [
+            {
+              "id": "whatever_whats_going_on_with_those_catapults_destroying_that_castle_c1",
+              "text": "Sure thing Bud, Commander's requested me personally.",
+              "nextNodeId": "sure_thing_bud_commander_s_requested_me_personally",
+              "setFlags": []
+            },
+            {
+              "id": "whatever_whats_going_on_with_those_catapults_destroying_that_castle_c2",
+              "text": "Of course I am here to help, what do I look like to you, some straggler?",
+              "nextNodeId": "of_course_i_am_here_to_help_what_do_i_look_like_to_you_some_straggler",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "who_are_you_stranger_where_are_we",
+          "speakerId": "narrator",
+          "line": "((Who are you stranger, where are we?))",
+          "choices": []
+        },
+        {
+          "id": "will_definately_do_buddy_it_is_time_to_go",
+          "speakerId": "commander_grenge",
+          "line": "He does sense the awkwardness from you and the Commander\n\n\"Alright, lets head out then\"\n\nBoth you and Arkand exit",
+          "choices": [
+            {
+              "id": "will_definately_do_buddy_it_is_time_to_go_c1",
+              "text": "Close 2",
+              "nextNodeId": "close_2",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "with_an_attitude_like_that_grenge_no_wonder_you_forces_were_unable_to_hold_back_the_chaotic_imperium",
+          "speakerId": "commander_grenge",
+          "line": "Grenge replies annoyed \"With an attitude like that... Get your ass out of here!\"\n\nYou and Arkand both make haste away from the inner fortress",
+          "choices": [
+            {
+              "id": "with_an_attitude_like_that_grenge_no_wonder_you_forces_were_unable_to_hold_back_the_chaotic_imperium_c1",
+              "text": "Close 2",
+              "nextNodeId": "close_2",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "woah_i_understand_how_important_the_shroud_is_for_what_luceran_had_done_to_those_people_he_must_be_stopped",
+          "speakerId": "narrator",
+          "line": "Its echo and vibrations remains the same\n\n\"It is of paramount importance that you must find the crystal to break the shroud. It is rumored that it currently exists and is maybe within the wrong hands as we speak if you don't make haste, the more Luceran is trapped within its prison, the more we risk Tessera's doom to his control.\"\n\nThe echo then slows its self down, as the silhouette's bright image appears to dim.\n\n\"Before you go, you must know that this may be the only time we get a chance to reach out until Luceran is stopped, it is important that you stay on this quest and for those who persuade you otherwise to not let them sway your focus. I bid you farewell now, adventurer\"",
+          "choices": [
+            {
+              "id": "woah_i_understand_how_important_the_shroud_is_for_what_luceran_had_done_to_those_people_he_must_be_stopped_c1",
+              "text": "\"Hey, but whats your name?\"",
+              "nextNodeId": "hey_but_whats_your_name",
+              "setFlags": []
+            },
+            {
+              "id": "woah_i_understand_how_important_the_shroud_is_for_what_luceran_had_done_to_those_people_he_must_be_stopped_c2",
+              "text": "Goodbye then",
+              "nextNodeId": "goodbye_then",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "your_right_i_am_not_sure_what_asher_was_thinking_sending_just_me_here_but_i_can_do_what_i_can_to_assist",
+          "speakerId": "commander_grenge",
+          "line": "The Commander grins, putting his right hand on Arkand's Shoulder\n\n\"Ever since Asher assumed Luceran's throne he just layed there like a sack a potatoes and bitched and complained about nothing getting done, even though he was the one responsible.\"\n\nArkland replied, \"Having Luceran again would be best, but he's gone now and we need to figure out how we are going to repel the Chaotic Imperium back from Calrenoth.\"\n\nThe Commander then firmly rubbed his chin as he hesitated to reply to Arkland\n\n\"There is no way we can fight this head on and survive, I will have to rally all that I can and make way for the back drawbridge\"\n\nHe then looks at you. with another hesistated reply, gripping his fingers.\n\n\"Adventurer, if you can be of use, Sergeant Larell is currently covering the back entrance and hasn't recently reported back anything since you 2 have arrived, it will be only a matter of time before the Chaotic Imperium overruns this Fortress. Meet with her and advise any way you can help us retreat this fortress before we all become consumed in Shadows.\"",
+          "choices": [
+            {
+              "id": "your_right_i_am_not_sure_what_asher_was_thinking_sending_just_me_here_but_i_can_do_what_i_can_to_assist_c1",
+              "text": "\"I guess I could do what I can, it seems you all need as much help as you can get and I would be happy to oblige.\"",
+              "nextNodeId": "i_guess_i_could_do_what_i_can_it_seems_you_all_need_as_much_help_as_you_can_get_and_i_would_be_happy_to_oblige",
+              "setFlags": []
+            },
+            {
+              "id": "your_right_i_am_not_sure_what_asher_was_thinking_sending_just_me_here_but_i_can_do_what_i_can_to_assist_c2",
+              "text": "\"This sounds like a suicide mission, don't you think the Chaotic Imperium would have already noticed the back entrance by now, It's best we just make a run for it and leave them be.\"",
+              "nextNodeId": "this_sounds_like_a_suicide_mission_don_t_you_think_the_chaotic_imperium_would_have_already_noticed_the_back_entrance_by_now_it_s_best_we_just_make_a_run_for_it_and_leave_them_be",
+              "setFlags": []
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "main",
+        "act0",
+        "twine-import"
+      ],
+      "openQuestions": [
+        "Creotar vs Creo identity",
+        "Crystal location stubs empty in Twine",
+        "Wake-up hub after Tutorial Completion"
+      ]
+    }
+  ]
+}

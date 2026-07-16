@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "light": {
+    "color": [1.0, 0.62, 0.28],
+    "radius": 20.0,
+    "strength": 1.35,
+    "offset": [0.0, 0.35, 0.0]
+  },
+  "entities": [
+    {
+      "name": "Stone 0",
+      "transform": {
+        "position": [0.42, 0.08, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [0.22, 0.16, 0.22]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cube",
+        "color": [0.20, 0.18, 0.16]
+      }
+    },
+    {
+      "name": "Stone 1",
+      "transform": {
+        "position": [0.30, 0.08, 0.30],
+        "rotation": [0.0, 0.383, 0.0, 0.924],
+        "scale": [0.20, 0.15, 0.20]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cube",
+        "color": [0.18, 0.16, 0.14]
+      }
+    },
+    {
+      "name": "Stone 2",
+      "transform": {
+        "position": [0.0, 0.08, 0.42],
+        "rotation": [0.0, 0.707, 0.0, 0.707],
+        "scale": [0.22, 0.16, 0.22]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cube",
+        "color": [0.20, 0.18, 0.16]
+      }
+    },
+    {
+      "name": "Stone 3",
+      "transform": {
+        "position": [-0.30, 0.08, 0.30],
+        "rotation": [0.0, 0.924, 0.0, 0.383],
+        "scale": [0.20, 0.15, 0.20]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cube",
+        "color": [0.18, 0.16, 0.14]
+      }
+    },
+    {
+      "name": "Stone 4",
+      "transform": {
+        "position": [-0.42, 0.08, 0.0],
+        "rotation": [0.0, 1.0, 0.0, 0.0],
+        "scale": [0.22, 0.16, 0.22]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cube",
+        "color": [0.20, 0.18, 0.16]
+      }
+    },
+    {
+      "name": "Stone 5",
+      "transform": {
+        "position": [-0.22, 0.08, -0.34],
+        "rotation": [0.0, -0.383, 0.0, 0.924],
+        "scale": [0.20, 0.15, 0.20]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cube",
+        "color": [0.18, 0.16, 0.14]
+      }
+    },
+    {
+      "name": "Log A",
+      "transform": {
+        "position": [0.0, 0.10, 0.0],
+        "rotation": [0.0, 0.383, 0.0, 0.924],
+        "scale": [0.10, 0.42, 0.10]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cylinder",
+        "color": [0.24, 0.13, 0.07]
+      }
+    },
+    {
+      "name": "Log B",
+      "transform": {
+        "position": [0.0, 0.10, 0.0],
+        "rotation": [0.0, 0.924, 0.0, -0.383],
+        "scale": [0.10, 0.42, 0.10]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cylinder",
+        "color": [0.22, 0.12, 0.06]
+      }
+    },
+    {
+      "name": "Flame",
+      "transform": {
+        "position": [0.0, 0.28, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [0.32, 0.55, 0.32]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "pyramid",
+        "color": [1.0, 0.72, 0.18]
+      }
+    }
+  ],
+  "collision": [
+    {
+      "shape": "sphere",
+      "layer": "trigger",
+      "trigger": true,
+      "transform": {
+        "position": [0.0, 0.55, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "radius": 0.85,
+      "interaction": "use_campfire"
+    }
+  ]
+}

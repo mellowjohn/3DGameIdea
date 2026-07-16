@@ -1,0 +1,29 @@
+---
+description: Derive story/World Forge entity IDs from display names via slugify
+alwaysApply: true
+---
+
+# IDs From Display Names
+
+Story and World Forge authored objects get **stable snake_case ids derived from their display title/name**, not hand-typed opaque codes.
+
+## Convention
+
+- Input: human title — `Go Get the flowers`
+- Output id: `go_get_the_flowers` via `engine::slugify_id` / `unique_slugify_id` (`include/engine/core/id_slug.h`)
+- Lowercase, non-alphanumerics → `_`, collapse repeats, trim edges
+- On collision, append `_2`, `_3`, …
+
+## Editor UX
+
+- Create flows prioritize **display name / title / summary**
+- Show derived id as a preview; do not require a separate id field for normal authoring
+- Keep free-text id only for advanced override when already supported
+- Lookups still use dropdowns of existing ids (see `lookup-fields-dropdowns.mdc`)
+
+## Examples
+
+```text
+❌ BAD: Force authors to invent `qggtf01` while also typing the title
+✅ GOOD: Title "Go Get the flowers" → id `go_get_the_flowers` (unique_slugify if taken)
+```

@@ -1,0 +1,11 @@
+Font Awesome Free 6.x — Solid icon font (fa-solid-900.ttf)
+
+Source: https://github.com/FortAwesome/Font-Awesome
+Downloaded file: webfonts/fa-solid-900.ttf
+
+Licenses (see https://fontawesome.com/license/free):
+- Font files: SIL Open Font License 1.1
+- Icons (SVG/JS): CC BY 4.0 (attribution appreciated, not required for desktop app embedding)
+
+Engine use: Dear ImGui editor toolbar and viewport tab glyphs only. The font is redistributed
+verbatim in assets/editor/fonts/ for offline editor builds.

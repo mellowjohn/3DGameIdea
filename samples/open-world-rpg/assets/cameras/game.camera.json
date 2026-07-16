@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "pivotHeight": 1.6,
+  "minDistance": 1.5,
+  "maxDistance": 8.0,
+  "defaultDistance": 5.0,
+  "collisionProbeRadius": 0.2,
+  "collisionPadding": 0.15,
+  "lookSensitivity": 0.0025,
+  "verticalFovRadians": 1.04719755,
+  "nearPlane": 0.1,
+  "farPlane": 2000.0
+}

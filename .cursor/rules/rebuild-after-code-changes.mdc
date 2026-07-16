@@ -1,0 +1,14 @@
+---
+description: Require rebuild verification after code changes
+alwaysApply: true
+---
+
+# Rebuild After Code Changes
+
+- After editing C++ source, headers, CMake files, build configuration, shaders, or editor/runtime code paths, rebuild the affected target before final response.
+- Prefer the existing MSBuild tree when available:
+  `C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe` with `build\windows-msvc-debug\AIRpgEngine.sln`.
+- For editor/runtime changes, rebuild at least the `engine` target.
+- For test-only changes, rebuild the affected test target and run the relevant suite when practical.
+- If the rebuild is blocked by missing tools, a locked executable, or user interruption, state that clearly and do not imply the change was verified.
+- Include the rebuild result in the final response, including any warnings that remain.

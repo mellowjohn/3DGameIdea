@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "id": "inventory",
+  "designResolution": [1920, 1080],
+  "widgets": [
+    {
+      "id": "inventory_dim",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [1920, 1080],
+      "opacity": 0.65,
+      "color": [6, 8, 14, 255]
+    },
+    {
+      "id": "inventory_panel",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [720, 520],
+      "color": [22, 28, 42, 245]
+    },
+    {
+      "id": "inventory_title",
+      "type": "text",
+      "anchor": "center",
+      "offset": [0, -210],
+      "size": [480, 56],
+      "bind": "inventory.title",
+      "text": "Inventory",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 44,
+      "color": [235, 240, 250, 255]
+    },
+    {
+      "id": "inventory_hint",
+      "type": "text",
+      "anchor": "center",
+      "offset": [0, -20],
+      "size": [560, 80],
+      "bind": "inventory.hint",
+      "text": "Placeholder slots — item data binds later.",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 24,
+      "color": [190, 200, 215, 255]
+    },
+    {
+      "id": "inventory_close",
+      "type": "button",
+      "anchor": "center",
+      "offset": [0, 180],
+      "size": [240, 48],
+      "bind": "inventory.close",
+      "text": "Close",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 30,
+      "color": [48, 58, 78, 255]
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+#pragma once
+
+#include "engine/assets/world_forge_dialogues_asset.h"
+#include "engine/assets/world_forge_factions_asset.h"
+#include "engine/assets/world_forge_map_asset.h"
+#include "engine/assets/world_forge_quests_asset.h"
+#include "engine/assets/world_forge_relationships_asset.h"
+#include "engine/core/result.h"
+#include "engine/dialogue/dialogue_graph_edit.h"
+#include "engine/ui/world_forge_graph_camera.h"
+
+#include <cstdint>
+#include <filesystem>
+#include <array>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+namespace engine {
+
+/// Which World Forge sub-tab is active in the Viewports "World Forge" tab.
+enum class WorldForgeEditorPane : std::uint8_t { Factions, Relationships, Map, Quests, Dialogues };
+
+/// In-memory editor state for the World Forge Viewports tab (TICKET-0015/0016/0017/0051/0052/0053).
+///
+/// Holds World Forge assets loaded/saved through `apply_world_forge_operation`
+/// (DEC-0003 parity with MCP) so the editor and MCP agents share one mutation path.
+struct WorldForgeEditorSession {
+    /// Which list/canvas is shown; depends on `pane`.
+    enum class ListKind : std::uint8_t {
+        Entities,
+        Nodes,
+        Edges,
+        Graph,
+        Regions,
+        Pois,
+        Links,
+        Quests,
+        Dialogues,
+        DialogueGraph
+    };
+
+    WorldForgeEditorPane pane = WorldForgeEditorPane::Factions;
+    WorldForgeFactionsAsset factions;
+    WorldForgeRelationshipsAsset relationships;
+    WorldForgeMapAsset map;
+    WorldForgeQuestsAsset quests;
+    WorldForgeDialoguesAsset dialogues;
+    /// Selected entity/node/edge/region/poi/link/quest/tree id, interpreted per `list_kind`.
+    std::string selected_id;
+    ListKind list_kind = ListKind::Entities;
+    bool dirty = false;
+    std::string status;
+    bool loaded = false;
+
+    /// Ephemeral ImGui canvas layout (not serialized). Keys are node ids or `faction:<id>`.
+    std::unordered_map<std::string, std::array<float, 2>> graph_positions;
+    bool graph_needs_layout = true;
+    std::string graph_drag_key;
+    float graph_zoom = 1.0f;
+    std::array<float, 2> graph_pan{{0.0f, 0.0f}};
+    bool graph_panning = false;
+    std::array<float, 2> graph_pan_start_mouse{{0.0f, 0.0f}};
+    std::array<float, 2> graph_pan_start_pan{{0.0f, 0.0f}};
+    std::array<char, 128> graph_filter_text{};
+    bool graph_filter_person = true;
+    bool graph_filter_deity = true;
+    bool graph_filter_artifact = true;
+    bool graph_filter_organization = true;
+    bool graph_filter_hide_factions = false;
+    bool graph_filter_focus_neighborhood = false;
+    int graph_expand_hops = 1;
+    bool graph_filter_edge_kinds[9] = {true, true, true, true, true, true, true, true, true};
+
+    std::array<char, 96> create_node_id{};
+    std::array<char, 96> create_node_name{};
+    WorldForgeRelationshipNodeKind create_node_kind = WorldForgeRelationshipNodeKind::Person;
+    std::array<char, 96> create_quest_id{};
+    std::array<char, 96> create_quest_name{};
+    std::array<char, 96> create_objective_id{};
+    std::array<char, 96> create_fork_id{};
+
+    std::array<char, 96> create_faction_name{};
+    WorldForgeFactionKind create_faction_kind = WorldForgeFactionKind::Faction;
+
+    std::array<char, 96> create_region_name{};
+    WorldForgeRegionKind create_region_kind = WorldForgeRegionKind::Region;
+    std::array<char, 96> create_poi_name{};
+    WorldForgePoiKind create_poi_kind = WorldForgePoiKind::Landmark;
+    std::array<char, 96> create_poi_region_id{};
+    std::array<char, 96> create_link_id{};
+    WorldForgeMapLinkKind create_link_kind = WorldForgeMapLinkKind::Travel;
+    WorldForgeMapEndpointKind create_link_from_kind = WorldForgeMapEndpointKind::Region;
+    WorldForgeMapEndpointKind create_link_to_kind = WorldForgeMapEndpointKind::Region;
+    std::array<char, 96> create_link_from_id{};
+    std::array<char, 96> create_link_to_id{};
+
+    std::array<char, 96> create_dialogue_tree_name{};
+    std::array<char, 96> create_dialogue_tree_parent_quest{};
+
+    std::array<char, 96> create_edge_id{};
+    std::array<char, 96> create_edge_from{};
+    std::array<char, 96> create_edge_to{};
+    WorldForgeRelationshipEndpointTarget create_edge_from_target = WorldForgeRelationshipEndpointTarget::Node;
+    WorldForgeRelationshipEndpointTarget create_edge_to_target = WorldForgeRelationshipEndpointTarget::Node;
+    WorldForgeRelationshipEdgeKind create_edge_kind = WorldForgeRelationshipEdgeKind::Related;
+    std::string graph_link_from;
+    bool graph_fit_requested = false;
+
+    /// Dialogue graph canvas state (TICKET-0053 / 0165–0168). `selected_id` is the tree; this is the node.
+    DialogueGraphPositions dialogue_graph_positions;
+    /// When true, clear positions and run layered layout (tree switch / Auto Layout / import).
+    bool dialogue_graph_full_relayout = true;
+    std::string dialogue_selected_node_id;
+    std::string dialogue_graph_drag_key;
+    std::string dialogue_link_from;
+    WorldForgeGraphCamera dialogue_graph_camera;
+    bool dialogue_graph_panning = false;
+    std::array<float, 2> dialogue_graph_pan_start_mouse{{0.0f, 0.0f}};
+    std::array<float, 2> dialogue_graph_pan_start_pan{{0.0f, 0.0f}};
+    bool dialogue_graph_fit_requested = false;
+    bool dialogue_graph_zoom_to_selected = false;
+    DialogueGraphNodeDisplayMode dialogue_node_display_mode = DialogueGraphNodeDisplayMode::Standard;
+    std::array<char, 128> dialogue_search_text{};
+    bool dialogue_search_focus_requested = false;
+    std::vector<std::string> dialogue_nav_history;
+    int dialogue_nav_history_index = -1;
+    bool dialogue_nav_suppress = false;
+    std::unordered_set<std::string> dialogue_bookmarks;
+    std::vector<WorldForgeDialogueTree> dialogue_undo_stack;
+    std::vector<WorldForgeDialogueTree> dialogue_redo_stack;
+    std::array<char, 96> create_dialogue_node_id{};
+    std::array<char, 128> create_dialogue_choice_text{};
+    std::array<char, 260> twee_import_path{};
+    std::array<char, 96> twee_import_tree_id{};
+    std::array<char, 96> twee_import_parent_quest{};
+    std::array<char, 128> twee_import_display_name{};
+
+    std::unordered_map<std::string, std::uint64_t> concept_placeholder_tex;
+    bool concept_placeholder_tex_ready = false;
+
+    [[nodiscard]] Result<void> reload(const std::filesystem::path& project_root);
+    [[nodiscard]] Result<void> save(const std::filesystem::path& project_root);
+};
+
+void draw_world_forge_viewport(WorldForgeEditorSession& session, const std::filesystem::path& project_root);
+
+} // namespace engine

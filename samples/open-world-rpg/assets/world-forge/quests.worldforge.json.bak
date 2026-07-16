@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "id": "tessera_quests",
+  "quests": [
+    {
+      "id": "mq_act0_calrenoth",
+      "kind": "main",
+      "displayName": "Act 0 — Calrenoth Fall",
+      "canonStatus": "draft",
+      "summary": "Main-quest Act 0 spine: siege of Calrenoth, drawbridge retreat, Creotar vision. Dialogue imported from Twine Harlowe source.",
+      "storyRef": "context/story/sources/wrathful-conquest-act0.twee",
+      "consequential": true,
+      "regionId": "tessera_overland",
+      "starts": "Campaign start / character creation exit into Act 0 tutorial.",
+      "dialogue": {
+        "abandonId": "",
+        "completeId": "dlg_act0_wrathful_conquest",
+        "startId": "dlg_act0_wrathful_conquest"
+      },
+      "objectives": [
+        {
+          "id": "meet_arkand",
+          "summary": "Meet Arkand at the siege and learn the keep is under attack.",
+          "dialogueId": "dlg_act0_wrathful_conquest"
+        },
+        {
+          "id": "enter_calrenoth",
+          "summary": "Reach Calrenoth and report to Commander Grenge.",
+          "dialogueId": ""
+        },
+        {
+          "id": "lower_drawbridge",
+          "summary": "Secure Larrell’s rear drawbridge and signal the retreat.",
+          "dialogueId": ""
+        },
+        {
+          "id": "creotar_vision",
+          "summary": "Survive the Realm of Darkness vision and wake toward the next hub.",
+          "dialogueId": ""
+        }
+      ],
+      "forks": [
+        {
+          "id": "larrell_save_vs_flee",
+          "summary": "Stay to help Larrell vs flee immediately — Twine branches into the Creotar segment.",
+          "outcomeFlags": [
+            "act0.helped_larrell",
+            "act0.fled_drawbridge"
+          ],
+          "dialogueId": "dlg_act0_wrathful_conquest"
+        }
+      ],
+      "tags": [
+        "main",
+        "act0",
+        "twine"
+      ],
+      "openQuestions": [
+        "Creotar vs Creo identity",
+        "Crystal location stubs empty in Twine",
+        "Wake-up hub after Tutorial Completion"
+      ]
+    },
+    {
+      "id": "sq_01_cart_again",
+      "kind": "side",
+      "displayName": "Cart Again",
+      "canonStatus": "draft",
+      "summary": "Help Guard Pellin pinned under an overturned supply cart near the first hub farmland road.",
+      "storyRef": "context/story/side-quest-catalog.md#sq-01--cart-again",
+      "consequential": false,
+      "regionId": "tessera_overland",
+      "starts": "After Act 1 hub unlock; farmland road east of first hub. Arkand in party or available at camp.",
+      "dialogue": {
+        "abandonId": "",
+        "completeId": "",
+        "startId": ""
+      },
+      "objectives": [
+        {
+          "id": "find_pellin",
+          "summary": "Find Guard Pellin pinned under an overturned supply cart.",
+          "dialogueId": ""
+        },
+        {
+          "id": "clear_scavengers",
+          "summary": "Clear 2–3 Imperium scavengers.",
+          "dialogueId": ""
+        },
+        {
+          "id": "lift_cart",
+          "summary": "Lift cart (strength check or lever props).",
+          "dialogueId": ""
+        },
+        {
+          "id": "escort_gate",
+          "summary": "Escort Pellin to hub gate.",
+          "dialogueId": ""
+        }
+      ],
+      "forks": [
+        {
+          "id": "tone_help_vs_mock",
+          "summary": "Help gladly vs mock him / make Arkand do it (dialogue tone).",
+          "outcomeFlags": [
+            "sq01.arkand_pride",
+            "sq01.arkand_embarrassed"
+          ],
+          "dialogueId": ""
+        }
+      ],
+      "tags": [
+        "side",
+        "arkand",
+        "hub"
+      ],
+      "openQuestions": [
+        "Exact farmland road POI name when map naming lands",
+        "Dialogue trees not authored yet (main quest uses Twine Act 0)"
+      ]
+    },
+    {
+      "id": "sq_02_signal_fire_debt",
+      "kind": "side",
+      "displayName": "Signal Fire Debt",
+      "canonStatus": "draft",
+      "summary": "Repay a signal-fire debt on a border ridge; consequential fork seeds Act 2 allegiance pressure.",
+      "storyRef": "context/story/side-quest-catalog.md#sq-02--signal-fire-debt",
+      "consequential": true,
+      "regionId": "tessera_overland",
+      "starts": "Border ridge soft-opens after early Act 1 patrol beat (exact beat TBD).",
+      "dialogue": {
+        "abandonId": "",
+        "completeId": "",
+        "startId": ""
+      },
+      "objectives": [
+        {
+          "id": "reach_ridge",
+          "summary": "Reach the unpaid signal-fire post on the border ridge.",
+          "dialogueId": ""
+        },
+        {
+          "id": "resolve_debt",
+          "summary": "Choose how to resolve the debt (fuel, coin, or force).",
+          "dialogueId": ""
+        }
+      ],
+      "forks": [
+        {
+          "id": "debt_resolution",
+          "summary": "Pay/fuel aid vs seize the post — flags feed later allegiance.",
+          "outcomeFlags": [
+            "sq02.aided_watch",
+            "sq02.seized_post"
+          ],
+          "dialogueId": ""
+        }
+      ],
+      "tags": [
+        "side",
+        "consequential",
+        "border"
+      ],
+      "openQuestions": [
+        "Precise Act 1 unlock beat and watch faction id when authored",
+        "Dialogue trees not authored yet (main quest uses Twine Act 0)"
+      ]
+    },
+    {
+      "id": "test_quest",
+      "kind": "side",
+      "displayName": "Test Quest",
+      "canonStatus": "draft",
+      "summary": "",
+      "storyRef": "",
+      "consequential": false,
+      "regionId": "",
+      "starts": "",
+      "dialogue": {
+        "abandonId": "",
+        "completeId": "",
+        "startId": ""
+      },
+      "objectives": [],
+      "forks": [],
+      "tags": [],
+      "openQuestions": []
+    }
+  ]
+}

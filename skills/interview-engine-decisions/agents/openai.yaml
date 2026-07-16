@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engine Decision Interview"
+  short_description: "Resolve and record ambiguous engine decisions"
+  default_prompt: "Use $interview-engine-decisions to interview me about unresolved engine requirements."

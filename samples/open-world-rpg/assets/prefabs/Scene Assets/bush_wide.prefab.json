@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 2,
+  "entities": [
+    {
+      "name": "Stem",
+      "transform": {
+        "position": [0.0, 0.15, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [0.16, 0.28, 0.16]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cylinder",
+        "color": [0.28, 0.18, 0.12]
+      }
+    },
+    {
+      "name": "Foliage Center",
+      "transform": {
+        "position": [0.0, 0.42, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [1.35, 0.55, 1.2]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "sphere",
+        "color": [0.14, 0.22, 0.10]
+      }
+    },
+    {
+      "name": "Foliage Left",
+      "transform": {
+        "position": [-0.42, 0.36, 0.08],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [0.7, 0.42, 0.6]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "sphere",
+        "color": [0.24, 0.16, 0.10]
+      }
+    },
+    {
+      "name": "Foliage Right",
+      "transform": {
+        "position": [0.38, 0.34, -0.12],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [0.62, 0.4, 0.58]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "sphere",
+        "color": [0.14, 0.22, 0.10]
+      }
+    }
+  ]
+}

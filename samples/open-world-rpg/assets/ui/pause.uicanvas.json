@@ -1,0 +1,154 @@
+{
+
+  "designResolution": [
+
+    1920.0,
+
+    1080.0
+
+  ],
+
+  "id": "pause",
+
+  "schemaVersion": 1,
+
+  "widgets": [
+
+    {
+
+      "anchor": "center",
+
+      "id": "pause_panel",
+
+      "offset": [
+
+        0.0,
+
+        0.0
+
+      ],
+
+      "size": [
+
+        560.0,
+
+        320.0
+
+      ],
+
+      "type": "panel"
+
+    },
+
+    {
+
+      "anchor": "center",
+
+      "bind": "pause.title",
+
+      "fontSize": 48.0,
+
+      "id": "pause_title",
+
+      "offset": [
+
+        -120.0,
+
+        -100.0
+
+      ],
+
+      "size": [
+
+        240.0,
+
+        56.0
+
+      ],
+
+      "text": "PAUSED",
+
+      "textAlign": "center",
+
+      "textVAlign": "middle",
+
+      "type": "text"
+
+    },
+
+    {
+
+      "anchor": "center",
+
+      "bind": "pause.resume",
+
+      "fontSize": 32.0,
+
+      "id": "pause_resume",
+
+      "offset": [
+
+        0.0,
+
+        -10.0
+
+      ],
+
+      "size": [
+
+        280.0,
+
+        52.0
+
+      ],
+
+      "text": "Resume",
+
+      "textAlign": "center",
+
+      "textVAlign": "middle",
+
+      "type": "button"
+
+    },
+
+    {
+
+      "anchor": "center",
+
+      "bind": "pause.quit",
+
+      "fontSize": 32.0,
+
+      "id": "pause_quit",
+
+      "offset": [
+
+        0.0,
+
+        60.0
+
+      ],
+
+      "size": [
+
+        280.0,
+
+        52.0
+
+      ],
+
+      "text": "Main Menu",
+
+      "textAlign": "center",
+
+      "textVAlign": "middle",
+
+      "type": "button"
+
+    }
+
+  ]
+
+}
+

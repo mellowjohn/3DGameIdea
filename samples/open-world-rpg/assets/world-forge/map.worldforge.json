@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "id": "tessera_map",
+  "regions": [
+    {
+      "id": "tessera_overland",
+      "kind": "region",
+      "displayName": "Tessera Overland",
+      "canonStatus": "draft",
+      "summary": "Container for the seamless open-world overland of Tessera (kingdom lands, roads, soft-gated regions). Precise world-map naming remains open.",
+      "storyRef": "context/story/story-vision.md",
+      "parentRegionId": "",
+      "factionIds": [
+        "kingdom_tessera"
+      ],
+      "tags": [
+        "overland",
+        "seamless"
+      ],
+      "softGate": {
+        "enabled": false,
+        "notes": "Surrounding regions may soft-open after Act 0; late/high-chaos zones may stay gated."
+      },
+      "openQuestions": [
+        "Whether Tessera is kingdom name vs broader setting/map name",
+        "Named cities, castles, and biomes beyond Act 0 Calrenoth spine"
+      ]
+    },
+    {
+      "id": "calrenoth",
+      "kind": "fortress",
+      "displayName": "Calrenoth",
+      "canonStatus": "draft",
+      "summary": "Supposedly impenetrable fortress breached by the Imperium; Act 0 siege tutorial / soft-gated corridor.",
+      "storyRef": "context/story/campaign-beat-sheet.md#act-0--fall-of-calrenoth-working-opening",
+      "parentRegionId": "tessera_overland",
+      "factionIds": [
+        "kingdom_tessera"
+      ],
+      "tags": [
+        "act0",
+        "siege",
+        "tutorial"
+      ],
+      "softGate": {
+        "enabled": true,
+        "notes": "Prefer contiguous Calrenoth experience with soft gates; optional short instance only if density demands."
+      },
+      "openQuestions": [
+        "Whether Calrenoth stays permanently ruined on the seamless map after Act 0"
+      ]
+    },
+    {
+      "id": "rampant_wilds",
+      "kind": "wilderness",
+      "displayName": "Rampant Wilds",
+      "canonStatus": "draft",
+      "summary": "Woodland territory associated with the Arrotrebae coalition; named in faction framing, geography still thin.",
+      "storyRef": "context/story/factions.md#arrotrebae-of-the-rampant-wilds",
+      "parentRegionId": "tessera_overland",
+      "factionIds": [
+        "arrotrebae"
+      ],
+      "tags": [
+        "woodland",
+        "arrotrebae"
+      ],
+      "softGate": {
+        "enabled": false,
+        "notes": ""
+      },
+      "openQuestions": [
+        "Named tribes, groves, and travel approaches",
+        "Soft-gate policy vs Cristallo settlements"
+      ]
+    }
+  ],
+  "pois": [
+    {
+      "id": "calrenoth_drawbridge",
+      "kind": "gate",
+      "displayName": "Calrenoth Drawbridge",
+      "canonStatus": "draft",
+      "regionId": "calrenoth",
+      "summary": "Act 0 drawbridge approach / lower sequence during the Imperium siege.",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "sceneEntityId": "",
+      "prefabId": "",
+      "tags": [
+        "act0",
+        "gate"
+      ],
+      "openQuestions": [
+        "World-space anchor and scene entity UUID once placed in Scene"
+      ]
+    },
+    {
+      "id": "calrenoth_siege_front",
+      "kind": "landmark",
+      "displayName": "Calrenoth Siege Front",
+      "canonStatus": "draft",
+      "regionId": "calrenoth",
+      "summary": "Siege backdrop where the player meets Arkand during the Act 0 working opening.",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "sceneEntityId": "",
+      "prefabId": "",
+      "tags": [
+        "act0",
+        "companion-intro"
+      ],
+      "openQuestions": [
+        "Exact placement relative to walls / battalions once set dressing exists"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "id": "calrenoth_soft_to_overland",
+      "kind": "soft_gate",
+      "fromKind": "region",
+      "fromId": "calrenoth",
+      "toKind": "region",
+      "toId": "tessera_overland",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "softGate": {
+        "enabled": true,
+        "notes": "After Act 0, soft-open surrounding overland; keep story/high-chaos locks elsewhere."
+      },
+      "summary": "Exit from Calrenoth siege corridor into the broader Tessera overland.",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "openQuestions": [
+        "Whether travel is one-way after ruin state is decided"
+      ]
+    },
+    {
+      "id": "drawbridge_in_calrenoth",
+      "kind": "adjacency",
+      "fromKind": "poi",
+      "fromId": "calrenoth_drawbridge",
+      "toKind": "region",
+      "toId": "calrenoth",
+      "canonStatus": "draft",
+      "bidirectional": true,
+      "softGate": {
+        "enabled": false,
+        "notes": ""
+      },
+      "summary": "Drawbridge POI belongs to / opens onto the Calrenoth fortress region.",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "openQuestions": []
+    }
+  ]
+}

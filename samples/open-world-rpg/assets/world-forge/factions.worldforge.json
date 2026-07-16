@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "id": "tessera_factions",
+  "entities": [
+    {
+      "id": "kingdom_tessera",
+      "kind": "faction",
+      "displayName": "Kingdom of Tessera",
+      "canonStatus": "draft",
+      "summary": "Dominant human occupying power across many cities and settlements; land fractured by chaotic forces; heroic medieval visual tone (Gondor/Rohan as references only).",
+      "storyRef": "context/story/factions.md#kingdom-of-tessera",
+      "tags": [
+        "human"
+      ],
+      "politicalRole": "unknown",
+      "parentId": "",
+      "openQuestions": [
+        "Whether the kingdom is a playable faction choice or the political arena surrounding the other factions",
+        "Precise geography vs setting name Tessera"
+      ]
+    },
+    {
+      "id": "chaotic_imperium",
+      "kind": "faction",
+      "displayName": "Chaotic Imperium",
+      "canonStatus": "established",
+      "summary": "Evil coalition of living creatures and ethereal spirits; dark Roman visual language (references only); led by Luceran the Hollow.",
+      "storyRef": "context/story/factions.md#chaotic-imperium",
+      "tags": [
+        "imperium",
+        "chaos"
+      ],
+      "parentId": "",
+      "openQuestions": [
+        "How Imperium authority ties to Frangitur, the Nefarium Shroud, and Luceran's remaining agency"
+      ]
+    },
+    {
+      "id": "cristallo",
+      "kind": "faction",
+      "displayName": "The Cristallo",
+      "canonStatus": "draft",
+      "summary": "Religious and noble oligarchy; selective; associated with higher social classes; refined architecture; hostile toward the woodland faction; can shift good/evil via player influence (proposal).",
+      "storyRef": "context/story/factions.md#the-cristallo",
+      "tags": [
+        "neutral",
+        "oligarchy",
+        "religious"
+      ],
+      "parentId": "",
+      "openQuestions": [
+        "Theology, hierarchy, and politics",
+        "Relationship to Creo/Frangitur and the gods",
+        "Player influence thresholds, lock-in, and destruction conditions"
+      ]
+    },
+    {
+      "id": "arrotrebae",
+      "kind": "faction",
+      "displayName": "Arrotrebae of the Rampant Wilds",
+      "canonStatus": "draft",
+      "summary": "Woodland multi-tribe coalition; chieftains act as local battlelords with no single overlord; adversarial with Cristallo; tonal barbarian/druid references.",
+      "storyRef": "context/story/factions.md#arrotrebae-of-the-rampant-wilds",
+      "tags": [
+        "neutral",
+        "woodland",
+        "multi-tribe"
+      ],
+      "parentId": "",
+      "openQuestions": [
+        "Collective decision rules when chieftains disagree",
+        "Named tribes / philosophical traditions for relationship-graph nodes",
+        "Player influence thresholds, lock-in, and destruction conditions"
+      ]
+    },
+    {
+      "id": "orc_warbands",
+      "kind": "faction",
+      "displayName": "Orc Warbands",
+      "canonStatus": "draft",
+      "summary": "Container for multiple orc warbands rather than one unified faction; individual warbands may support or oppose the Imperium based on Nefarium exposure and hatred of Luceran.",
+      "storyRef": "context/story/factions.md#orc-warbands",
+      "tags": [
+        "orc",
+        "multi-warband",
+        "container"
+      ],
+      "parentId": "",
+      "openQuestions": [
+        "Stable warband IDs and names for data modeling",
+        "Which warband possessed the Nefarium Shroud and why",
+        "Name of the great orc leader slain by Luceran"
+      ]
+    }
+  ]
+}

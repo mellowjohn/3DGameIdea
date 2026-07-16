@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "projectId": "9d056849-985f-4f92-bfce-63dc8f780e56",
+  "name": "Open World RPG",
+  "defaultWorld": "worlds/vertical-slice.world.json",
+  "target": {
+    "platform": "windows",
+    "graphicsBackend": "direct3d12",
+    "resolution": [2560, 1440],
+    "framesPerSecond": 60
+  }
+}
+

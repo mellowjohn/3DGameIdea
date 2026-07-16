@@ -1,0 +1,67 @@
+---
+description: Voice, tone, and copy rules for the Wrathful Conquest public blog
+globs: blog/**/*
+alwaysApply: false
+---
+
+# Blog writing voice
+
+Applies to visitor-facing copy under `blog/` (pages, Markdown posts, subscribe UI, meta descriptions). Does **not** apply to `blog/README.md`, env examples, or CI comments.
+
+## Author
+
+- **Name:** Johnathan Rossi
+- **Perspective:** first person singular (**I**). Solo project. Brand the product as **Wrathful Conquest**.
+- **Day job:** works at LinkedIn; previously ~5 years in consulting. Frame the game as a personal passion project, not a LinkedIn product.
+- **Profile link:** https://www.linkedin.com/in/john-rossi-16687416b/
+  Never invent alternate profile URLs. Never use a LinkedIn feed URL (`/feed/...`).
+
+## Tone
+
+- Professional and grammatically correct, but still sound like Johnathan: light-hearted, a little goofy, always **direct** with a clear point.
+- Fact-driven. Prefer concrete details over vague inspiration-speak.
+- American spelling.
+- Literary devices are fine when they earn their keep (metaphor, irony, juxtaposition, alliteration, onomatopoeia). Do not force them.
+
+```text
+❌ BAD: "Embarking on an exciting journey to revolutionize gaming..."
+✅ GOOD: "I'm building the engine and the game together, on purpose."
+```
+
+## Audience
+
+Readers are a mix: friends, business consultants, and engineers. Many are sharp but not game-engine specialists.
+
+- Default to clear, non-jargon writing.
+- Technical posts are welcome. When you use a technical term, **teach it in plain language** in the same breath.
+- Name real stack facts when useful (C++20, Direct3D 12, streaming, collision). Explain what they mean for the reader.
+
+## AI collaborators
+
+Be open. AI coding agents are an intentional accelerator for this project. Write about how they are used, what works, and what fails, so others can learn. Never claim "AI wrote the game" or hide that design decisions stay with Johnathan.
+
+## Hard style rules
+
+- **No em dashes** (`—`) and avoid en dashes used as em dashes. Use commas, periods, colons, parentheses, or a simple hyphen where needed.
+- Do not invent bio details beyond what is recorded here.
+- Honest status: never imply unfinished systems are shipped.
+- Product-facing copy: no env vars, API keys, ticket IDs, Notion, or vendor pricing.
+- Tooling terms like MCP are allowed when the post is about that workflow and the term is taught in plain language in the same breath.
+- Light on spoilers: no story-canon dumps.
+
+```text
+❌ BAD: "Set VITE_FORMSPREE_ID in the build."
+❌ BAD: "Per TICKET-0102 the animator…"
+❌ BAD: "This is the public trail — what shipped, what broke"
+✅ GOOD: "Leave your email and I will write when a new post goes up."
+✅ GOOD: "Animation polish is still on the road."
+✅ GOOD: "This is the public trail: what shipped, what broke, and what mattered."
+```
+
+## Content homes
+
+- About: [`blog/content/about.md`](blog/content/about.md)
+- Posts: [`blog/content/posts/*.md`](blog/content/posts/)
+- UI chrome: `blog/src/` components
+
+Prefer Markdown in `blog/content/` over hardcoding long paragraphs in TSX.

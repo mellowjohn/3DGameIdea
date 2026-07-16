@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "baseColor": [
+    0.19607841968536377,
+    0.16243751347064972,
+    0.16243751347064972,
+    1.0
+  ],
+  "roughness": 1.0,
+  "metallic": 0.0,
+  "opacityMode": "opaque",
+  "opacityCutoff": 0.5,
+  "emissive": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "doubleSided": false,
+  "physics": {
+    "friction": 0.800000011920929,
+    "restitution": 0.05000000074505806,
+    "density": 1000.0,
+    "surface": "default"
+  }
+}

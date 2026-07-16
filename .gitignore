@@ -1,0 +1,14 @@
+/build/
+/out/
+**/out/
+/.vs/
+/.cache/
+*.user
+*.suo
+*.log
+crash-bundles/
+/blog/node_modules/
+/blog/dist/
+/blog/.env
+/blog/.env.local
+/blog/.env.*.local

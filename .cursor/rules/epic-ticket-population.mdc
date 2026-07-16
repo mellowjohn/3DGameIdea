@@ -1,0 +1,35 @@
+---
+description: Keep epics and tickets fully populated in repo and Notion
+alwaysApply: true
+---
+
+# Epic and Ticket Population
+
+When creating or updating epics/tickets, complete **both** `context/planning/epics.md` and Notion. Do not leave blank Notion page bodies.
+
+## Epics (`epics.md` + Notion Epics DB)
+
+- **epics.md:** Status, Goal, Roadmap home, Priority guidance (or Hold), full ticket table (ID, Title, Status, Priority, Notes).
+- **Notion page body:** Goal, Context links (repo paths), Acceptance for the epic, Out of scope, Child tickets list, Dependencies — see `context/planning/epic-template.md`.
+- Mirror Epic ID, Status, Roadmap, Repo notes properties.
+
+## Tickets (`ticket-template.md` + Notion Tickets DB)
+
+- Follow `context/planning/ticket-template.md` on Notion body and `tickets/TICKET-XXXX.md`.
+- Required for every `ready` / `active` / `needs-approval` ticket; prefer stubs for all children.
+- Mirror Ticket ID, Status, Priority, Agent, Acceptance (short), Repo notes, Epic relation.
+- **New tickets:** stub bodies include all template sections from creation (Goal through Agent notes). Do not invent a thinner format.
+- **Before `needs-approval` (all new work):** fill **What changed** on both repo stub and Notion — summary, files/surfaces, schema/API deltas, samples, verification evidence, decisions, leftover risk. Review must not depend on chat history. Do not backfill historical `done` tickets unless the owner asks.
+
+## Sync and approval
+
+- Edit `epics.md` first for material Status/Priority/scope; then mirror Notion.
+- Agents set Status → `needs-approval` after verification; **never** set `done` (owner only).
+- No Notion-only cards as planned work until they appear in `epics.md`.
+
+```text
+❌ BAD: Notion epic/ticket with properties only and empty body
+❌ BAD: needs-approval with only checked acceptance boxes / vague Agent notes
+✅ GOOD: epics.md row + Notion body from epic/ticket template + stub when ready/active
+✅ GOOD: needs-approval includes a concrete What changed section
+```

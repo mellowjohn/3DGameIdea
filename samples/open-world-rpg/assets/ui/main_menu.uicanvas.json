@@ -1,0 +1,182 @@
+{
+
+  "schemaVersion": 1,
+
+  "id": "main_menu",
+
+  "designResolution": [1920, 1080],
+
+  "widgets": [
+
+    {
+
+      "id": "menu_dim",
+
+      "type": "panel",
+
+      "anchor": "center",
+
+      "offset": [0, 0],
+
+      "size": [1920, 1080],
+
+      "opacity": 0.72,
+
+      "color": [6, 8, 14, 255]
+
+    },
+
+    {
+
+      "id": "menu_panel",
+
+      "type": "panel",
+
+      "anchor": "center",
+
+      "offset": [0, 0],
+
+      "size": [480, 520],
+
+      "color": [22, 28, 42, 245]
+
+    },
+
+    {
+
+      "id": "menu_title",
+
+      "type": "text",
+
+      "anchor": "center",
+
+      "offset": [0, -200],
+
+      "size": [420, 72],
+
+      "bind": "main_menu.title",
+
+      "text": "Main Menu",
+
+      "textAlign": "center",
+
+      "textVAlign": "middle",
+
+      "fontSize": 52,
+
+      "color": [235, 240, 250, 255]
+
+    },
+
+    {
+
+      "id": "menu_new_game",
+
+      "type": "button",
+
+      "anchor": "center",
+
+      "offset": [0, -80],
+
+      "size": [360, 48],
+
+      "bind": "main_menu.new_game",
+
+      "text": "New Game",
+
+      "image": "assets/ui/textures/btn_new_game.png",
+
+      "textAlign": "center",
+
+      "textVAlign": "middle",
+
+      "fontSize": 32,
+
+      "color": [48, 58, 78, 255]
+
+    },
+
+    {
+
+      "id": "menu_continue",
+
+      "type": "button",
+
+      "anchor": "center",
+
+      "offset": [0, -20],
+
+      "size": [360, 48],
+
+      "bind": "main_menu.continue",
+
+      "text": "Continue",
+
+      "textAlign": "center",
+
+      "textVAlign": "middle",
+
+      "fontSize": 32,
+
+      "color": [48, 58, 78, 255],
+
+      "enabled": false
+
+    },
+
+    {
+
+      "id": "menu_settings",
+
+      "type": "button",
+
+      "anchor": "center",
+
+      "offset": [0, 40],
+
+      "size": [360, 48],
+
+      "bind": "main_menu.settings",
+
+      "text": "Settings",
+
+      "textAlign": "center",
+
+      "textVAlign": "middle",
+
+      "fontSize": 32,
+
+      "color": [48, 58, 78, 255]
+
+    },
+
+    {
+
+      "id": "menu_quit",
+
+      "type": "button",
+
+      "anchor": "center",
+
+      "offset": [0, 100],
+
+      "size": [360, 48],
+
+      "bind": "main_menu.quit",
+
+      "text": "Quit",
+
+      "textAlign": "center",
+
+      "textVAlign": "middle",
+
+      "fontSize": 32,
+
+      "color": [48, 58, 78, 255]
+
+    }
+
+  ]
+
+}
+

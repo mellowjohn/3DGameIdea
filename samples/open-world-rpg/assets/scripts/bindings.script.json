@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "interactions": [
+    {
+      "id": "use_campfire",
+      "handler": "on_use_campfire",
+      "script": "assets/scripts/campfire_interaction.lua"
+    }
+  ],
+  "combatHits": [],
+  "combatHurts": [
+    {
+      "id": "body",
+      "handler": "on_body_hit",
+      "script": "assets/scripts/combat_hurt.lua"
+    }
+  ],
+  "uiButtons": [
+    {
+      "id": "pause.resume",
+      "handler": "on_ui_button",
+      "script": "assets/scripts/ui_handlers.lua"
+    }
+  ]
+}

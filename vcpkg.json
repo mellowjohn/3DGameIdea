@@ -1,0 +1,28 @@
+{
+  "name": "ai-rpg-engine",
+  "version-semver": "0.1.0",
+  "builtin-baseline": "66c0373dc7fca549e5803087b9487edfe3aca0a1",
+  "dependencies": [
+    "entt",
+    "joltphysics",
+    "nlohmann-json",
+    "sdl3",
+    {
+      "name": "imgui",
+      "features": ["docking-experimental", "dx12-binding", "sdl3-binding"]
+    },
+    "imguizmo",
+    "fastgltf",
+    "lua"
+  ],
+  "features": {
+    "testing": {
+      "description": "Catch2 test integration",
+      "dependencies": ["catch2"]
+    },
+    "content": {
+      "description": "Asset, world, scripting, physics, audio, and editor dependencies",
+      "dependencies": ["directx12-agility", "directxtex", "fastgltf", "imgui", "lua", "miniaudio", "spdlog"]
+    }
+  }
+}

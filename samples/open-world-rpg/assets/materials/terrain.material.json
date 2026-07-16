@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "baseColor": [
+    0.02667243406176567,
+    0.1813725233078003,
+    0.06534741818904877,
+    1.0
+  ],
+  "roughness": 0.9200000166893005,
+  "metallic": 0.0,
+  "opacityMode": "opaque",
+  "opacityCutoff": 0.5,
+  "emissive": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "doubleSided": false,
+  "physics": {
+    "friction": 0.8199999928474426,
+    "restitution": 0.029999999329447746,
+    "density": 1450.0,
+    "surface": "dark_grass"
+  }
+}
