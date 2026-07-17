@@ -37,6 +37,7 @@
 #include "engine/ui/world_forge_graph_camera.h"
 #include "engine/core/id_slug.h"
 #include "engine/automation/world_forge_commands.h"
+#include "engine/automation/project_git_commands.h"
 #include "engine/ui/ui_canvas_stack.h"
 #include "engine/ui/hud_runtime.h"
 #include "engine/world/cell_state.h"
@@ -65,6 +66,7 @@
 #include "engine/rendering/orbit_camera.h"
 #include "engine/diagnostics/logger.h"
 #include <array>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <set>
@@ -2033,6 +2035,66 @@ int main(int argc,char**argv){
         r.check(foliage_plan.target_kind == "terrain_data", "scene plan classifies foliage paint");
         engine::set_active_terrain_edits(nullptr);
         (void)request;
+        {
+            const auto missing = engine::apply_project_git_operation(
+                std::filesystem::temp_directory_path() / ("engine-not-a-git-" + engine::make_correlation_id()),
+                nlohmann::json{{"action", "status"}});
+            r.check(missing.exit_code == engine::ExitCode::Unavailable, "project_git rejects missing/non-repo path");
+            const auto no_action = engine::apply_project_git_operation(project, nlohmann::json::object());
+            r.check(no_action.exit_code == engine::ExitCode::InvalidArguments, "project_git requires action");
+            const auto sample_status = engine::apply_project_git_operation(project, nlohmann::json{{"action", "status"}});
+            r.check(sample_status.exit_code == engine::ExitCode::Success, "project_git status on sample project");
+            r.check(sample_status.metadata.count("branch") != 0, "project_git status reports branch");
+            r.check(sample_status.metadata.count("repoRoot") != 0, "project_git status reports repoRoot");
+
+            const auto fixture = std::filesystem::temp_directory_path() /
+                ("engine-project-git-" + engine::make_correlation_id());
+            std::error_code ec;
+            std::filesystem::create_directories(fixture / "assets" / "world-forge", ec);
+            std::filesystem::create_directories(fixture / "build", ec);
+            {
+                std::ofstream manifest(fixture / "project.engine.json");
+                manifest << R"({"schemaVersion":1,"projectId":"git_fixture","name":"Git Fixture"})";
+            }
+            {
+                std::ofstream story(fixture / "assets" / "world-forge" / "quests.worldforge.json");
+                story << R"({"schemaVersion":1,"id":"quests","quests":[]})";
+            }
+            {
+                std::ofstream junk(fixture / "build" / "ignore-me.exe");
+                junk << "x";
+            }
+            const auto init = std::system(("git -C \"" + fixture.string() + "\" init -b main >/dev/null 2>&1").c_str());
+            r.check(init == 0, "project_git fixture git init");
+            (void)std::system(("git -C \"" + fixture.string() +
+                "\" config user.email \"engine-suite@example.com\" >/dev/null 2>&1").c_str());
+            (void)std::system(("git -C \"" + fixture.string() +
+                "\" config user.name \"Engine Suite\" >/dev/null 2>&1").c_str());
+            const auto commit_empty_msg = engine::apply_project_git_operation(fixture,
+                nlohmann::json{{"action", "commit"}, {"message", ""}});
+            r.check(commit_empty_msg.exit_code == engine::ExitCode::InvalidArguments,
+                "project_git commit requires message");
+            const auto commit_ok = engine::apply_project_git_operation(fixture,
+                nlohmann::json{{"action", "commit"}, {"message", "seed world forge"}});
+            r.check(commit_ok.exit_code == engine::ExitCode::Success, "project_git commit stages project content");
+            r.check(commit_ok.metadata.count("stagedPaths") != 0 &&
+                    commit_ok.metadata.at("stagedPaths").find("world-forge") != std::string::npos,
+                "project_git commit includes world-forge path");
+            r.check(commit_ok.metadata.at("stagedPaths").find("build/") == std::string::npos &&
+                    commit_ok.metadata.at("stagedPaths").find("ignore-me.exe") == std::string::npos,
+                "project_git commit blocks build artifacts");
+            const auto clean = engine::apply_project_git_operation(fixture, nlohmann::json{{"action", "status"}});
+            r.check(clean.exit_code == engine::ExitCode::Success && clean.metadata.at("dirtyCount") == "0",
+                "project_git status clean after commit");
+            const auto nothing = engine::apply_project_git_operation(fixture,
+                nlohmann::json{{"action", "commit"}, {"message", "noop"}});
+            r.check(nothing.exit_code == engine::ExitCode::ValidationFailed, "project_git commit fails when clean");
+            engine::EditorSessionContext git_ctx;
+            git_ctx.project_root = fixture;
+            const auto via_op = engine::execute_editor_operation(git_ctx, "project_git", R"({"action":"status"})");
+            r.check(via_op.exit_code == engine::ExitCode::Success, "editor project_git operation succeeds");
+            std::filesystem::remove_all(fixture, ec);
+        }
     }else if(suite=="diagnostics"){
         auto path=std::filesystem::temp_directory_path()/("engine-diagnostics-suite-"+engine::make_correlation_id()+".jsonl");engine::Logger::instance().initialize(path);
         engine::EngineError error{"TEST-RUNTIME",engine::Severity::Error,engine::ErrorCategory::Validation,"diagnostics-test","visible error",std::nullopt,{},"fix","test-correlation",engine::ErrorPriority::P1High};engine::Logger::instance().write(error);

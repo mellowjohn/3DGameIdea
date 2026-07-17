@@ -2,7 +2,7 @@
 
 Launch with `engine editor --project <project>`.
 
-The Dear ImGui editor runs on the production SDL3 and Direct3D 12 lifecycle. It provides a dockable offscreen-rendered viewport, scene hierarchy, transform/placement inspector, asset browser, diagnostics console, File/Save, and Edit/Undo/Redo. Placing the sample prefab, moving placed objects, and removing them use the same `CommandHistory` operations tested by automation and report changed UUIDs.
+The Dear ImGui editor runs on the production SDL3 and Direct3D 12 lifecycle. It provides a dockable offscreen-rendered viewport, scene hierarchy, transform/placement inspector, asset browser, diagnostics console, File/Save, and Edit/Undo/Redo. **Diagnostics → Project Sync** (EPIC-0014 / DEC-0037) wraps system git (`status` / `fetch` / `pull` / `commit` / `push`) for multi-author World Forge and project content sharing; after a pull that changes World Forge files it offers **Reload World Forge** (blocks when World Forge or Scene/Sculpt is dirty and scene files changed). Placing the sample prefab, moving placed objects, and removing them use the same `CommandHistory` operations tested by automation and report changed UUIDs.
 
 Placed objects without imported meshes render as colored box proxies. They can be selected in the hierarchy or by clicking their projected viewport bounds. Move, rotate, and scale modes use the MIT-licensed ImGuizmo library. A drag maintains a preview matrix and commits one undoable placement command when released.
 

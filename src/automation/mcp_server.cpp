@@ -4,6 +4,7 @@
 #include "engine/automation/editor_bridge.h"
 #include "engine/automation/editor_session.h"
 #include "engine/automation/world_forge_commands.h"
+#include "engine/automation/project_git_commands.h"
 #include "engine/core/result.h"
 #include "engine/assets/prefab_asset.h"
 #include "engine/assets/hud_asset.h"
@@ -441,6 +442,19 @@ const char* k_tools_list_json = R"([
         "inputSchema": { "type": "object", "properties": {}, "required": [] }
     },
     {
+        "name": "engine_project_git",
+        "description": "Sync project authoring via system git (DEC-0037). Actions: status|fetch|pull|commit|push. commit requires message. Stages project-scoped content paths only (blocks build/ secrets). Auth via OS credential helper / SSH. Offline — does not require a live editor.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": { "type": "string" },
+                "message": { "type": "string" },
+                "paths": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["action"]
+        }
+    },
+    {
         "name": "engine_world_forge_apply",
         "description": "Read, validate, write, or import World Forge narrative assets (factions / pantheon / archetypes / resources / relationships / map / quests / dialogues). Actions: get|validate|apply|import_twee. Pass kind=factions|pantheon|archetypes|resources|relationships|map|quests|dialogues and/or path to *.worldforge.json. apply requires json object or source string. import_twee (kind=dialogues) requires tweePath + treeId; optional displayName, parentQuestId, entryNodeId, storyRef. Works offline. Not Scene/Sculpt.",
         "inputSchema": {
@@ -642,6 +656,8 @@ nlohmann::json handle_tools_call(const std::filesystem::path& project_root, cons
             return bridge_to_tool_result(forward_to_editor(project_root, "world_forge_apply", arguments));
         return bridge_to_tool_result(apply_world_forge_operation(project_root, arguments));
     }
+    if (tool_name == "engine_project_git")
+        return bridge_to_tool_result(apply_project_git_operation(project_root, arguments));
     if (tool_name == "engine_project_validate") return command_to_tool_result(validate_project_at(project_root));
     return {{"isError", true}, {"content", nlohmann::json::array({tool_text_content("Unknown tool: " + tool_name)})}};
 }

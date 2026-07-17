@@ -54,6 +54,10 @@ Animation follows the same pattern once TICKET-0103 lands ([DEC-0022](../decisio
 - Classifying ambiguous work before editing: `engine_scene_plan`.
 - Validating project data after batches: `engine_project_validate`.
 
+## Sharing work across machines (authoring sync)
+
+World Forge and other project assets are **git-tracked text**. Multi-author sharing uses git push/pull — not a custom cloud-save service ([DEC-0037](../decisions/index.md#dec-0037-git-backed-authoring-sync-in-editor)). Workflow and planned in-editor **Project Sync**: [`../features/authoring-git-sync.md`](../features/authoring-git-sync.md) (EPIC-0014). After pull, reload World Forge (and respect live Scene/Sculpt ownership below).
+
 ## World Forge
 
 World Forge is the **narrative tooling umbrella** inside the editor ([world-forge-scope.md](../features/world-forge-scope.md); [DEC-0019](../decisions/index.md#dec-0019-world-forge-editor-home-and-story-canon-split), [DEC-0020](../decisions/index.md#dec-0020-world-forge-narrative-tooling-umbrella)). It is **not** a parallel scene/terrain edit path.

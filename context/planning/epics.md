@@ -290,12 +290,27 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 | TICKET-0120 | Headless dialogue traversal tests | deferred | P3 | **Covered** by TICKET-0052 / `world_forge` suite |
 | TICKET-0121 | Command-backed dialogue graph editor | deferred | P3 | **Superseded** by TICKET-0165–0168+ (extends TICKET-0053) |
 
+## EPIC-0014: Authoring git sync (in-editor Project Sync)
+
+- Status: needs-approval
+- Goal: Polish the multi-author content workflow and let users sync the project git remote from inside the engine (status / fetch / pull / commit / push), with safe reload after pull — no custom cloud-save backend.
+- Roadmap home: M10 Integrated Editor tooling (cross-cutting; supports World Forge and all diffable project data).
+- Priority guidance: P2 — collaboration polish; not ahead of P0. Docs (0192) first, then command path (0193), editor UI (0194), post-pull reload (0195).
+- Scope boundary: [DEC-0037](../decisions/index.md#dec-0037-git-backed-authoring-sync-in-editor); feature [`../features/authoring-git-sync.md`](../features/authoring-git-sync.md).
+
+| ID | Title | Status | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| TICKET-0192 | Document authoring sync workflow (git + World Forge) | needs-approval | P2 | DEC-0037 + [`../features/authoring-git-sync.md`](../features/authoring-git-sync.md); [`tickets/TICKET-0192.md`](tickets/TICKET-0192.md) |
+| TICKET-0193 | Command-backed project git ops (status/fetch/pull/commit/push) | needs-approval | P2 | CLI/MCP/editor `project_git`; [`tickets/TICKET-0193.md`](tickets/TICKET-0193.md); [`../formats/project-git-sync.md`](../formats/project-git-sync.md) |
+| TICKET-0194 | Editor Project Sync panel | needs-approval | P2 | Diagnostics → Project Sync; [`tickets/TICKET-0194.md`](tickets/TICKET-0194.md) |
+| TICKET-0195 | Safe reload after pull (World Forge + dirty-session rules) | needs-approval | P2 | Reload offer after WF-changing pull; [`tickets/TICKET-0195.md`](tickets/TICKET-0195.md) |
+
 ## Suggested work order
 
 1. EPIC-0001 done — use Notion kanban + Priority for day-to-day flow.
 2. **P0 needs-approval (owner override):** TICKET-0191 glTF mesh UV + albedo; TICKET-0182 Design Docs. Prior P0 M5 clips done (0102).
 3. **P1/P2 needs-approval pile:** 0030–0032, 0105, World Forge / UI cards — owner review.
-4. **P2 when capacity:** M5 follow-ons (0106/0107/0110); numeric budgets TICKET-0139 later.
+4. **P2 when capacity:** M5 follow-ons (0106/0107/0110); numeric budgets TICKET-0139 later; **authoring sync** EPIC-0014 (0192 → 0193 → 0194/0195).
 5. Schema-first World Forge (0011–0014, P2) after faction canon (0021).
 6. Hold **P3** EPIC-0006/0007 and M6–M8 runtime tickets until M5 animation exit unless explicitly overridden.
 7. Mini-map (EPIC-0007) after region/POI IDs exist.

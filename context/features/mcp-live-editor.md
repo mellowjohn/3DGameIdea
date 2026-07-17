@@ -29,6 +29,7 @@ Tools:
 - `engine_ui_stack` — canvas stack `register` / `push` / `pop` / `show` / `hide` / `clear` / `status` (play-test safe; equals Lua `engine.ui_*`)
 - `engine_ui_canvas_mutate` — structural canvas edits (`add`/`remove`/`move`/`resize`/`style`); play-test safe
 - `engine_project_validate` — run the existing validation command path
+- `engine_project_git` — authoring sync via system git (`status`/`fetch`/`pull`/`commit`/`push`); offline; OS credentials ([DEC-0037](../decisions/index.md#dec-0037-git-backed-authoring-sync-in-editor), [`../formats/project-git-sync.md`](../formats/project-git-sync.md))
 
 Cursor configuration example: `.cursor/mcp.json` launches `tools/mcp-server.cmd`, which starts `engine mcp` with the sample project. Reload the MCP server in Cursor Settings after rebuilding `engine`.
 
@@ -44,7 +45,7 @@ Direct `.world.json` writes while the editor is open are rejected by design. Use
 
 `engine_scene_apply` accepts `action: "batch"` with an `ops` array of single-op payloads (`place`, `move`, `remove`, `rename`). All operations run in one bridge round-trip and one undo step. Failed mid-batch applies roll back earlier ops in that batch. Optional `label` names the undo entry; `save: true` persists after a successful batch. Maximum 100 ops per request.
 
-`engine_scene_plan` and `engine_project_validate` work without the bridge. `engine_world_forge_apply` also works offline (file + schema validate). Live scene, prefab, Lua, and HUD apply require the editor plus enabled MCP connection. `engine_lua_apply`, `engine_hud_apply`, `engine_lua_call`, `engine_quest_call`, and `engine_standing_call` are allowed during play test (scene edits remain blocked) so agents can iterate scripts, fire handlers, and test quest/standing progression without walking into volumes.
+`engine_scene_plan`, `engine_project_validate`, and `engine_project_git` work without the bridge. `engine_world_forge_apply` also works offline (file + schema validate). Live scene, prefab, Lua, and HUD apply require the editor plus enabled MCP connection. `engine_lua_apply`, `engine_hud_apply`, `engine_lua_call`, `engine_quest_call`, and `engine_standing_call` are allowed during play test (scene edits remain blocked) so agents can iterate scripts, fire handlers, and test quest/standing progression without walking into volumes.
 
 ## Contracts
 

@@ -28,6 +28,7 @@
 #include "engine/automation/editor_bridge.h"
 #include "engine/automation/automation_trace.h"
 #include "engine/automation/editor_session.h"
+#include "engine/automation/project_git_commands.h"
 #include "engine/automation/terrain_edit_commands.h"
 #include "engine/assets/script_bindings_asset.h"
 #include "engine/scripting/lua_runtime.h"
@@ -2304,6 +2305,12 @@ struct EditorState {
     std::uint32_t script_reload_counter = 0;
     std::uint32_t bridge_poll_counter = 0;
     bool live_automation_enabled = false;
+    char project_sync_commit_message[256]{};
+    std::string project_sync_branch;
+    std::string project_sync_summary = "Click Status to refresh";
+    std::string project_sync_detail;
+    bool project_sync_offer_wf_reload = false;
+    bool project_sync_block_scene_reload = false;
     std::size_t lua_dispatched_interactions = 0;
     std::size_t lua_dispatched_combat = 0;
     std::optional<ImVec2> game_viewport_min;
@@ -2328,6 +2335,102 @@ struct EditorState {
 void commit_active_terrain_stroke(EditorState& state);
 
 void mark_scene_dirty(EditorState& state) { state.scene_dirty = true; }
+
+void apply_project_sync_response(EditorState& state, const EditorBridgeResponse& response) {
+    state.project_sync_summary = response.summary;
+    if (const auto it = response.metadata.find("branch"); it != response.metadata.end())
+        state.project_sync_branch = it->second;
+    std::ostringstream detail;
+    if (const auto it = response.metadata.find("dirtyPaths"); it != response.metadata.end() && !it->second.empty())
+        detail << "Dirty:\n" << it->second << '\n';
+    if (const auto it = response.metadata.find("conflictedPaths"); it != response.metadata.end() && !it->second.empty())
+        detail << "Conflicts:\n" << it->second << '\n';
+    if (const auto it = response.metadata.find("changedPaths"); it != response.metadata.end() && !it->second.empty())
+        detail << "Changed:\n" << it->second << '\n';
+    if (!response.diagnostics.empty()) detail << response.diagnostics.front().message;
+    state.project_sync_detail = detail.str();
+    state.status = response.summary;
+
+    const auto meta_flag = [&](const char* key) {
+        const auto it = response.metadata.find(key);
+        return it != response.metadata.end() && it->second == "true";
+    };
+    state.project_sync_offer_wf_reload = false;
+    state.project_sync_block_scene_reload = false;
+    if (response.exit_code == ExitCode::Success && meta_flag("requiresWorldForgeReload")) {
+        if (state.scene_dirty || state.terrain_edits_dirty || state.terrain_paint_dirty ||
+            state.foliage_density_dirty) {
+            if (meta_flag("changedScene")) {
+                state.project_sync_block_scene_reload = true;
+                state.project_sync_summary +=
+                    " — save or discard Scene/Sculpt before applying pulled scene changes";
+            }
+        }
+        if (state.world_forge_editor.dirty) {
+            state.project_sync_summary += " — World Forge has unsaved edits; Save or discard before Reload";
+        } else {
+            state.project_sync_offer_wf_reload = true;
+        }
+    }
+}
+
+void run_project_sync_action(EditorState& state, const std::string& action) {
+    nlohmann::json params = {{"action", action}};
+    if (action == "commit") {
+        params["message"] = state.project_sync_commit_message;
+    }
+    apply_project_sync_response(state, apply_project_git_operation(state.project_root, params));
+}
+
+void draw_project_sync_panel(EditorState& state) {
+    ImGui::Separator();
+    ImGui::TextUnformatted("Project Sync (git)");
+    if (!state.project_sync_branch.empty())
+        ImGui::Text("Branch: %s", state.project_sync_branch.c_str());
+    else
+        ImGui::TextDisabled("Branch: (unknown — Status to refresh)");
+    ImGui::TextWrapped("%s", state.project_sync_summary.c_str());
+    if (ImGui::Button("Status##ProjectSync")) run_project_sync_action(state, "status");
+    ImGui::SameLine();
+    if (ImGui::Button("Fetch##ProjectSync")) run_project_sync_action(state, "fetch");
+    ImGui::SameLine();
+    if (ImGui::Button("Pull##ProjectSync")) run_project_sync_action(state, "pull");
+    ImGui::SameLine();
+    if (ImGui::Button("Push##ProjectSync")) run_project_sync_action(state, "push");
+    ImGui::InputTextWithHint("##ProjectSyncCommitMessage", "Commit message", state.project_sync_commit_message,
+        sizeof(state.project_sync_commit_message));
+    ImGui::SameLine();
+    if (ImGui::Button("Commit##ProjectSync")) run_project_sync_action(state, "commit");
+    if (state.project_sync_offer_wf_reload) {
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.55f, 0.85f, 0.55f, 1.0f), "Pulled World Forge changes are on disk.");
+        if (ImGui::Button("Reload World Forge##ProjectSyncReload")) {
+            if (state.world_forge_editor.dirty) {
+                state.status = "Save or discard World Forge edits before reload";
+            } else {
+                const auto reloaded = state.world_forge_editor.reload(state.project_root);
+                if (!reloaded) {
+                    state.status = "World Forge reload failed: " + reloaded.error().message;
+                    state.project_sync_detail = reloaded.error().message;
+                } else {
+                    state.status = "World Forge reloaded after pull";
+                    state.project_sync_offer_wf_reload = false;
+                    state.project_sync_summary = "World Forge reloaded after pull";
+                }
+            }
+        }
+    }
+    if (state.project_sync_block_scene_reload) {
+        ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.35f, 1.0f),
+            "Pulled scene/terrain files while the editor has unsaved Scene/Sculpt work. Save or discard, then restart or reload carefully.");
+    }
+    if (!state.project_sync_detail.empty()) {
+        ImGui::BeginChild("ProjectSyncDetail", ImVec2(0.0f, 96.0f), true);
+        ImGui::TextUnformatted(state.project_sync_detail.c_str());
+        ImGui::EndChild();
+    }
+    ImGui::TextDisabled("Uses system git + OS credentials. Save World Forge before Commit.");
+}
 
 void open_script_binding(EditorState& state, const std::string& kind, const std::string& binding_id) {
     const auto relative = resolve_script_binding_path(state.project_root, kind, binding_id);
@@ -6283,6 +6386,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     } else {
         ImGui::TextDisabled("Off by default. Enable before Cursor MCP tools can edit this session.");
     }
+    draw_project_sync_panel(state);
     if (character) {
         ImGui::Separator();
         ImGui::Text("Active player controller");
