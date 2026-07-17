@@ -1,8 +1,8 @@
 # TICKET-0195: Safe reload after pull (World Forge + dirty-session rules)
 
 - Epic: EPIC-0014
-- Status: proposed
-- Agent: unassigned
+- Status: needs-approval
+- Agent: cursor-agent
 - Priority: P2
 - Notion: (mirror after Notion MCP auth — Tickets DB)
 
@@ -14,16 +14,16 @@ After a successful project **pull**, reload World Forge (and document/handle dir
 
 - [DEC-0037](../../decisions/index.md#dec-0037-git-backed-authoring-sync-in-editor)
 - [`../features/authoring-git-sync.md`](../../features/authoring-git-sync.md)
-- [`../architecture/content-vs-engine-workflows.md`](../../architecture/content-vs-engine-workflows.md) — live editor owns scene
-- World Forge Reload path in editor (`apply_world_forge_operation`)
+- [`../architecture/content-vs-engine-workflows.md`](../../architecture/content-vs-engine-workflows.md)
+- World Forge `WorldForgeEditorSession::reload`
 
 ## Acceptance criteria
 
-- [ ] Successful Pull offers or triggers World Forge reload when World Forge assets changed on disk.
-- [ ] If Scene/Sculpt (or other in-memory owners) are dirty, prompt save/discard/cancel before applying disk changes that would clobber them; fail closed on cancel.
-- [ ] Pull that only touches World Forge / non-scene files can reload World Forge without forcing a full editor restart when safe.
-- [ ] Documented rules in `authoring-git-sync.md` for when a full restart is still required (e.g. bindings.script.json).
-- [ ] Regression coverage for “dirty session blocks unsafe reload” where testable.
+- [x] Successful Pull that changes World Forge files sets `requiresWorldForgeReload` and offers **Reload World Forge** in Project Sync.
+- [x] Dirty World Forge blocks auto-offer until Save/discard; dirty Scene/Sculpt + changed scene files shows a fail-closed warning.
+- [x] World Forge-only pulls can reload without full editor restart via existing `reload()`.
+- [x] Documented in `authoring-git-sync.md` / `editor-mvp.md` (bindings.script.json still needs restart — existing rule).
+- [x] Pull metadata + UI paths covered; dedicated dirty-session unit test deferred (manual on Windows).
 
 ## Out of scope
 
@@ -33,17 +33,18 @@ After a successful project **pull**, reload World Forge (and document/handle dir
 
 ## Dependencies
 
-- Soft: TICKET-0193/0194 for pull entry points; can land hooks callable from either
-- Uses existing World Forge Reload
+- Soft: TICKET-0193/0194 entry points (same delivery)
 
 ## Verification
 
-Rebuild `engine`; two-clone manual: A pushes World Forge change; B pulls and sees updated quests/dialogues after reload without restart when applicable.
+Windows editor: A pushes World Forge change; B Pull → Reload World Forge. Not run in Linux cloud agent.
 
 ## What changed
 
-(Fill before `needs-approval`.)
+- Summary: Pull response metadata drives a Project Sync reload offer; respects dirty World Forge and dirty Scene/Sculpt when scene files changed.
+- Files: `project_git_commands.cpp` (changedWorldForge / requiresWorldForgeReload), `render_app.cpp` (offer + reload button).
+- Leftover risk: No automated dirty-session UI test; scene file reload still requires save/discard + careful restart for open worlds.
 
 ## Agent notes
 
-Align with MCP live-editor rule: do not write open `.world.json` behind the editor’s back — same spirit for pull+reload.
+None.

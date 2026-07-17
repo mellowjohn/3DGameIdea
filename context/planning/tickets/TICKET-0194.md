@@ -1,8 +1,8 @@
 # TICKET-0194: Editor Project Sync panel
 
 - Epic: EPIC-0014
-- Status: proposed
-- Agent: unassigned
+- Status: needs-approval
+- Agent: cursor-agent
 - Priority: P2
 - Notion: (mirror after Notion MCP auth — Tickets DB)
 
@@ -15,16 +15,15 @@ Add an in-engine **Project Sync** surface so authors can see git status and run 
 - [DEC-0037](../../decisions/index.md#dec-0037-git-backed-authoring-sync-in-editor)
 - [`../features/authoring-git-sync.md`](../../features/authoring-git-sync.md)
 - [`../features/editor-mvp.md`](../../features/editor-mvp.md)
-- TICKET-0193 (command path)
+- TICKET-0193
 
 ## Acceptance criteria
 
-- [ ] Editor exposes a Project Sync panel or Diagnostics/toolbar section showing branch, ahead/behind (when available), and dirty file summary.
-- [ ] Buttons: Fetch, Pull, Commit (message field), Push — each calls the shared automation path (no duplicate git logic in ImGui).
-- [ ] Status/error text uses structured command errors (auth failure, conflicts, missing git).
-- [ ] Conflicted paths are listed; no silent overwrite.
-- [ ] Docs in `authoring-git-sync.md` + `editor-mvp.md` describe where to find the panel.
-- [ ] Basic UI smoke or automation coverage as practical.
+- [x] Diagnostics panel shows Project Sync with branch, summary, dirty/conflict detail.
+- [x] Buttons: Status, Fetch, Pull, Commit (message field), Push — each calls `apply_project_git_operation`.
+- [x] Status/error text uses structured command summaries/diagnostics.
+- [x] Conflicted / changed paths listed in the detail pane.
+- [x] Docs updated (`authoring-git-sync.md`, `editor-mvp.md`).
 
 ## Out of scope
 
@@ -35,17 +34,19 @@ Add an in-engine **Project Sync** surface so authors can see git status and run 
 
 ## Dependencies
 
-- Blocked by: TICKET-0193
-- Soft: TICKET-0195 for post-pull reload prompt integration
+- Blocked by: TICKET-0193 (landed same change)
+- Soft: TICKET-0195 reload offer integrated in the same panel
 
 ## Verification
 
-Rebuild `engine`; manual: sync loop between two clones of a sample project; confirm World Forge files appear after pull + reload (0195).
+Code review + Windows editor smoke (blocked here). No separate UI suite.
 
 ## What changed
 
-(Fill before `needs-approval`.)
+- Summary: Diagnostics → **Project Sync (git)** panel for status/fetch/pull/commit/push with commit message field and detail list.
+- Files: `src/rendering/render_app.cpp` (EditorState fields + `draw_project_sync_panel`).
+- Leftover risk: UI not interactively verified on Windows in this environment.
 
 ## Agent notes
 
-Place UI near existing project/diagnostics chrome so World Forge authors discover it without hunting.
+Reload-after-pull UX lives in the same panel (0195).

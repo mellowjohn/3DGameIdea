@@ -292,7 +292,7 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 
 ## EPIC-0014: Authoring git sync (in-editor Project Sync)
 
-- Status: ready
+- Status: needs-approval
 - Goal: Polish the multi-author content workflow and let users sync the project git remote from inside the engine (status / fetch / pull / commit / push), with safe reload after pull — no custom cloud-save backend.
 - Roadmap home: M10 Integrated Editor tooling (cross-cutting; supports World Forge and all diffable project data).
 - Priority guidance: P2 — collaboration polish; not ahead of P0. Docs (0192) first, then command path (0193), editor UI (0194), post-pull reload (0195).
@@ -301,9 +301,9 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
 | TICKET-0192 | Document authoring sync workflow (git + World Forge) | needs-approval | P2 | DEC-0037 + [`../features/authoring-git-sync.md`](../features/authoring-git-sync.md); [`tickets/TICKET-0192.md`](tickets/TICKET-0192.md) |
-| TICKET-0193 | Command-backed project git ops (status/fetch/pull/commit/push) | proposed | P2 | System `git` CLI + structured JSON; DEC-0003; blocked by 0192 intent; [`tickets/TICKET-0193.md`](tickets/TICKET-0193.md) |
-| TICKET-0194 | Editor Project Sync panel | proposed | P2 | In-engine UI over 0193; credential helper auth only; [`tickets/TICKET-0194.md`](tickets/TICKET-0194.md) |
-| TICKET-0195 | Safe reload after pull (World Forge + dirty-session rules) | proposed | P2 | Offer World Forge reload; fail closed on dirty Scene/Sculpt; [`tickets/TICKET-0195.md`](tickets/TICKET-0195.md) |
+| TICKET-0193 | Command-backed project git ops (status/fetch/pull/commit/push) | needs-approval | P2 | CLI/MCP/editor `project_git`; [`tickets/TICKET-0193.md`](tickets/TICKET-0193.md); [`../formats/project-git-sync.md`](../formats/project-git-sync.md) |
+| TICKET-0194 | Editor Project Sync panel | needs-approval | P2 | Diagnostics → Project Sync; [`tickets/TICKET-0194.md`](tickets/TICKET-0194.md) |
+| TICKET-0195 | Safe reload after pull (World Forge + dirty-session rules) | needs-approval | P2 | Reload offer after WF-changing pull; [`tickets/TICKET-0195.md`](tickets/TICKET-0195.md) |
 
 ## Suggested work order
 

@@ -12,6 +12,7 @@
 #include "engine/automation/command.h"
 #include "engine/automation/terrain_edit_commands.h"
 #include "engine/automation/world_forge_commands.h"
+#include "engine/automation/project_git_commands.h"
 #include "engine/scripting/lua_runtime.h"
 #include "engine/quest/quest_runtime.h"
 #include "engine/standing/standing_runtime.h"
@@ -1645,9 +1646,12 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
         if (operation == "world_forge_apply") {
             return apply_world_forge_operation(context.project_root, params);
         }
+        if (operation == "project_git") {
+            return apply_project_git_operation(context.project_root, params);
+        }
         return make_response(ExitCode::InvalidArguments, "Unknown editor operation", {},
             {session_error("EDITOR-OP-UNKNOWN", "Unsupported operation: " + operation,
-                "Use editor_status/scene_plan/.../hud_apply/world_forge_apply/ui_canvas_mutate/ui_stack/lua_call/quest_call/standing_call.")});
+                "Use editor_status/scene_plan/.../hud_apply/world_forge_apply/project_git/ui_canvas_mutate/ui_stack/lua_call/quest_call/standing_call.")});
     } catch (const std::exception& exception) {
         return make_response(ExitCode::InternalError, "Editor operation failed", {},
             {session_error("EDITOR-OP-EXCEPTION", exception.what(), "Check params JSON and retry.")});

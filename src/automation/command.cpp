@@ -1,4 +1,5 @@
 #include "engine/automation/command.h"
+#include "engine/automation/project_git_commands.h"
 #include "engine/rendering/render_app.h"
 #include "engine/assets/asset_registry.h"
 #include "engine/assets/material_asset.h"
@@ -113,7 +114,8 @@ Result<CommandRequest> parse_command_line(int argc, char** argv) {
 
 CommandResponse execute_command(const CommandRequest& request) {
     if (request.name == "help") return {ExitCode::Success, command_help(), {}, {}};
-    const std::vector<std::string> known{"build-assets", "validate", "inspect", "run", "test", "benchmark", "capture", "editor", "mcp"};
+    const std::vector<std::string> known{"build-assets", "validate", "inspect", "run", "test", "benchmark", "capture",
+        "editor", "mcp", "project-git"};
     if (std::find(known.begin(), known.end(), request.name) == known.end()) {
         auto error = command_error("CLI-UNKNOWN-COMMAND", "Unknown command: " + request.name,
                                    "Run engine help for supported commands.", request.correlation_id);
@@ -123,6 +125,33 @@ CommandResponse execute_command(const CommandRequest& request) {
         auto error = command_error("CLI-PROJECT-REQUIRED", "--project is required for " + request.name,
                                    "Pass --project <directory>.", request.correlation_id);
         return {ExitCode::InvalidArguments, "Command rejected", {}, {std::move(error)}};
+    }
+    if (request.name == "project-git") {
+        nlohmann::json params = nlohmann::json::object();
+        std::string action = argument_value(request, "--action", argument_value(request, "-a"));
+        if (action.empty()) {
+            for (std::size_t i = 0; i < request.arguments.size(); ++i) {
+                const auto& arg = request.arguments[i];
+                if (arg == "--action" || arg == "-a" || arg == "--message" || arg == "-m") {
+                    if (i + 1 < request.arguments.size()) ++i;
+                    continue;
+                }
+                if (arg.empty() || arg[0] == '-') continue;
+                action = arg;
+                break;
+            }
+        }
+        params["action"] = action;
+        const auto message = argument_value(request, "--message", argument_value(request, "-m"));
+        if (!message.empty()) params["message"] = message;
+        const auto bridge = apply_project_git_operation(request.project, params);
+        CommandResponse response;
+        response.exit_code = bridge.exit_code;
+        response.summary = bridge.summary;
+        response.diagnostics = bridge.diagnostics;
+        response.metadata = bridge.metadata;
+        response.changed_object_ids = bridge.changed_object_ids;
+        return response;
     }
     if (!std::filesystem::exists(request.project / "project.engine.json")) {
         auto error = command_error("PROJECT-MANIFEST-MISSING", "project.engine.json was not found",
@@ -304,10 +333,11 @@ CommandResponse execute_command(const CommandRequest& request) {
 }
 
 std::string command_help() {
-    return "AI RPG Engine 0.2.0\nCommands: build-assets, validate, inspect, run, test, benchmark, capture, editor, mcp\n"
+    return "AI RPG Engine 0.2.0\nCommands: build-assets, validate, inspect, run, test, benchmark, capture, editor, mcp, project-git\n"
            "Options: --project <path> --json --dry-run --debug-world --log-file <path> --frames <n> --width <px> --height <px> --console\n"
            "Capture/editor: --output <file.ppm> [--viewport scene|sculpt|game|ui|world-forge]\n"
            "Benchmark: defaults to 300 frames at 2560x1440\n"
+           "project-git: engine project-git --project <path> --action status|fetch|pull|commit|push [--message <text>] [--json]\n"
            "MCP: engine mcp --project <path> starts the Model Context Protocol stdio server";
 }
 

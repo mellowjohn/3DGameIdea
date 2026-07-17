@@ -4,7 +4,7 @@ This directory is durable memory for humans and AI agents. Source code remains a
 
 ## Index
 
-- `formats/` — versioned project and asset format contracts (includes [`formats/animator-controller-assets.md`](formats/animator-controller-assets.md), [`formats/world-forge-pantheon.md`](formats/world-forge-pantheon.md), [`formats/world-forge-archetypes.md`](formats/world-forge-archetypes.md), [`formats/world-forge-acts.md`](formats/world-forge-acts.md), [`formats/world-forge-factions.md`](formats/world-forge-factions.md), [`formats/world-forge-relationships.md`](formats/world-forge-relationships.md), [`formats/world-forge-map.md`](formats/world-forge-map.md), [`formats/world-forge-quests.md`](formats/world-forge-quests.md), [`formats/world-forge-mcp.md`](formats/world-forge-mcp.md))
+- `formats/` — versioned project and asset format contracts (includes [`formats/animator-controller-assets.md`](formats/animator-controller-assets.md), [`formats/world-forge-pantheon.md`](formats/world-forge-pantheon.md), [`formats/world-forge-archetypes.md`](formats/world-forge-archetypes.md), [`formats/world-forge-acts.md`](formats/world-forge-acts.md), [`formats/world-forge-factions.md`](formats/world-forge-factions.md), [`formats/world-forge-relationships.md`](formats/world-forge-relationships.md), [`formats/world-forge-map.md`](formats/world-forge-map.md), [`formats/world-forge-quests.md`](formats/world-forge-quests.md), [`formats/world-forge-mcp.md`](formats/world-forge-mcp.md), [`formats/project-git-sync.md`](formats/project-git-sync.md))
 
 - `architecture/overview.md` — system boundaries and constraints
 - `architecture/components.md` — entity component catalog (core ECS + authored types, inherit/override, authoring matrix)

@@ -27,6 +27,7 @@ add_library(engine_core
     src/automation/editor_session.cpp
     src/automation/mcp_server.cpp
     src/automation/world_forge_commands.cpp
+    src/automation/project_git_commands.cpp
     src/rendering/render_app.cpp
     src/rendering/viewport_picking.cpp
     src/world/entity_id.cpp

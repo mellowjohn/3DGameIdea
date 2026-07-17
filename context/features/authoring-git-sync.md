@@ -1,8 +1,9 @@
 # Authoring Git Sync (Project Sync)
 
-Status: planned (workflow docs ready; in-editor sync EPIC-0014)  
+Status: active (command path + editor Project Sync panel shipped; polish continues)  
 Decision: [DEC-0037](../decisions/index.md#dec-0037-git-backed-authoring-sync-in-editor)  
-Epic: [EPIC-0014](../planning/epics.md) (TICKET-0192–0195)
+Epic: [EPIC-0014](../planning/epics.md) (TICKET-0192–0195)  
+Format: [`../formats/project-git-sync.md`](../formats/project-git-sync.md)
 
 ## Purpose
 
@@ -51,22 +52,16 @@ Player runtime save-games are **not** this feature. Live multi-user co-editing o
 2. Resolve with git / your usual merge tools; re-open or Reload after a clean working tree.
 3. v1 will list conflicted paths in Project Sync but will **not** ship a custom three-way merge UI (TICKET-0193/0194).
 
-## Editor workflow (target — TICKET-0194/0195)
+## Editor workflow (Diagnostics → Project Sync)
 
 | Step | Action |
 | --- | --- |
 | Before editing shared files | **Fetch** / **Pull** so you start from remote HEAD |
-| After World Forge / content Save | Review **Status**; **Commit** with a short message; **Push** |
-| After someone else pushed | **Pull**; accept **Reload** for World Forge (save or discard dirty Scene/Sculpt first if prompted) |
+| After World Forge / content Save | Review **Status**; enter a message; **Commit**; **Push** |
+| After someone else pushed | **Pull**; if prompted, **Reload World Forge** (save or discard dirty Scene/Sculpt / World Forge first) |
 | On conflict | Editor lists conflicted paths; resolve with git/external tools |
 
-## Engine contract (target — TICKET-0193)
-
-- Command-backed ops (GUI + headless/MCP): `status`, `fetch`, `pull`, `commit`, `push`.
-- Invoke system `git` for the opened project root; use OS credential helper / SSH agent.
-- Structured errors when git is missing, the folder is not a repo, auth fails, or pull conflicts.
-- No remotes passwords or PATs stored in project JSON or engine config.
-- `commit` requires an explicit message; never auto-commit on every Save.
+CLI / MCP: `engine project-git` / `engine_project_git` — see [`../formats/project-git-sync.md`](../formats/project-git-sync.md).
 
 ## Out of scope (v1)
 
