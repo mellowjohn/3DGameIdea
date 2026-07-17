@@ -158,6 +158,55 @@ Result<void> CharacterController::move(const LocalPosition& wish_velocity, float
     return Result<void>::success();
 }
 
+Result<void> CharacterController::move_root_motion(const LocalPosition& world_delta, float seconds,
+    bool apply_vertical) {
+    if (!impl_ || !impl_->character)
+        return Result<void>::failure(character_error("CHARACTER-NOT-READY", "Character controller is not initialized"));
+    if (!world_)
+        return Result<void>::failure(character_error("CHARACTER-NOT-READY", "Character controller lost collision world"));
+    if (!(seconds > 0) || seconds > 0.25f)
+        return Result<void>::failure(character_error("CHARACTER-STEP-INVALID", "Step must be within (0, 0.25] seconds"));
+
+    const float inv_dt = 1.0f / seconds;
+    Vec3 desired{world_delta.x * inv_dt, apply_vertical ? world_delta.y * inv_dt : 0.0f, world_delta.z * inv_dt};
+
+    Vec3 velocity = impl_->character->GetLinearVelocity();
+    if (impl_->character->GetGroundState() == CharacterBase::EGroundState::OnGround &&
+        impl_->character->GetGroundVelocity().Dot(impl_->character->GetUp()) <= 0.0f) {
+        velocity = impl_->character->GetGroundVelocity();
+    }
+    velocity.SetX(desired.GetX());
+    velocity.SetZ(desired.GetZ());
+    if (impl_->character->GetGroundState() == CharacterBase::EGroundState::OnGround) {
+        if (impl_->jump_requested) {
+            velocity.SetY(impl_->config.jump_velocity);
+            impl_->jump_requested = false;
+        } else if (apply_vertical) {
+            velocity.SetY(desired.GetY());
+        } else {
+            velocity.SetY(0.0f);
+        }
+    } else if (apply_vertical) {
+        velocity.SetY(desired.GetY());
+        impl_->jump_requested = false;
+    } else {
+        velocity.SetY(velocity.GetY() - impl_->config.gravity * seconds);
+        impl_->jump_requested = false;
+    }
+    impl_->character->SetLinearVelocity(velocity);
+
+    CharacterVirtual::ExtendedUpdateSettings update_settings;
+    update_settings.mStickToFloorStepDown = Vec3(0, -0.5f, 0);
+    update_settings.mWalkStairsStepUp = Vec3(0, impl_->config.step_height, 0);
+    update_settings.mWalkStairsMinStepForward = 0.02f;
+    update_settings.mWalkStairsStepForwardTest = 0.15f;
+
+    const float gravity = apply_vertical ? 0.0f : impl_->config.gravity;
+    impl_->character->ExtendedUpdate(seconds, Vec3(0, -gravity, 0), update_settings, g_bp_filter, g_object_filter,
+        g_body_filter, g_shape_filter, temp_from(*world_));
+    return Result<void>::success();
+}
+
 Result<bool> CharacterController::jump() {
     if (!impl_ || !impl_->character)
         return Result<bool>::failure(character_error("CHARACTER-NOT-READY", "Character controller is not initialized"));

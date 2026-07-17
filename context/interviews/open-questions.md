@@ -41,10 +41,10 @@ Resolved 2026-07-15 as [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with
 
 Still open from beat sheet / Act 0 Twine import:
 
-- Wake-up / camp location after Creotar vision.
-- Whether Calrenoth remains ruined on the seamless map after Act 0.
+- ~~Wake-up / camp location after Creotar vision~~ — **resolved** DEC-0032: O’hlundian evergreens → navigate to first village.
+- ~~Whether Calrenoth remains ruined on the seamless map after Act 0~~ — **resolved** DEC-0032: yes, ruined/impacted revisit.
 - Creotar identity vs Creo/Frangitur.
-- Wild God revival chronology vs Calrenoth Act 0 spine.
+- ~~Wild God revival chronology vs Calrenoth Act 0 spine~~ — **resolved** for default spine: Act 0 Calrenoth (Wild God remains alternate/open).
 - Vanessa introduction beat timing.
 - Morality thresholds and ending matrix (Act 4).
 - Twine draft orc names (Grul’thaz / Shadowpaw) — not established until owner review (also TICKET-0021).
@@ -68,3 +68,34 @@ Open (do not invent in TICKET-0011–0014 without owner input):
 - Whether region polygons/cells must align to 128 m partition cells or may be freeform overlays.
 - Story-event schema shape (triggers, conditions, outcomes) and how it binds to beat-sheet IDs from EPIC-0003.
 - Relationship edge type vocabulary (minimum set for v1 graph editor).
+
+## Open-world navigation (TICKET-0030)
+
+**Resolved 2026-07-16** as [DEC-0032](../decisions/index.md#dec-0032-open-world-travel-discovery-map-and-dual-soft-gates): carriage-post FT + gold, discovery map fog/dust, dual soft-gate denial, horses-only near-term mounts, Act 1 evergreen wake, ruined Calrenoth revisit, Act 0 spine. See [`open-world-navigation.md`](../features/open-world-navigation.md).
+
+Still open (implementation detail, not product fork):
+
+- Exact gold price curve / distance scaling for carriage FT.
+- Schema field names for soft-gate denial mode (`checkpoint` vs `hostile_frontier`) and carriage-post POI kind/tags.
+- Horse + 3-companion mounting presentation when mounts ship.
+
+## Player camp (DEC-0033)
+
+**Resolved:** anywhere overland camp → persistent editable camp instance; evergreen story tutorial; **hard deny** when pitching would escape/negate an active combat situation/zone (DEC-0033). See [`open-world-navigation.md`](../features/open-world-navigation.md).
+
+Still open:
+
+- Outside active combat: may the player pitch in **hostile frontiers**, interiors, or story-locked beats?
+- How much camp customization ships in v1 (furniture props vs full base-building)?
+- Camp rest → time-of-day / ambush rules?
+- Exact combat-state signal for deny (party aggro flag vs authored combat volume vs both).
+
+## Map design language (TICKET-0031)
+
+**Mostly resolved** via DEC-0032 (one major hub per act; snow when climate/story fits). Guidance: [`map-design-language.md`](../features/map-design-language.md).
+
+Still open:
+
+- Exact hub settlement names/placements per act (authoring).
+
+**Resolved:** Tessera is the world’s primary land (Middle-earth-scale); Kingdom of Tessera is the polity within it — [DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land).

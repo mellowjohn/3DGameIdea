@@ -14,10 +14,12 @@ namespace engine {
 
 struct InteractionEvent;
 struct CombatContactEvent;
+struct AnimatorFiredEvent;
 class HudRuntime;
 class UiCanvasStack;
 class QuestRuntime;
 class StandingRuntime;
+class AnimatorRuntime;
 
 struct ScriptBindingEntry {
     std::string id;
@@ -50,6 +52,7 @@ public:
     void dispatch_interaction(const InteractionEvent& event);
     void dispatch_combat_hit(const CombatContactEvent& event);
     void dispatch_ui_button(const std::string& bind_id, const std::string& canvas_id, const std::string& widget_id);
+    void dispatch_animation_event(const AnimatorFiredEvent& event);
 
     [[nodiscard]] Result<void> call_handler(const std::string& handler_name, const std::string& payload_json);
 
@@ -60,6 +63,7 @@ public:
     void set_ui_canvas_stack(UiCanvasStack* stack) noexcept;
     void set_quest_runtime(QuestRuntime* quest) noexcept;
     void set_standing_runtime(StandingRuntime* standing) noexcept;
+    void set_animator_runtime(AnimatorRuntime* animator) noexcept;
 
     [[nodiscard]] const std::vector<EngineError>& recent_errors() const noexcept { return recent_errors_; }
     void clear_recent_errors() { recent_errors_.clear(); }

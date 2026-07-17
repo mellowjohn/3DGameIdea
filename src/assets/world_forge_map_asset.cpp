@@ -1,4 +1,5 @@
 #include "engine/assets/world_forge_map_asset.h"
+#include "engine/assets/world_forge_acts.h"
 
 #include <nlohmann/json.hpp>
 
@@ -198,6 +199,9 @@ Result<void> WorldForgeMapAsset::validate() const {
             return Result<void>::failure(map_error("WORLD-FORGE-MAP-REGION-ID-DUP", ErrorCategory::Validation,
                 "Duplicate region id: " + region.id, "Ensure every region id is unique."));
         }
+        if (const auto acts_ok = validate_world_forge_acts(region.acts, "region", region.id); !acts_ok) {
+            return Result<void>::failure(acts_ok.error());
+        }
     }
     for (const auto& region : regions) {
         if (region.parent_region_id.empty()) continue;
@@ -227,6 +231,9 @@ Result<void> WorldForgeMapAsset::validate() const {
             return Result<void>::failure(map_error("WORLD-FORGE-MAP-POI-REGION", ErrorCategory::Validation,
                 "POI '" + poi.id + "' regionId must reference a region in this file",
                 "Set regionId to an existing region id."));
+        }
+        if (const auto acts_ok = validate_world_forge_acts(poi.acts, "poi", poi.id); !acts_ok) {
+            return Result<void>::failure(acts_ok.error());
         }
     }
     std::unordered_set<std::string> link_ids;
@@ -320,6 +327,7 @@ Result<WorldForgeMapAsset> WorldForgeMapAsset::parse(const std::string& text, co
             region.story_ref = node.value("storyRef", std::string{});
             region.parent_region_id = node.value("parentRegionId", std::string{});
             region.faction_ids = read_string_array(node.value("factionIds", nlohmann::json::array()));
+            region.acts = read_string_array(node.value("acts", nlohmann::json::array()));
             region.tags = read_string_array(node.value("tags", nlohmann::json::array()));
             region.soft_gate = read_soft_gate(node.value("softGate", nlohmann::json::object()));
             if (node.contains("anchor") && !node["anchor"].is_null()) region.anchor = read_anchor(node["anchor"]);
@@ -355,6 +363,7 @@ Result<WorldForgeMapAsset> WorldForgeMapAsset::parse(const std::string& text, co
             poi.story_ref = node.value("storyRef", std::string{});
             poi.scene_entity_id = node.value("sceneEntityId", std::string{});
             poi.prefab_id = node.value("prefabId", std::string{});
+            poi.acts = read_string_array(node.value("acts", nlohmann::json::array()));
             poi.tags = read_string_array(node.value("tags", nlohmann::json::array()));
             if (node.contains("anchor") && !node["anchor"].is_null()) poi.anchor = read_anchor(node["anchor"]);
             poi.open_questions = read_string_array(node.value("openQuestions", nlohmann::json::array()));
@@ -437,6 +446,7 @@ std::string WorldForgeMapAsset::to_json() const {
         node["storyRef"] = region.story_ref;
         node["parentRegionId"] = region.parent_region_id;
         node["factionIds"] = write_string_array(region.faction_ids);
+        node["acts"] = write_string_array(region.acts);
         node["tags"] = write_string_array(region.tags);
         node["softGate"] = write_soft_gate(region.soft_gate);
         if (region.anchor) node["anchor"] = write_anchor(*region.anchor);
@@ -456,6 +466,7 @@ std::string WorldForgeMapAsset::to_json() const {
         node["storyRef"] = poi.story_ref;
         node["sceneEntityId"] = poi.scene_entity_id;
         node["prefabId"] = poi.prefab_id;
+        node["acts"] = write_string_array(poi.acts);
         node["tags"] = write_string_array(poi.tags);
         if (poi.anchor) node["anchor"] = write_anchor(*poi.anchor);
         node["openQuestions"] = write_string_array(poi.open_questions);

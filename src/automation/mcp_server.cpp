@@ -442,7 +442,7 @@ const char* k_tools_list_json = R"([
     },
     {
         "name": "engine_world_forge_apply",
-        "description": "Read, validate, write, or import World Forge narrative assets (factions / relationships / map / quests / dialogues). Actions: get|validate|apply|import_twee. Pass kind=factions|relationships|map|quests|dialogues and/or path to *.worldforge.json. apply requires json object or source string. import_twee (kind=dialogues) requires tweePath + treeId; optional displayName, parentQuestId, entryNodeId, storyRef. Works offline. Not Scene/Sculpt.",
+        "description": "Read, validate, write, or import World Forge narrative assets (factions / pantheon / archetypes / resources / relationships / map / quests / dialogues). Actions: get|validate|apply|import_twee. Pass kind=factions|pantheon|archetypes|resources|relationships|map|quests|dialogues and/or path to *.worldforge.json. apply requires json object or source string. import_twee (kind=dialogues) requires tweePath + treeId; optional displayName, parentQuestId, entryNodeId, storyRef. Works offline. Not Scene/Sculpt.",
         "inputSchema": {
             "type": "object",
             "properties": {

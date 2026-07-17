@@ -1,8 +1,8 @@
 # TICKET-0148: Component reference: catalog and how they work
 
 - Epic: EPIC-0009
-- Status: ready
-- Agent: unassigned
+- Status: needs-approval
+- Agent: cursor-agent
 - Priority: P2
 - Notion: https://app.notion.com/p/39cd3efc569581e1873beaae01b3170f
 
@@ -22,16 +22,17 @@ Produce a durable `context/` reference that catalogs every entity component the 
 - `context/features/editor-mvp.md`, `context/features/mcp-live-editor.md`, `context/features/lua-scripting.md`
 - `include/engine/world/components.h`, `include/engine/world/authored_components.h`
 - DEC-0003 (command-backed tools)
+- **Deliverable:** [`../../architecture/components.md`](../../architecture/components.md)
 
 ## Acceptance criteria
 
-- [ ] New (or clearly indexed) context doc — prefer `context/architecture/components.md` — lists **core ECS components** from `components.h` (`Id`, `Name`, `Transform`, `Hierarchy`, `WorldPlacement`) with: purpose, who owns writes (commands vs systems), and persistence notes.
-- [ ] Same doc catalogs **authored components** (`Collider`, `ScriptBinding` / kinds) with: JSON shape pointers, prefab seed vs entity ownership, `source` / `overridden` semantics, propagation rules (DEC-0017), and effective collision fallback when entity components are absent.
-- [ ] Documents the **authoring surface matrix**: Prefab Editor, Scene Inspector Add Component, CLI/commands, MCP (`engine_entity_component_apply`, `engine_prefab_component_apply`, `engine_scene_apply` / `engine_prefab_apply` actions).
-- [ ] Documents **runtime consumption** at a pointer level (collision tracker / placement, Lua handler kinds) without duplicating full Lua or collision specs — link out instead.
-- [ ] Explicit **extension checklist**: what a future authored component type must touch (enum, JSON, validate, commands, MCP, editor menus, tests, this doc).
-- [ ] `context/architecture/overview.md` (and features index if needed) link to the new doc; `epics.md` Notes point at it.
-- [ ] Gaps / future types called out as out of scope for this ticket (do not invent new component kinds). Inspector property edit / Open Script is TICKET-0149 (needs-approval).
+- [x] New (or clearly indexed) context doc — prefer `context/architecture/components.md` — lists **core ECS components** from `components.h` (`Id`, `Name`, `Transform`, `Hierarchy`, `WorldPlacement`) with: purpose, who owns writes (commands vs systems), and persistence notes.
+- [x] Same doc catalogs **authored components** (`Collider`, `ScriptBinding` / kinds) with: JSON shape pointers, prefab seed vs entity ownership, `source` / `overridden` semantics, propagation rules (DEC-0017), and effective collision fallback when entity components are absent.
+- [x] Documents the **authoring surface matrix**: Prefab Editor, Scene Inspector Add Component, CLI/commands, MCP (`engine_entity_component_apply`, `engine_prefab_component_apply`, `engine_scene_apply` / `engine_prefab_apply` actions).
+- [x] Documents **runtime consumption** at a pointer level (collision tracker / placement, Lua handler kinds) without duplicating full Lua or collision specs — link out instead.
+- [x] Explicit **extension checklist**: what a future authored component type must touch (enum, JSON, validate, commands, MCP, editor menus, tests, this doc).
+- [x] `context/architecture/overview.md` (and features index if needed) link to the new doc; `epics.md` Notes point at it.
+- [x] Gaps / future types called out as out of scope for this ticket (do not invent new component kinds). Inspector property edit / Open Script is TICKET-0149 (needs-approval).
 
 ## Out of scope
 
@@ -50,8 +51,18 @@ Produce a durable `context/` reference that catalogs every entity component the 
 
 - Doc-only review against acceptance checklist.
 - Spot-check doc claims against `components.h`, `authored_components.h`, `prefab-assets.md`, `world-placement.md`, and MCP feature doc.
-- No engine rebuild required unless code/comments are touched (they should not be for this ticket).
+- No engine rebuild required (doc-only).
+
+## What changed
+
+- Summary: Added durable architecture reference `context/architecture/components.md` covering core ECS components, authored collider/scriptBinding/animator (animator cataloged as shipped under DEC-0022, not invented), DEC-0017 inherit/override + effective collision fallback, authoring surface matrix (Inspector / Prefab Editor / CLI / MCP), runtime pointers, and an extension checklist for future types.
+- Files / surfaces touched: created `context/architecture/components.md`; linked from `overview.md`, `content-vs-engine-workflows.md`, `features/index.md` (Hybrid ECS row); updated this stub + `epics.md`.
+- Schema / API / format deltas: none (documentation only).
+- Seed / sample data: none.
+- Tests / verification evidence: Doc review vs headers and format/MCP docs; no rebuild.
+- Decisions & tradeoffs: Included **animator** in the catalog because it is a real `AuthoredComponentType` today; original ticket wording focused on the 0147 collider/scriptBinding slice — animator is called out explicitly so agents do not miss it.
+- Leftover risk / follow-ons: Keep this doc updated when new authored kinds ship; TICKET-0149 covers Inspector property/Open Script polish track.
 
 ## Agent notes
 
-_(empty)_
+Doc-only delivery. Spot-checked against `components.h`, `authored_components.h`, prefab/world-placement formats, and MCP live-editor tool list.

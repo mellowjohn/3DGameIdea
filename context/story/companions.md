@@ -48,10 +48,11 @@ Early class-level concepts also mention:
 
 - A ranger: a well-rounded warrior from distant lands.
 - A mistress-sage: a magic user and support character.
-- A lion-gecko: a supernatural beast.
 - Starting archetype player kits for Squire, Archer, and Acolyte ([DEC-0009](../decisions/index.md#dec-0009-starting-archetype-character-creation)).
 
 These concepts do not yet have established identities or confirmed companion status.
+
+**Not a companion / character concept:** a **lion gecko** may appear only as optional flavor in the Rak Zulla easter egg ([side-quest-catalog.md](side-quest-catalog.md) SQ-12) — gag creature / hallucination prop, not a party member or cast identity.
 
 ## Open Questions
 

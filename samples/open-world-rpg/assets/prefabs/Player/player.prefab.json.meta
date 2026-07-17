@@ -1,3 +1,5 @@
 {
-  "dependencies": []
+  "dependencies": [
+    "assets/models/player.gltf"
+  ]
 }

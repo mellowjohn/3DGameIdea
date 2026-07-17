@@ -39,13 +39,19 @@ add_library(engine_core
     src/assets/camera_asset.cpp
     src/assets/play_session_settings.cpp
     src/assets/mesh_asset.cpp
+    src/assets/png_decode.cpp
     src/assets/animation_clip_asset.cpp
+    src/assets/animator_controller_asset.cpp
+    src/animation/animator_runtime.cpp
     src/assets/prefab_asset.cpp
     src/assets/script_bindings_asset.cpp
     src/assets/hud_asset.cpp
     src/assets/ui_canvas_asset.cpp
     src/assets/ui_canvas_mutate.cpp
     src/assets/world_forge_factions_asset.cpp
+    src/assets/world_forge_pantheon_asset.cpp
+    src/assets/world_forge_archetypes_asset.cpp
+    src/assets/world_forge_resources_asset.cpp
     src/assets/world_forge_relationships_asset.cpp
     src/assets/world_forge_map_asset.cpp
     src/assets/world_forge_quests_asset.cpp
@@ -108,7 +114,7 @@ if(ENGINE_BUILD_TESTS)
     add_test(NAME regression_all COMMAND engine_tests)
     add_executable(engine_suite_tests tests/suite_tests.cpp)
     target_link_libraries(engine_suite_tests PRIVATE engine_core)
-    foreach(suite IN ITEMS core world world_influence assets world_forge streaming terrain foliage collision navigation character interaction combat camera diagnostics scripting automation hud)
+    foreach(suite IN ITEMS core world world_influence assets world_forge streaming terrain foliage collision navigation character interaction combat camera diagnostics scripting automation hud animator)
         add_test(NAME ${suite} COMMAND engine_suite_tests --suite ${suite} --json)
         set_tests_properties(${suite} PROPERTIES LABELS "${suite};unit")
     endforeach()

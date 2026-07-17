@@ -30,6 +30,13 @@ public:
     [[nodiscard]] static Result<CharacterController> create(CollisionWorld& world, WorldPosition spawn,
         const CharacterControllerConfig& config = {});
     [[nodiscard]] Result<void> move(const LocalPosition& wish_velocity, float yaw_radians, float seconds);
+    /**
+     * Animation-driven step (DEC-0030): apply world-space root translation delta for this frame.
+     * Horizontal velocity is delta/seconds (not max-speed clamped). Gravity/jump still apply unless
+     * `apply_vertical` is true (then Y comes from the delta while grounded/airborne without gravity).
+     */
+    [[nodiscard]] Result<void> move_root_motion(const LocalPosition& world_delta, float seconds,
+        bool apply_vertical = false);
     [[nodiscard]] Result<bool> jump();
     [[nodiscard]] WorldPosition position() const;
     [[nodiscard]] CellCoord owner_cell(const WorldPartition& partition) const;

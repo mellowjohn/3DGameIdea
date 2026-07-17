@@ -17,3 +17,4 @@
 #define ICON_FA_MOUNTAIN "\xef\x9b\xbc"
 #define ICON_FA_DESKTOP "\xef\x84\x88"
 #define ICON_FA_GLOBE "\xef\x82\xac"
+#define ICON_FA_BOOK "\xef\x80\xad"

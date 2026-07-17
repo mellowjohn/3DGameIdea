@@ -328,3 +328,113 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Consequences: Implement under **TICKET-0181** (owner override → P2). Soft-update open-questions: model resolved; numeric thresholds still story-open. Persist standing in TICKET-0114; faction HUD cues in TICKET-0062.
 - Supersedes: none
 
+### DEC-0030: Animation-driven root motion
+
+- Status: accepted
+- Date: 2026-07-16
+- Context: TICKET-0104 needs a sync contract between clip root deltas and `CharacterController`. Hybrid additive risked double movement; extract-only deferred playability.
+- Decision:
+  1. When a controller (or instance) has **`applyRootMotion: true`**, weighted clip **root joint translation deltas** drive capsule horizontal displacement each tick. WASD / wish-velocity is **not** used for walk distance — input drives animator parameters and facing yaw.
+  2. Root joint defaults to authored `rootJoint` (fallback name match `Root` then `Hip`). Clip-space +Z is forward; callers rotate deltas by character yaw before applying.
+  3. **Y from root is opt-in** (`rootMotionY`); default off so gravity/jump remain controller-owned.
+  4. Root motion is **not** max-speed clamped (authored clip distance wins). Missing root channels yield zero delta (fail soft) with diagnostics.
+  5. Visual in-place root zeroing for GPU skinning remains follow-on; this ticket ships extraction + capsule sync.
+- Rationale: Matches melee/root-locked attacks and DEC-0022 (C++ owns playback; Lua drives params/facing).
+- Consequences: Implement under **TICKET-0104**. Document in [`animator-controller-assets.md`](../formats/animator-controller-assets.md) and [`character-controller.md`](../features/character-controller.md).
+- Supersedes: none
+
+### DEC-0031: Controller-authored animation timeline events
+
+- Status: accepted
+- Date: 2026-07-16
+- Context: TICKET-0105 needs a place for hit-frame / footstep markers that Lua (and later collision) can react to. glTF extras and per-clip sidecars were considered.
+- Decision:
+  1. **Timeline events live on the animator controller** (`timelineEvents[]`: `state`, `time`, `name`, optional `layer`, optional `payload` object).
+  2. C++ `AnimatorRuntime` fires an event when playback in that state crosses `time` (loop-aware; once per cycle).
+  3. **Lua reacts** via `on_animation_event` (JSON payload: entityId, name, state, layer, time, payload) — aligned with DEC-0022. Engine does not auto-enable combat volumes in v1; scripts/MCP may do so.
+  4. Invalid state references fail closed at controller validate time.
+- Rationale: Keeps the graph + markers in one engine-owned asset; matches future animator graph UI; avoids DCC-only metadata.
+- Consequences: Implement under **TICKET-0105**. Document in [`animator-controller-assets.md`](../formats/animator-controller-assets.md).
+- Supersedes: none
+
+### DEC-0032: Open-world travel, discovery map, and dual soft gates
+
+- Status: accepted
+- Date: 2026-07-16
+- Context: TICKET-0030/0031 design notes left FT cost, mounts, soft-gate denial, hubs, and Act 1 wake geography open. Owner clarified product intent for Tessera’s seamless 4×4 km world.
+- Decision:
+  1. **Fast travel** is a first-class system, not a late unlock skill: discover **tavern / carriage-post** anchors in play, then pay **gold** at a post (or via the player map once known) to travel to other **discovered** towns/POIs. No wilderness FT without a post. Deny in combat / instances / blocked story flags.
+  2. **Player map** shows fog-of-war on unseen areas and a dust/reveal effect as regions are discovered; FT destinations appear from discovered posts. Heavy discovery is intentional.
+  3. **Mounts (near-term):** horses only if any; party is player + up to **three** companions (mount design must account for that later). Boats/other mounts deferred.
+  4. **Soft-gate denial is dual-mode by region/link tag:**
+     - **Border / checkpoint style** — polite dialogue, guards, story refusal (“not yet”).
+     - **Hostile frontier style** — player may physically enter, but faces extreme enemies, disease/affliction, and/or item/key requirements; death or attrition is the gate.
+     Silent invisible walls are rejected for soft gates.
+  5. **Hubs:** about **one major hub per campaign act**, chosen for story fit (not a uniform grid of capitals).
+  6. **Snow biome** only when climate/story justifies it — not a mandatory v1 band.
+  7. **Act 1 wake:** after Act 0 / Creotar vision, wake in **O’hlundian evergreens**; player navigates on foot to the first village (no auto-drop into the hub).
+  8. **Calrenoth** remains on the seamless map as a **ruined, impacted** revisit location after Act 0.
+  9. **Opening spine:** Act 0 Calrenoth is authoritative; Wild God revival stays alternate/open chronology, not the default spine.
+  10. ~~**World-map name** stays TBD; **Tessera** remains the kingdom/setting name~~ — **superseded** by [DEC-0034](#dec-0034-tessera-is-the-worlds-primary-land).
+- Rationale: Matches dark-fantasy discovery pacing, gold-as-immersion carriage travel, and DEC-0021 soft gates without forcing one denial flavor for every frontier.
+- Consequences: Update [`open-world-navigation.md`](../features/open-world-navigation.md), [`map-design-language.md`](../features/map-design-language.md), beat sheet Act 1 wake / Calrenoth notes. Later FT/map/soft-gate tickets and World Forge link tags must support dual denial modes + carriage-post POIs. Mini-map TICKET-0061 inherits fog/discovery UX.
+- Supersedes: recommended defaults in TICKET-0030 draft that said “no FT gold cost”
+
+### DEC-0033: Anywhere player camp as editable instance (DAO-style)
+
+- Status: accepted
+- Date: 2026-07-16
+- Context: After DEC-0032 evergreen wake, owner wants a companion/camp loop: story-tied tutorial in the evergreens, then the ability to set up camp from (nearly) anywhere on the overland map. Reference feel: *Dragon Age: Origins* party camp — a dedicated space to manage party, talk to NPCs, and edit camp setup.
+- Decision:
+  1. **Camp is a first-class optional instance** entered from the open world ([DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances)): short transition into a camp instance; exit returns to the overland pitch point.
+  2. **Act 1 evergreen beat** teaches camp: setup, talk to camp NPCs/companions, and basic camp loop, with story ties (survivor retreat / Arkand path).
+  3. After unlock, the player may **set up camp from the overland map** at will (not only at authored camp POIs). Camp contents (layout edits, companion staging, camp services) persist across pitches — same camp “home,” different world entry points.
+  4. Camp is for party management, rest/talk, and light prep — not a substitute for hub towns or carriage-post fast travel.
+  5. **Camp must not negate combat:** deny pitch while the player is in an **active combat situation** — engaged fight, active combat encounter/zone, or any state where camping would let them escape or skip combat mechanics. Also deny while already inside another instance.
+  6. Quiet overland (including dangerous regions when **not** in an active fight) may still allow camp unless a later tag blocks it; the hard rule is “no combat escape hatch.”
+- Rationale: Gives a persistent social/management space without chapter loads; matches companion-heavy party (player + up to three) and discovery-driven overland travel. Camp is prep/rest, not a panic button.
+- Consequences: Document in [`open-world-navigation.md`](../features/open-world-navigation.md) and beat sheet A1-01. Future tickets: camp instance asset, enter/exit commands, persistence, evergreen tutorial beat, combat-state / combat-zone checks before pitch. Do not invent full RPG inventory/crafting scope here.
+- Supersedes: none
+
+### DEC-0034: Tessera is the world’s primary land
+
+- Status: accepted
+- Date: 2026-07-16
+- Context: Story docs left the world-map / continent title TBD and blurred “Tessera” (setting) with “Kingdom of Tessera” (polity). Owner clarified: Tessera is the Middle-earth of the world.
+- Decision:
+  1. **Tessera** is the named primary land of the setting — the Middle-earth-scale geography where the campaign takes place. It is the world-map name; do not invent a separate continent title above it.
+  2. **Kingdom of Tessera** is a political power *within* Tessera (dominant human occupying power), not a synonym for the whole land. Other factions and regions (Imperium, Cristallo, Arrotrebae, orc warbands, wilds, etc.) also inhabit Tessera.
+  3. Lands or seas beyond Tessera remain unspecified; v1’s seamless 4×4 km slice is authored inside Tessera and does not require mapped outer continents.
+- Rationale: Resolves the kingdom-vs-setting naming clash with a Tolkien-shaped split (land vs polities) without inventing extra geography.
+- Consequences: Update [`story-vision.md`](../story/story-vision.md), [`factions.md`](../story/factions.md), and open-questions that treated the world-map name as TBD.
+- Supersedes: DEC-0032 item 10 (world-map name TBD)
+
+### DEC-0035: World Forge Hierarchy authorship
+
+- Status: accepted
+- Date: 2026-07-16
+- Context: Owner wants pantheon, factions, and persons organized as first-class Hierarchy authorship pages (not only the relationship graph).
+- Decision:
+  1. World Forge gains a top-level **Hierarchy** tab with nested **Religion** / **Factions** / **Persons** authorship sub-pages (tree + detail + quick-create).
+  2. **Religion** uses a new `pantheon.worldforge.json` asset (`parentId` tree; kinds deity/aspect/force). Seed only known draft/established deities (`frangitur`, `creotar`); do not invent Creo/Wild God.
+  3. **Factions** tree authorship uses existing `factions.worldforge.json` `parentId`. The flat top-level Factions tab is removed; standing/detail live under Hierarchy → Factions.
+  4. **Persons** uses relationship nodes (`person`/`organization`) with optional node `parentId`; faction membership stays as `member_of`/`leads` edges with Hierarchy helpers to upsert those edges. **Companions** are not a separate Hierarchy page — they are a Persons filter over person nodes tagged `companion`.
+  5. **Relationships** tab remains for the non-hierarchical graph (edges + Graph canvas). Pantheon is source of truth for religion; relationship deity nodes keep aligned ids for edge endpoints until a later migration.
+- Rationale: Separates org-chart authoring from freeform relationship graphs; pantheon needs its own registry for faith hierarchy without inventing theology.
+- Consequences: TICKET-0183/0184/0185; MCP `kind=pantheon`; update editor-mvp and world-forge-scope.
+- Supersedes: none
+
+### DEC-0036: World Forge Act lens
+
+- Status: accepted
+- Date: 2026-07-16
+- Context: Owner wants World Forge content organized by campaign acts without hard file splits (option 1: Act lens).
+- Decision:
+  1. Keep shared worldforge JSON files; do not split assets per act.
+  2. Optional `acts: ["act0"…"act4"]` on quests, dialogue trees, map regions/POIs, and relationship nodes. Empty = campaign-wide.
+  3. World Forge toolbar exposes a global Act filter (All / Act 0–4) that hides non-matching Map/Quests/Dialogues/Persons/Relationships content. Hierarchy Religion/Factions and Archetypes stay campaign-wide.
+  4. Legacy `actN` tags remain readable for filter membership; prefer `acts` for new authoring.
+- Rationale: Matches DEC-0021 seamless-world acts while making authoring lists readable as content grows.
+- Consequences: TICKET-0189; [`../formats/world-forge-acts.md`](../formats/world-forge-acts.md).
+- Supersedes: none
+

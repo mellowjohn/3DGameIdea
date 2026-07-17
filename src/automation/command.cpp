@@ -3,8 +3,11 @@
 #include "engine/assets/asset_registry.h"
 #include "engine/assets/material_asset.h"
 #include "engine/assets/mesh_asset.h"
+#include "engine/assets/world_forge_archetypes_asset.h"
 #include "engine/assets/world_forge_factions_asset.h"
+#include "engine/assets/world_forge_pantheon_asset.h"
 #include "engine/assets/world_forge_relationships_asset.h"
+#include "engine/assets/world_forge_resources_asset.h"
 #include "engine/assets/world_forge_map_asset.h"
 #include "engine/assets/world_forge_dialogues_asset.h"
 #include "engine/assets/world_forge_quests_asset.h"
@@ -180,12 +183,18 @@ CommandResponse execute_command(const CommandRequest& request) {
     const auto world_forge_factions_path = default_world_forge_factions_path(request.project);
     const auto world_forge_factions_valid = WorldForgeFactionsAsset::validate_file(world_forge_factions_path);
     if (!world_forge_factions_valid) asset_errors.push_back(world_forge_factions_valid.error());
+    const auto world_forge_pantheon_valid =
+        WorldForgePantheonAsset::validate_file(default_world_forge_pantheon_path(request.project));
+    if (!world_forge_pantheon_valid) asset_errors.push_back(world_forge_pantheon_valid.error());
     std::unordered_set<std::string> world_forge_faction_ids;
     if (std::filesystem::exists(world_forge_factions_path)) {
         if (const auto factions = WorldForgeFactionsAsset::load(world_forge_factions_path); factions) {
             for (const auto& entity : factions.value().entities) world_forge_faction_ids.insert(entity.id);
         }
     }
+    const auto world_forge_archetypes_valid = WorldForgeArchetypesAsset::validate_file(
+        default_world_forge_archetypes_path(request.project), world_forge_faction_ids);
+    if (!world_forge_archetypes_valid) asset_errors.push_back(world_forge_archetypes_valid.error());
     const auto world_forge_relationships_valid = WorldForgeRelationshipsAsset::validate_file(
         default_world_forge_relationships_path(request.project), world_forge_faction_ids);
     if (!world_forge_relationships_valid) asset_errors.push_back(world_forge_relationships_valid.error());
@@ -198,6 +207,9 @@ CommandResponse execute_command(const CommandRequest& request) {
             for (const auto& region : map.value().regions) world_forge_region_ids.insert(region.id);
         }
     }
+    const auto world_forge_resources_valid = WorldForgeResourcesAsset::validate_file(
+        default_world_forge_resources_path(request.project), world_forge_region_ids);
+    if (!world_forge_resources_valid) asset_errors.push_back(world_forge_resources_valid.error());
     const auto world_forge_quests_valid =
         WorldForgeQuestsAsset::validate_file(default_world_forge_quests_path(request.project), world_forge_region_ids);
     if (!world_forge_quests_valid) asset_errors.push_back(world_forge_quests_valid.error());

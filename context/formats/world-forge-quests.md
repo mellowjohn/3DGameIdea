@@ -20,7 +20,8 @@ Sample: `samples/open-world-rpg/assets/world-forge/quests.worldforge.json`.
   - Per **fork**: `forks[].dialogueId`
 - **Dialogue trees (TICKET-0052)** may declare `parentQuestId` pointing at this quest when they are authored as children of a stage. Dialogue does not own objectives/rewards.
 
-Empty `dialogueId` / hook strings mean “no dialogue for that stage yet” (allowed). Soft string refs until dialogue assets validate against known IDs.
+- Soft string refs until dialogue assets validate against known IDs.
+- Optional `acts: ["act0"…]` for Act lens filtering ([DEC-0036](../decisions/index.md#dec-0036-world-forge-act-lens); [`world-forge-acts.md`](world-forge-acts.md)). Empty = campaign-wide.
 
 ## Shape
 

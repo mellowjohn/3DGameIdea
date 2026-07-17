@@ -1,5 +1,6 @@
 #include "engine/scripting/lua_runtime.h"
 
+#include "engine/animation/animator_runtime.h"
 #include "engine/assets/script_bindings_asset.h"
 #include "engine/diagnostics/logger.h"
 #include "engine/quest/quest_runtime.h"
@@ -34,6 +35,7 @@ struct LuaHost {
     UiCanvasStack* ui_stack = nullptr;
     QuestRuntime* quest = nullptr;
     StandingRuntime* standing = nullptr;
+    AnimatorRuntime* animator = nullptr;
 };
 
 void sync_quest_hud(LuaHost* host) {
@@ -451,11 +453,66 @@ int engine_standing_lock_in(lua_State* state) {
     return 1;
 }
 
+int engine_animator_set_float(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->animator) return luaL_error(state, "animator runtime is not available");
+    const char* entity_id = luaL_checkstring(state, 1);
+    const char* name = luaL_checkstring(state, 2);
+    const float value = static_cast<float>(luaL_checknumber(state, 3));
+    const auto result = host->animator->set_float(entity_id, name, value);
+    if (!result) return luaL_error(state, "%s", result.error().message.c_str());
+    return 0;
+}
+
+int engine_animator_set_bool(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->animator) return luaL_error(state, "animator runtime is not available");
+    const char* entity_id = luaL_checkstring(state, 1);
+    const char* name = luaL_checkstring(state, 2);
+    const bool value = lua_toboolean(state, 3) != 0;
+    const auto result = host->animator->set_bool(entity_id, name, value);
+    if (!result) return luaL_error(state, "%s", result.error().message.c_str());
+    return 0;
+}
+
+int engine_animator_set_trigger(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->animator) return luaL_error(state, "animator runtime is not available");
+    const char* entity_id = luaL_checkstring(state, 1);
+    const char* name = luaL_checkstring(state, 2);
+    const auto result = host->animator->set_trigger(entity_id, name);
+    if (!result) return luaL_error(state, "%s", result.error().message.c_str());
+    return 0;
+}
+
+int engine_animator_crossfade(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->animator) return luaL_error(state, "animator runtime is not available");
+    const char* entity_id = luaL_checkstring(state, 1);
+    const char* state_name = luaL_checkstring(state, 2);
+    const float duration = lua_gettop(state) >= 3 ? static_cast<float>(luaL_optnumber(state, 3, 0.15)) : 0.15f;
+    const char* layer = lua_gettop(state) >= 4 && lua_isstring(state, 4) ? lua_tostring(state, 4) : "";
+    const auto result = host->animator->crossfade(entity_id, state_name, duration, layer ? layer : "");
+    if (!result) return luaL_error(state, "%s", result.error().message.c_str());
+    return 0;
+}
+
+int engine_animator_get_state(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->animator) return luaL_error(state, "animator runtime is not available");
+    const char* entity_id = luaL_checkstring(state, 1);
+    const char* layer = lua_gettop(state) >= 2 && lua_isstring(state, 2) ? lua_tostring(state, 2) : "";
+    const auto result = host->animator->current_state(entity_id, layer ? layer : "");
+    if (!result) return luaL_error(state, "%s", result.error().message.c_str());
+    lua_pushstring(state, result.value().c_str());
+    return 1;
+}
+
 void register_engine_api(lua_State* state, LuaHost* host) {
     lua_pushlightuserdata(state, host);
     lua_setfield(state, LUA_REGISTRYINDEX, kHostRegistryKey);
 
-    lua_createtable(state, 0, 28);
+    lua_createtable(state, 0, 34);
     lua_pushcfunction(state, engine_log);
     lua_setfield(state, -2, "log");
     lua_pushcfunction(state, engine_json_decode);
@@ -512,6 +569,16 @@ void register_engine_api(lua_State* state, LuaHost* host) {
     lua_setfield(state, -2, "standing_meets");
     lua_pushcfunction(state, engine_standing_lock_in);
     lua_setfield(state, -2, "standing_lock_in");
+    lua_pushcfunction(state, engine_animator_set_float);
+    lua_setfield(state, -2, "animator_set_float");
+    lua_pushcfunction(state, engine_animator_set_bool);
+    lua_setfield(state, -2, "animator_set_bool");
+    lua_pushcfunction(state, engine_animator_set_trigger);
+    lua_setfield(state, -2, "animator_set_trigger");
+    lua_pushcfunction(state, engine_animator_crossfade);
+    lua_setfield(state, -2, "animator_crossfade");
+    lua_pushcfunction(state, engine_animator_get_state);
+    lua_setfield(state, -2, "animator_get_state");
     lua_setglobal(state, "engine");
 }
 
@@ -666,6 +733,10 @@ void LuaRuntime::set_standing_runtime(StandingRuntime* standing) noexcept {
     if (impl_) impl_->host.standing = standing;
 }
 
+void LuaRuntime::set_animator_runtime(AnimatorRuntime* animator) noexcept {
+    if (impl_) impl_->host.animator = animator;
+}
+
 void LuaRuntime::dispatch_interaction(const InteractionEvent& event) {
     const auto binding = interaction_bindings_.find(event.interaction_id);
     if (binding == interaction_bindings_.end()) return;
@@ -705,6 +776,30 @@ void LuaRuntime::dispatch_ui_button(const std::string& bind_id, const std::strin
         return;
     }
     if (const auto result = call_handler("on_ui_button", payload_json); !result)
+        recent_errors_.push_back(result.error());
+}
+
+void LuaRuntime::dispatch_animation_event(const AnimatorFiredEvent& event) {
+    if (!impl_ || !impl_->state) return;
+    lua_getglobal(impl_->state, "on_animation_event");
+    if (!lua_isfunction(impl_->state, -1)) {
+        lua_pop(impl_->state, 1);
+        return; // optional global — no spam when gameplay has not defined a handler
+    }
+    lua_pop(impl_->state, 1);
+
+    nlohmann::json payload;
+    payload["entityId"] = event.entity_id;
+    payload["name"] = event.name;
+    payload["state"] = event.state;
+    payload["layer"] = event.layer;
+    payload["time"] = event.time;
+    try {
+        payload["payload"] = nlohmann::json::parse(event.payload_json.empty() ? "{}" : event.payload_json);
+    } catch (...) {
+        payload["payload"] = nlohmann::json::object();
+    }
+    if (const auto result = call_handler("on_animation_event", payload.dump()); !result)
         recent_errors_.push_back(result.error());
 }
 

@@ -67,7 +67,12 @@ Sample: `samples/open-world-rpg/assets/world-forge/map.worldforge.json`.
 }
 ```
 
-Optional `anchor: { "x", "y", "z" }` on regions/POIs when a world-space hint exists; omit until Scene placement exists.
+Optional `anchor: { "x", "y", "z" }` on regions/POIs when a world-space hint exists. The World Forge Map **Canvas** (TICKET-0187) authors these anchors on an XZ top-down overlay; Scene/Sculpt still own mesh placement.
+
+## Editor Map Canvas
+
+- **List** — existing Regions / POIs / Links inspectors (anchors editable as xyz).
+- **Canvas** — pan/zoom XZ view (DEC-0027 camera), place/drag markers, draw links between anchored endpoints, optional greyscale terrain underlay (TICKET-0188).
 
 ## Enums
 
@@ -96,12 +101,14 @@ Project `validate` loads the default path when present and cross-checks faction 
 
 - Do **not** invent city/town names or precise map titles still marked open in story.
 - No mesh placement (Scene/MCP).
-- No mini-map rendering (EPIC-0007).
-- No World Forge editor panels in this ticket.
+- No player HUD mini-map rendering (EPIC-0007) — editor Map Canvas is authoring-only.
 - MCP mutate: use `engine_world_forge_apply` (TICKET-0014).
 
 ## Related
 
+- Act lens: [`world-forge-acts.md`](world-forge-acts.md) (DEC-0036 / TICKET-0189)
+- Scene marker overlay: TICKET-0190 (editor-only poles in Scene/Sculpt)
+- Editor canvas: TICKET-0187 / TICKET-0188
 - [`../features/world-forge-scope.md`](../features/world-forge-scope.md)
 - [`world-forge-factions.md`](world-forge-factions.md)
 - Header: `include/engine/assets/world_forge_map_asset.h`

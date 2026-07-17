@@ -1,18 +1,26 @@
 #include "engine/ui/world_forge_editor.h"
 
+#include "engine/assets/world_forge_acts.h"
 #include "engine/automation/world_forge_commands.h"
 #include "engine/core/error.h"
 #include "engine/core/id_slug.h"
 #include "engine/ui/world_forge_graph_camera.h"
+#include "engine/world/terrain.h"
+#include "engine/world/terrain_edits.h"
 
 #include <imgui.h>
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
+#include <filesystem>
+#include <functional>
 #include <initializer_list>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -176,10 +184,126 @@ void draw_clipped_text_lines(ImDrawList* draw, const ImVec2& pad_min, const ImVe
 
 // --- ImGui field widgets bound directly to model strings --------------------
 
+void draw_form_section(const char* title) {
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.86f, 0.98f, 1.0f));
+    ImGui::TextUnformatted(title);
+    ImGui::PopStyleColor();
+    ImGui::Spacing();
+}
+
+void draw_form_label(const char* title, const char* hint = nullptr) {
+    ImGui::Spacing();
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.93f, 0.94f, 0.96f, 1.0f));
+    ImGui::TextUnformatted(title);
+    ImGui::PopStyleColor();
+    if (hint && hint[0] != '\0') {
+        ImGui::SameLine();
+        ImGui::TextDisabled("— %s", hint);
+    }
+}
+
+std::string form_widget_id(const char* label) {
+    if (label == nullptr || label[0] == '\0') return "##wf_field";
+    if (label[0] == '#' && label[1] == '#') return label;
+    return std::string("##wf_") + label;
+}
+
+bool label_is_hidden_id(const char* label) {
+    return label != nullptr && label[0] == '#' && label[1] == '#';
+}
+
+void draw_markdown_inline_preview_line(const std::string& raw) {
+    std::string text = raw;
+    // Lightweight markdown cleanup for Preview (not a full parser).
+    auto strip_wrap = [](std::string& s, const char* token) {
+        const std::size_t n = std::strlen(token);
+        for (;;) {
+            const auto a = s.find(token);
+            if (a == std::string::npos) break;
+            const auto b = s.find(token, a + n);
+            if (b == std::string::npos) break;
+            s.erase(b, n);
+            s.erase(a, n);
+        }
+    };
+    strip_wrap(text, "**");
+    strip_wrap(text, "__");
+    strip_wrap(text, "*");
+    strip_wrap(text, "_");
+    strip_wrap(text, "`");
+    // [label](url) -> label
+    for (;;) {
+        const auto open = text.find('[');
+        if (open == std::string::npos) break;
+        const auto mid = text.find("](", open);
+        if (mid == std::string::npos) break;
+        const auto close = text.find(')', mid + 2);
+        if (close == std::string::npos) break;
+        const std::string label = text.substr(open + 1, mid - open - 1);
+        text.replace(open, close - open + 1, label);
+    }
+    ImGui::TextWrapped("%s", text.c_str());
+}
+
+void draw_markdown_preview(const std::string& text, float height) {
+    ImGui::BeginChild("##WfMarkdownPreview", ImVec2(-1.0f, height), true);
+    if (text.empty()) {
+        ImGui::TextDisabled("Nothing to preview yet.");
+    } else {
+        std::size_t start = 0;
+        while (start <= text.size()) {
+            const auto end = text.find('\n', start);
+            const std::string line =
+                text.substr(start, end == std::string::npos ? std::string::npos : end - start);
+            if (line.rfind("### ", 0) == 0) {
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.85f, 0.9f, 1.0f, 1.0f), "%s", line.c_str() + 4);
+            } else if (line.rfind("## ", 0) == 0) {
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.85f, 0.9f, 1.0f, 1.0f), "%s", line.c_str() + 3);
+            } else if (line.rfind("# ", 0) == 0) {
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.9f, 0.93f, 1.0f, 1.0f), "%s", line.c_str() + 2);
+            } else if (line.rfind("- ", 0) == 0 || line.rfind("* ", 0) == 0) {
+                ImGui::Bullet();
+                ImGui::SameLine();
+                draw_markdown_inline_preview_line(line.substr(2));
+            } else if (line.empty()) {
+                ImGui::Spacing();
+            } else {
+                draw_markdown_inline_preview_line(line);
+            }
+            if (end == std::string::npos) break;
+            start = end + 1;
+        }
+    }
+    ImGui::EndChild();
+}
+
+bool insert_markdown_snippet(std::string& value, const char* snippet) {
+    if (snippet == nullptr || snippet[0] == '\0') return false;
+    if (!value.empty() && value.back() != '\n' && value.back() != ' ') value.push_back(' ');
+    value += snippet;
+    return true;
+}
+
 bool draw_input_text(const char* label, std::string& value, std::size_t capacity = 256) {
+    const bool hidden = label_is_hidden_id(label);
+    if (!hidden) {
+        // Strip trailing ##suffix used only for uniqueness in older call sites.
+        std::string title = label;
+        const auto hash = title.find("##");
+        if (hash != std::string::npos) title = title.substr(0, hash);
+        if (!title.empty()) draw_form_label(title.c_str());
+        ImGui::SetNextItemWidth(-1.0f);
+    }
+    const std::string widget_id = form_widget_id(label);
     std::vector<char> buffer((std::max)(capacity, value.size() + 1), '\0');
     std::snprintf(buffer.data(), buffer.size(), "%s", value.c_str());
-    if (ImGui::InputText(label, buffer.data(), buffer.size())) {
+    if (ImGui::InputText(widget_id.c_str(), buffer.data(), buffer.size())) {
         value = buffer.data();
         return true;
     }
@@ -198,10 +322,48 @@ bool draw_input_text_multiline(const char* label, std::string& value, std::size_
 }
 
 /// Labeled multiline editor for long World Forge prose (summary, dialogue line, notes, …).
-bool draw_text_area(const char* label, std::string& value, float height = 96.0f, std::size_t capacity = 8192) {
-    ImGui::TextUnformatted(label);
-    const std::string widget_id = std::string("##ta_") + label;
-    return draw_input_text_multiline(widget_id.c_str(), value, capacity, ImVec2(-1.0f, height));
+/// Supports lightweight Markdown with Edit / Preview (stored as plain text in JSON).
+bool draw_text_area(const char* label, std::string& value, float height = 96.0f, std::size_t capacity = 8192,
+    bool markdown = true) {
+    std::string title = label ? label : "Notes";
+    const auto hash = title.find("##");
+    if (hash != std::string::npos) title = title.substr(0, hash);
+    draw_form_label(title.c_str(), markdown ? "Markdown supported" : nullptr);
+
+    ImGui::PushID(label ? label : "prose");
+    ImGuiStorage* storage = ImGui::GetStateStorage();
+    const ImGuiID mode_id = ImGui::GetID("mode");
+    int mode = storage->GetInt(mode_id, 0);
+    if (ImGui::RadioButton("Edit", mode == 0)) {
+        mode = 0;
+        storage->SetInt(mode_id, 0);
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Preview", mode == 1)) {
+        mode = 1;
+        storage->SetInt(mode_id, 1);
+    }
+
+    bool changed = false;
+    if (mode == 0) {
+        if (markdown) {
+            if (ImGui::SmallButton("Bold")) changed = insert_markdown_snippet(value, "**bold**") || changed;
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Italic")) changed = insert_markdown_snippet(value, "*italic*") || changed;
+            ImGui::SameLine();
+            if (ImGui::SmallButton("List")) changed = insert_markdown_snippet(value, "\n- ") || changed;
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Heading")) changed = insert_markdown_snippet(value, "\n## ") || changed;
+            ImGui::SameLine();
+            ImGui::TextDisabled("Inserts at end of text");
+        }
+        const std::string widget_id = form_widget_id(label);
+        if (draw_input_text_multiline(widget_id.c_str(), value, capacity, ImVec2(-1.0f, height))) changed = true;
+    } else {
+        draw_markdown_preview(value, height);
+    }
+    ImGui::PopID();
+    return changed;
 }
 
 bool draw_csv_field(const char* label, std::vector<std::string>& values, std::size_t capacity = 512) {
@@ -213,9 +375,83 @@ bool draw_csv_field(const char* label, std::vector<std::string>& values, std::si
     return false;
 }
 
+constexpr const char* kCompanionTag = "companion";
+
+bool has_tag(const std::vector<std::string>& tags, const char* tag) {
+    for (const auto& value : tags) {
+        if (value == tag) return true;
+    }
+    return false;
+}
+
+bool set_tag(std::vector<std::string>& tags, const char* tag, bool enabled) {
+    const auto it = std::find(tags.begin(), tags.end(), tag);
+    if (enabled) {
+        if (it != tags.end()) return false;
+        tags.push_back(tag);
+        return true;
+    }
+    if (it == tags.end()) return false;
+    tags.erase(it);
+    return true;
+}
+
+bool draw_acts_field(std::vector<std::string>& acts) {
+    bool changed = false;
+    draw_form_label("Campaign acts", "empty means all acts");
+    for (int i = 0; i < k_world_forge_act_count; ++i) {
+        const char* id = k_world_forge_act_ids[i];
+        bool on = std::find(acts.begin(), acts.end(), id) != acts.end();
+        if (i > 0) ImGui::SameLine();
+        char label[48];
+        std::snprintf(label, sizeof(label), "%s##WorldForgeActField%d", k_world_forge_act_labels[i], i);
+        if (ImGui::Checkbox(label, &on)) {
+            if (on) {
+                if (std::find(acts.begin(), acts.end(), id) == acts.end()) acts.push_back(id);
+            } else {
+                acts.erase(std::remove(acts.begin(), acts.end(), id), acts.end());
+            }
+            changed = true;
+        }
+    }
+    return changed;
+}
+
+void draw_act_filter_combo(WorldForgeEditorSession& session) {
+    const char* preview = session.act_filter.empty() ? "All acts" : world_forge_act_label(session.act_filter);
+    ImGui::SetNextItemWidth(120.0f);
+    if (ImGui::BeginCombo("##WorldForgeActFilter", preview)) {
+        if (ImGui::Selectable("All acts", session.act_filter.empty())) session.act_filter.clear();
+        for (int i = 0; i < k_world_forge_act_count; ++i) {
+            const bool selected = session.act_filter == k_world_forge_act_ids[i];
+            if (ImGui::Selectable(k_world_forge_act_labels[i], selected))
+                session.act_filter = k_world_forge_act_ids[i];
+        }
+        ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Filter Map / Quests / Dialogues / Persons / Relationships by campaign act");
+}
+
+bool entity_matches_act_lens(const WorldForgeEditorSession& session, const std::vector<std::string>& acts,
+    const std::vector<std::string>& tags) {
+    return matches_world_forge_act_filter(acts, tags, session.act_filter);
+}
+
+bool is_companion_person(const WorldForgeRelationshipNode& node) {
+    return node.kind == WorldForgeRelationshipNodeKind::Person && has_tag(node.tags, kCompanionTag);
+}
+
 bool draw_double_field(const char* label, double& value) {
+    const bool hidden = label_is_hidden_id(label);
+    std::string title = label ? label : "Value";
+    const auto hash = title.find("##");
+    if (hash != std::string::npos) title = title.substr(0, hash);
+    if (!hidden && !title.empty()) draw_form_label(title.c_str());
+    if (!hidden) ImGui::SetNextItemWidth(-1.0f);
+    const std::string widget_id = form_widget_id(label);
     float as_float = static_cast<float>(value);
-    ImGui::InputFloat(label, &as_float, 0.0f, 0.0f, "%.3f");
+    ImGui::InputFloat(widget_id.c_str(), &as_float, 0.0f, 0.0f, "%.3f");
     if (ImGui::IsItemDeactivatedAfterEdit()) {
         value = static_cast<double>(as_float);
         return true;
@@ -225,17 +461,25 @@ bool draw_double_field(const char* label, double& value) {
 
 bool draw_open_questions_field(std::vector<std::string>& values) {
     std::string joined = join_lines(values);
-    if (draw_text_area("openQuestions (one per line)", joined, 100.0f, 4096)) {
+    if (draw_text_area("Open questions", joined, 100.0f, 4096, false)) {
         values = split_lines(joined);
         return true;
     }
+    ImGui::TextDisabled("Enter one question per line.");
     return false;
 }
 
 template <typename EnumT>
 bool draw_enum_combo(const char* label, EnumT& value, std::initializer_list<EnumT> options) {
     bool changed = false;
-    if (ImGui::BeginCombo(label, to_string(value))) {
+    const bool hidden = label_is_hidden_id(label);
+    std::string title = label ? label : "Value";
+    const auto hash = title.find("##");
+    if (hash != std::string::npos) title = title.substr(0, hash);
+    if (!hidden && !title.empty()) draw_form_label(title.c_str());
+    if (!hidden) ImGui::SetNextItemWidth(-1.0f);
+    const std::string widget_id = form_widget_id(label);
+    if (ImGui::BeginCombo(widget_id.c_str(), to_string(value))) {
         for (const EnumT option : options) {
             const bool selected = option == value;
             if (ImGui::Selectable(to_string(option), selected)) {
@@ -253,8 +497,15 @@ bool draw_enum_combo(const char* label, EnumT& value, std::initializer_list<Enum
 
 bool draw_political_role_combo(const char* label, std::optional<WorldForgePoliticalRole>& value) {
     bool changed = false;
+    const bool hidden = label_is_hidden_id(label);
+    std::string title = label ? label : "Political role";
+    const auto hash = title.find("##");
+    if (hash != std::string::npos) title = title.substr(0, hash);
+    if (!hidden && !title.empty()) draw_form_label(title.c_str());
+    if (!hidden) ImGui::SetNextItemWidth(-1.0f);
+    const std::string widget_id = form_widget_id(label);
     const char* current = value ? to_string(*value) : "(none)";
-    if (ImGui::BeginCombo(label, current)) {
+    if (ImGui::BeginCombo(widget_id.c_str(), current)) {
         if (ImGui::Selectable("(none)", !value)) {
             if (value) {
                 value.reset();
@@ -281,6 +532,14 @@ bool draw_political_role_combo(const char* label, std::optional<WorldForgePoliti
 bool draw_id_combo(const char* label, std::string& value, const std::vector<std::string>& options,
     bool allow_empty = true, const char* empty_label = "(none)") {
     bool changed = false;
+    const bool hidden = label_is_hidden_id(label);
+    std::string title = label ? label : "Reference";
+    const auto hash = title.find("##");
+    if (hash != std::string::npos) title = title.substr(0, hash);
+    if (!hidden && !title.empty()) draw_form_label(title.c_str());
+    if (!hidden) ImGui::SetNextItemWidth(-1.0f);
+    const std::string widget_id = form_widget_id(label);
+
     std::vector<std::string> items;
     items.reserve(options.size() + 2);
     if (allow_empty) items.emplace_back();
@@ -293,7 +552,7 @@ bool draw_id_combo(const char* label, std::string& value, const std::vector<std:
     if (!value.empty() && !has_current) items.push_back(value);
 
     const char* preview = value.empty() ? empty_label : value.c_str();
-    if (ImGui::BeginCombo(label, preview)) {
+    if (ImGui::BeginCombo(widget_id.c_str(), preview)) {
         for (const auto& opt : items) {
             const bool is_empty = opt.empty();
             const char* text = is_empty ? empty_label : opt.c_str();
@@ -312,6 +571,13 @@ bool draw_id_combo(const char* label, std::string& value, const std::vector<std:
 }
 
 std::vector<std::string> collect_faction_ids(const WorldForgeFactionsAsset& asset) {
+    std::vector<std::string> out;
+    out.reserve(asset.entities.size());
+    for (const auto& e : asset.entities) out.push_back(e.id);
+    return out;
+}
+
+std::vector<std::string> collect_pantheon_ids(const WorldForgePantheonAsset& asset) {
     std::vector<std::string> out;
     out.reserve(asset.entities.size());
     for (const auto& e : asset.entities) out.push_back(e.id);
@@ -394,6 +660,129 @@ const WorldForgeFactionEntity* find_faction(const WorldForgeFactionsAsset& asset
         if (entity.id == id) return &entity;
     }
     return nullptr;
+}
+
+WorldForgePantheonEntity* find_pantheon(WorldForgePantheonAsset& asset, const std::string& id) {
+    for (auto& entity : asset.entities) {
+        if (entity.id == id) return &entity;
+    }
+    return nullptr;
+}
+
+const WorldForgePantheonEntity* find_pantheon(const WorldForgePantheonAsset& asset, const std::string& id) {
+    for (const auto& entity : asset.entities) {
+        if (entity.id == id) return &entity;
+    }
+    return nullptr;
+}
+
+WorldForgeArchetypeEntity* find_archetype(WorldForgeArchetypesAsset& asset, const std::string& id) {
+    return asset.find_entity(id);
+}
+
+const WorldForgeArchetypeEntity* find_archetype(const WorldForgeArchetypesAsset& asset, const std::string& id) {
+    return asset.find_entity(id);
+}
+
+WorldForgeResourceEntity* find_resource(WorldForgeResourcesAsset& asset, const std::string& id) {
+    return asset.find_entity(id);
+}
+
+const WorldForgeResourceEntity* find_resource(const WorldForgeResourcesAsset& asset, const std::string& id) {
+    return asset.find_entity(id);
+}
+
+ImU32 relationship_node_kind_color(WorldForgeRelationshipNodeKind kind) {
+    switch (kind) {
+    case WorldForgeRelationshipNodeKind::Person: return IM_COL32(70, 110, 160, 255);
+    case WorldForgeRelationshipNodeKind::Deity: return IM_COL32(170, 130, 50, 255);
+    case WorldForgeRelationshipNodeKind::Artifact: return IM_COL32(160, 70, 70, 255);
+    case WorldForgeRelationshipNodeKind::Organization: return IM_COL32(100, 110, 150, 255);
+    }
+    return IM_COL32(55, 95, 75, 255);
+}
+
+ImU32 faction_node_color() { return IM_COL32(55, 75, 105, 255); }
+ImU32 proxy_node_color() { return IM_COL32(90, 90, 120, 255); }
+ImU32 selected_node_color() { return IM_COL32(210, 150, 60, 255); }
+ImU32 link_from_node_color() { return IM_COL32(90, 150, 210, 255); }
+
+ImU32 pantheon_kind_color(WorldForgePantheonKind kind) {
+    switch (kind) {
+    case WorldForgePantheonKind::Deity: return IM_COL32(170, 130, 50, 255);
+    case WorldForgePantheonKind::Aspect: return IM_COL32(150, 110, 170, 255);
+    case WorldForgePantheonKind::Force: return IM_COL32(120, 90, 70, 255);
+    }
+    return IM_COL32(170, 130, 50, 255);
+}
+
+ImU32 resource_kind_color(WorldForgeResourceKind kind) {
+    switch (kind) {
+    case WorldForgeResourceKind::Mineral: return IM_COL32(130, 70, 150, 255);
+    case WorldForgeResourceKind::Herb: return IM_COL32(70, 140, 90, 255);
+    case WorldForgeResourceKind::Food: return IM_COL32(180, 140, 60, 255);
+    case WorldForgeResourceKind::Craft: return IM_COL32(60, 130, 150, 255);
+    case WorldForgeResourceKind::Quest: return IM_COL32(190, 120, 50, 255);
+    case WorldForgeResourceKind::Other: return IM_COL32(110, 115, 125, 255);
+    }
+    return IM_COL32(110, 115, 125, 255);
+}
+
+ImU32 hierarchy_depth_color(int depth, bool proxy) {
+    if (proxy) return IM_COL32(150, 155, 165, 255);
+    switch ((std::max)(depth, 0) % 5) {
+    case 0: return IM_COL32(235, 170, 180, 255); // root — pink
+    case 1: return IM_COL32(230, 205, 115, 255); // yellow
+    case 2: return IM_COL32(230, 175, 105, 255); // orange
+    case 3: return IM_COL32(155, 195, 135, 255); // green
+    default: return IM_COL32(135, 175, 215, 255); // blue
+    }
+}
+
+void draw_graph_legend_row(ImDrawList* draw, float x, float& y, ImU32 swatch, const char* label, bool circle = true) {
+    if (circle) {
+        draw->AddCircleFilled(ImVec2(x + 16.0f, y + 6.0f), 6.0f, swatch);
+    } else {
+        draw->AddRectFilled(ImVec2(x + 10.0f, y), ImVec2(x + 22.0f, y + 12.0f), swatch, 2.0f);
+    }
+    draw->AddText(ImVec2(x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), label);
+    y += 18.0f;
+}
+
+void draw_relationship_graph_legend(ImDrawList* draw, const ImVec2& canvas_pos, const ImVec2& canvas_size) {
+    const float box_w = 148.0f;
+    const float box_h = 132.0f;
+    const ImVec2 origin{canvas_pos.x + 10.0f, canvas_pos.y + canvas_size.y - box_h - 10.0f};
+    draw->AddRectFilled(origin, ImVec2(origin.x + box_w, origin.y + box_h), IM_COL32(12, 14, 18, 200), 4.0f);
+    draw->AddRect(origin, ImVec2(origin.x + box_w, origin.y + box_h), IM_COL32(80, 85, 95, 220), 4.0f);
+    float y = origin.y + 8.0f;
+    draw_graph_legend_row(draw, origin.x, y, relationship_node_kind_color(WorldForgeRelationshipNodeKind::Person),
+        "Person");
+    draw_graph_legend_row(draw, origin.x, y, relationship_node_kind_color(WorldForgeRelationshipNodeKind::Deity),
+        "Deity");
+    draw_graph_legend_row(draw, origin.x, y, relationship_node_kind_color(WorldForgeRelationshipNodeKind::Artifact),
+        "Artifact");
+    draw_graph_legend_row(draw, origin.x, y,
+        relationship_node_kind_color(WorldForgeRelationshipNodeKind::Organization), "Organization");
+    draw_graph_legend_row(draw, origin.x, y, faction_node_color(), "Faction");
+    draw_graph_legend_row(draw, origin.x, y, selected_node_color(), "Selected");
+}
+
+void draw_hierarchy_graph_legend(ImDrawList* draw, const ImVec2& canvas_pos, const ImVec2& canvas_size,
+    WorldForgeHierarchyPage /*page*/) {
+    const float box_w = 148.0f;
+    const float box_h = 132.0f;
+    const ImVec2 origin{canvas_pos.x + 10.0f, canvas_pos.y + canvas_size.y - box_h - 10.0f};
+    draw->AddRectFilled(origin, ImVec2(origin.x + box_w, origin.y + box_h), IM_COL32(12, 14, 18, 200), 4.0f);
+    draw->AddRect(origin, ImVec2(origin.x + box_w, origin.y + box_h), IM_COL32(80, 85, 95, 220), 4.0f);
+    float y = origin.y + 8.0f;
+    draw_graph_legend_row(draw, origin.x, y, hierarchy_depth_color(0, false), "Level 0", false);
+    draw_graph_legend_row(draw, origin.x, y, hierarchy_depth_color(1, false), "Level 1", false);
+    draw_graph_legend_row(draw, origin.x, y, hierarchy_depth_color(2, false), "Level 2", false);
+    draw_graph_legend_row(draw, origin.x, y, hierarchy_depth_color(3, false), "Level 3", false);
+    draw_graph_legend_row(draw, origin.x, y, hierarchy_depth_color(4, false), "Level 4+", false);
+    draw_graph_legend_row(draw, origin.x, y, hierarchy_depth_color(0, true), "Proxy", false);
+    draw_graph_legend_row(draw, origin.x, y, selected_node_color(), "Selected", false);
 }
 
 WorldForgeRelationshipNode* find_node(WorldForgeRelationshipsAsset& asset, const std::string& id) {
@@ -591,6 +980,115 @@ bool add_faction(WorldForgeEditorSession& session, std::string id, std::string d
     session.dirty = true;
     session.status = "Added faction " + id;
     return true;
+}
+
+std::string unique_pantheon_id(const WorldForgePantheonAsset& asset, const std::string& preferred) {
+    return unique_slugify_id(
+        preferred, [&](const std::string& candidate) { return find_pantheon(asset, candidate) != nullptr; },
+        "deity");
+}
+
+bool add_pantheon_entity(WorldForgeEditorSession& session, std::string id, std::string display_name,
+    WorldForgePantheonKind kind) {
+    id = sanitize_id_token(std::move(id));
+    if (!is_valid_id_token(id) || find_pantheon(session.pantheon, id)) return false;
+    WorldForgePantheonEntity entity;
+    entity.id = id;
+    entity.display_name = std::move(display_name);
+    entity.kind = kind;
+    entity.canon_status = WorldForgePantheonCanonStatus::Draft;
+    session.pantheon.entities.push_back(std::move(entity));
+    session.selected_id = id;
+    session.dirty = true;
+    session.status = "Added pantheon entity " + id;
+    return true;
+}
+
+std::string unique_archetype_id(const WorldForgeArchetypesAsset& asset, const std::string& preferred) {
+    return unique_slugify_id(
+        preferred, [&](const std::string& candidate) { return find_archetype(asset, candidate) != nullptr; },
+        "archetype");
+}
+
+bool add_archetype(WorldForgeEditorSession& session, std::string id, std::string display_name,
+    WorldForgeArchetypeKind kind) {
+    id = sanitize_id_token(std::move(id));
+    if (!is_valid_id_token(id) || find_archetype(session.archetypes, id)) return false;
+    WorldForgeArchetypeEntity entity;
+    entity.id = id;
+    entity.display_name = std::move(display_name);
+    entity.kind = kind;
+    session.archetypes.entities.push_back(std::move(entity));
+    session.selected_id = id;
+    session.list_kind = ListKind::Archetypes;
+    session.dirty = true;
+    session.status = "Added archetype " + id;
+    return true;
+}
+
+bool remove_archetype(WorldForgeEditorSession& session, const std::string& id) {
+    auto& entities = session.archetypes.entities;
+    const auto it =
+        std::find_if(entities.begin(), entities.end(), [&](const auto& entity) { return entity.id == id; });
+    if (it == entities.end()) return false;
+    entities.erase(it);
+    if (session.selected_id == id) session.selected_id.clear();
+    session.dirty = true;
+    session.status = "Removed archetype " + id;
+    return true;
+}
+
+std::string unique_resource_id(const WorldForgeResourcesAsset& asset, const std::string& preferred) {
+    return unique_slugify_id(
+        preferred, [&](const std::string& candidate) { return find_resource(asset, candidate) != nullptr; },
+        "resource");
+}
+
+bool add_resource(WorldForgeEditorSession& session, std::string id, std::string display_name,
+    WorldForgeResourceKind kind) {
+    id = sanitize_id_token(std::move(id));
+    if (!is_valid_id_token(id) || find_resource(session.resources, id)) return false;
+    WorldForgeResourceEntity entity;
+    entity.id = id;
+    entity.display_name = std::move(display_name);
+    entity.kind = kind;
+    session.resources.entities.push_back(std::move(entity));
+    session.selected_id = id;
+    session.list_kind = ListKind::Resources;
+    session.dirty = true;
+    session.status = "Added resource " + id;
+    return true;
+}
+
+bool remove_resource(WorldForgeEditorSession& session, const std::string& id) {
+    auto& entities = session.resources.entities;
+    const auto it =
+        std::find_if(entities.begin(), entities.end(), [&](const auto& entity) { return entity.id == id; });
+    if (it == entities.end()) return false;
+    entities.erase(it);
+    if (session.selected_id == id) session.selected_id.clear();
+    session.dirty = true;
+    session.status = "Removed resource " + id;
+    return true;
+}
+
+std::vector<std::string> collect_prefab_relative_paths(const std::filesystem::path& project_root) {
+    std::vector<std::string> out;
+    if (project_root.empty()) return out;
+    const auto assets_root = project_root / "assets";
+    if (!std::filesystem::exists(assets_root)) return out;
+    std::error_code ec;
+    for (std::filesystem::recursive_directory_iterator it(assets_root, ec), end; it != end && !ec; it.increment(ec)) {
+        if (!it->is_regular_file(ec)) continue;
+        const auto path = it->path();
+        const auto name = path.filename().string();
+        if (name.size() < 12 || name.compare(name.size() - 12, 12, ".prefab.json") != 0) continue;
+        const auto rel = std::filesystem::relative(path, project_root, ec);
+        if (ec) continue;
+        out.push_back(rel.generic_string());
+    }
+    std::sort(out.begin(), out.end());
+    return out;
 }
 
 std::string unique_region_id(const WorldForgeMapAsset& asset, const std::string& preferred) {
@@ -802,9 +1300,19 @@ void parse_graph_endpoint(const std::string& key, WorldForgeRelationshipEndpoint
 }
 
 float graph_node_radius(float zoom, const ImVec2& canvas_size) {
-    const float soft = 20.0f * std::sqrt((std::max)(zoom, 0.25f));
-    const float cap = (std::min)(canvas_size.x, canvas_size.y) * 0.065f;
-    return (std::clamp)(soft, 10.0f, (std::max)(12.0f, cap));
+    // Sized so typical display names sit comfortably; long labels render below the circle.
+    const float soft = 34.0f * std::sqrt((std::max)(zoom, 0.25f));
+    const float cap = (std::min)(canvas_size.x, canvas_size.y) * 0.11f;
+    return (std::clamp)(soft, 20.0f, (std::max)(24.0f, cap));
+}
+
+void draw_graph_node_label(ImDrawList* draw, const ImVec2& center, float node_radius, const std::string& label) {
+    if (label.empty()) return;
+    const ImVec2 text_size = ImGui::CalcTextSize(label.c_str());
+    const ImVec2 text_pos{center.x - text_size.x * 0.5f, center.y + node_radius + 5.0f};
+    draw->AddRectFilled(ImVec2(text_pos.x - 5.0f, text_pos.y - 2.0f),
+        ImVec2(text_pos.x + text_size.x + 5.0f, text_pos.y + text_size.y + 2.0f), IM_COL32(12, 14, 18, 190), 3.0f);
+    draw->AddText(text_pos, IM_COL32(245, 245, 245, 255), label.c_str());
 }
 
 void fit_graph_camera(WorldForgeEditorSession& session, const ImVec2& canvas_size,
@@ -878,113 +1386,187 @@ void clamp_node_world_to_canvas(WorldForgeEditorSession& session, const std::str
     it->second[1] = (std::clamp)(it->second[1], min_world_y, max_world_y);
 }
 
+void draw_create_name_row(const char* title, char* buffer, std::size_t buffer_size, const std::string& preview_id) {
+    draw_form_label(title, "required");
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputTextWithHint("##CreateDisplayName", "e.g. Luceran the Hollow", buffer, buffer_size);
+    if (!preview_id.empty()) ImGui::TextDisabled("Generated id: %s", preview_id.c_str());
+    else ImGui::TextDisabled("Generated id: (from display name)");
+}
+
 void draw_add_quest_controls(WorldForgeEditorSession& session) {
-    if (ImGui::TreeNode("Add quest##WorldForgeAddQuest")) {
-        ImGui::SetNextItemWidth(220.0f);
-        ImGui::InputTextWithHint("##CreateQuestName", "display name (required)", session.create_quest_name.data(),
-            session.create_quest_name.size());
+    if (ImGui::CollapsingHeader("Create quest##WorldForgeAddQuest", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
         const auto name = trim(session.create_quest_name.data());
         const auto preview_id = name.empty() ? std::string{} : unique_quest_id(session.quests, name);
-        if (!preview_id.empty()) ImGui::TextDisabled("id: %s", preview_id.c_str());
-        else ImGui::TextDisabled("id: (from display name)");
+        draw_create_name_row("Display name", session.create_quest_name.data(), session.create_quest_name.size(),
+            preview_id);
+        ImGui::Spacing();
         if (ImGui::Button("Create quest##WorldForgeCreateQuest")) {
             if (name.empty()) {
-                session.status = "Enter a display name for the quest";
+                session.status = "Enter a display name for the quest.";
             } else if (add_quest(session, preview_id, name)) {
                 session.create_quest_id.fill('\0');
                 session.create_quest_name.fill('\0');
             } else {
-                session.status = "Could not create quest (invalid or duplicate id)";
+                session.status = "Could not create quest (invalid or duplicate id).";
             }
         }
-        ImGui::TreePop();
+        ImGui::Unindent();
     }
 }
 
 void draw_add_faction_controls(WorldForgeEditorSession& session) {
-    if (ImGui::TreeNode("Add faction##WorldForgeAddFaction")) {
-        ImGui::SetNextItemWidth(220.0f);
-        ImGui::InputTextWithHint("##CreateFactionName", "display name (required)", session.create_faction_name.data(),
-            session.create_faction_name.size());
-        draw_enum_combo("kind##CreateFactionKind", session.create_faction_kind,
-            {WorldForgeFactionKind::Faction, WorldForgeFactionKind::Culture, WorldForgeFactionKind::Clan,
-                WorldForgeFactionKind::Warband});
+    if (ImGui::CollapsingHeader("Create faction##WorldForgeAddFaction", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
         const auto name = trim(session.create_faction_name.data());
         const auto preview_id = name.empty() ? std::string{} : unique_faction_id(session.factions, name);
-        if (!preview_id.empty()) ImGui::TextDisabled("id: %s", preview_id.c_str());
-        else ImGui::TextDisabled("id: (from display name)");
+        draw_create_name_row("Display name", session.create_faction_name.data(), session.create_faction_name.size(),
+            preview_id);
+        draw_enum_combo("Kind##CreateFactionKind", session.create_faction_kind,
+            {WorldForgeFactionKind::Faction, WorldForgeFactionKind::Culture, WorldForgeFactionKind::Clan,
+                WorldForgeFactionKind::Warband});
+        ImGui::Spacing();
         if (ImGui::Button("Create faction##WorldForgeCreateFaction")) {
             if (name.empty()) {
-                session.status = "Enter a display name for the faction";
+                session.status = "Enter a display name for the faction.";
             } else if (add_faction(session, preview_id, name, session.create_faction_kind)) {
                 session.create_faction_name.fill('\0');
             } else {
-                session.status = "Could not create faction (invalid or duplicate id)";
+                session.status = "Could not create faction (invalid or duplicate id).";
             }
         }
-        ImGui::TreePop();
+        ImGui::Unindent();
+    }
+}
+
+void draw_add_pantheon_controls(WorldForgeEditorSession& session) {
+    if (ImGui::CollapsingHeader("Create pantheon entry##WorldForgeAddPantheon", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        const auto name = trim(session.create_pantheon_name.data());
+        const auto preview_id = name.empty() ? std::string{} : unique_pantheon_id(session.pantheon, name);
+        draw_create_name_row("Display name", session.create_pantheon_name.data(), session.create_pantheon_name.size(),
+            preview_id);
+        draw_enum_combo("Kind##CreatePantheonKind", session.create_pantheon_kind,
+            {WorldForgePantheonKind::Deity, WorldForgePantheonKind::Aspect, WorldForgePantheonKind::Force});
+        ImGui::Spacing();
+        if (ImGui::Button("Create pantheon entry##WorldForgeCreatePantheon")) {
+            if (name.empty()) {
+                session.status = "Enter a display name for the pantheon entry.";
+            } else if (add_pantheon_entity(session, preview_id, name, session.create_pantheon_kind)) {
+                session.create_pantheon_name.fill('\0');
+            } else {
+                session.status = "Could not create pantheon entry (invalid or duplicate id).";
+            }
+        }
+        ImGui::Unindent();
+    }
+}
+
+void draw_add_archetype_controls(WorldForgeEditorSession& session) {
+    if (ImGui::CollapsingHeader("Create archetype##WorldForgeAddArchetype", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        const auto name = trim(session.create_archetype_name.data());
+        const auto preview_id = name.empty() ? std::string{} : unique_archetype_id(session.archetypes, name);
+        draw_create_name_row("Display name", session.create_archetype_name.data(), session.create_archetype_name.size(),
+            preview_id);
+        draw_enum_combo("Kind##CreateArchetypeKind", session.create_archetype_kind,
+            {WorldForgeArchetypeKind::Starting, WorldForgeArchetypeKind::Advanced});
+        ImGui::Spacing();
+        if (ImGui::Button("Create archetype##WorldForgeCreateArchetype")) {
+            if (name.empty()) {
+                session.status = "Enter a display name for the archetype.";
+            } else if (add_archetype(session, preview_id, name, session.create_archetype_kind)) {
+                session.create_archetype_name.fill('\0');
+            } else {
+                session.status = "Could not create archetype (invalid or duplicate id).";
+            }
+        }
+        ImGui::Unindent();
+    }
+}
+
+void draw_add_resource_controls(WorldForgeEditorSession& session) {
+    if (ImGui::CollapsingHeader("Create resource##WorldForgeAddResource", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        const auto name = trim(session.create_resource_name.data());
+        const auto preview_id = name.empty() ? std::string{} : unique_resource_id(session.resources, name);
+        draw_create_name_row("Display name", session.create_resource_name.data(), session.create_resource_name.size(),
+            preview_id);
+        draw_enum_combo("Kind##CreateResourceKind", session.create_resource_kind,
+            {WorldForgeResourceKind::Mineral, WorldForgeResourceKind::Herb, WorldForgeResourceKind::Food,
+                WorldForgeResourceKind::Craft, WorldForgeResourceKind::Quest, WorldForgeResourceKind::Other});
+        ImGui::Spacing();
+        if (ImGui::Button("Create resource##WorldForgeCreateResource")) {
+            if (name.empty()) {
+                session.status = "Enter a display name for the resource.";
+            } else if (add_resource(session, preview_id, name, session.create_resource_kind)) {
+                session.create_resource_name.fill('\0');
+            } else {
+                session.status = "Could not create resource (invalid or duplicate id).";
+            }
+        }
+        ImGui::Unindent();
     }
 }
 
 void draw_add_region_controls(WorldForgeEditorSession& session) {
-    if (ImGui::TreeNode("Add region##WorldForgeAddRegion")) {
-        ImGui::SetNextItemWidth(220.0f);
-        ImGui::InputTextWithHint("##CreateRegionName", "display name (required)", session.create_region_name.data(),
-            session.create_region_name.size());
-        draw_enum_combo("kind##CreateRegionKind", session.create_region_kind,
+    if (ImGui::CollapsingHeader("Create region##WorldForgeAddRegion", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        const auto name = trim(session.create_region_name.data());
+        const auto preview_id = name.empty() ? std::string{} : unique_region_id(session.map, name);
+        draw_create_name_row("Display name", session.create_region_name.data(), session.create_region_name.size(),
+            preview_id);
+        draw_enum_combo("Kind##CreateRegionKind", session.create_region_kind,
             {WorldForgeRegionKind::Region, WorldForgeRegionKind::Fortress, WorldForgeRegionKind::City,
                 WorldForgeRegionKind::Wilderness, WorldForgeRegionKind::Chaotic, WorldForgeRegionKind::Settlement,
                 WorldForgeRegionKind::Other});
-        const auto name = trim(session.create_region_name.data());
-        const auto preview_id = name.empty() ? std::string{} : unique_region_id(session.map, name);
-        if (!preview_id.empty()) ImGui::TextDisabled("id: %s", preview_id.c_str());
-        else ImGui::TextDisabled("id: (from display name)");
+        ImGui::Spacing();
         if (ImGui::Button("Create region##WorldForgeCreateRegion")) {
             if (name.empty()) {
-                session.status = "Enter a display name for the region";
+                session.status = "Enter a display name for the region.";
             } else if (add_region(session, preview_id, name, session.create_region_kind)) {
                 session.create_region_name.fill('\0');
             } else {
-                session.status = "Could not create region (invalid or duplicate id)";
+                session.status = "Could not create region (invalid or duplicate id).";
             }
         }
-        ImGui::TreePop();
+        ImGui::Unindent();
     }
 }
 
 void draw_add_poi_controls(WorldForgeEditorSession& session) {
-    if (ImGui::TreeNode("Add POI##WorldForgeAddPoi")) {
-        ImGui::SetNextItemWidth(220.0f);
-        ImGui::InputTextWithHint("##CreatePoiName", "display name (required)", session.create_poi_name.data(),
-            session.create_poi_name.size());
-        draw_enum_combo("kind##CreatePoiKind", session.create_poi_kind,
-            {WorldForgePoiKind::Landmark, WorldForgePoiKind::Settlement, WorldForgePoiKind::Gate,
-                WorldForgePoiKind::Shrine, WorldForgePoiKind::Camp, WorldForgePoiKind::Other});
-        {
-            std::string region_id = trim(session.create_poi_region_id.data());
-            if (draw_id_combo("regionId##CreatePoiRegion", region_id, collect_region_ids(session.map), false,
-                    "(select region)")) {
-                std::snprintf(session.create_poi_region_id.data(), session.create_poi_region_id.size(), "%s",
-                    region_id.c_str());
-            }
-        }
+    if (ImGui::CollapsingHeader("Create point of interest##WorldForgeAddPoi", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
         const auto name = trim(session.create_poi_name.data());
         const auto region_id = trim(session.create_poi_region_id.data());
         const auto preview_id = name.empty() ? std::string{} : unique_poi_id(session.map, name);
-        if (!preview_id.empty()) ImGui::TextDisabled("id: %s", preview_id.c_str());
-        else ImGui::TextDisabled("id: (from display name)");
-        if (ImGui::Button("Create POI##WorldForgeCreatePoi")) {
-            if (name.empty()) {
-                session.status = "Enter a display name for the POI";
-            } else if (region_id.empty()) {
-                session.status = "Select a region for the POI";
-            } else if (add_poi(session, preview_id, name, session.create_poi_kind, region_id)) {
-                session.create_poi_name.fill('\0');
-            } else {
-                session.status = "Could not create POI (invalid id, duplicate, or unknown region)";
+        draw_create_name_row("Display name", session.create_poi_name.data(), session.create_poi_name.size(), preview_id);
+        draw_enum_combo("Kind##CreatePoiKind", session.create_poi_kind,
+            {WorldForgePoiKind::Landmark, WorldForgePoiKind::Settlement, WorldForgePoiKind::Gate,
+                WorldForgePoiKind::Shrine, WorldForgePoiKind::Camp, WorldForgePoiKind::Other});
+        {
+            std::string region = region_id;
+            if (draw_id_combo("Region##CreatePoiRegion", region, collect_region_ids(session.map), false,
+                    "(select region)")) {
+                std::snprintf(session.create_poi_region_id.data(), session.create_poi_region_id.size(), "%s",
+                    region.c_str());
             }
         }
-        ImGui::TreePop();
+        ImGui::Spacing();
+        if (ImGui::Button("Create point of interest##WorldForgeCreatePoi")) {
+            if (name.empty()) {
+                session.status = "Enter a display name for the point of interest.";
+            } else if (trim(session.create_poi_region_id.data()).empty()) {
+                session.status = "Select a region for the point of interest.";
+            } else if (add_poi(session, preview_id, name, session.create_poi_kind,
+                           trim(session.create_poi_region_id.data()))) {
+                session.create_poi_name.fill('\0');
+            } else {
+                session.status = "Could not create point of interest (invalid id, duplicate, or unknown region).";
+            }
+        }
+        ImGui::Unindent();
     }
 }
 
@@ -998,33 +1580,38 @@ std::vector<std::string> collect_ids_for_endpoint(const WorldForgeMapAsset& asse
 }
 
 void draw_add_map_link_controls(WorldForgeEditorSession& session) {
-    if (ImGui::TreeNode("Add link##WorldForgeAddLink")) {
-        ImGui::SetNextItemWidth(220.0f);
-        ImGui::InputTextWithHint("##CreateLinkId", "link id (optional)", session.create_link_id.data(),
+    if (ImGui::CollapsingHeader("Create map link##WorldForgeAddLink", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        draw_form_label("Link id", "optional — auto-generated if empty");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputTextWithHint("##CreateLinkId", "optional custom id", session.create_link_id.data(),
             session.create_link_id.size());
-        draw_enum_combo("kind##CreateLinkKind", session.create_link_kind,
+        draw_enum_combo("Link kind##CreateLinkKind", session.create_link_kind,
             {WorldForgeMapLinkKind::Travel, WorldForgeMapLinkKind::SoftGate, WorldForgeMapLinkKind::StoryGate,
                 WorldForgeMapLinkKind::Adjacency});
-        draw_enum_combo("fromKind##CreateLinkFromKind", session.create_link_from_kind,
+        draw_form_section("From");
+        draw_enum_combo("From type##CreateLinkFromKind", session.create_link_from_kind,
             {WorldForgeMapEndpointKind::Region, WorldForgeMapEndpointKind::Poi});
         {
             std::string from_id = trim(session.create_link_from_id.data());
-            if (draw_id_combo("fromId##CreateLinkFrom", from_id,
+            if (draw_id_combo("From location##CreateLinkFrom", from_id,
                     collect_ids_for_endpoint(session.map, session.create_link_from_kind), false, "(select)")) {
                 std::snprintf(session.create_link_from_id.data(), session.create_link_from_id.size(), "%s",
                     from_id.c_str());
             }
         }
-        draw_enum_combo("toKind##CreateLinkToKind", session.create_link_to_kind,
+        draw_form_section("To");
+        draw_enum_combo("To type##CreateLinkToKind", session.create_link_to_kind,
             {WorldForgeMapEndpointKind::Region, WorldForgeMapEndpointKind::Poi});
         {
             std::string to_id = trim(session.create_link_to_id.data());
-            if (draw_id_combo("toId##CreateLinkTo", to_id,
+            if (draw_id_combo("To location##CreateLinkTo", to_id,
                     collect_ids_for_endpoint(session.map, session.create_link_to_kind), false, "(select)")) {
                 std::snprintf(session.create_link_to_id.data(), session.create_link_to_id.size(), "%s", to_id.c_str());
             }
         }
-        if (ImGui::Button("Create link##WorldForgeCreateLink")) {
+        ImGui::Spacing();
+        if (ImGui::Button("Create map link##WorldForgeCreateLink")) {
             const auto from_id = trim(session.create_link_from_id.data());
             const auto to_id = trim(session.create_link_to_id.data());
             std::string id = trim(session.create_link_id.data());
@@ -1034,108 +1621,125 @@ void draw_add_map_link_controls(WorldForgeEditorSession& session) {
                 id = unique_map_link_id(session.map, id);
             }
             if (from_id.empty() || to_id.empty()) {
-                session.status = "Select from and to endpoints for the link";
+                session.status = "Select both endpoints for the map link.";
             } else if (add_map_link(session, id, session.create_link_kind, session.create_link_from_kind, from_id,
                            session.create_link_to_kind, to_id)) {
                 session.create_link_id.fill('\0');
                 session.create_link_from_id.fill('\0');
                 session.create_link_to_id.fill('\0');
             } else {
-                session.status = "Could not create link (invalid endpoints or duplicate id)";
+                session.status = "Could not create map link (invalid endpoints or duplicate id).";
             }
         }
-        ImGui::TreePop();
+        ImGui::Unindent();
     }
 }
 
 void draw_add_dialogue_tree_controls(WorldForgeEditorSession& session) {
-    if (ImGui::TreeNode("Add dialogue tree##WorldForgeAddDialogueTree")) {
-        ImGui::SetNextItemWidth(220.0f);
-        ImGui::InputTextWithHint("##CreateDlgTreeName", "display name (required)", session.create_dialogue_tree_name.data(),
-            session.create_dialogue_tree_name.size());
+    if (ImGui::CollapsingHeader("Create dialogue tree##WorldForgeAddDialogueTree", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        const auto name = trim(session.create_dialogue_tree_name.data());
+        const auto preview_id = name.empty() ? std::string{} : unique_dialogue_tree_id(session.dialogues, name);
+        draw_create_name_row("Display name", session.create_dialogue_tree_name.data(),
+            session.create_dialogue_tree_name.size(), preview_id);
         {
             std::string parent = trim(session.create_dialogue_tree_parent_quest.data());
-            if (draw_id_combo("parentQuestId##CreateDlgTreeParent", parent, collect_quest_ids(session.quests), true,
+            if (draw_id_combo("Parent quest##CreateDlgTreeParent", parent, collect_quest_ids(session.quests), true,
                     "(optional)")) {
                 std::snprintf(session.create_dialogue_tree_parent_quest.data(),
                     session.create_dialogue_tree_parent_quest.size(), "%s", parent.c_str());
             }
         }
-        const auto name = trim(session.create_dialogue_tree_name.data());
-        const auto preview_id = name.empty() ? std::string{} : unique_dialogue_tree_id(session.dialogues, name);
-        if (!preview_id.empty()) ImGui::TextDisabled("id: %s", preview_id.c_str());
-        else ImGui::TextDisabled("id: (from display name)");
-        ImGui::TextDisabled("Creates tree with entry node \"start\"");
+        ImGui::TextDisabled("Creates a tree with an entry node named \"start\".");
+        ImGui::Spacing();
         if (ImGui::Button("Create dialogue tree##WorldForgeCreateDlgTree")) {
             if (name.empty()) {
-                session.status = "Enter a display name for the dialogue tree";
+                session.status = "Enter a display name for the dialogue tree.";
             } else if (add_dialogue_tree(session, preview_id, name,
                            trim(session.create_dialogue_tree_parent_quest.data()))) {
                 session.create_dialogue_tree_name.fill('\0');
                 session.create_dialogue_tree_parent_quest.fill('\0');
             } else {
-                session.status = "Could not create dialogue tree (invalid or duplicate id)";
+                session.status = "Could not create dialogue tree (invalid or duplicate id).";
             }
         }
-        ImGui::TreePop();
+        ImGui::Unindent();
     }
 }
 
 void draw_add_node_controls(WorldForgeEditorSession& session) {
-    if (ImGui::TreeNode("Add node##WorldForgeAddNode")) {
-        ImGui::SetNextItemWidth(220.0f);
-        ImGui::InputTextWithHint("##CreateNodeName", "display name (required)", session.create_node_name.data(),
-            session.create_node_name.size());
-        draw_enum_combo("kind##CreateNodeKind", session.create_node_kind,
-            {WorldForgeRelationshipNodeKind::Person, WorldForgeRelationshipNodeKind::Deity,
-                WorldForgeRelationshipNodeKind::Artifact, WorldForgeRelationshipNodeKind::Organization});
+    if (ImGui::CollapsingHeader("Create relationship node##WorldForgeAddNode", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        const bool companions_filter = session.pane == WorldForgeEditorPane::Hierarchy &&
+                                       session.hierarchy_page == WorldForgeHierarchyPage::Persons &&
+                                       session.hierarchy_persons_companions_only;
         const auto name = trim(session.create_node_name.data());
         const auto preview_id = name.empty() ? std::string{} : unique_relationship_id(session.relationships, name);
-        if (!preview_id.empty()) ImGui::TextDisabled("id: %s", preview_id.c_str());
-        else ImGui::TextDisabled("id: (from display name)");
+        draw_create_name_row("Display name", session.create_node_name.data(), session.create_node_name.size(),
+            preview_id);
+        if (companions_filter) {
+            session.create_node_kind = WorldForgeRelationshipNodeKind::Person;
+            ImGui::TextDisabled("Kind: person (companion filter is active)");
+        } else {
+            draw_enum_combo("Kind##CreateNodeKind", session.create_node_kind,
+                {WorldForgeRelationshipNodeKind::Person, WorldForgeRelationshipNodeKind::Deity,
+                    WorldForgeRelationshipNodeKind::Artifact, WorldForgeRelationshipNodeKind::Organization});
+        }
+        ImGui::Spacing();
         if (ImGui::Button("Create node##WorldForgeCreateNode")) {
             if (name.empty()) {
-                session.status = "Enter a display name for the node";
+                session.status = "Enter a display name for the node.";
             } else if (add_relationship_node(session, preview_id, session.create_node_kind, name)) {
+                if (companions_filter) {
+                    if (auto* created = find_node(session.relationships, session.selected_id)) {
+                        set_tag(created->tags, kCompanionTag, true);
+                    }
+                }
                 session.create_node_id.fill('\0');
                 session.create_node_name.fill('\0');
+                session.hierarchy_graph_needs_layout = true;
             } else {
-                session.status = "Could not create node (invalid or duplicate id)";
+                session.status = "Could not create node (invalid or duplicate id).";
             }
         }
-        ImGui::TreePop();
+        ImGui::Unindent();
     }
 }
 
 void draw_add_edge_controls(WorldForgeEditorSession& session) {
-    if (ImGui::TreeNode("Add relationship##WorldForgeAddEdge")) {
-        ImGui::SetNextItemWidth(180.0f);
-        ImGui::InputTextWithHint("##CreateEdgeId", "edge id (optional)", session.create_edge_id.data(),
+    if (ImGui::CollapsingHeader("Create relationship edge##WorldForgeAddEdge", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        draw_form_label("Edge id", "optional — auto-generated if empty");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputTextWithHint("##CreateEdgeId", "optional custom id", session.create_edge_id.data(),
             session.create_edge_id.size());
-        draw_enum_combo("from.target##CreateEdgeFromT", session.create_edge_from_target,
+        draw_form_section("From");
+        draw_enum_combo("From type##CreateEdgeFromT", session.create_edge_from_target,
             {WorldForgeRelationshipEndpointTarget::Node, WorldForgeRelationshipEndpointTarget::Faction});
         {
             std::string from_id = trim(session.create_edge_from.data());
-            if (draw_id_combo("from.id##CreateEdgeFrom", from_id,
+            if (draw_id_combo("From entity##CreateEdgeFrom", from_id,
                     collect_endpoint_ids(session, session.create_edge_from_target), true, "(select)")) {
                 std::snprintf(session.create_edge_from.data(), session.create_edge_from.size(), "%s", from_id.c_str());
             }
         }
-        draw_enum_combo("to.target##CreateEdgeToT", session.create_edge_to_target,
+        draw_form_section("To");
+        draw_enum_combo("To type##CreateEdgeToT", session.create_edge_to_target,
             {WorldForgeRelationshipEndpointTarget::Node, WorldForgeRelationshipEndpointTarget::Faction});
         {
             std::string to_id = trim(session.create_edge_to.data());
-            if (draw_id_combo("to.id##CreateEdgeTo", to_id,
+            if (draw_id_combo("To entity##CreateEdgeTo", to_id,
                     collect_endpoint_ids(session, session.create_edge_to_target), true, "(select)")) {
                 std::snprintf(session.create_edge_to.data(), session.create_edge_to.size(), "%s", to_id.c_str());
             }
         }
-        draw_enum_combo("kind##CreateEdgeKind", session.create_edge_kind,
+        draw_enum_combo("Relationship kind##CreateEdgeKind", session.create_edge_kind,
             {WorldForgeRelationshipEdgeKind::Ally, WorldForgeRelationshipEdgeKind::Rival,
                 WorldForgeRelationshipEdgeKind::MemberOf, WorldForgeRelationshipEdgeKind::Leads,
                 WorldForgeRelationshipEdgeKind::Kin, WorldForgeRelationshipEdgeKind::Serves,
                 WorldForgeRelationshipEdgeKind::Opposes, WorldForgeRelationshipEdgeKind::Influences,
                 WorldForgeRelationshipEdgeKind::Related});
+        ImGui::Spacing();
         if (ImGui::Button("Create relationship##WorldForgeCreateEdge")) {
             WorldForgeRelationshipEndpoint from{session.create_edge_from_target, trim(session.create_edge_from.data())};
             WorldForgeRelationshipEndpoint to{session.create_edge_to_target, trim(session.create_edge_to.data())};
@@ -1150,10 +1754,10 @@ void draw_add_edge_controls(WorldForgeEditorSession& session) {
                 session.create_edge_from.fill('\0');
                 session.create_edge_to.fill('\0');
             } else {
-                session.status = "Could not create edge (check endpoints exist / unique id)";
+                session.status = "Could not create relationship (check endpoints exist / unique id).";
             }
         }
-        ImGui::TreePop();
+        ImGui::Unindent();
     }
 }
 
@@ -1347,7 +1951,7 @@ bool draw_faction_standing_section(WorldForgeEditorSession& session, WorldForgeF
         ImGui::PushID(static_cast<int>(i));
         if (draw_input_text("id##rank", rank.id)) dirty = true;
         if (draw_double_field("minScore##rank", rank.min_score)) dirty = true;
-        if (draw_input_text("displayName##rank", rank.display_name)) dirty = true;
+        if (draw_input_text("Display name##rank", rank.display_name)) dirty = true;
         if (ImGui::Button("Remove rank##FactionStanding")) {
             standing.ranks.erase(standing.ranks.begin() + static_cast<std::ptrdiff_t>(i));
             dirty = true;
@@ -1467,6 +2071,686 @@ void draw_poi_placeholder(const WorldForgeEditorSession& session, const WorldFor
         IM_COL32(190, 150, 90, 255));
 }
 
+bool draw_world_anchor_fields(std::optional<WorldForgeWorldAnchor>& anchor) {
+    bool changed = false;
+    bool has = anchor.has_value();
+    if (ImGui::Checkbox("anchor##WorldForgeMapAnchor", &has)) {
+        if (has && !anchor) anchor = WorldForgeWorldAnchor{};
+        if (!has) anchor.reset();
+        changed = true;
+    }
+    if (anchor) {
+        float xyz[3] = {anchor->x, anchor->y, anchor->z};
+        if (ImGui::InputFloat3("anchor xyz (world)", xyz, "%.2f")) {
+            anchor->x = xyz[0];
+            anchor->y = xyz[1];
+            anchor->z = xyz[2];
+            changed = true;
+        }
+    }
+    return changed;
+}
+
+std::optional<WorldForgeWorldAnchor>* mutable_selected_map_anchor(WorldForgeEditorSession& session) {
+    if (auto* region = find_region(session.map, session.selected_id)) return &region->anchor;
+    if (auto* poi = find_poi(session.map, session.selected_id)) return &poi->anchor;
+    return nullptr;
+}
+
+const WorldForgeWorldAnchor* lookup_map_endpoint_anchor(const WorldForgeMapAsset& asset,
+    WorldForgeMapEndpointKind kind, const std::string& id) {
+    if (kind == WorldForgeMapEndpointKind::Region) {
+        if (const auto* region = find_region(asset, id)) {
+            return region->anchor ? &*region->anchor : nullptr;
+        }
+    } else if (const auto* poi = find_poi(asset, id)) {
+        return poi->anchor ? &*poi->anchor : nullptr;
+    }
+    return nullptr;
+}
+
+void collect_map_marker_positions(const WorldForgeMapAsset& asset, bool include_regions, bool include_pois,
+    const std::string& act_filter, std::unordered_map<std::string, std::array<float, 2>>& out) {
+    out.clear();
+    if (include_regions) {
+        for (const auto& region : asset.regions) {
+            if (!region.anchor) continue;
+            if (!matches_world_forge_act_filter(region.acts, region.tags, act_filter)) continue;
+            out[map_region_marker_key(region.id)] = {region.anchor->x, region.anchor->z};
+        }
+    }
+    if (include_pois) {
+        for (const auto& poi : asset.pois) {
+            if (!poi.anchor) continue;
+            if (!matches_world_forge_act_filter(poi.acts, poi.tags, act_filter)) continue;
+            out[map_poi_marker_key(poi.id)] = {poi.anchor->x, poi.anchor->z};
+        }
+    }
+}
+
+void ensure_map_terrain_underlay(WorldForgeEditorSession& session, const WorldForgeViewportDrawContext& ctx) {
+    // Vertex grid resolution (cells = res-1). Keep modest for CPU, smooth via multi-color quads.
+    constexpr int k_res = 64;
+    constexpr float k_default_half = 180.0f;
+    if (ctx.terrain_revision == session.map_underlay_revision && session.map_underlay_ready) return;
+
+    float min_x = -k_default_half;
+    float max_x = k_default_half;
+    float min_z = -k_default_half;
+    float max_z = k_default_half;
+    bool any = false;
+    auto expand = [&](float x, float z) {
+        if (!any) {
+            min_x = max_x = x;
+            min_z = max_z = z;
+            any = true;
+        } else {
+            min_x = (std::min)(min_x, x);
+            max_x = (std::max)(max_x, x);
+            min_z = (std::min)(min_z, z);
+            max_z = (std::max)(max_z, z);
+        }
+    };
+    for (const auto& region : session.map.regions) {
+        if (region.anchor) expand(region.anchor->x, region.anchor->z);
+    }
+    for (const auto& poi : session.map.pois) {
+        if (poi.anchor) expand(poi.anchor->x, poi.anchor->z);
+    }
+    const float pad = any ? 120.0f : 0.0f;
+    min_x -= pad;
+    max_x += pad;
+    min_z -= pad;
+    max_z += pad;
+    if (max_x - min_x < 80.0f) {
+        const float cx = (min_x + max_x) * 0.5f;
+        min_x = cx - 40.0f;
+        max_x = cx + 40.0f;
+    }
+    if (max_z - min_z < 80.0f) {
+        const float cz = (min_z + max_z) * 0.5f;
+        min_z = cz - 40.0f;
+        max_z = cz + 40.0f;
+    }
+
+    const TerrainEditStore* previous = active_terrain_edits();
+    if (ctx.terrain_edits) set_active_terrain_edits(ctx.terrain_edits);
+
+    session.map_underlay_heights.assign(static_cast<std::size_t>(k_res * k_res), 0.0f);
+    float h_min = 0.0f;
+    float h_max = 0.0f;
+    bool first = true;
+    for (int z = 0; z < k_res; ++z) {
+        const float wz = min_z + (max_z - min_z) * static_cast<float>(z) / static_cast<float>(k_res - 1);
+        for (int x = 0; x < k_res; ++x) {
+            const float wx = min_x + (max_x - min_x) * static_cast<float>(x) / static_cast<float>(k_res - 1);
+            const float h = sample_terrain_height(wx, wz);
+            session.map_underlay_heights[static_cast<std::size_t>(z * k_res + x)] = h;
+            if (first) {
+                h_min = h_max = h;
+                first = false;
+            } else {
+                h_min = (std::min)(h_min, h);
+                h_max = (std::max)(h_max, h);
+            }
+        }
+    }
+    const float range = (std::max)(h_max - h_min, 0.001f);
+    for (float& h : session.map_underlay_heights) h = (h - h_min) / range;
+
+    set_active_terrain_edits(previous);
+    session.map_underlay_w = k_res;
+    session.map_underlay_h = k_res;
+    session.map_underlay_min_x = min_x;
+    session.map_underlay_max_x = max_x;
+    session.map_underlay_min_z = min_z;
+    session.map_underlay_max_z = max_z;
+    session.map_underlay_revision = ctx.terrain_revision;
+    session.map_underlay_ready = true;
+}
+
+ImU32 map_topo_color(float t) {
+    t = (std::clamp)(t, 0.0f, 1.0f);
+    // Soft topographic ramp: low valley → grass → dirt ridge → pale peak.
+    struct Stop {
+        float t;
+        float r, g, b;
+    };
+    static constexpr Stop stops[] = {
+        {0.00f, 0.12f, 0.22f, 0.28f},
+        {0.25f, 0.18f, 0.38f, 0.22f},
+        {0.50f, 0.35f, 0.42f, 0.20f},
+        {0.75f, 0.48f, 0.36f, 0.22f},
+        {1.00f, 0.72f, 0.70f, 0.62f},
+    };
+    const Stop* a = &stops[0];
+    const Stop* b = &stops[1];
+    for (std::size_t i = 0; i + 1 < sizeof(stops) / sizeof(stops[0]); ++i) {
+        if (t >= stops[i].t && t <= stops[i + 1].t) {
+            a = &stops[i];
+            b = &stops[i + 1];
+            break;
+        }
+    }
+    const float span = (std::max)(b->t - a->t, 0.0001f);
+    const float u = (t - a->t) / span;
+    const auto lerp = [&](float x, float y) { return x + (y - x) * u; };
+    return IM_COL32(static_cast<int>(lerp(a->r, b->r) * 255.0f), static_cast<int>(lerp(a->g, b->g) * 255.0f),
+        static_cast<int>(lerp(a->b, b->b) * 255.0f), 255);
+}
+
+void draw_map_terrain_underlay(ImDrawList* draw, WorldForgeEditorSession& session, const WorldForgeGraphCamera& cam,
+    const ImVec2& canvas_pos) {
+    if (!session.map_underlay_ready || session.map_underlay_w < 2 || session.map_underlay_h < 2) return;
+    const int w = session.map_underlay_w;
+    const int h = session.map_underlay_h;
+    const float cell_w =
+        (session.map_underlay_max_x - session.map_underlay_min_x) / static_cast<float>(w - 1);
+    const float cell_h =
+        (session.map_underlay_max_z - session.map_underlay_min_z) / static_cast<float>(h - 1);
+
+    auto sample = [&](int x, int z) {
+        return session.map_underlay_heights[static_cast<std::size_t>(z * w + x)];
+    };
+    auto screen_at = [&](int x, int z) {
+        const float wx = session.map_underlay_min_x + static_cast<float>(x) * cell_w;
+        const float wz = session.map_underlay_min_z + static_cast<float>(z) * cell_h;
+        const auto local = graph_world_to_screen_local(cam, wx, wz);
+        return ImVec2(canvas_pos.x + local[0], canvas_pos.y + local[1]);
+    };
+
+    const int cells_x = w - 1;
+    const int cells_z = h - 1;
+    // Smooth vertex-colored mesh (reads as continuous landform, not a pixel mosaic).
+    draw->PrimReserve(cells_x * cells_z * 6, cells_x * cells_z * 4);
+    for (int z = 0; z < cells_z; ++z) {
+        for (int x = 0; x < cells_x; ++x) {
+            const ImVec2 p00 = screen_at(x, z);
+            const ImVec2 p10 = screen_at(x + 1, z);
+            const ImVec2 p11 = screen_at(x + 1, z + 1);
+            const ImVec2 p01 = screen_at(x, z + 1);
+            const ImU32 c00 = map_topo_color(sample(x, z));
+            const ImU32 c10 = map_topo_color(sample(x + 1, z));
+            const ImU32 c11 = map_topo_color(sample(x + 1, z + 1));
+            const ImU32 c01 = map_topo_color(sample(x, z + 1));
+            const ImDrawIdx idx = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx);
+            draw->PrimWriteVtx(p00, ImVec2(0, 0), c00);
+            draw->PrimWriteVtx(p10, ImVec2(0, 0), c10);
+            draw->PrimWriteVtx(p11, ImVec2(0, 0), c11);
+            draw->PrimWriteVtx(p01, ImVec2(0, 0), c01);
+            draw->PrimWriteIdx(idx);
+            draw->PrimWriteIdx(static_cast<ImDrawIdx>(idx + 1));
+            draw->PrimWriteIdx(static_cast<ImDrawIdx>(idx + 2));
+            draw->PrimWriteIdx(idx);
+            draw->PrimWriteIdx(static_cast<ImDrawIdx>(idx + 2));
+            draw->PrimWriteIdx(static_cast<ImDrawIdx>(idx + 3));
+        }
+    }
+
+    if (!session.map_show_contours) return;
+    static constexpr float bands[] = {0.2f, 0.4f, 0.6f, 0.8f};
+    auto cross = [](float a, float b, float band, ImVec2 pa, ImVec2 pb, ImVec2& out) -> bool {
+        if ((a < band && b >= band) || (b < band && a >= band)) {
+            const float t = (band - a) / (b - a);
+            out = ImVec2(pa.x + (pb.x - pa.x) * t, pa.y + (pb.y - pa.y) * t);
+            return true;
+        }
+        return false;
+    };
+    for (float band : bands) {
+        for (int z = 0; z < cells_z; ++z) {
+            for (int x = 0; x < cells_x; ++x) {
+                const float h00 = sample(x, z);
+                const float h10 = sample(x + 1, z);
+                const float h11 = sample(x + 1, z + 1);
+                const float h01 = sample(x, z + 1);
+                const ImVec2 p00 = screen_at(x, z);
+                const ImVec2 p10 = screen_at(x + 1, z);
+                const ImVec2 p11 = screen_at(x + 1, z + 1);
+                const ImVec2 p01 = screen_at(x, z + 1);
+                ImVec2 pts[4];
+                int n = 0;
+                ImVec2 hit;
+                if (cross(h00, h10, band, p00, p10, hit)) pts[n++] = hit;
+                if (cross(h10, h11, band, p10, p11, hit)) pts[n++] = hit;
+                if (cross(h11, h01, band, p11, p01, hit)) pts[n++] = hit;
+                if (cross(h01, h00, band, p01, p00, hit)) pts[n++] = hit;
+                if (n >= 2) draw->AddLine(pts[0], pts[1], IM_COL32(255, 255, 255, 50), 1.0f);
+                if (n >= 4) draw->AddLine(pts[2], pts[3], IM_COL32(255, 255, 255, 50), 1.0f);
+            }
+        }
+    }
+}
+
+void draw_map_grid(ImDrawList* draw, const WorldForgeGraphCamera& cam, const ImVec2& canvas_pos,
+    const ImVec2& canvas_size, bool major_only) {
+    const auto top_left = graph_screen_to_world(cam, 0.0f, 0.0f);
+    const auto bottom_right = graph_screen_to_world(cam, canvas_size.x, canvas_size.y);
+    const float min_x = (std::min)(top_left[0], bottom_right[0]);
+    const float max_x = (std::max)(top_left[0], bottom_right[0]);
+    const float min_z = (std::min)(top_left[1], bottom_right[1]);
+    const float max_z = (std::max)(top_left[1], bottom_right[1]);
+    float step = 25.0f;
+    const float span = (std::max)(max_x - min_x, max_z - min_z);
+    if (span > 500.0f) step = 100.0f;
+    else if (span > 200.0f) step = 50.0f;
+    else if (span < 60.0f) step = 10.0f;
+    const float major_step = step * (major_only ? 1.0f : 4.0f);
+    const float start_x = std::floor(min_x / step) * step;
+    const float start_z = std::floor(min_z / step) * step;
+
+    {
+        const auto ax0 = graph_world_to_screen_local(cam, 0.0f, min_z);
+        const auto ax1 = graph_world_to_screen_local(cam, 0.0f, max_z);
+        const auto az0 = graph_world_to_screen_local(cam, min_x, 0.0f);
+        const auto az1 = graph_world_to_screen_local(cam, max_x, 0.0f);
+        draw->AddLine(ImVec2(canvas_pos.x + ax0[0], canvas_pos.y + ax0[1]),
+            ImVec2(canvas_pos.x + ax1[0], canvas_pos.y + ax1[1]), IM_COL32(220, 120, 90, 200), 2.0f);
+        draw->AddLine(ImVec2(canvas_pos.x + az0[0], canvas_pos.y + az0[1]),
+            ImVec2(canvas_pos.x + az1[0], canvas_pos.y + az1[1]), IM_COL32(90, 170, 220, 200), 2.0f);
+        draw->AddText(ImVec2(canvas_pos.x + ax1[0] + 4.0f, canvas_pos.y + ax1[1] - 14.0f),
+            IM_COL32(220, 140, 110, 220), "+Z");
+        draw->AddText(ImVec2(canvas_pos.x + az1[0] - 18.0f, canvas_pos.y + az1[1] + 4.0f),
+            IM_COL32(110, 180, 230, 220), "+X");
+    }
+
+    for (float x = start_x; x <= max_x; x += step) {
+        if (std::fabs(x) < 0.01f) continue;
+        const bool major = std::fmod(std::fabs(x) + 0.001f, major_step) < step * 0.51f;
+        if (major_only && !major) continue;
+        const auto a = graph_world_to_screen_local(cam, x, min_z);
+        const auto b = graph_world_to_screen_local(cam, x, max_z);
+        draw->AddLine(ImVec2(canvas_pos.x + a[0], canvas_pos.y + a[1]),
+            ImVec2(canvas_pos.x + b[0], canvas_pos.y + b[1]),
+            major ? IM_COL32(255, 255, 255, 28) : IM_COL32(255, 255, 255, 12), 1.0f);
+    }
+    for (float z = start_z; z <= max_z; z += step) {
+        if (std::fabs(z) < 0.01f) continue;
+        const bool major = std::fmod(std::fabs(z) + 0.001f, major_step) < step * 0.51f;
+        if (major_only && !major) continue;
+        const auto a = graph_world_to_screen_local(cam, min_x, z);
+        const auto b = graph_world_to_screen_local(cam, max_x, z);
+        draw->AddLine(ImVec2(canvas_pos.x + a[0], canvas_pos.y + a[1]),
+            ImVec2(canvas_pos.x + b[0], canvas_pos.y + b[1]),
+            major ? IM_COL32(255, 255, 255, 28) : IM_COL32(255, 255, 255, 12), 1.0f);
+    }
+}
+
+void draw_map_legend(ImDrawList* draw, const ImVec2& canvas_pos, const ImVec2& canvas_size) {
+    const float box_w = 150.0f;
+    const float box_h = 78.0f;
+    const ImVec2 origin{canvas_pos.x + 10.0f, canvas_pos.y + canvas_size.y - box_h - 10.0f};
+    draw->AddRectFilled(origin, ImVec2(origin.x + box_w, origin.y + box_h), IM_COL32(12, 14, 18, 200), 4.0f);
+    draw->AddRect(origin, ImVec2(origin.x + box_w, origin.y + box_h), IM_COL32(80, 85, 95, 220), 4.0f);
+    float y = origin.y + 8.0f;
+    draw->AddRectFilled(ImVec2(origin.x + 10.0f, y), ImVec2(origin.x + 22.0f, y + 12.0f), IM_COL32(70, 150, 110, 255),
+        2.0f);
+    draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), "Region");
+    y += 18.0f;
+    draw->AddCircleFilled(ImVec2(origin.x + 16.0f, y + 6.0f), 6.0f, IM_COL32(200, 150, 80, 255));
+    draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), "POI");
+    y += 18.0f;
+    draw->AddLine(ImVec2(origin.x + 8.0f, y + 6.0f), ImVec2(origin.x + 24.0f, y + 6.0f), IM_COL32(100, 180, 220, 255),
+        2.0f);
+    draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), "Link");
+    y += 18.0f;
+    draw->AddText(ImVec2(origin.x + 8.0f, y - 1.0f), IM_COL32(180, 185, 195, 220), "orange=+Z  blue=+X");
+}
+
+void set_map_marker_world_xz(WorldForgeEditorSession& session, const std::string& marker_key, float world_x,
+    float world_z, const WorldForgeViewportDrawContext& ctx) {
+    float world_y = 0.0f;
+    const TerrainEditStore* previous = active_terrain_edits();
+    if (ctx.terrain_edits) set_active_terrain_edits(ctx.terrain_edits);
+    world_y = sample_terrain_height(world_x, world_z);
+    set_active_terrain_edits(previous);
+
+    if (marker_key.rfind("region:", 0) == 0) {
+        auto* region = find_region(session.map, marker_key.substr(7));
+        if (!region) return;
+        if (!region->anchor) region->anchor = WorldForgeWorldAnchor{};
+        region->anchor->x = world_x;
+        region->anchor->y = world_y;
+        region->anchor->z = world_z;
+        session.dirty = true;
+        session.map_underlay_ready = false;
+        return;
+    }
+    if (marker_key.rfind("poi:", 0) == 0) {
+        auto* poi = find_poi(session.map, marker_key.substr(4));
+        if (!poi) return;
+        if (!poi->anchor) poi->anchor = WorldForgeWorldAnchor{};
+        poi->anchor->x = world_x;
+        poi->anchor->y = world_y;
+        poi->anchor->z = world_z;
+        session.dirty = true;
+        session.map_underlay_ready = false;
+    }
+}
+
+void draw_map_canvas_detail(WorldForgeEditorSession& session) {
+    if (auto* region = find_region(session.map, session.selected_id)) {
+        ImGui::TextDisabled("Region");
+        ImGui::Text("id: %s", region->id.c_str());
+        if (draw_input_text("Display name", region->display_name)) session.dirty = true;
+        if (draw_enum_combo("Kind", region->kind,
+                {WorldForgeRegionKind::Region, WorldForgeRegionKind::Fortress, WorldForgeRegionKind::City,
+                    WorldForgeRegionKind::Wilderness, WorldForgeRegionKind::Chaotic, WorldForgeRegionKind::Settlement,
+                    WorldForgeRegionKind::Other}))
+            session.dirty = true;
+        if (draw_world_anchor_fields(region->anchor)) {
+            session.dirty = true;
+            session.map_underlay_ready = false;
+        }
+        if (draw_text_area("Summary", region->summary, 72.0f)) session.dirty = true;
+        return;
+    }
+    if (auto* poi = find_poi(session.map, session.selected_id)) {
+        ImGui::TextDisabled("POI");
+        ImGui::Text("id: %s", poi->id.c_str());
+        if (draw_input_text("Display name", poi->display_name)) session.dirty = true;
+        if (draw_enum_combo("Kind", poi->kind,
+                {WorldForgePoiKind::Landmark, WorldForgePoiKind::Settlement, WorldForgePoiKind::Gate,
+                    WorldForgePoiKind::Shrine, WorldForgePoiKind::Camp, WorldForgePoiKind::Other}))
+            session.dirty = true;
+        if (draw_id_combo("Region", poi->region_id, collect_region_ids(session.map), false)) session.dirty = true;
+        if (draw_world_anchor_fields(poi->anchor)) {
+            session.dirty = true;
+            session.map_underlay_ready = false;
+        }
+        if (draw_text_area("Summary", poi->summary, 72.0f)) session.dirty = true;
+        return;
+    }
+    if (auto* link = find_link(session.map, session.selected_id)) {
+        ImGui::TextDisabled("Link");
+        ImGui::Text("id: %s", link->id.c_str());
+        if (draw_enum_combo("Kind", link->kind,
+                {WorldForgeMapLinkKind::Travel, WorldForgeMapLinkKind::SoftGate, WorldForgeMapLinkKind::StoryGate,
+                    WorldForgeMapLinkKind::Adjacency}))
+            session.dirty = true;
+        ImGui::Text("%s:%s → %s:%s", to_string(link->from_kind), link->from_id.c_str(), to_string(link->to_kind),
+            link->to_id.c_str());
+        if (draw_text_area("Summary", link->summary, 72.0f)) session.dirty = true;
+        return;
+    }
+    ImGui::TextDisabled("Select a marker or link, or place an unanchored item");
+}
+
+void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& size,
+    const WorldForgeViewportDrawContext& ctx) {
+    ImGui::BeginChild("WorldForgeMapSpatialCanvas", size, true, ImGuiWindowFlags_NoScrollbar);
+
+    ImGui::Checkbox("Regions##MapCanvasFilterR", &session.map_filter_regions);
+    ImGui::SameLine();
+    ImGui::Checkbox("POIs##MapCanvasFilterP", &session.map_filter_pois);
+    ImGui::SameLine();
+    ImGui::Checkbox("Links##MapCanvasFilterL", &session.map_filter_links);
+    ImGui::SameLine();
+    ImGui::Checkbox("Terrain##MapCanvasTerrain", &session.map_show_terrain);
+    ImGui::SameLine();
+    ImGui::Checkbox("Contours##MapCanvasContours", &session.map_show_contours);
+    ImGui::SameLine();
+    ImGui::Checkbox("Grid##MapCanvasGrid", &session.map_show_grid);
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Fit##WorldForgeMapFit")) session.map_camera_fit_requested = true;
+    ImGui::Separator();
+
+    const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+    const ImVec2 canvas_size = ImGui::GetContentRegionAvail();
+    if (canvas_size.x < 32.0f || canvas_size.y < 64.0f) {
+        ImGui::EndChild();
+        return;
+    }
+
+    ensure_map_terrain_underlay(session, ctx);
+
+    ImGui::InvisibleButton("WorldForgeMapCanvasHit", canvas_size);
+    const bool hovered = ImGui::IsItemHovered();
+    const bool active = ImGui::IsItemActive();
+    const ImVec2 mouse = ImGui::GetIO().MousePos;
+    const ImVec2 local{mouse.x - canvas_pos.x, mouse.y - canvas_pos.y};
+
+    auto& cam = session.map_camera;
+    cam.min_zoom = 0.05f;
+    cam.max_zoom = 8.0f;
+
+    std::unordered_map<std::string, std::array<float, 2>> positions;
+    collect_map_marker_positions(session.map, session.map_filter_regions, session.map_filter_pois, session.act_filter,
+        positions);
+
+    std::vector<std::string> keys;
+    keys.reserve(positions.size());
+    for (const auto& entry : positions) keys.push_back(entry.first);
+    if (session.map_camera_fit_requested) {
+        auto bounds = compute_graph_bounds(positions, keys.empty() ? nullptr : &keys);
+        if (!bounds.valid) {
+            bounds = {-50.0f, 50.0f, -50.0f, 50.0f, true};
+        }
+        fit_graph_camera_to_bounds(cam, canvas_size.x, canvas_size.y, bounds, 48.0f);
+        session.map_camera_fit_requested = false;
+    }
+
+    if (hovered) {
+        const float wheel = ImGui::GetIO().MouseWheel;
+        if (wheel != 0.0f) apply_graph_zoom_at_local(cam, local.x, local.y, wheel);
+    }
+
+    const bool want_pan = hovered && (ImGui::IsMouseDown(ImGuiMouseButton_Middle) ||
+                                         (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::GetIO().KeyAlt));
+    if (want_pan && !session.map_camera_panning) {
+        session.map_camera_panning = true;
+        session.map_camera_pan_start_mouse = {mouse.x, mouse.y};
+        session.map_camera_pan_start_pan = cam.pan;
+        session.map_drag_key.clear();
+    }
+    if (session.map_camera_panning) {
+        if (want_pan) {
+            cam.pan[0] = session.map_camera_pan_start_pan[0] + (mouse.x - session.map_camera_pan_start_mouse[0]);
+            cam.pan[1] = session.map_camera_pan_start_pan[1] + (mouse.y - session.map_camera_pan_start_mouse[1]);
+        } else {
+            session.map_camera_panning = false;
+        }
+    }
+
+    auto to_screen = [&](const std::array<float, 2>& world) {
+        const auto local_pt = graph_world_to_screen_local(cam, world[0], world[1]);
+        return ImVec2(canvas_pos.x + local_pt[0], canvas_pos.y + local_pt[1]);
+    };
+    auto to_world = [&](const ImVec2& screen_local) {
+        return graph_screen_to_world(cam, screen_local.x, screen_local.y);
+    };
+
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->AddRectFilled(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y),
+        IM_COL32(18, 22, 26, 255));
+    draw->AddRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y),
+        IM_COL32(70, 74, 82, 255));
+    draw->PushClipRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), true);
+
+    if (session.map_show_terrain) draw_map_terrain_underlay(draw, session, cam, canvas_pos);
+    if (session.map_show_grid) draw_map_grid(draw, cam, canvas_pos, canvas_size, session.map_show_terrain);
+
+    const float marker_radius = (std::clamp)(12.0f + 4.0f * cam.zoom, 10.0f, 20.0f);
+    std::string hovered_link;
+    float best_link_dist = 10.0f;
+    if (session.map_filter_links) {
+        for (const auto& link : session.map.links) {
+            auto endpoint_visible = [&](WorldForgeMapEndpointKind kind, const std::string& id) {
+                if (kind == WorldForgeMapEndpointKind::Region) {
+                    const auto* region = find_region(session.map, id);
+                    return region && entity_matches_act_lens(session, region->acts, region->tags);
+                }
+                const auto* poi = find_poi(session.map, id);
+                return poi && entity_matches_act_lens(session, poi->acts, poi->tags);
+            };
+            if (!endpoint_visible(link.from_kind, link.from_id) && !endpoint_visible(link.to_kind, link.to_id))
+                continue;
+            const auto* from = lookup_map_endpoint_anchor(session.map, link.from_kind, link.from_id);
+            const auto* to = lookup_map_endpoint_anchor(session.map, link.to_kind, link.to_id);
+            if (!from || !to) continue;
+            const ImVec2 a = to_screen({from->x, from->z});
+            const ImVec2 b = to_screen({to->x, to->z});
+            const bool selected = session.selected_id == link.id;
+            const ImU32 color = selected ? IM_COL32(255, 210, 90, 255) : IM_COL32(80, 190, 240, 255);
+            draw->AddLine(a, b, IM_COL32(0, 0, 0, 120), selected ? 5.0f : 4.0f);
+            draw->AddLine(a, b, color, selected ? 3.0f : 2.0f);
+            if (link.bidirectional)
+                draw->AddCircleFilled(ImVec2((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f), 3.5f, color);
+            const ImVec2 mid{(a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f};
+            const char* kind_label = to_string(link.kind);
+            const ImVec2 ts = ImGui::CalcTextSize(kind_label);
+            draw->AddRectFilled(ImVec2(mid.x - 2.0f, mid.y - ts.y - 2.0f),
+                ImVec2(mid.x + ts.x + 6.0f, mid.y + 2.0f), IM_COL32(10, 12, 16, 180), 3.0f);
+            draw->AddText(ImVec2(mid.x + 2.0f, mid.y - ts.y), IM_COL32(210, 235, 250, 255), kind_label);
+            if (hovered && !session.map_camera_panning) {
+                const float dist = graph_point_segment_distance(mouse.x, mouse.y, a.x, a.y, b.x, b.y);
+                if (dist < best_link_dist) {
+                    best_link_dist = dist;
+                    hovered_link = link.id;
+                }
+            }
+        }
+    }
+
+    std::string hovered_marker;
+    for (const auto& entry : positions) {
+        const ImVec2 center = to_screen(entry.second);
+        const bool is_poi = entry.first.rfind("poi:", 0) == 0;
+        const std::string id = is_poi ? entry.first.substr(4) : entry.first.substr(7);
+        std::string label = id;
+        if (is_poi) {
+            if (const auto* poi = find_poi(session.map, id); poi && !poi->display_name.empty())
+                label = poi->display_name;
+        } else if (const auto* region = find_region(session.map, id); region && !region->display_name.empty()) {
+            label = region->display_name;
+        }
+        const bool selected = session.selected_id == id;
+        ImU32 fill = is_poi ? IM_COL32(210, 150, 70, 255) : IM_COL32(60, 160, 115, 255);
+        if (selected) fill = IM_COL32(245, 185, 55, 255);
+        draw->AddCircleFilled(ImVec2(center.x + 1.0f, center.y + 2.0f), marker_radius + 1.0f, IM_COL32(0, 0, 0, 110));
+        if (is_poi) {
+            draw->AddCircleFilled(center, marker_radius, fill);
+            draw->AddCircle(center, marker_radius, IM_COL32(255, 255, 255, 230), 0, 2.0f);
+        } else {
+            draw->AddRectFilled(ImVec2(center.x - marker_radius, center.y - marker_radius),
+                ImVec2(center.x + marker_radius, center.y + marker_radius), fill, 3.0f);
+            draw->AddRect(ImVec2(center.x - marker_radius, center.y - marker_radius),
+                ImVec2(center.x + marker_radius, center.y + marker_radius), IM_COL32(255, 255, 255, 230), 3.0f, 0,
+                2.0f);
+        }
+        const ImVec2 text_size = ImGui::CalcTextSize(label.c_str());
+        const ImVec2 text_pos{center.x - text_size.x * 0.5f, center.y + marker_radius + 4.0f};
+        draw->AddRectFilled(ImVec2(text_pos.x - 4.0f, text_pos.y - 1.0f),
+            ImVec2(text_pos.x + text_size.x + 4.0f, text_pos.y + text_size.y + 1.0f), IM_COL32(8, 10, 14, 200), 3.0f);
+        draw->AddText(text_pos, IM_COL32(245, 245, 248, 255), label.c_str());
+        const float dx = mouse.x - center.x;
+        const float dy = mouse.y - center.y;
+        if (hovered && !session.map_camera_panning && (dx * dx + dy * dy) <= (marker_radius * marker_radius))
+            hovered_marker = entry.first;
+    }
+
+    draw_map_legend(draw, canvas_pos, canvas_size);
+
+    const auto bounds = compute_graph_bounds(positions, keys.empty() ? nullptr : &keys);
+    const bool minimap_clicked = draw_world_forge_graph_minimap(draw, canvas_pos.x, canvas_pos.y, canvas_size.x,
+        canvas_size.y, cam, bounds, positions, mouse.x, mouse.y,
+        hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt);
+    draw->PopClipRect();
+
+    if (!minimap_clicked && !session.map_camera_panning && active &&
+        ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt) {
+        if (!hovered_marker.empty()) {
+            session.map_drag_key = hovered_marker;
+            session.selected_id = hovered_marker.rfind("poi:", 0) == 0 ? hovered_marker.substr(4) :
+                                                                        hovered_marker.substr(7);
+            session.map_place_id.clear();
+            session.list_kind = hovered_marker.rfind("poi:", 0) == 0 ? ListKind::Pois : ListKind::Regions;
+        } else if (!hovered_link.empty()) {
+            session.map_drag_key.clear();
+            session.selected_id = hovered_link;
+            session.list_kind = ListKind::Links;
+            session.map_place_id.clear();
+        } else if (!session.map_place_id.empty()) {
+            const auto world = to_world(local);
+            const std::string key = session.map_place_is_poi ? map_poi_marker_key(session.map_place_id) :
+                                                              map_region_marker_key(session.map_place_id);
+            set_map_marker_world_xz(session, key, world[0], world[1], ctx);
+            session.selected_id = session.map_place_id;
+            session.list_kind = session.map_place_is_poi ? ListKind::Pois : ListKind::Regions;
+            session.map_drag_key = key;
+            session.map_place_id.clear();
+            session.status = "Placed map anchor";
+        } else if (auto* anchor_ptr = mutable_selected_map_anchor(session); anchor_ptr) {
+            const auto world = to_world(local);
+            if (!*anchor_ptr) *anchor_ptr = WorldForgeWorldAnchor{};
+            const std::string key = find_poi(session.map, session.selected_id) ?
+                map_poi_marker_key(session.selected_id) :
+                map_region_marker_key(session.selected_id);
+            set_map_marker_world_xz(session, key, world[0], world[1], ctx);
+            session.map_drag_key = key;
+            session.status = "Moved map anchor";
+        } else {
+            session.map_drag_key.clear();
+        }
+    }
+    if (!session.map_camera_panning && active && !session.map_drag_key.empty() &&
+        ImGui::IsMouseDragging(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt) {
+        const auto world = to_world(local);
+        set_map_marker_world_xz(session, session.map_drag_key, world[0], world[1], ctx);
+    }
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) session.map_drag_key.clear();
+
+    ImGui::TextDisabled("zoom %.2f · wheel zoom · Alt/middle pan · click place/move anchors", cam.zoom);
+    ImGui::EndChild();
+}
+
+void draw_map_canvas_pane(WorldForgeEditorSession& session, const WorldForgeViewportDrawContext& ctx) {
+    session.list_kind = ListKind::MapCanvas;
+    const ImVec2 avail = ImGui::GetContentRegionAvail();
+    float side_w = (std::clamp)(avail.x * 0.28f, 200.0f, 320.0f);
+    const float canvas_w = avail.x - side_w - 8.0f;
+
+    ImGui::BeginChild("WorldForgeMapCanvasMain", ImVec2(canvas_w, avail.y), false);
+    draw_map_spatial_canvas(session, ImVec2(0.0f, avail.y), ctx);
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+    ImGui::BeginChild("WorldForgeMapCanvasSide", ImVec2(0.0f, avail.y), true);
+    ImGui::TextUnformatted("Place on map");
+    ImGui::Separator();
+    bool any_unanchored = false;
+    for (const auto& region : session.map.regions) {
+        if (region.anchor) continue;
+        if (!entity_matches_act_lens(session, region.acts, region.tags)) continue;
+        any_unanchored = true;
+        const bool selected = session.map_place_id == region.id && !session.map_place_is_poi;
+        std::string label = region.id + "  [region]";
+        if (ImGui::Selectable(label.c_str(), selected)) {
+            session.map_place_id = region.id;
+            session.map_place_is_poi = false;
+            session.selected_id = region.id;
+            session.status = "Click the map to place region anchor";
+        }
+    }
+    for (const auto& poi : session.map.pois) {
+        if (poi.anchor) continue;
+        if (!entity_matches_act_lens(session, poi.acts, poi.tags)) continue;
+        any_unanchored = true;
+        const bool selected = session.map_place_id == poi.id && session.map_place_is_poi;
+        std::string label = poi.id + "  [poi]";
+        if (ImGui::Selectable(label.c_str(), selected)) {
+            session.map_place_id = poi.id;
+            session.map_place_is_poi = true;
+            session.selected_id = poi.id;
+            session.status = "Click the map to place POI anchor";
+        }
+    }
+    if (!any_unanchored) ImGui::TextDisabled("(all regions/POIs have anchors)");
+    ImGui::Separator();
+    draw_map_canvas_detail(session);
+    ImGui::EndChild();
+}
+
 std::string endpoint_graph_key(const WorldForgeRelationshipEndpoint& endpoint) {
     if (endpoint.target == WorldForgeRelationshipEndpointTarget::Faction) return "faction:" + endpoint.id;
     return endpoint.id;
@@ -1575,6 +2859,7 @@ std::unordered_set<std::string> compute_visible_graph_keys(const WorldForgeEdito
 
     auto story_passes = [&](const WorldForgeRelationshipNode& node) {
         if (!node_kind_allowed(session, node.kind)) return false;
+        if (!entity_matches_act_lens(session, node.acts, node.tags)) return false;
         return text_matches_filter(session, node.id) || text_matches_filter(session, node.display_name) ||
                text_matches_filter(session, node.summary);
     };
@@ -1846,9 +3131,15 @@ void draw_relationship_graph_canvas(WorldForgeEditorSession& session, const ImVe
         const bool is_faction = key.rfind("faction:", 0) == 0;
         const bool selected = !selecting_edge && session.selected_id == key;
         const bool link_from = session.graph_link_from == key;
-        ImU32 fill = is_faction ? IM_COL32(70, 90, 120, 255) : IM_COL32(55, 95, 75, 255);
-        if (selected) fill = IM_COL32(210, 150, 60, 255);
-        if (link_from) fill = IM_COL32(90, 150, 210, 255);
+        ImU32 fill = faction_node_color();
+        if (!is_faction) {
+            if (const auto* node = find_node(session.relationships, key))
+                fill = relationship_node_kind_color(node->kind);
+            else
+                fill = IM_COL32(55, 95, 75, 255);
+        }
+        if (selected) fill = selected_node_color();
+        if (link_from) fill = link_from_node_color();
         draw->AddCircleFilled(center, node_radius, fill);
         draw->AddCircle(center, node_radius, IM_COL32(230, 230, 235, 255), 0, 1.5f);
 
@@ -1859,9 +3150,7 @@ void draw_relationship_graph_canvas(WorldForgeEditorSession& session, const ImVe
         } else {
             label = key.substr(8);
         }
-        const ImVec2 text_size = ImGui::CalcTextSize(label.c_str());
-        draw->AddText(ImVec2(center.x - text_size.x * 0.5f, center.y - text_size.y * 0.5f),
-            IM_COL32(245, 245, 245, 255), label.c_str());
+        draw_graph_node_label(draw, center, node_radius, label);
 
         const float dx = mouse.x - center.x;
         const float dy = mouse.y - center.y;
@@ -1935,51 +3224,977 @@ void draw_relationship_graph_canvas(WorldForgeEditorSession& session, const ImVe
     ImGui::EndChild();
 }
 
-void draw_factions_pane(WorldForgeEditorSession& session) {
+void draw_parent_id_tree_node(const std::string& id, const std::unordered_map<std::string, std::vector<std::string>>& children,
+    const std::unordered_map<std::string, std::string>& labels, std::string& selected_id) {
+    std::string label = id;
+    if (const auto it = labels.find(id); it != labels.end() && !it->second.empty()) label = it->second + "  (" + id + ")";
+    const auto child_it = children.find(id);
+    const bool has_children = child_it != children.end() && !child_it->second.empty();
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth |
+                               ImGuiTreeNodeFlags_DefaultOpen;
+    if (selected_id == id) flags |= ImGuiTreeNodeFlags_Selected;
+    if (!has_children) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+    const bool open = ImGui::TreeNodeEx(id.c_str(), flags, "%s", label.c_str());
+    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) selected_id = id;
+    if (has_children && open) {
+        for (const auto& child : child_it->second) draw_parent_id_tree_node(child, children, labels, selected_id);
+        ImGui::TreePop();
+    }
+}
+
+void draw_parent_id_forest(const std::vector<std::string>& ids,
+    const std::unordered_map<std::string, std::string>& parent_of,
+    const std::unordered_map<std::string, std::string>& labels, std::string& selected_id) {
+    std::unordered_map<std::string, std::vector<std::string>> children;
+    std::vector<std::string> roots;
+    std::unordered_set<std::string> id_set(ids.begin(), ids.end());
+    for (const auto& id : ids) {
+        const auto pit = parent_of.find(id);
+        const std::string parent = pit != parent_of.end() ? pit->second : std::string{};
+        if (parent.empty() || id_set.find(parent) == id_set.end()) roots.push_back(id);
+        else children[parent].push_back(id);
+    }
+    for (auto& entry : children) std::sort(entry.second.begin(), entry.second.end());
+    std::sort(roots.begin(), roots.end());
+    if (roots.empty()) ImGui::TextDisabled("(empty)");
+    for (const auto& root : roots) draw_parent_id_tree_node(root, children, labels, selected_id);
+}
+
+std::string find_person_faction_affiliation(const WorldForgeRelationshipsAsset& rel, const std::string& person_id) {
+    for (const auto& edge : rel.edges) {
+        if (edge.from.target != WorldForgeRelationshipEndpointTarget::Node || edge.from.id != person_id) continue;
+        if (edge.to.target != WorldForgeRelationshipEndpointTarget::Faction) continue;
+        if (edge.kind == WorldForgeRelationshipEdgeKind::MemberOf ||
+            edge.kind == WorldForgeRelationshipEdgeKind::Leads)
+            return edge.to.id;
+    }
+    return {};
+}
+
+bool upsert_person_faction_affiliation(WorldForgeEditorSession& session, const std::string& person_id,
+    const std::string& faction_id, WorldForgeRelationshipEdgeKind kind) {
+    std::vector<std::string> remove_ids;
+    for (const auto& edge : session.relationships.edges) {
+        if (edge.from.target != WorldForgeRelationshipEndpointTarget::Node || edge.from.id != person_id) continue;
+        if (edge.to.target != WorldForgeRelationshipEndpointTarget::Faction) continue;
+        if (edge.kind == WorldForgeRelationshipEdgeKind::MemberOf ||
+            edge.kind == WorldForgeRelationshipEdgeKind::Leads)
+            remove_ids.push_back(edge.id);
+    }
+    for (const auto& edge_id : remove_ids) remove_relationship_edge(session, edge_id);
+    if (faction_id.empty()) {
+        session.selected_id = person_id;
+        session.dirty = true;
+        session.status = "Cleared faction affiliation for " + person_id;
+        return true;
+    }
+    if (!find_faction(session.factions, faction_id)) return false;
+    const std::string edge_id = unique_relationship_id(session.relationships,
+        person_id + "_" + to_string(kind) + "_" + faction_id);
+    WorldForgeRelationshipEndpoint from;
+    from.target = WorldForgeRelationshipEndpointTarget::Node;
+    from.id = person_id;
+    WorldForgeRelationshipEndpoint to;
+    to.target = WorldForgeRelationshipEndpointTarget::Faction;
+    to.id = faction_id;
+    if (!add_relationship_edge(session, edge_id, from, to, kind)) return false;
+    session.selected_id = person_id;
+    session.status = "Set affiliation " + person_id + " → " + faction_id;
+    return true;
+}
+
+void draw_person_affiliation_controls(WorldForgeEditorSession& session, const WorldForgeRelationshipNode& node) {
+    if (node.kind != WorldForgeRelationshipNodeKind::Person &&
+        node.kind != WorldForgeRelationshipNodeKind::Organization)
+        return;
+    std::string affiliation = find_person_faction_affiliation(session.relationships, node.id);
+    WorldForgeRelationshipEdgeKind edge_kind = WorldForgeRelationshipEdgeKind::MemberOf;
+    for (const auto& edge : session.relationships.edges) {
+        if (edge.from.target == WorldForgeRelationshipEndpointTarget::Node && edge.from.id == node.id &&
+            edge.to.target == WorldForgeRelationshipEndpointTarget::Faction && edge.to.id == affiliation) {
+            if (edge.kind == WorldForgeRelationshipEdgeKind::Leads) edge_kind = WorldForgeRelationshipEdgeKind::Leads;
+            break;
+        }
+    }
+    ImGui::Separator();
+    draw_form_section("Faction affiliation");
+    if (draw_id_combo("faction##PersonAffiliation", affiliation, collect_faction_ids(session.factions), true,
+            "(none)")) {
+        upsert_person_faction_affiliation(session, node.id, affiliation, edge_kind);
+    }
+    if (draw_enum_combo("role##PersonAffiliationRole", edge_kind,
+            {WorldForgeRelationshipEdgeKind::MemberOf, WorldForgeRelationshipEdgeKind::Leads})) {
+        if (!affiliation.empty()) upsert_person_faction_affiliation(session, node.id, affiliation, edge_kind);
+    }
+}
+
+struct HierarchyGraphNode {
+    std::string id;
+    std::string label;
+    std::string subtitle;
+    std::string parent_id;
+    bool proxy = false;
+    ImU32 fill = IM_COL32(70, 95, 130, 255);
+};
+
+void apply_hierarchy_depth_colors(std::vector<HierarchyGraphNode>& nodes) {
+    std::unordered_map<std::string, std::string> parent_of;
+    std::unordered_set<std::string> id_set;
+    for (const auto& node : nodes) {
+        parent_of[node.id] = node.parent_id;
+        id_set.insert(node.id);
+    }
+    auto depth_of = [&](const std::string& id) {
+        int depth = 0;
+        std::unordered_set<std::string> seen;
+        std::string walk = id;
+        while (true) {
+            const auto pit = parent_of.find(walk);
+            if (pit == parent_of.end() || pit->second.empty() || id_set.count(pit->second) == 0) break;
+            if (!seen.insert(pit->second).second) break;
+            walk = pit->second;
+            ++depth;
+            if (depth > 64) break;
+        }
+        return depth;
+    };
+    for (auto& node : nodes) node.fill = hierarchy_depth_color(depth_of(node.id), node.proxy);
+}
+
+std::string hierarchy_endpoint_canvas_id(const WorldForgeRelationshipEndpoint& endpoint) {
+    return endpoint.id;
+}
+
+std::string hierarchy_endpoint_label(const WorldForgeEditorSession& session,
+    const WorldForgeRelationshipEndpoint& endpoint) {
+    if (endpoint.target == WorldForgeRelationshipEndpointTarget::Faction) {
+        if (const auto* faction = find_faction(session.factions, endpoint.id)) {
+            if (!faction->display_name.empty()) return faction->display_name;
+        }
+        return endpoint.id;
+    }
+    if (const auto* node = find_node(session.relationships, endpoint.id)) {
+        if (!node->display_name.empty()) return node->display_name;
+    }
+    if (const auto* deity = find_pantheon(session.pantheon, endpoint.id)) {
+        if (!deity->display_name.empty()) return deity->display_name;
+    }
+    return endpoint.id;
+}
+
+bool hierarchy_edge_touches_primary(const WorldForgeRelationshipEdge& edge,
+    const std::unordered_set<std::string>& primary_ids) {
+    const auto from_id = hierarchy_endpoint_canvas_id(edge.from);
+    const auto to_id = hierarchy_endpoint_canvas_id(edge.to);
+    return primary_ids.count(from_id) != 0 || primary_ids.count(to_id) != 0;
+}
+
+void enrich_hierarchy_nodes_with_relationship_proxies(WorldForgeEditorSession& session,
+    std::vector<HierarchyGraphNode>& nodes) {
+    std::unordered_set<std::string> primary;
+    std::unordered_set<std::string> present;
+    for (const auto& node : nodes) {
+        primary.insert(node.id);
+        present.insert(node.id);
+    }
+
+    auto add_proxy = [&](const std::string& id, const std::string& label) {
+        if (id.empty() || present.count(id) != 0) return;
+        HierarchyGraphNode proxy;
+        proxy.id = id;
+        proxy.label = label.empty() ? id : label;
+        proxy.parent_id.clear();
+        proxy.proxy = true;
+        proxy.subtitle = "proxy";
+        proxy.fill = proxy_node_color();
+        nodes.push_back(std::move(proxy));
+        present.insert(id);
+    };
+
+    for (const auto& edge : session.relationships.edges) {
+        if (!hierarchy_edge_touches_primary(edge, primary)) continue;
+        const auto from_id = hierarchy_endpoint_canvas_id(edge.from);
+        const auto to_id = hierarchy_endpoint_canvas_id(edge.to);
+        if (primary.count(from_id) != 0 && primary.count(to_id) == 0)
+            add_proxy(to_id, hierarchy_endpoint_label(session, edge.to));
+        if (primary.count(to_id) != 0 && primary.count(from_id) == 0)
+            add_proxy(from_id, hierarchy_endpoint_label(session, edge.from));
+    }
+}
+
+void draw_hierarchy_relationships_section(WorldForgeEditorSession& session, const std::string& entity_id) {
+    if (entity_id.empty() || entity_id.rfind("edge:", 0) == 0) return;
+    ImGui::Separator();
+    draw_form_section("Relationships");
+    int shown = 0;
+    for (const auto& edge : session.relationships.edges) {
+        const auto from_id = hierarchy_endpoint_canvas_id(edge.from);
+        const auto to_id = hierarchy_endpoint_canvas_id(edge.to);
+        if (from_id != entity_id && to_id != entity_id) continue;
+        ++shown;
+        const bool selected = session.selected_id == edge.id;
+        const bool outbound = from_id == entity_id;
+        const auto& other = outbound ? edge.to : edge.from;
+        const std::string other_label = hierarchy_endpoint_label(session, other);
+        const char* arrow = edge.bidirectional ? "<->" : (outbound ? "->" : "<-");
+        const std::string row = std::string("[") + to_string(edge.kind) + "] " + arrow + " " + other_label + "  (" +
+                                other.id + ")";
+        if (ImGui::Selectable(row.c_str(), selected)) {
+            // Prefer jumping to the other endpoint when it exists in this hierarchy page.
+            session.selected_id = other.id;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Edge id: %s\nClick to select related entity", edge.id.c_str());
+        }
+        ImGui::SameLine();
+        ImGui::PushID(edge.id.c_str());
+        if (ImGui::SmallButton("edge")) session.selected_id = edge.id;
+        ImGui::PopID();
+    }
+    if (shown == 0) ImGui::TextDisabled("(no relationship edges for this entity)");
+}
+
+void ensure_hierarchy_graph_layout(WorldForgeEditorSession& session, const std::vector<HierarchyGraphNode>& nodes,
+    const ImVec2& canvas_size) {
+    bool missing = session.hierarchy_graph_needs_layout;
+    for (const auto& node : nodes) {
+        if (session.hierarchy_graph_positions.find(node.id) == session.hierarchy_graph_positions.end())
+            missing = true;
+    }
+    if (!missing) {
+        std::unordered_set<std::string> alive;
+        for (const auto& node : nodes) alive.insert(node.id);
+        for (auto it = session.hierarchy_graph_positions.begin(); it != session.hierarchy_graph_positions.end();) {
+            if (alive.count(it->first) == 0) it = session.hierarchy_graph_positions.erase(it);
+            else ++it;
+        }
+        return;
+    }
+
+    session.hierarchy_graph_positions.clear();
+    std::unordered_map<std::string, std::vector<std::string>> children;
+    std::unordered_set<std::string> id_set;
+    std::unordered_set<std::string> proxy_ids;
+    std::vector<std::string> proxies;
+    for (const auto& node : nodes) {
+        id_set.insert(node.id);
+        if (node.proxy) {
+            proxies.push_back(node.id);
+            proxy_ids.insert(node.id);
+        }
+    }
+    for (const auto& node : nodes) {
+        if (node.proxy) continue;
+        const auto& parent = node.parent_id;
+        if (!parent.empty() && id_set.count(parent) != 0 && proxy_ids.count(parent) == 0)
+            children[parent].push_back(node.id);
+    }
+    for (auto& entry : children) std::sort(entry.second.begin(), entry.second.end());
+
+    std::vector<std::string> roots;
+    for (const auto& node : nodes) {
+        if (node.proxy) continue;
+        const auto& parent = node.parent_id;
+        if (parent.empty() || id_set.count(parent) == 0 || proxy_ids.count(parent) != 0) roots.push_back(node.id);
+    }
+    std::sort(roots.begin(), roots.end());
+
+    constexpr float kNodeW = 150.0f;
+    constexpr float kHGap = 28.0f;
+    constexpr float kRowH = 100.0f;
+    constexpr float kTop = 40.0f;
+
+    std::unordered_map<std::string, float> subtree_width;
+    std::function<float(const std::string&)> measure = [&](const std::string& id) -> float {
+        if (const auto it = subtree_width.find(id); it != subtree_width.end()) return it->second;
+        const auto cit = children.find(id);
+        float width = kNodeW;
+        if (cit != children.end() && !cit->second.empty()) {
+            float sum = 0.0f;
+            for (std::size_t i = 0; i < cit->second.size(); ++i) {
+                if (i) sum += kHGap;
+                sum += measure(cit->second[i]);
+            }
+            width = (std::max)(kNodeW, sum);
+        }
+        subtree_width[id] = width;
+        return width;
+    };
+    for (const auto& root : roots) measure(root);
+
+    std::function<void(const std::string&, float, float)> place = [&](const std::string& id, float left, float y) {
+        const float width = measure(id);
+        const auto cit = children.find(id);
+        if (cit == children.end() || cit->second.empty()) {
+            session.hierarchy_graph_positions[id] = {left + width * 0.5f, y};
+            return;
+        }
+        float children_span = 0.0f;
+        for (std::size_t i = 0; i < cit->second.size(); ++i) {
+            if (i) children_span += kHGap;
+            children_span += measure(cit->second[i]);
+        }
+        float child_left = left + (width - children_span) * 0.5f;
+        for (const auto& child : cit->second) {
+            const float cw = measure(child);
+            place(child, child_left, y + kRowH);
+            child_left += cw + kHGap;
+        }
+        float min_x = session.hierarchy_graph_positions[cit->second.front()][0];
+        float max_x = session.hierarchy_graph_positions[cit->second.back()][0];
+        session.hierarchy_graph_positions[id] = {(min_x + max_x) * 0.5f, y};
+    };
+
+    float forest_left = 40.0f;
+    for (const auto& root : roots) {
+        const float width = measure(root);
+        place(root, forest_left, kTop);
+        forest_left += width + kHGap * 2.0f;
+    }
+
+    if (!proxies.empty()) {
+        std::sort(proxies.begin(), proxies.end());
+        float max_y = kTop;
+        for (const auto& entry : session.hierarchy_graph_positions)
+            max_y = (std::max)(max_y, entry.second[1]);
+        const float y = max_y + kRowH;
+        const float span = (std::max)(static_cast<float>(proxies.size()) * (kNodeW + kHGap), canvas_size.x * 0.5f);
+        for (std::size_t i = 0; i < proxies.size(); ++i) {
+            const float t = (proxies.size() == 1)
+                                ? 0.5f
+                                : (static_cast<float>(i) + 0.5f) / static_cast<float>(proxies.size());
+            session.hierarchy_graph_positions[proxies[i]] = {40.0f + t * span, y};
+        }
+    }
+    session.hierarchy_graph_needs_layout = false;
+}
+
+void draw_hierarchy_graph_canvas(WorldForgeEditorSession& session, const std::vector<HierarchyGraphNode>& nodes,
+    const ImVec2& size, const char* child_id) {
+    ImGui::BeginChild(child_id, size, true, ImGuiWindowFlags_NoScrollbar);
+
+    const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+    const ImVec2 canvas_size = ImGui::GetContentRegionAvail();
+    if (canvas_size.x < 32.0f || canvas_size.y < 32.0f) {
+        ImGui::EndChild();
+        return;
+    }
+    ImGui::InvisibleButton("WorldForgeHierGraphHit", canvas_size);
+    const bool hovered = ImGui::IsItemHovered();
+    const bool active = ImGui::IsItemActive();
+    const ImVec2 mouse = ImGui::GetIO().MousePos;
+    const ImVec2 local{mouse.x - canvas_pos.x, mouse.y - canvas_pos.y};
+
+    ensure_hierarchy_graph_layout(session, nodes, canvas_size);
+
+    auto& cam = session.hierarchy_graph_camera;
+    cam.min_zoom = 0.35f;
+    cam.max_zoom = 2.0f;
+
+    std::unordered_map<std::string, std::string> labels;
+    std::unordered_map<std::string, bool> is_proxy;
+    std::unordered_set<std::string> present;
+    for (const auto& node : nodes) {
+        labels[node.id] = node.label.empty() ? node.id : node.label;
+        is_proxy[node.id] = node.proxy;
+        present.insert(node.id);
+    }
+
+    std::vector<std::string> keys;
+    keys.reserve(nodes.size());
+    for (const auto& node : nodes) keys.push_back(node.id);
+    if (session.hierarchy_graph_fit_requested) {
+        const auto bounds = compute_graph_bounds(session.hierarchy_graph_positions, &keys);
+        fit_graph_camera_to_bounds(cam, canvas_size.x, canvas_size.y, bounds, 48.0f);
+        session.hierarchy_graph_fit_requested = false;
+    }
+
+    if (hovered) {
+        const float wheel = ImGui::GetIO().MouseWheel;
+        if (wheel != 0.0f) apply_graph_zoom_at_local(cam, local.x, local.y, wheel);
+    }
+
+    const bool want_pan = hovered && (ImGui::IsMouseDown(ImGuiMouseButton_Middle) ||
+                                         (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::GetIO().KeyAlt));
+    if (want_pan && !session.hierarchy_graph_panning) {
+        session.hierarchy_graph_panning = true;
+        session.hierarchy_graph_pan_start_mouse = {mouse.x, mouse.y};
+        session.hierarchy_graph_pan_start_pan = cam.pan;
+        session.hierarchy_graph_drag_key.clear();
+    }
+    if (session.hierarchy_graph_panning) {
+        if (want_pan) {
+            cam.pan[0] = session.hierarchy_graph_pan_start_pan[0] + (mouse.x - session.hierarchy_graph_pan_start_mouse[0]);
+            cam.pan[1] = session.hierarchy_graph_pan_start_pan[1] + (mouse.y - session.hierarchy_graph_pan_start_mouse[1]);
+        } else {
+            session.hierarchy_graph_panning = false;
+        }
+    }
+
+    auto to_screen = [&](const std::array<float, 2>& world) {
+        const auto local_pt = graph_world_to_screen_local(cam, world[0], world[1]);
+        return ImVec2(canvas_pos.x + local_pt[0], canvas_pos.y + local_pt[1]);
+    };
+    auto to_world = [&](const ImVec2& screen_local) {
+        return graph_screen_to_world(cam, screen_local.x, screen_local.y);
+    };
+
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->AddRectFilled(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y),
+        IM_COL32(28, 30, 34, 255));
+    draw->AddRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y),
+        IM_COL32(70, 74, 82, 255));
+    draw->PushClipRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), true);
+
+    const float card_w = 148.0f * cam.zoom;
+    const float card_h = 52.0f * cam.zoom;
+    const float header_h = 26.0f * cam.zoom;
+    const float half_w = card_w * 0.5f;
+    const float half_h = card_h * 0.5f;
+
+    auto card_rect = [&](const ImVec2& center) {
+        return std::array<ImVec2, 2>{ImVec2(center.x - half_w, center.y - half_h),
+            ImVec2(center.x + half_w, center.y + half_h)};
+    };
+
+    auto draw_orthogonal_parent_link = [&](const ImVec2& parent_c, const ImVec2& child_c, ImU32 color) {
+        const ImVec2 parent_bottom{parent_c.x, parent_c.y + half_h};
+        const ImVec2 child_top{child_c.x, child_c.y - half_h};
+        const float mid_y = (parent_bottom.y + child_top.y) * 0.5f;
+        draw->AddLine(parent_bottom, ImVec2(parent_bottom.x, mid_y), color, 2.0f);
+        draw->AddLine(ImVec2(parent_bottom.x, mid_y), ImVec2(child_top.x, mid_y), color, 2.0f);
+        draw->AddLine(ImVec2(child_top.x, mid_y), child_top, color, 2.0f);
+    };
+
+    // parentId hierarchy links (orthogonal org-chart style)
+    for (const auto& node : nodes) {
+        if (node.proxy || node.parent_id.empty()) continue;
+        if (session.hierarchy_graph_positions.find(node.parent_id) == session.hierarchy_graph_positions.end())
+            continue;
+        if (session.hierarchy_graph_positions.find(node.id) == session.hierarchy_graph_positions.end()) continue;
+        const ImVec2 a = to_screen(session.hierarchy_graph_positions[node.parent_id]);
+        const ImVec2 b = to_screen(session.hierarchy_graph_positions[node.id]);
+        draw_orthogonal_parent_link(a, b, IM_COL32(120, 125, 135, 230));
+    }
+
+    // Relationship edges between canvas nodes (including proxies)
+    std::string hovered_edge;
+    float best_edge_dist = 8.0f * cam.zoom;
+    std::size_t rel_edge_count = 0;
+    const bool selecting_edge = find_edge(session.relationships, session.selected_id) != nullptr;
+    for (const auto& edge : session.relationships.edges) {
+        const auto from_id = hierarchy_endpoint_canvas_id(edge.from);
+        const auto to_id = hierarchy_endpoint_canvas_id(edge.to);
+        if (present.count(from_id) == 0 || present.count(to_id) == 0) continue;
+        const auto from_it = session.hierarchy_graph_positions.find(from_id);
+        const auto to_it = session.hierarchy_graph_positions.find(to_id);
+        if (from_it == session.hierarchy_graph_positions.end() || to_it == session.hierarchy_graph_positions.end())
+            continue;
+        ++rel_edge_count;
+        const ImVec2 a = to_screen(from_it->second);
+        const ImVec2 b = to_screen(to_it->second);
+        const bool selected = selecting_edge && session.selected_id == edge.id;
+        const ImU32 color = selected ? IM_COL32(255, 200, 90, 255) : IM_COL32(90, 170, 190, 230);
+        draw->AddLine(a, b, color, selected ? 2.5f : 1.5f);
+        if (edge.bidirectional)
+            draw->AddCircleFilled(ImVec2((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f), 3.0f * cam.zoom, color);
+        const ImVec2 mid{(a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f};
+        draw->AddText(ImVec2(mid.x + 4.0f, mid.y - 12.0f), IM_COL32(160, 220, 230, 240), to_string(edge.kind));
+        if (hovered && !session.hierarchy_graph_panning) {
+            const float dist = point_segment_distance(mouse, a, b);
+            if (dist < best_edge_dist) {
+                best_edge_dist = dist;
+                hovered_edge = edge.id;
+            }
+        }
+    }
+
+    std::unordered_map<std::string, std::string> subtitles;
+    std::unordered_map<std::string, ImU32> fills;
+    for (const auto& node : nodes) {
+        subtitles[node.id] = node.subtitle;
+        fills[node.id] = node.fill;
+    }
+
+    std::string hovered_node;
+    for (const auto& node : nodes) {
+        const auto it = session.hierarchy_graph_positions.find(node.id);
+        if (it == session.hierarchy_graph_positions.end()) continue;
+        const ImVec2 center = to_screen(it->second);
+        const auto rect = card_rect(center);
+        const bool selected = !selecting_edge && session.selected_id == node.id;
+        ImU32 header = fills.count(node.id) ? fills[node.id] : hierarchy_depth_color(0, node.proxy);
+        if (selected) header = selected_node_color();
+        const ImU32 body = IM_COL32(248, 248, 250, 255);
+        const ImU32 border = selected ? IM_COL32(255, 220, 140, 255) : IM_COL32(40, 42, 48, 220);
+        draw->AddRectFilled(rect[0], rect[1], body, 6.0f);
+        draw->AddRectFilled(rect[0], ImVec2(rect[1].x, rect[0].y + header_h), header, 6.0f,
+            ImDrawFlags_RoundCornersTop);
+        draw->AddRect(rect[0], rect[1], border, 6.0f, 0, selected ? 2.0f : 1.25f);
+
+        const std::string& title = labels[node.id];
+        const std::string& subtitle = subtitles[node.id];
+        const ImVec2 title_size = ImGui::CalcTextSize(title.c_str());
+        const float title_x = center.x - title_size.x * 0.5f;
+        const float title_y = rect[0].y + (header_h - title_size.y) * 0.5f;
+        draw->AddText(ImVec2(title_x, title_y), IM_COL32(20, 22, 26, 255), title.c_str());
+        if (!subtitle.empty()) {
+            const ImVec2 sub_size = ImGui::CalcTextSize(subtitle.c_str());
+            draw->AddText(ImVec2(center.x - sub_size.x * 0.5f, rect[0].y + header_h + (card_h - header_h - sub_size.y) * 0.5f),
+                IM_COL32(55, 58, 66, 255), subtitle.c_str());
+        }
+
+        if (hovered && !session.hierarchy_graph_panning && mouse.x >= rect[0].x && mouse.x <= rect[1].x &&
+            mouse.y >= rect[0].y && mouse.y <= rect[1].y)
+            hovered_node = node.id;
+    }
+
+    draw_hierarchy_graph_legend(draw, canvas_pos, canvas_size, session.hierarchy_page);
+
+    const auto bounds = compute_graph_bounds(session.hierarchy_graph_positions, &keys);
+    const bool minimap_clicked = draw_world_forge_graph_minimap(draw, canvas_pos.x, canvas_pos.y, canvas_size.x,
+        canvas_size.y, cam, bounds, session.hierarchy_graph_positions, mouse.x, mouse.y,
+        hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt);
+    draw->PopClipRect();
+
+    if (!minimap_clicked && !session.hierarchy_graph_panning && active &&
+        ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt) {
+        if (!hovered_node.empty()) {
+            session.hierarchy_graph_drag_key = hovered_node;
+            session.selected_id = hovered_node;
+        } else if (!hovered_edge.empty()) {
+            session.hierarchy_graph_drag_key.clear();
+            session.selected_id = hovered_edge;
+        } else {
+            session.hierarchy_graph_drag_key.clear();
+        }
+    }
+    if (!session.hierarchy_graph_panning && active && !session.hierarchy_graph_drag_key.empty() &&
+        ImGui::IsMouseDragging(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt) {
+        auto it = session.hierarchy_graph_positions.find(session.hierarchy_graph_drag_key);
+        if (it != session.hierarchy_graph_positions.end()) it->second = to_world(local);
+    }
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) session.hierarchy_graph_drag_key.clear();
+
+    if (ImGui::Button("Reset layout##WorldForgeHierGraph")) {
+        session.hierarchy_graph_needs_layout = true;
+        session.hierarchy_graph_fit_requested = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Fit##WorldForgeHierGraphFit")) session.hierarchy_graph_fit_requested = true;
+    ImGui::SameLine();
+    ImGui::TextDisabled("%zu nodes · %zu relationships · zoom %.2f  (wheel zoom, Alt+drag pan)", nodes.size(),
+        rel_edge_count, cam.zoom);
+    ImGui::EndChild();
+}
+
+bool draw_hierarchy_view_mode_radios(WorldForgeEditorSession& session, const char* id_suffix) {
+    const std::string tree_id = std::string("Tree##HierMode") + id_suffix;
+    const std::string graph_id = std::string("Graph##HierMode") + id_suffix;
+    bool changed = false;
+    if (ImGui::RadioButton(tree_id.c_str(), !session.hierarchy_graph_mode)) {
+        if (session.hierarchy_graph_mode) {
+            session.hierarchy_graph_mode = false;
+            changed = true;
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton(graph_id.c_str(), session.hierarchy_graph_mode)) {
+        if (!session.hierarchy_graph_mode) {
+            session.hierarchy_graph_mode = true;
+            session.hierarchy_graph_needs_layout = true;
+            session.hierarchy_graph_fit_requested = true;
+            changed = true;
+        }
+    }
+    return changed;
+}
+
+void draw_hierarchy_factions_page(WorldForgeEditorSession& session) {
     session.list_kind = ListKind::Entities;
+    draw_hierarchy_view_mode_radios(session, "Factions");
+    ImGui::Separator();
     draw_add_faction_controls(session);
     ImGui::Separator();
     const ImVec2 avail = ImGui::GetContentRegionAvail();
     float list_w = 0.0f;
-    begin_list_detail(avail, list_w);
 
-    ImGui::BeginChild("WorldForgeFactionsList", ImVec2(list_w, avail.y), true);
-    if (session.factions.entities.empty()) ImGui::TextDisabled("(no factions — use Add faction above)");
-    for (const auto& entity : session.factions.entities) {
-        std::string label = entity.id;
-        if (!entity.display_name.empty()) label += "  (" + entity.display_name + ")";
-        const bool selected = session.selected_id == entity.id;
-        if (ImGui::Selectable(label.c_str(), selected)) session.selected_id = entity.id;
-    }
-    ImGui::EndChild();
-
-    ImGui::SameLine();
-    ImGui::BeginChild("WorldForgeFactionsDetail", ImVec2(0.0f, avail.y), true);
-    auto* entity = find_faction(session.factions, session.selected_id);
-    if (!entity) {
-        ImGui::TextDisabled("Select a faction/culture/clan/warband, or create one above");
-    } else {
+    auto draw_faction_detail = [&]() {
+        auto* entity = find_faction(session.factions, session.selected_id);
+        if (!entity) {
+            ImGui::TextDisabled("Select a faction/culture/clan/warband, or create one above");
+            return;
+        }
         draw_faction_placeholder(session, *entity);
         ImGui::Separator();
         ImGui::Text("id: %s", entity->id.c_str());
-        if (draw_input_text("displayName", entity->display_name)) session.dirty = true;
-        if (draw_enum_combo("kind", entity->kind,
+        if (draw_input_text("Display name", entity->display_name)) session.dirty = true;
+        if (draw_enum_combo("Kind", entity->kind,
                 {WorldForgeFactionKind::Faction, WorldForgeFactionKind::Culture, WorldForgeFactionKind::Clan,
                     WorldForgeFactionKind::Warband}))
             session.dirty = true;
-        if (draw_enum_combo("canonStatus", entity->canon_status,
+        if (draw_enum_combo("Canon status", entity->canon_status,
                 {WorldForgeCanonStatus::Established, WorldForgeCanonStatus::Draft, WorldForgeCanonStatus::Proposal,
                     WorldForgeCanonStatus::Open}))
             session.dirty = true;
         if (draw_political_role_combo("politicalRole", entity->political_role)) session.dirty = true;
-        if (draw_text_area("summary", entity->summary, 96.0f)) session.dirty = true;
-        if (draw_input_text("storyRef", entity->story_ref)) session.dirty = true;
-        if (draw_id_combo("parentId", entity->parent_id, collect_faction_ids(session.factions))) session.dirty = true;
-        if (draw_csv_field("tags (comma-separated)", entity->tags)) session.dirty = true;
+        if (draw_text_area("Summary", entity->summary, 96.0f)) session.dirty = true;
+        if (draw_input_text("Story reference", entity->story_ref)) session.dirty = true;
+        if (draw_id_combo("Parent", entity->parent_id, collect_faction_ids(session.factions))) {
+            session.dirty = true;
+            session.hierarchy_graph_needs_layout = true;
+        }
+        if (draw_csv_field("Tags", entity->tags)) session.dirty = true;
         if (draw_open_questions_field(entity->open_questions)) session.dirty = true;
         draw_faction_standing_section(session, *entity);
+        draw_hierarchy_relationships_section(session, entity->id);
+    };
+
+    if (session.hierarchy_graph_mode) {
+        list_w = (std::clamp)(avail.x * 0.70f, 320.0f, avail.x - 200.0f);
+        std::vector<HierarchyGraphNode> nodes;
+        nodes.reserve(session.factions.entities.size());
+        for (const auto& entity : session.factions.entities) {
+            HierarchyGraphNode node;
+            node.id = entity.id;
+            node.label = entity.display_name.empty() ? entity.id : entity.display_name;
+            node.subtitle = to_string(entity.kind);
+            node.parent_id = entity.parent_id;
+            nodes.push_back(std::move(node));
+        }
+        enrich_hierarchy_nodes_with_relationship_proxies(session, nodes);
+        apply_hierarchy_depth_colors(nodes);
+        draw_hierarchy_graph_canvas(session, nodes, ImVec2(list_w, avail.y), "WorldForgeHierarchyFactionsGraph");
+        ImGui::SameLine();
+        ImGui::BeginChild("WorldForgeHierarchyFactionsGraphDetail", ImVec2(0.0f, avail.y), true);
+        if (auto* edge = find_edge(session.relationships, session.selected_id)) {
+            ImGui::TextDisabled("Relationship edge");
+            ImGui::Text("id: %s", edge->id.c_str());
+            ImGui::Text("kind: %s", to_string(edge->kind));
+            ImGui::Text("%s → %s", edge->from.id.c_str(), edge->to.id.c_str());
+        } else {
+            draw_faction_detail();
+        }
+        ImGui::EndChild();
+        return;
+    }
+
+    begin_list_detail(avail, list_w);
+    ImGui::BeginChild("WorldForgeHierarchyFactionsTree", ImVec2(list_w, avail.y), true);
+    if (session.factions.entities.empty()) ImGui::TextDisabled("(no factions — use Add faction above)");
+    else {
+        std::vector<std::string> ids;
+        std::unordered_map<std::string, std::string> parents;
+        std::unordered_map<std::string, std::string> labels;
+        for (const auto& entity : session.factions.entities) {
+            ids.push_back(entity.id);
+            parents[entity.id] = entity.parent_id;
+            labels[entity.id] = entity.display_name;
+        }
+        draw_parent_id_forest(ids, parents, labels, session.selected_id);
     }
     ImGui::EndChild();
+
+    ImGui::SameLine();
+    ImGui::BeginChild("WorldForgeHierarchyFactionsDetail", ImVec2(0.0f, avail.y), true);
+    if (auto* edge = find_edge(session.relationships, session.selected_id)) {
+        ImGui::TextDisabled("Relationship edge");
+        ImGui::Text("id: %s", edge->id.c_str());
+        ImGui::Text("kind: %s", to_string(edge->kind));
+        ImGui::Text("%s → %s", edge->from.id.c_str(), edge->to.id.c_str());
+    } else {
+        draw_faction_detail();
+    }
+    ImGui::EndChild();
+}
+
+void draw_hierarchy_religion_page(WorldForgeEditorSession& session) {
+    session.list_kind = ListKind::Pantheon;
+    draw_hierarchy_view_mode_radios(session, "Religion");
+    ImGui::Separator();
+    draw_add_pantheon_controls(session);
+    ImGui::Separator();
+    const ImVec2 avail = ImGui::GetContentRegionAvail();
+    float list_w = 0.0f;
+
+    auto draw_religion_detail = [&]() {
+        auto* entity = find_pantheon(session.pantheon, session.selected_id);
+        if (!entity) {
+            ImGui::TextDisabled("Select a deity/aspect/force, or create one above");
+            return;
+        }
+        ImGui::Text("id: %s", entity->id.c_str());
+        if (draw_input_text("Display name", entity->display_name)) session.dirty = true;
+        if (draw_enum_combo("Kind", entity->kind,
+                {WorldForgePantheonKind::Deity, WorldForgePantheonKind::Aspect, WorldForgePantheonKind::Force}))
+            session.dirty = true;
+        if (draw_enum_combo("Canon status", entity->canon_status,
+                {WorldForgePantheonCanonStatus::Established, WorldForgePantheonCanonStatus::Draft,
+                    WorldForgePantheonCanonStatus::Proposal, WorldForgePantheonCanonStatus::Open}))
+            session.dirty = true;
+        if (draw_text_area("Summary", entity->summary, 96.0f)) session.dirty = true;
+        if (draw_input_text("Story reference", entity->story_ref)) session.dirty = true;
+        if (draw_id_combo("Parent", entity->parent_id, collect_pantheon_ids(session.pantheon))) {
+            session.dirty = true;
+            session.hierarchy_graph_needs_layout = true;
+        }
+        if (draw_csv_field("Tags", entity->tags)) session.dirty = true;
+        if (draw_open_questions_field(entity->open_questions)) session.dirty = true;
+        draw_hierarchy_relationships_section(session, entity->id);
+    };
+
+    if (session.hierarchy_graph_mode) {
+        list_w = (std::clamp)(avail.x * 0.70f, 320.0f, avail.x - 200.0f);
+        std::vector<HierarchyGraphNode> nodes;
+        nodes.reserve(session.pantheon.entities.size());
+        for (const auto& entity : session.pantheon.entities) {
+            HierarchyGraphNode node;
+            node.id = entity.id;
+            node.label = entity.display_name.empty() ? entity.id : entity.display_name;
+            node.subtitle = to_string(entity.kind);
+            node.parent_id = entity.parent_id;
+            nodes.push_back(std::move(node));
+        }
+        enrich_hierarchy_nodes_with_relationship_proxies(session, nodes);
+        apply_hierarchy_depth_colors(nodes);
+        draw_hierarchy_graph_canvas(session, nodes, ImVec2(list_w, avail.y), "WorldForgeHierarchyReligionGraph");
+        ImGui::SameLine();
+        ImGui::BeginChild("WorldForgeHierarchyReligionGraphDetail", ImVec2(0.0f, avail.y), true);
+        if (auto* edge = find_edge(session.relationships, session.selected_id)) {
+            ImGui::TextDisabled("Relationship edge");
+            ImGui::Text("id: %s", edge->id.c_str());
+            ImGui::Text("kind: %s", to_string(edge->kind));
+            ImGui::Text("%s → %s", edge->from.id.c_str(), edge->to.id.c_str());
+        } else {
+            draw_religion_detail();
+        }
+        ImGui::EndChild();
+        return;
+    }
+
+    begin_list_detail(avail, list_w);
+    ImGui::BeginChild("WorldForgeHierarchyReligionTree", ImVec2(list_w, avail.y), true);
+    if (session.pantheon.entities.empty()) ImGui::TextDisabled("(no pantheon entities — use Add above)");
+    else {
+        std::vector<std::string> ids;
+        std::unordered_map<std::string, std::string> parents;
+        std::unordered_map<std::string, std::string> labels;
+        for (const auto& entity : session.pantheon.entities) {
+            ids.push_back(entity.id);
+            parents[entity.id] = entity.parent_id;
+            labels[entity.id] = entity.display_name;
+        }
+        draw_parent_id_forest(ids, parents, labels, session.selected_id);
+    }
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+    ImGui::BeginChild("WorldForgeHierarchyReligionDetail", ImVec2(0.0f, avail.y), true);
+    if (auto* edge = find_edge(session.relationships, session.selected_id)) {
+        ImGui::TextDisabled("Relationship edge");
+        ImGui::Text("id: %s", edge->id.c_str());
+        ImGui::Text("kind: %s", to_string(edge->kind));
+        ImGui::Text("%s → %s", edge->from.id.c_str(), edge->to.id.c_str());
+    } else {
+        draw_religion_detail();
+    }
+    ImGui::EndChild();
+}
+
+void draw_hierarchy_persons_page(WorldForgeEditorSession& session) {
+    session.list_kind = ListKind::Nodes;
+    draw_hierarchy_view_mode_radios(session, "Persons");
+    ImGui::SameLine();
+    ImGui::TextUnformatted("|");
+    ImGui::SameLine();
+    ImGui::TextUnformatted("Filter:");
+    ImGui::SameLine();
+    if (ImGui::RadioButton("All##WorldForgePersonsFilterAll", !session.hierarchy_persons_companions_only)) {
+        session.hierarchy_persons_companions_only = false;
+        session.hierarchy_graph_needs_layout = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Companions##WorldForgePersonsFilterCompanions",
+            session.hierarchy_persons_companions_only)) {
+        session.hierarchy_persons_companions_only = true;
+        session.hierarchy_graph_needs_layout = true;
+    }
+    ImGui::Separator();
+    draw_add_node_controls(session);
+    ImGui::Separator();
+    const ImVec2 avail = ImGui::GetContentRegionAvail();
+    float list_w = 0.0f;
+
+    std::vector<std::string> all_person_ids;
+    std::vector<std::string> person_ids;
+    std::unordered_map<std::string, std::string> parents;
+    std::unordered_map<std::string, std::string> labels;
+    std::vector<HierarchyGraphNode> graph_nodes;
+    for (const auto& node : session.relationships.nodes) {
+        if (node.kind != WorldForgeRelationshipNodeKind::Person &&
+            node.kind != WorldForgeRelationshipNodeKind::Organization)
+            continue;
+        all_person_ids.push_back(node.id);
+        if (session.hierarchy_persons_companions_only && !is_companion_person(node)) continue;
+        if (!entity_matches_act_lens(session, node.acts, node.tags)) continue;
+        person_ids.push_back(node.id);
+        parents[node.id] = node.parent_id;
+        labels[node.id] = node.display_name;
+        HierarchyGraphNode g;
+        g.id = node.id;
+        g.label = node.display_name.empty() ? node.id : node.display_name;
+        g.subtitle = to_string(node.kind);
+        g.parent_id = node.parent_id;
+        graph_nodes.push_back(std::move(g));
+    }
+
+    auto draw_person_detail = [&]() {
+        auto* node = find_node(session.relationships, session.selected_id);
+        if (!node || (node->kind != WorldForgeRelationshipNodeKind::Person &&
+                         node->kind != WorldForgeRelationshipNodeKind::Organization)) {
+            ImGui::TextDisabled(session.hierarchy_persons_companions_only
+                                    ? "Select a companion, or create a person above"
+                                    : "Select a person or organization, or create a node above");
+            return false;
+        }
+        if (session.hierarchy_persons_companions_only && !is_companion_person(*node)) {
+            ImGui::TextDisabled("Selected node is hidden by Companions filter");
+            if (ImGui::Button("Show All persons##WorldForgeClearCompanionsFilter")) {
+                session.hierarchy_persons_companions_only = false;
+                session.hierarchy_graph_needs_layout = true;
+            }
+            return false;
+        }
+        draw_relationship_node_placeholder(session, *node);
+        ImGui::Separator();
+        ImGui::Text("id: %s", node->id.c_str());
+        if (ImGui::Button("Delete node##WorldForgeDeletePersonHier")) {
+            remove_relationship_node(session, node->id);
+            session.hierarchy_graph_needs_layout = true;
+            return true;
+        }
+        ImGui::Separator();
+        if (draw_input_text("Display name", node->display_name)) session.dirty = true;
+        if (draw_enum_combo("Kind", node->kind,
+                {WorldForgeRelationshipNodeKind::Person, WorldForgeRelationshipNodeKind::Organization}))
+            session.dirty = true;
+        if (node->kind == WorldForgeRelationshipNodeKind::Person) {
+            bool companion = has_tag(node->tags, kCompanionTag);
+            if (ImGui::Checkbox("Companion##WorldForgePersonCompanion", &companion)) {
+                if (set_tag(node->tags, kCompanionTag, companion)) {
+                    session.dirty = true;
+                    session.hierarchy_graph_needs_layout = true;
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Adds/removes the '%s' tag used by the Companions filter", kCompanionTag);
+            }
+        }
+        if (draw_enum_combo("Canon status", node->canon_status,
+                {WorldForgeRelationshipCanonStatus::Established, WorldForgeRelationshipCanonStatus::Draft,
+                    WorldForgeRelationshipCanonStatus::Proposal, WorldForgeRelationshipCanonStatus::Open}))
+            session.dirty = true;
+        if (draw_text_area("Summary", node->summary, 96.0f)) session.dirty = true;
+        if (draw_input_text("Story reference", node->story_ref)) session.dirty = true;
+        if (draw_id_combo("Parent", node->parent_id, all_person_ids)) {
+            session.dirty = true;
+            session.hierarchy_graph_needs_layout = true;
+        }
+        if (draw_acts_field(node->acts)) {
+            session.dirty = true;
+            session.hierarchy_graph_needs_layout = true;
+        }
+        if (draw_csv_field("Tags", node->tags)) {
+            session.dirty = true;
+            session.hierarchy_graph_needs_layout = true;
+        }
+        if (draw_open_questions_field(node->open_questions)) session.dirty = true;
+        draw_person_affiliation_controls(session, *node);
+        draw_hierarchy_relationships_section(session, node->id);
+        return false;
+    };
+
+    if (session.hierarchy_graph_mode) {
+        list_w = (std::clamp)(avail.x * 0.70f, 320.0f, avail.x - 200.0f);
+        enrich_hierarchy_nodes_with_relationship_proxies(session, graph_nodes);
+        apply_hierarchy_depth_colors(graph_nodes);
+        draw_hierarchy_graph_canvas(session, graph_nodes, ImVec2(list_w, avail.y), "WorldForgeHierarchyPersonsGraph");
+        ImGui::SameLine();
+        ImGui::BeginChild("WorldForgeHierarchyPersonsGraphDetail", ImVec2(0.0f, avail.y), true);
+        if (auto* edge = find_edge(session.relationships, session.selected_id)) {
+            ImGui::TextDisabled("Relationship edge");
+            ImGui::Text("id: %s", edge->id.c_str());
+            ImGui::Text("kind: %s", to_string(edge->kind));
+            ImGui::Text("%s → %s", edge->from.id.c_str(), edge->to.id.c_str());
+        } else if (draw_person_detail()) {
+            ImGui::EndChild();
+            return;
+        }
+        ImGui::EndChild();
+        return;
+    }
+
+    begin_list_detail(avail, list_w);
+    ImGui::BeginChild("WorldForgeHierarchyPersonsTree", ImVec2(list_w, avail.y), true);
+    if (person_ids.empty()) {
+        ImGui::TextDisabled(session.hierarchy_persons_companions_only ? "(no companion-tagged persons)"
+                                                                     : "(no person/organization nodes)");
+    } else {
+        draw_parent_id_forest(person_ids, parents, labels, session.selected_id);
+    }
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+    ImGui::BeginChild("WorldForgeHierarchyPersonsDetail", ImVec2(0.0f, avail.y), true);
+    if (auto* edge = find_edge(session.relationships, session.selected_id)) {
+        ImGui::TextDisabled("Relationship edge");
+        ImGui::Text("id: %s", edge->id.c_str());
+        ImGui::Text("kind: %s", to_string(edge->kind));
+        ImGui::Text("%s → %s", edge->from.id.c_str(), edge->to.id.c_str());
+    } else if (draw_person_detail()) {
+        ImGui::EndChild();
+        return;
+    }
+    ImGui::EndChild();
+}
+
+void draw_hierarchy_pane(WorldForgeEditorSession& session) {
+    if (ImGui::BeginTabBar("WorldForgeHierarchySubTabs")) {
+        if (ImGui::BeginTabItem("Religion##WorldForgeHierReligion")) {
+            if (session.hierarchy_page != WorldForgeHierarchyPage::Religion) {
+                session.hierarchy_page = WorldForgeHierarchyPage::Religion;
+                session.list_kind = ListKind::Pantheon;
+                session.selected_id.clear();
+                session.hierarchy_graph_needs_layout = true;
+            }
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Factions##WorldForgeHierFactions")) {
+            if (session.hierarchy_page != WorldForgeHierarchyPage::Factions) {
+                session.hierarchy_page = WorldForgeHierarchyPage::Factions;
+                session.list_kind = ListKind::Entities;
+                session.selected_id.clear();
+                session.hierarchy_graph_needs_layout = true;
+            }
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Persons##WorldForgeHierPersons")) {
+            if (session.hierarchy_page != WorldForgeHierarchyPage::Persons) {
+                session.hierarchy_page = WorldForgeHierarchyPage::Persons;
+                session.list_kind = ListKind::Nodes;
+                session.selected_id.clear();
+                session.hierarchy_graph_needs_layout = true;
+            }
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
+
+    switch (session.hierarchy_page) {
+    case WorldForgeHierarchyPage::Religion: draw_hierarchy_religion_page(session); break;
+    case WorldForgeHierarchyPage::Factions: draw_hierarchy_factions_page(session); break;
+    case WorldForgeHierarchyPage::Persons: draw_hierarchy_persons_page(session); break;
+    }
 }
 
 void draw_relationships_pane(WorldForgeEditorSession& session) {
@@ -2037,22 +4252,22 @@ void draw_relationships_pane(WorldForgeEditorSession& session) {
                 session.dirty = true;
                 session.graph_needs_layout = true;
             }
-            if (draw_enum_combo("kind", edge->kind,
+            if (draw_enum_combo("Kind", edge->kind,
                     {WorldForgeRelationshipEdgeKind::Ally, WorldForgeRelationshipEdgeKind::Rival,
                         WorldForgeRelationshipEdgeKind::MemberOf, WorldForgeRelationshipEdgeKind::Leads,
                         WorldForgeRelationshipEdgeKind::Kin, WorldForgeRelationshipEdgeKind::Serves,
                         WorldForgeRelationshipEdgeKind::Opposes, WorldForgeRelationshipEdgeKind::Influences,
                         WorldForgeRelationshipEdgeKind::Related}))
                 session.dirty = true;
-            if (draw_enum_combo("canonStatus", edge->canon_status,
+            if (draw_enum_combo("Canon status", edge->canon_status,
                     {WorldForgeRelationshipCanonStatus::Established, WorldForgeRelationshipCanonStatus::Draft,
                         WorldForgeRelationshipCanonStatus::Proposal, WorldForgeRelationshipCanonStatus::Open}))
                 session.dirty = true;
             if (ImGui::Checkbox("bidirectional", &edge->bidirectional)) session.dirty = true;
             if (draw_edge_standing_transfer(session, *edge)) {
             }
-            if (draw_text_area("summary", edge->summary, 80.0f)) session.dirty = true;
-            if (draw_input_text("storyRef", edge->story_ref)) session.dirty = true;
+            if (draw_text_area("Summary", edge->summary, 80.0f)) session.dirty = true;
+            if (draw_input_text("Story reference", edge->story_ref)) session.dirty = true;
             if (draw_open_questions_field(edge->open_questions)) session.dirty = true;
         } else if (auto* node = find_node(session.relationships, session.selected_id)) {
             ImGui::TextDisabled("Node");
@@ -2070,18 +4285,21 @@ void draw_relationships_pane(WorldForgeEditorSession& session) {
                 return;
             }
             ImGui::Separator();
-            if (draw_input_text("displayName", node->display_name)) session.dirty = true;
-            if (draw_enum_combo("kind", node->kind,
+            if (draw_input_text("Display name", node->display_name)) session.dirty = true;
+            if (draw_enum_combo("Kind", node->kind,
                     {WorldForgeRelationshipNodeKind::Person, WorldForgeRelationshipNodeKind::Deity,
                         WorldForgeRelationshipNodeKind::Artifact, WorldForgeRelationshipNodeKind::Organization}))
                 session.dirty = true;
-            if (draw_enum_combo("canonStatus", node->canon_status,
+            if (draw_enum_combo("Canon status", node->canon_status,
                     {WorldForgeRelationshipCanonStatus::Established, WorldForgeRelationshipCanonStatus::Draft,
                         WorldForgeRelationshipCanonStatus::Proposal, WorldForgeRelationshipCanonStatus::Open}))
                 session.dirty = true;
-            if (draw_text_area("summary", node->summary, 96.0f)) session.dirty = true;
-            if (draw_input_text("storyRef", node->story_ref)) session.dirty = true;
-            if (draw_csv_field("tags (comma-separated)", node->tags)) session.dirty = true;
+            if (draw_text_area("Summary", node->summary, 96.0f)) session.dirty = true;
+            if (draw_input_text("Story reference", node->story_ref)) session.dirty = true;
+            if (draw_acts_field(node->acts)) session.dirty = true;
+            if (draw_csv_field("Tags", node->tags)) session.dirty = true;
+            if (draw_id_combo("Parent", node->parent_id, collect_relationship_node_ids(session.relationships)))
+                session.dirty = true;
             if (draw_open_questions_field(node->open_questions)) session.dirty = true;
         } else if (session.selected_id.rfind("faction:", 0) == 0) {
             ImGui::TextDisabled("Faction endpoint (registry)");
@@ -2096,7 +4314,7 @@ void draw_relationships_pane(WorldForgeEditorSession& session) {
                 session.status = "Click another node on the graph to create a relationship";
             }
             ImGui::TextWrapped(
-                "Faction proxies come from edge endpoints. Edit them under the Factions pane or in "
+                "Faction proxies come from edge endpoints. Edit them under Hierarchy → Factions or in "
                 "factions.worldforge.json.");
         } else {
             ImGui::TextDisabled("Click a node or edge on the graph");
@@ -2115,6 +4333,7 @@ void draw_relationships_pane(WorldForgeEditorSession& session) {
         ImGui::Separator();
         if (session.relationships.nodes.empty()) ImGui::TextDisabled("(no nodes)");
         for (const auto& node : session.relationships.nodes) {
+            if (!entity_matches_act_lens(session, node.acts, node.tags)) continue;
             std::string label = node.id;
             if (!node.display_name.empty()) label += "  (" + node.display_name + ")";
             const bool selected = session.selected_id == node.id;
@@ -2137,18 +4356,21 @@ void draw_relationships_pane(WorldForgeEditorSession& session) {
                 return;
             }
             ImGui::Separator();
-            if (draw_input_text("displayName", node->display_name)) session.dirty = true;
-            if (draw_enum_combo("kind", node->kind,
+            if (draw_input_text("Display name", node->display_name)) session.dirty = true;
+            if (draw_enum_combo("Kind", node->kind,
                     {WorldForgeRelationshipNodeKind::Person, WorldForgeRelationshipNodeKind::Deity,
                         WorldForgeRelationshipNodeKind::Artifact, WorldForgeRelationshipNodeKind::Organization}))
                 session.dirty = true;
-            if (draw_enum_combo("canonStatus", node->canon_status,
+            if (draw_enum_combo("Canon status", node->canon_status,
                     {WorldForgeRelationshipCanonStatus::Established, WorldForgeRelationshipCanonStatus::Draft,
                         WorldForgeRelationshipCanonStatus::Proposal, WorldForgeRelationshipCanonStatus::Open}))
                 session.dirty = true;
-            if (draw_text_area("summary", node->summary, 96.0f)) session.dirty = true;
-            if (draw_input_text("storyRef", node->story_ref)) session.dirty = true;
-            if (draw_csv_field("tags (comma-separated)", node->tags)) session.dirty = true;
+            if (draw_text_area("Summary", node->summary, 96.0f)) session.dirty = true;
+            if (draw_input_text("Story reference", node->story_ref)) session.dirty = true;
+            if (draw_acts_field(node->acts)) session.dirty = true;
+            if (draw_csv_field("Tags", node->tags)) session.dirty = true;
+            if (draw_id_combo("Parent", node->parent_id, collect_relationship_node_ids(session.relationships)))
+                session.dirty = true;
             if (draw_open_questions_field(node->open_questions)) session.dirty = true;
         }
         ImGui::EndChild();
@@ -2187,29 +4409,46 @@ void draw_relationships_pane(WorldForgeEditorSession& session) {
                 session.dirty = true;
             if (draw_id_combo("to.id", edge->to.id, collect_endpoint_ids(session, edge->to.target), false))
                 session.dirty = true;
-            if (draw_enum_combo("kind", edge->kind,
+            if (draw_enum_combo("Kind", edge->kind,
                     {WorldForgeRelationshipEdgeKind::Ally, WorldForgeRelationshipEdgeKind::Rival,
                         WorldForgeRelationshipEdgeKind::MemberOf, WorldForgeRelationshipEdgeKind::Leads,
                         WorldForgeRelationshipEdgeKind::Kin, WorldForgeRelationshipEdgeKind::Serves,
                         WorldForgeRelationshipEdgeKind::Opposes, WorldForgeRelationshipEdgeKind::Influences,
                         WorldForgeRelationshipEdgeKind::Related}))
                 session.dirty = true;
-            if (draw_enum_combo("canonStatus", edge->canon_status,
+            if (draw_enum_combo("Canon status", edge->canon_status,
                     {WorldForgeRelationshipCanonStatus::Established, WorldForgeRelationshipCanonStatus::Draft,
                         WorldForgeRelationshipCanonStatus::Proposal, WorldForgeRelationshipCanonStatus::Open}))
                 session.dirty = true;
             if (ImGui::Checkbox("bidirectional", &edge->bidirectional)) session.dirty = true;
             if (draw_edge_standing_transfer(session, *edge)) {
             }
-            if (draw_text_area("summary", edge->summary, 80.0f)) session.dirty = true;
-            if (draw_input_text("storyRef", edge->story_ref)) session.dirty = true;
+            if (draw_text_area("Summary", edge->summary, 80.0f)) session.dirty = true;
+            if (draw_input_text("Story reference", edge->story_ref)) session.dirty = true;
             if (draw_open_questions_field(edge->open_questions)) session.dirty = true;
         }
         ImGui::EndChild();
     }
 }
 
-void draw_map_pane(WorldForgeEditorSession& session) {
+void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDrawContext& ctx) {
+    if (ImGui::RadioButton("List##WorldForgeMapView", !session.map_canvas_mode)) {
+        session.map_canvas_mode = false;
+        if (session.list_kind == ListKind::MapCanvas) session.list_kind = ListKind::Regions;
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Canvas##WorldForgeMapView", session.map_canvas_mode)) {
+        session.map_canvas_mode = true;
+        session.list_kind = ListKind::MapCanvas;
+        session.map_camera_fit_requested = true;
+    }
+    ImGui::Separator();
+
+    if (session.map_canvas_mode) {
+        draw_map_canvas_pane(session, ctx);
+        return;
+    }
+
     if (session.list_kind != ListKind::Regions && session.list_kind != ListKind::Pois &&
         session.list_kind != ListKind::Links)
         session.list_kind = ListKind::Regions;
@@ -2242,8 +4481,10 @@ void draw_map_pane(WorldForgeEditorSession& session) {
         ImGui::BeginChild("WorldForgeRegionsList", ImVec2(list_w, avail.y), true);
         if (session.map.regions.empty()) ImGui::TextDisabled("(no regions — use Add region above)");
         for (const auto& region : session.map.regions) {
+            if (!entity_matches_act_lens(session, region.acts, region.tags)) continue;
             std::string label = region.id;
             if (!region.display_name.empty()) label += "  (" + region.display_name + ")";
+            if (region.anchor) label += "  @";
             const bool selected = session.selected_id == region.id;
             if (ImGui::Selectable(label.c_str(), selected)) session.selected_id = region.id;
         }
@@ -2258,22 +4499,27 @@ void draw_map_pane(WorldForgeEditorSession& session) {
             draw_region_placeholder(session, *region);
             ImGui::Separator();
             ImGui::Text("id: %s", region->id.c_str());
-            if (draw_input_text("displayName", region->display_name)) session.dirty = true;
-            if (draw_enum_combo("kind", region->kind,
+            if (draw_input_text("Display name", region->display_name)) session.dirty = true;
+            if (draw_enum_combo("Kind", region->kind,
                     {WorldForgeRegionKind::Region, WorldForgeRegionKind::Fortress, WorldForgeRegionKind::City,
                         WorldForgeRegionKind::Wilderness, WorldForgeRegionKind::Chaotic,
                         WorldForgeRegionKind::Settlement, WorldForgeRegionKind::Other}))
                 session.dirty = true;
-            if (draw_enum_combo("canonStatus", region->canon_status,
+            if (draw_enum_combo("Canon status", region->canon_status,
                     {WorldForgeMapCanonStatus::Established, WorldForgeMapCanonStatus::Draft,
                         WorldForgeMapCanonStatus::Proposal, WorldForgeMapCanonStatus::Open}))
                 session.dirty = true;
-            if (draw_text_area("summary", region->summary, 96.0f)) session.dirty = true;
-            if (draw_input_text("storyRef", region->story_ref)) session.dirty = true;
+            if (draw_text_area("Summary", region->summary, 96.0f)) session.dirty = true;
+            if (draw_input_text("Story reference", region->story_ref)) session.dirty = true;
             if (draw_id_combo("parentRegionId", region->parent_region_id, collect_region_ids(session.map)))
                 session.dirty = true;
-            if (draw_csv_field("factionIds (comma-separated)", region->faction_ids)) session.dirty = true;
-            if (draw_csv_field("tags (comma-separated)", region->tags)) session.dirty = true;
+            if (draw_csv_field("Faction ids", region->faction_ids)) session.dirty = true;
+            if (draw_acts_field(region->acts)) session.dirty = true;
+            if (draw_csv_field("Tags", region->tags)) session.dirty = true;
+            if (draw_world_anchor_fields(region->anchor)) {
+                session.dirty = true;
+                session.map_underlay_ready = false;
+            }
             if (ImGui::Checkbox("softGate.enabled", &region->soft_gate.enabled)) session.dirty = true;
             if (draw_text_area("softGate.notes", region->soft_gate.notes, 72.0f, 2048)) session.dirty = true;
             if (draw_open_questions_field(region->open_questions)) session.dirty = true;
@@ -2283,8 +4529,10 @@ void draw_map_pane(WorldForgeEditorSession& session) {
         ImGui::BeginChild("WorldForgePoisList", ImVec2(list_w, avail.y), true);
         if (session.map.pois.empty()) ImGui::TextDisabled("(no POIs — use Add POI above)");
         for (const auto& poi : session.map.pois) {
+            if (!entity_matches_act_lens(session, poi.acts, poi.tags)) continue;
             std::string label = poi.id;
             if (!poi.display_name.empty()) label += "  (" + poi.display_name + ")";
+            if (poi.anchor) label += "  @";
             const bool selected = session.selected_id == poi.id;
             if (ImGui::Selectable(label.c_str(), selected)) session.selected_id = poi.id;
         }
@@ -2299,21 +4547,26 @@ void draw_map_pane(WorldForgeEditorSession& session) {
             draw_poi_placeholder(session, *poi);
             ImGui::Separator();
             ImGui::Text("id: %s", poi->id.c_str());
-            if (draw_input_text("displayName", poi->display_name)) session.dirty = true;
-            if (draw_enum_combo("kind", poi->kind,
+            if (draw_input_text("Display name", poi->display_name)) session.dirty = true;
+            if (draw_enum_combo("Kind", poi->kind,
                     {WorldForgePoiKind::Landmark, WorldForgePoiKind::Settlement, WorldForgePoiKind::Gate,
                         WorldForgePoiKind::Shrine, WorldForgePoiKind::Camp, WorldForgePoiKind::Other}))
                 session.dirty = true;
-            if (draw_enum_combo("canonStatus", poi->canon_status,
+            if (draw_enum_combo("Canon status", poi->canon_status,
                     {WorldForgeMapCanonStatus::Established, WorldForgeMapCanonStatus::Draft,
                         WorldForgeMapCanonStatus::Proposal, WorldForgeMapCanonStatus::Open}))
                 session.dirty = true;
-            if (draw_id_combo("regionId", poi->region_id, collect_region_ids(session.map), false)) session.dirty = true;
-            if (draw_text_area("summary", poi->summary, 96.0f)) session.dirty = true;
-            if (draw_input_text("storyRef", poi->story_ref)) session.dirty = true;
+            if (draw_id_combo("Region", poi->region_id, collect_region_ids(session.map), false)) session.dirty = true;
+            if (draw_text_area("Summary", poi->summary, 96.0f)) session.dirty = true;
+            if (draw_input_text("Story reference", poi->story_ref)) session.dirty = true;
             if (draw_input_text("sceneEntityId", poi->scene_entity_id)) session.dirty = true;
             if (draw_input_text("prefabId", poi->prefab_id)) session.dirty = true;
-            if (draw_csv_field("tags (comma-separated)", poi->tags)) session.dirty = true;
+            if (draw_acts_field(poi->acts)) session.dirty = true;
+            if (draw_csv_field("Tags", poi->tags)) session.dirty = true;
+            if (draw_world_anchor_fields(poi->anchor)) {
+                session.dirty = true;
+                session.map_underlay_ready = false;
+            }
             if (draw_open_questions_field(poi->open_questions)) session.dirty = true;
         }
         ImGui::EndChild();
@@ -2335,7 +4588,7 @@ void draw_map_pane(WorldForgeEditorSession& session) {
         } else {
             ImGui::Text("id: %s", link->id.c_str());
             ImGui::Separator();
-            if (draw_enum_combo("kind", link->kind,
+            if (draw_enum_combo("Kind", link->kind,
                     {WorldForgeMapLinkKind::Travel, WorldForgeMapLinkKind::SoftGate, WorldForgeMapLinkKind::StoryGate,
                         WorldForgeMapLinkKind::Adjacency}))
                 session.dirty = true;
@@ -2347,15 +4600,15 @@ void draw_map_pane(WorldForgeEditorSession& session) {
                     "toKind", link->to_kind, {WorldForgeMapEndpointKind::Region, WorldForgeMapEndpointKind::Poi}))
                 session.dirty = true;
             if (draw_id_combo("toId", link->to_id, collect_map_endpoint_ids(session.map), false)) session.dirty = true;
-            if (draw_enum_combo("canonStatus", link->canon_status,
+            if (draw_enum_combo("Canon status", link->canon_status,
                     {WorldForgeMapCanonStatus::Established, WorldForgeMapCanonStatus::Draft,
                         WorldForgeMapCanonStatus::Proposal, WorldForgeMapCanonStatus::Open}))
                 session.dirty = true;
             if (ImGui::Checkbox("bidirectional", &link->bidirectional)) session.dirty = true;
             if (ImGui::Checkbox("softGate.enabled", &link->soft_gate.enabled)) session.dirty = true;
             if (draw_text_area("softGate.notes", link->soft_gate.notes, 72.0f, 2048)) session.dirty = true;
-            if (draw_text_area("summary", link->summary, 80.0f)) session.dirty = true;
-            if (draw_input_text("storyRef", link->story_ref)) session.dirty = true;
+            if (draw_text_area("Summary", link->summary, 80.0f)) session.dirty = true;
+            if (draw_input_text("Story reference", link->story_ref)) session.dirty = true;
             if (draw_open_questions_field(link->open_questions)) session.dirty = true;
         }
         ImGui::EndChild();
@@ -2373,6 +4626,7 @@ void draw_quests_pane(WorldForgeEditorSession& session) {
     ImGui::Separator();
     if (session.quests.quests.empty()) ImGui::TextDisabled("(no quests)");
     for (const auto& quest : session.quests.quests) {
+        if (!entity_matches_act_lens(session, quest.acts, quest.tags)) continue;
         std::string label = quest.id;
         if (!quest.display_name.empty()) label += "  (" + quest.display_name + ")";
         const bool selected = session.selected_id == quest.id;
@@ -2405,18 +4659,18 @@ void draw_quests_pane(WorldForgeEditorSession& session) {
             session.status = "Could not remove quest";
         }
         ImGui::Separator();
-        if (draw_input_text("displayName", quest->display_name)) session.dirty = true;
-        if (draw_enum_combo("kind", quest->kind,
+        if (draw_input_text("Display name", quest->display_name)) session.dirty = true;
+        if (draw_enum_combo("Kind", quest->kind,
                 {WorldForgeQuestKind::Main, WorldForgeQuestKind::Side, WorldForgeQuestKind::Faction}))
             session.dirty = true;
-        if (draw_enum_combo("canonStatus", quest->canon_status,
+        if (draw_enum_combo("Canon status", quest->canon_status,
                 {WorldForgeQuestCanonStatus::Established, WorldForgeQuestCanonStatus::Draft,
                     WorldForgeQuestCanonStatus::Proposal, WorldForgeQuestCanonStatus::Open}))
             session.dirty = true;
         if (ImGui::Checkbox("consequential", &quest->consequential)) session.dirty = true;
-        if (draw_text_area("summary", quest->summary, 96.0f)) session.dirty = true;
-        if (draw_input_text("storyRef", quest->story_ref)) session.dirty = true;
-        if (draw_id_combo("regionId", quest->region_id, collect_region_ids(session.map))) session.dirty = true;
+        if (draw_text_area("Summary", quest->summary, 96.0f)) session.dirty = true;
+        if (draw_input_text("Story reference", quest->story_ref)) session.dirty = true;
+        if (draw_id_combo("Region", quest->region_id, collect_region_ids(session.map))) session.dirty = true;
         if (draw_text_area("starts", quest->starts, 72.0f, 2048)) session.dirty = true;
         ImGui::Separator();
         ImGui::TextUnformatted("dialogue hooks (DEC-0026)");
@@ -2470,7 +4724,7 @@ void draw_quests_pane(WorldForgeEditorSession& session) {
             const bool obj_selected = selected_objective_id == objective.id;
             if (ImGui::Selectable(objective.id.c_str(), obj_selected)) selected_objective_id = objective.id;
             if (obj_selected) {
-                if (draw_text_area("summary##obj", objective.summary, 64.0f, 2048)) session.dirty = true;
+                if (draw_text_area("Summary##obj", objective.summary, 64.0f, 2048)) session.dirty = true;
                 if (draw_id_combo("dialogueId##obj", objective.dialogue_id, collect_dialogue_tree_ids(session.dialogues)))
                     session.dirty = true;
             }
@@ -2520,7 +4774,7 @@ void draw_quests_pane(WorldForgeEditorSession& session) {
             const bool fork_selected = selected_fork_id == fork.id;
             if (ImGui::Selectable(fork.id.c_str(), fork_selected)) selected_fork_id = fork.id;
             if (fork_selected) {
-                if (draw_text_area("summary##fork", fork.summary, 64.0f, 2048)) session.dirty = true;
+                if (draw_text_area("Summary##fork", fork.summary, 64.0f, 2048)) session.dirty = true;
                 if (draw_csv_field("outcomeFlags##fork", fork.outcome_flags)) session.dirty = true;
                 if (draw_id_combo("dialogueId##fork", fork.dialogue_id, collect_dialogue_tree_ids(session.dialogues)))
                     session.dirty = true;
@@ -2529,7 +4783,8 @@ void draw_quests_pane(WorldForgeEditorSession& session) {
         }
         draw_quest_standing_section(session, *quest);
         ImGui::Separator();
-        if (draw_csv_field("tags (comma-separated)", quest->tags)) session.dirty = true;
+        if (draw_acts_field(quest->acts)) session.dirty = true;
+        if (draw_csv_field("Tags", quest->tags)) session.dirty = true;
         if (draw_open_questions_field(quest->open_questions)) session.dirty = true;
     }
     ImGui::EndChild();
@@ -3138,6 +5393,7 @@ void draw_dialogues_pane(WorldForgeEditorSession& session, const std::filesystem
     ImGui::BeginChild("WorldForgeDialoguesList", ImVec2(tree_list_w, avail.y), true);
     if (session.dialogues.trees.empty()) ImGui::TextDisabled("(no trees — use Add dialogue tree)");
     for (const auto& tree : session.dialogues.trees) {
+        if (!entity_matches_act_lens(session, tree.acts, tree.tags)) continue;
         std::string label = tree.id;
         if (!tree.display_name.empty()) label += "  (" + tree.display_name + ")";
         const bool selected = session.selected_id == tree.id;
@@ -3169,7 +5425,7 @@ void draw_dialogues_pane(WorldForgeEditorSession& session, const std::filesystem
         ImGui::SameLine();
         ImGui::BeginChild("WorldForgeDialogueGraphDetail", ImVec2(0.0f, avail.y), true);
         ImGui::Text("tree: %s", tree->id.c_str());
-        if (draw_input_text("displayName##dlgTree", tree->display_name)) session.dirty = true;
+        if (draw_input_text("Display name##dlgTree", tree->display_name)) session.dirty = true;
         if (draw_id_combo("parentQuestId##dlgTree", tree->parent_quest_id, collect_quest_ids(session.quests)))
             session.dirty = true;
         if (draw_id_combo("entryNodeId##dlgTree", tree->entry_node_id, collect_dialogue_node_ids(*tree), false))
@@ -3278,15 +5534,15 @@ void draw_dialogues_pane(WorldForgeEditorSession& session, const std::filesystem
 
     ImGui::BeginChild("WorldForgeDialoguesDetail", ImVec2(0.0f, avail.y), true);
     ImGui::Text("id: %s", tree->id.c_str());
-    if (draw_input_text("displayName", tree->display_name)) session.dirty = true;
-    if (draw_enum_combo("canonStatus", tree->canon_status,
+    if (draw_input_text("Display name", tree->display_name)) session.dirty = true;
+    if (draw_enum_combo("Canon status", tree->canon_status,
             {WorldForgeDialogueCanonStatus::Established, WorldForgeDialogueCanonStatus::Draft,
                 WorldForgeDialogueCanonStatus::Proposal, WorldForgeDialogueCanonStatus::Open}))
         session.dirty = true;
-    if (draw_id_combo("parentQuestId", tree->parent_quest_id, collect_quest_ids(session.quests))) session.dirty = true;
-    if (draw_text_area("summary", tree->summary, 96.0f)) session.dirty = true;
-    if (draw_input_text("storyRef", tree->story_ref)) session.dirty = true;
-    if (draw_id_combo("entryNodeId", tree->entry_node_id, collect_dialogue_node_ids(*tree), false)) session.dirty = true;
+    if (draw_id_combo("Parent quest", tree->parent_quest_id, collect_quest_ids(session.quests))) session.dirty = true;
+    if (draw_text_area("Summary", tree->summary, 96.0f)) session.dirty = true;
+    if (draw_input_text("Story reference", tree->story_ref)) session.dirty = true;
+    if (draw_id_combo("Entry node", tree->entry_node_id, collect_dialogue_node_ids(*tree), false)) session.dirty = true;
     ImGui::Text("nodes: %zu — switch to Graph for canvas editing", tree->nodes.size());
     ImGui::Separator();
     ImGui::BeginChild("WorldForgeDialogueNodePreview", ImVec2(0.0f, 220.0f), true);
@@ -3295,8 +5551,92 @@ void draw_dialogues_pane(WorldForgeEditorSession& session, const std::filesystem
             node.choices.size());
     }
     ImGui::EndChild();
-    if (draw_csv_field("tags (comma-separated)", tree->tags)) session.dirty = true;
+    if (draw_acts_field(tree->acts)) session.dirty = true;
+    if (draw_csv_field("Tags", tree->tags)) session.dirty = true;
     if (draw_open_questions_field(tree->open_questions)) session.dirty = true;
+    ImGui::EndChild();
+}
+
+void draw_archetypes_pane(WorldForgeEditorSession& session, const std::filesystem::path& project_root) {
+    session.list_kind = ListKind::Archetypes;
+    const ImVec2 avail = ImGui::GetContentRegionAvail();
+    float list_w = 0.0f;
+    begin_list_detail(avail, list_w);
+
+    ImGui::BeginChild("WorldForgeArchetypesList", ImVec2(list_w, avail.y), true);
+    draw_add_archetype_controls(session);
+    ImGui::Separator();
+    if (session.archetypes.entities.empty()) ImGui::TextDisabled("(no archetypes)");
+    for (const auto& entity : session.archetypes.entities) {
+        std::string label = entity.id;
+        if (!entity.display_name.empty()) label += "  (" + entity.display_name + ")";
+        label += "  [";
+        label += to_string(entity.kind);
+        label += "]";
+        const bool selected = session.selected_id == entity.id;
+        if (ImGui::Selectable(label.c_str(), selected)) session.selected_id = entity.id;
+    }
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+    ImGui::BeginChild("WorldForgeArchetypesDetail", ImVec2(0.0f, avail.y), true);
+    auto* entity = find_archetype(session.archetypes, session.selected_id);
+    if (!entity) {
+        ImGui::TextDisabled("Select an archetype or create one");
+    } else {
+        ImGui::Text("id: %s", entity->id.c_str());
+        if (ImGui::Button("Delete archetype##WorldForgeDeleteArchetype")) {
+            const auto id = entity->id;
+            if (remove_archetype(session, id)) {
+                ImGui::EndChild();
+                return;
+            }
+            session.status = "Could not remove archetype";
+        }
+        ImGui::Separator();
+        if (draw_input_text("Display name", entity->display_name)) session.dirty = true;
+        if (draw_enum_combo("Kind", entity->kind,
+                {WorldForgeArchetypeKind::Starting, WorldForgeArchetypeKind::Advanced}))
+            session.dirty = true;
+        if (draw_input_text("Role", entity->role)) session.dirty = true;
+        if (draw_text_area("Summary", entity->summary, 96.0f)) session.dirty = true;
+        if (draw_text_area("Draft advancement", entity->draft_advancement, 72.0f, 2048)) session.dirty = true;
+        if (draw_id_combo("Starter kit prefab", entity->starter_kit_prefab_id,
+                collect_prefab_relative_paths(project_root)))
+            session.dirty = true;
+        if (draw_input_text("Story reference", entity->story_ref, 320)) session.dirty = true;
+        if (draw_csv_field("Tags", entity->tags)) session.dirty = true;
+
+        ImGui::Separator();
+        bool has_unlock = entity->unlock.has_value();
+        if (ImGui::Checkbox("unlock requirements##WorldForgeArchetypeUnlock", &has_unlock)) {
+            if (has_unlock && !entity->unlock) entity->unlock = WorldForgeArchetypeUnlock{};
+            if (!has_unlock) entity->unlock.reset();
+            session.dirty = true;
+        }
+        if (entity->unlock) {
+            bool has_threshold = entity->unlock->morality_threshold.has_value();
+            if (ImGui::Checkbox("moralityThreshold##WorldForgeArchetypeMoralityEnabled", &has_threshold)) {
+                if (has_threshold && !entity->unlock->morality_threshold) {
+                    entity->unlock->morality_threshold = 0.0;
+                } else if (!has_threshold) {
+                    entity->unlock->morality_threshold.reset();
+                }
+                session.dirty = true;
+            }
+            if (entity->unlock->morality_threshold) {
+                float threshold = static_cast<float>(*entity->unlock->morality_threshold);
+                if (ImGui::InputFloat("moralityThreshold##WorldForgeArchetypeMorality", &threshold, 0.05f, 0.1f,
+                        "%.3f")) {
+                    entity->unlock->morality_threshold = static_cast<double>(threshold);
+                    session.dirty = true;
+                }
+            }
+            if (draw_id_combo("Unlock faction", entity->unlock->faction_id, collect_faction_ids(session.factions)))
+                session.dirty = true;
+            if (draw_csv_field("Unlock tags", entity->unlock->tags)) session.dirty = true;
+        }
+    }
     ImGui::EndChild();
 }
 
@@ -3313,6 +5653,10 @@ void draw_world_forge_toolbar(WorldForgeEditorSession& session, const std::files
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
+    ImGui::TextUnformatted("Act");
+    ImGui::SameLine();
+    draw_act_filter_combo(session);
+    ImGui::SameLine();
     ImGui::TextUnformatted(session.status.c_str());
     if (session.dirty) {
         ImGui::SameLine();
@@ -3322,10 +5666,19 @@ void draw_world_forge_toolbar(WorldForgeEditorSession& session, const std::files
 
 void draw_world_forge_pane_tabs(WorldForgeEditorSession& session) {
     if (ImGui::BeginTabBar("WorldForgePaneTabs")) {
-        if (ImGui::BeginTabItem("Factions##WorldForgePaneFactions")) {
-            if (session.pane != WorldForgeEditorPane::Factions) {
-                session.pane = WorldForgeEditorPane::Factions;
-                session.list_kind = ListKind::Entities;
+        if (ImGui::BeginTabItem("Hierarchy##WorldForgePaneHierarchy")) {
+            if (session.pane != WorldForgeEditorPane::Hierarchy) {
+                session.pane = WorldForgeEditorPane::Hierarchy;
+                session.list_kind = ListKind::Pantheon;
+                session.hierarchy_page = WorldForgeHierarchyPage::Religion;
+                session.selected_id.clear();
+            }
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Archetypes##WorldForgePaneArchetypes")) {
+            if (session.pane != WorldForgeEditorPane::Archetypes) {
+                session.pane = WorldForgeEditorPane::Archetypes;
+                session.list_kind = ListKind::Archetypes;
                 session.selected_id.clear();
             }
             ImGui::EndTabItem();
@@ -3341,7 +5694,7 @@ void draw_world_forge_pane_tabs(WorldForgeEditorSession& session) {
         if (ImGui::BeginTabItem("Map##WorldForgePaneMap")) {
             if (session.pane != WorldForgeEditorPane::Map) {
                 session.pane = WorldForgeEditorPane::Map;
-                session.list_kind = ListKind::Regions;
+                session.list_kind = session.map_canvas_mode ? ListKind::MapCanvas : ListKind::Regions;
                 session.selected_id.clear();
             }
             ImGui::EndTabItem();
@@ -3376,6 +5729,14 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
             "factions.worldforge.json", factions);
         !result)
         return result;
+    if (const auto result = reload_kind(project_root, default_world_forge_pantheon_path(project_root), "pantheon",
+            "pantheon.worldforge.json", pantheon);
+        !result)
+        return result;
+    if (const auto result = reload_kind(project_root, default_world_forge_archetypes_path(project_root), "archetypes",
+            "archetypes.worldforge.json", archetypes);
+        !result)
+        return result;
     if (const auto result =
             reload_kind(project_root, default_world_forge_relationships_path(project_root), "relationships",
                 "relationships.worldforge.json", relationships);
@@ -3398,6 +5759,8 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
     if (!selection_found) {
         switch (list_kind) {
         case ListKind::Entities: selection_found = find_faction(factions, selected_id) != nullptr; break;
+        case ListKind::Pantheon: selection_found = find_pantheon(pantheon, selected_id) != nullptr; break;
+        case ListKind::Archetypes: selection_found = find_archetype(archetypes, selected_id) != nullptr; break;
         case ListKind::Nodes: selection_found = find_node(relationships, selected_id) != nullptr; break;
         case ListKind::Edges: selection_found = find_edge(relationships, selected_id) != nullptr; break;
         case ListKind::Graph:
@@ -3408,6 +5771,10 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
         case ListKind::Regions: selection_found = find_region(map, selected_id) != nullptr; break;
         case ListKind::Pois: selection_found = find_poi(map, selected_id) != nullptr; break;
         case ListKind::Links: selection_found = find_link(map, selected_id) != nullptr; break;
+        case ListKind::MapCanvas:
+            selection_found = find_region(map, selected_id) != nullptr || find_poi(map, selected_id) != nullptr ||
+                              find_link(map, selected_id) != nullptr;
+            break;
         case ListKind::Quests: selection_found = find_quest(quests, selected_id) != nullptr; break;
         case ListKind::Dialogues:
         case ListKind::DialogueGraph:
@@ -3423,6 +5790,24 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
     graph_zoom = 1.0f;
     graph_pan = {0.0f, 0.0f};
     graph_panning = false;
+    hierarchy_graph_positions.clear();
+    hierarchy_graph_needs_layout = true;
+    hierarchy_graph_drag_key.clear();
+    hierarchy_graph_camera = {};
+    hierarchy_graph_camera.min_zoom = 0.35f;
+    hierarchy_graph_camera.max_zoom = 2.0f;
+    hierarchy_graph_panning = false;
+    hierarchy_graph_fit_requested = false;
+    map_camera = {};
+    map_camera.min_zoom = 0.05f;
+    map_camera.max_zoom = 8.0f;
+    map_camera_panning = false;
+    map_camera_fit_requested = true;
+    map_drag_key.clear();
+    map_place_id.clear();
+    map_underlay_ready = false;
+    map_underlay_heights.clear();
+    map_underlay_revision = 0;
     dialogue_graph_positions.clear();
     dialogue_graph_full_relayout = true;
     dialogue_selected_node_id.clear();
@@ -3440,6 +5825,8 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
     loaded = true;
     dirty = false;
     status = "Reloaded " + std::to_string(factions.entities.size()) + " factions, " +
+        std::to_string(pantheon.entities.size()) + " pantheon, " +
+        std::to_string(archetypes.entities.size()) + " archetypes, " +
         std::to_string(relationships.nodes.size()) + " nodes, " + std::to_string(relationships.edges.size()) +
         " edges, " + std::to_string(map.regions.size()) + " regions, " + std::to_string(map.pois.size()) +
         " pois, " + std::to_string(map.links.size()) + " links, " + std::to_string(quests.quests.size()) +
@@ -3453,6 +5840,10 @@ Result<void> WorldForgeEditorSession::save(const std::filesystem::path& project_
     std::vector<std::string> failures;
     if (const auto result = apply_kind(project_root, "factions", factions); !result)
         failures.push_back("factions: " + result.error().message);
+    if (const auto result = apply_kind(project_root, "pantheon", pantheon); !result)
+        failures.push_back("pantheon: " + result.error().message);
+    if (const auto result = apply_kind(project_root, "archetypes", archetypes); !result)
+        failures.push_back("archetypes: " + result.error().message);
     if (const auto result = apply_kind(project_root, "relationships", relationships); !result)
         failures.push_back("relationships: " + result.error().message);
     if (const auto result = apply_kind(project_root, "map", map); !result)
@@ -3474,11 +5865,12 @@ Result<void> WorldForgeEditorSession::save(const std::filesystem::path& project_
     }
 
     dirty = false;
-    status = "Saved factions/relationships/map/quests/dialogues";
+    status = "Saved factions/pantheon/archetypes/relationships/map/quests/dialogues";
     return Result<void>::success();
 }
 
-void draw_world_forge_viewport(WorldForgeEditorSession& session, const std::filesystem::path& project_root) {
+void draw_world_forge_viewport(WorldForgeEditorSession& session, const std::filesystem::path& project_root,
+    const WorldForgeViewportDrawContext& draw_context) {
     if (!session.loaded && !project_root.empty()) {
         if (const auto result = session.reload(project_root); !result)
             session.status = "Reload failed: " + result.error().message;
@@ -3489,12 +5881,37 @@ void draw_world_forge_viewport(WorldForgeEditorSession& session, const std::file
     draw_world_forge_pane_tabs(session);
 
     switch (session.pane) {
-    case WorldForgeEditorPane::Factions: draw_factions_pane(session); break;
+    case WorldForgeEditorPane::Hierarchy: draw_hierarchy_pane(session); break;
+    case WorldForgeEditorPane::Archetypes: draw_archetypes_pane(session, project_root); break;
     case WorldForgeEditorPane::Relationships: draw_relationships_pane(session); break;
-    case WorldForgeEditorPane::Map: draw_map_pane(session); break;
+    case WorldForgeEditorPane::Map: draw_map_pane(session, draw_context); break;
     case WorldForgeEditorPane::Quests: draw_quests_pane(session); break;
     case WorldForgeEditorPane::Dialogues: draw_dialogues_pane(session, project_root); break;
     }
+}
+
+const WorldForgeWorldAnchor* resolve_map_endpoint_anchor(const WorldForgeMapAsset& asset,
+    WorldForgeMapEndpointKind kind, const std::string& id) {
+    if (kind == WorldForgeMapEndpointKind::Region) {
+        for (const auto& region : asset.regions) {
+            if (region.id != id) continue;
+            return region.anchor ? &*region.anchor : nullptr;
+        }
+        return nullptr;
+    }
+    for (const auto& poi : asset.pois) {
+        if (poi.id != id) continue;
+        return poi.anchor ? &*poi.anchor : nullptr;
+    }
+    return nullptr;
+}
+
+std::string map_region_marker_key(const std::string& region_id) {
+    return "region:" + region_id;
+}
+
+std::string map_poi_marker_key(const std::string& poi_id) {
+    return "poi:" + poi_id;
 }
 
 } // namespace engine

@@ -26,7 +26,7 @@ Every starting archetype shares the same narrative premise unless a future decis
 | Archer | Ranged fighter | Ranger or Marksman by faction reputation |
 | Acolyte | Spellcaster initiate | Wizard or Sorcerer by faction reputation |
 
-Per-archetype kits, tutorial beats, and companion dialogue variants remain to be defined. The Squire starter look is anchored by [Character Art Direction](../art/character-direction.md).
+Per-archetype kits, tutorial beats, and companion dialogue variants remain to be defined. The Squire starter look is anchored by [Character Art Direction](../art/character-direction.md). Structured catalog authoring lives in World Forge → **Archetypes** ([`archetypes.worldforge.json`](../formats/world-forge-archetypes.md)).
 
 ## Advanced Archetypes
 

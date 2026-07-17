@@ -45,7 +45,7 @@ Animation follows the same pattern once TICKET-0103 lands ([DEC-0022](../decisio
 
 ## Use MCP content tools when
 
-- Editing scene placement, transforms, entity metadata, or entity components: `engine_scene_apply` / `engine_entity_component_apply`.
+- Editing scene placement, transforms, entity metadata, or entity components: `engine_scene_apply` / `engine_entity_component_apply`. Component catalog and inherit/override: [`components.md`](components.md).
 - Sculpting or painting terrain height/materials/foliage: `engine_terrain_apply` (raise/lower/flatten/paint/paint_foliage; requires live editor MCP except `sample`).
 - Creating or updating prefabs (including collision/components) and materials: `engine_prefab_apply`, `engine_prefab_component_apply`, `engine_asset_apply`.
 - Writing Lua handler bodies for existing interaction or combat IDs (using host API v1: `engine.log` / `json_decode` / blackboard / `hud_*` / `set_health`): `engine_lua_apply`.

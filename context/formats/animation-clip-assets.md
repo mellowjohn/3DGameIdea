@@ -42,7 +42,7 @@ Engine-owned animation clips are imported from glTF 2.0 `.gltf` / `.glb` `animat
 
 - Compiled intermediate `.anim.json` (may be added later; glTF remains the accepted source)
 - `CUBICSPLINE`, morph targets, sparse accessors
-- Blend trees / state machines (TICKET-0103), root motion (0104), events (0105)
+- Blend trees / state machines (shipped under TICKET-0103 — see [`animator-controller-assets.md`](animator-controller-assets.md)), root motion (0104), events (0105)
 - GPU skinning upload / character playback in the viewport
 - Production Squire (or other) rigged art — embedded test fixtures are enough
 
@@ -57,5 +57,5 @@ Headers: `include/engine/assets/animation_clip_asset.h`
 ## Related
 
 - Skeletal/skin import: [`mesh-assets.md`](mesh-assets.md)
-- Animator component + Lua drive (planned): [`../features/animator.md`](../features/animator.md) · [DEC-0022](../decisions/index.md#dec-0022-c-animator-backend-with-lua-drive-api)
+- Animator component + Lua drive: [`animator-controller-assets.md`](animator-controller-assets.md) · [`../features/animator.md`](../features/animator.md) · [DEC-0022](../decisions/index.md#dec-0022-c-animator-backend-with-lua-drive-api)
 - Roadmap M5: [`../roadmap.md`](../roadmap.md)

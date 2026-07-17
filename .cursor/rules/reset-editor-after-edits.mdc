@@ -1,0 +1,21 @@
+---
+description: Kill and restart the running editor/MCP engine after editor code changes
+alwaysApply: true
+---
+
+# Reset Editor After Edits
+
+When changing editor or runtime code that affects a running `engine.exe` (including MCP `engine.exe mcp --project ...`), do not leave a stale process:
+
+1. **Kill** any running `engine.exe` that locks the build output (Debug path under `build/windows-msvc-debug/Debug/`).
+2. **Rebuild** the `engine` target (see `rebuild-after-code-changes.mdc`).
+3. **Reload** by restarting the same command that was running — typically:
+   `build/windows-msvc-debug/Debug/engine.exe mcp --project samples/open-world-rpg`
+   (or the editor launch command if that was the active session).
+4. Prefer this kill → rebuild → restart loop over asking the user to close the editor, unless the process cannot be identified safely.
+5. Mention in the final response that the editor/MCP process was reset.
+
+```text
+❌ BAD: Leave LNK1168 / locked engine.exe and ask the user to close it
+✅ GOOD: Stop-Process engine → MSBuild engine → relaunch mcp/editor
+```

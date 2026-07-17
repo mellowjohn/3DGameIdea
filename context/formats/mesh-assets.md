@@ -5,6 +5,11 @@ The runtime mesh path accepts glTF 2.0 `.gltf` and `.glb` assets through fastglt
 ## Current contract
 
 - Triangle primitives with finite `POSITION` data are required.
+- Optional `COLOR_0` (`FLOAT` `VEC3` or `VEC4`) is imported into runtime vertex RGB when present; otherwise imported meshes use a default brown fallback.
+- Optional `TEXCOORD_0` (`FLOAT` `VEC2`) is imported into per-vertex `u,v` (glTF top-left convention, sampled with V as-is); absent UVs default to `(0,0)`. See TICKET-0191.
+- Optional base-color texture: the first used material's `pbrMetallicRoughness.baseColorTexture` image is decoded (WIC) into engine-owned RGBA8 pixels on `ImportedMesh` (`albedo_rgba`, `albedo_width/height`, `has_albedo()`). Embedded `data:image/png;base64,` payloads and external PNG files (relative to the glTF) are both supported; the importer requests `LoadExternalImages`. Only the base-color map is imported (no normal/metallic-roughness/emissive maps yet).
+- The editor/runtime opaque mesh pipeline samples `albedo` with a point/clamp static sampler (pixel-art friendly) when a mesh has a texture, and falls back to vertex color (`COLOR_0` or the brown default) otherwise. Primitive-generated meshes carry no UVs or textures.
+- Malformed UVs return structured errors: `MESH-UV-COUNT` (count ≠ POSITION), `MESH-UV-TYPE` (not `FLOAT` `VEC2`), `MESH-UV-NONFINITE`. Texture decode failures surface as `MESH-TEXTURE-*` / `PNG-*` asset-import errors.
 - Indexed and non-indexed primitives are expanded into deterministic runtime triangle lists.
 - Missing positions, unsupported primitive modes, out-of-range indices, non-triangle index counts, empty geometry, and excessive vertex counts return structured asset-import errors.
 - Prefabs select a mesh using a project-relative top-level `mesh` field, such as `"mesh": "assets/models/dead-tree.gltf"`.
@@ -53,8 +58,10 @@ The importer also reads a documented glTF skinning subset into engine-owned stru
 
 ## Pending importer work
 
-Normals, tangents, UVs, textures, material bindings, full node-transform baking for static meshes, mesh optimization, engine-owned compiled binaries, thumbnails, hot reload, and generated collision are not part of this pass.
+Normals, tangents, full node-transform baking for static meshes, mesh optimization, engine-owned compiled binaries, thumbnails, hot reload, and generated collision are not part of this pass. UVs and base-color texture import/sampling are now active (TICKET-0191); the remaining PBR texture set (normal, metallic-roughness, emissive maps), mipmaps, anisotropic filtering, and texture atlasing remain out of scope.
 
 The sample `dead-tree.gltf` was authored for this project, has no external source content, and may be modified and used commercially with the project.
 
 `campfire.gltf` is a registry path for the project-owned procedural campfire mesh (stone ring, crossed logs, and flame) generated at import time.
+
+`player.gltf` is the open-world RPG starting player visual (Blockbench v1 bake). Source export: `tools/art/player/player.blockbench.gltf`. Rebake with `tools/bake_player_gltf.py`, which flattens node transforms, emits `TEXCOORD_0`, writes the atlas to `player.png` next to the glTF (referenced via a `baseColorTexture` material), also bakes a `COLOR_0` fallback, and normalizes feet at y=0 / height ≈ 1.8 m. The GPU now samples `player.png` (point/clamp) so eyes/clothing atlas detail shows in Scene/playtest. No locomotion clips yet — static mesh only until animation authoring.

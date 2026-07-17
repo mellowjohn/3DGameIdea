@@ -33,16 +33,18 @@ Story markdown remains the **human/agent narrative source of truth**. World Forg
 
 ### Core (near-term EPIC-0002)
 
-1. **Relationship graph + editor** — Nodes for people, deities, artifacts (and related narrative entities); typed edges (ally, rival, member-of, etc.) including faction-id endpoints; graph view and edit surface. Format + validation: [`../formats/world-forge-relationships.md`](../formats/world-forge-relationships.md) (TICKET-0012); editor is first-class World Forge UI follow-on.
-2. **Faction / culture / clan structured authoring** — Diffable data aligned with [`factions.md`](../story/factions.md); format: [`../formats/world-forge-factions.md`](../formats/world-forge-factions.md) (TICKET-0011).
-3. **Regions, POIs, and map links** — Story geography: named regions, POIs, travel/soft-gate links, map metadata. Format: [`../formats/world-forge-map.md`](../formats/world-forge-map.md) (TICKET-0013). IDs and links only — not mesh placement.
-4. **World Forge MCP/CLI entry points** — Command-backed automation for the above after schemas stabilize (TICKET-0014).
+1. **Hierarchy authorship** — Religion (pantheon), Factions, and Persons as tree+detail pages under the Hierarchy tab ([DEC-0035](../decisions/index.md#dec-0035-world-forge-hierarchy-authorship)). Formats: [`../formats/world-forge-pantheon.md`](../formats/world-forge-pantheon.md), [`../formats/world-forge-factions.md`](../formats/world-forge-factions.md); persons via relationship nodes + `parentId` ([`../formats/world-forge-relationships.md`](../formats/world-forge-relationships.md)). Companions are a Persons filter (`companion` tag), not a separate tab.
+1b. **Archetype catalog** — Starting/advanced player archetypes as a top-level World Forge pane ([DEC-0009](../decisions/index.md#dec-0009-starting-archetype-character-creation)). Format: [`../formats/world-forge-archetypes.md`](../formats/world-forge-archetypes.md) (TICKET-0186). Optional unlock stubs (`moralityThreshold`, `factionId`); starter kit prefab refs. Not character-creation appearance UI.
+2. **Relationship graph + editor** — Nodes for people, deities, artifacts (and related narrative entities); typed edges (ally, rival, member-of, etc.) including faction-id endpoints; graph view and edit surface. Format + validation: [`../formats/world-forge-relationships.md`](../formats/world-forge-relationships.md) (TICKET-0012); editor is first-class World Forge UI follow-on.
+3. **Faction / culture / clan structured authoring** — Diffable data aligned with [`factions.md`](../story/factions.md); format: [`../formats/world-forge-factions.md`](../formats/world-forge-factions.md) (TICKET-0011). Authored under Hierarchy → Factions.
+4. **Regions, POIs, and map links** — Story geography: named regions, POIs, travel/soft-gate links, map metadata, optional world-space **anchors**. Format: [`../formats/world-forge-map.md`](../formats/world-forge-map.md) (TICKET-0013). Editor Map **Canvas** (TICKET-0187/0188) authors anchors on an XZ overlay (optional terrain height underlay). Scene/Sculpt can show the same anchors as editor-only marker poles (TICKET-0190). IDs and links only — **not** mesh placement. Act lens ([DEC-0036](../decisions/index.md#dec-0036-world-forge-act-lens), [`../formats/world-forge-acts.md`](../formats/world-forge-acts.md)) filters geography by campaign act without splitting files.
+5. **World Forge MCP/CLI entry points** — Command-backed automation for the above after schemas stabilize (TICKET-0014; pantheon via TICKET-0183).
 
 ### Narrative systems (product home; delivery via EPIC-0006 / M6–M7)
 
-5. **Quest authoring** — Quest data model, validation, and quest creator tooling (TICKET-0050 / 0051). Lives under World Forge panels; links to regions, POIs, factions, and people in the relationship graph. Format: [`../formats/world-forge-quests.md`](../formats/world-forge-quests.md) (multi-stage dialogue hooks per [DEC-0026](../decisions/index.md#dec-0026-quest-owned-dialogue-hooks-multi-stage)).
-6. **Dialogue authoring** — Branching dialogue graphs, editor, and headless tests (TICKET-0052 / 0053; UX polish TICKET-0165–0168 Phase 1; follow-ons 0169–0179). Speakers and conditions reference World Forge people/faction IDs; trees may set `parentQuestId` when owned by a quest stage. Shared graph camera with relationship canvas ([DEC-0027](../decisions/index.md#dec-0027-shared-world-forge-graph-camera)).
-7. **Story events** — Authorable event definitions (triggers, conditions, outcomes) that wire campaign beats into engine-consumable assets. Exact schema is a follow-on ticket; product home is World Forge.
+6. **Quest authoring** — Quest data model, validation, and quest creator tooling (TICKET-0050 / 0051). Lives under World Forge panels; links to regions, POIs, factions, and people in the relationship graph. Format: [`../formats/world-forge-quests.md`](../formats/world-forge-quests.md) (multi-stage dialogue hooks per [DEC-0026](../decisions/index.md#dec-0026-quest-owned-dialogue-hooks-multi-stage)).
+7. **Dialogue authoring** — Branching dialogue graphs, editor, and headless tests (TICKET-0052 / 0053; UX polish TICKET-0165–0168 Phase 1; follow-ons 0169–0179). Speakers and conditions reference World Forge people/faction IDs; trees may set `parentQuestId` when owned by a quest stage. Shared graph camera with relationship canvas ([DEC-0027](../decisions/index.md#dec-0027-shared-world-forge-graph-camera)).
+8. **Story events** — Authorable event definitions (triggers, conditions, outcomes) that wire campaign beats into engine-consumable assets. Exact schema is a follow-on ticket; product home is World Forge.
 
 ### Integration contract
 
@@ -99,6 +101,7 @@ Schema tickets ship formats and validators before UI. UI and MCP must share the 
 ## Related context
 
 - [world-forge-factions.md](../formats/world-forge-factions.md) — faction/culture/clan schema (TICKET-0011)
+- [world-forge-archetypes.md](../formats/world-forge-archetypes.md) — starting/advanced archetype catalog (TICKET-0186)
 - [world-forge-relationships.md](../formats/world-forge-relationships.md) — relationship graph schema (TICKET-0012)
 - [world-forge-map.md](../formats/world-forge-map.md) — regions / POIs / links schema (TICKET-0013)
 - [world-forge-mcp.md](../formats/world-forge-mcp.md) — `engine_world_forge_apply` (TICKET-0014)

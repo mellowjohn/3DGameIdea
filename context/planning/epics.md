@@ -21,7 +21,7 @@ Kanban (drag Status columns): **[Work Board](https://app.notion.com/p/39ad3efc56
 
 | Priority | Meaning | Typical work |
 | --- | --- | --- |
-| P0 | Engineering critical path — do first when Ready | M5 animation clips (TICKET-0102) after 0101 done |
+| P0 | Engineering critical path — do first when Ready | Owner override 2026-07-16: TICKET-0182 design-docs viewer; otherwise M5 animation path |
 | P1 | Parallel now — story, nav/map design, World Forge scope | EPIC-0003, EPIC-0004, TICKET-0010 |
 | P2 | Ready or next, but not ahead of P0 | PBR (0040/0143), M5 follow-ons, World Forge schemas after 0021 |
 | P3 | Held / later — do not start without owner override | M6/M7/UI, M8–M11, deferred items |
@@ -60,6 +60,14 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0015 | World Forge editor viewport tab (shell) | needs-approval | P2 | 5th Viewports tab beside UI; scaffold + asset sub-tabs; [`tickets/TICKET-0015.md`](tickets/TICKET-0015.md) |
 | TICKET-0016 | World Forge list/detail inspectors (factions, graph, map) | needs-approval | P2 | Edit via shared `apply_world_forge_operation`; [`tickets/TICKET-0016.md`](tickets/TICKET-0016.md) |
 | TICKET-0017 | Relationship graph visual canvas | needs-approval | P2 | Graph mode in Relationships pane; [`tickets/TICKET-0017.md`](tickets/TICKET-0017.md) |
+| TICKET-0183 | Pantheon / religion World Forge schema | needs-approval | P2 | `pantheon.worldforge.json` + MCP kind=pantheon; [`tickets/TICKET-0183.md`](tickets/TICKET-0183.md) |
+| TICKET-0184 | World Forge Hierarchy pane (Religion/Factions/Persons) | needs-approval | P2 | Hierarchy tab + sub-pages; retire top-level Factions; [`tickets/TICKET-0184.md`](tickets/TICKET-0184.md) |
+| TICKET-0185 | Relationship node parentId + person affiliation helpers | needs-approval | P2 | Node `parentId` + Hierarchy Persons edge upsert; [`tickets/TICKET-0185.md`](tickets/TICKET-0185.md) |
+| TICKET-0186 | Archetype catalog World Forge schema + pane | needs-approval | P2 | `archetypes.worldforge.json` + Archetypes tab; [`tickets/TICKET-0186.md`](tickets/TICKET-0186.md); [`../formats/world-forge-archetypes.md`](../formats/world-forge-archetypes.md) |
+| TICKET-0187 | World Forge Map spatial canvas | needs-approval | P2 | Map List/Canvas; place/drag anchors + links; [`tickets/TICKET-0187.md`](tickets/TICKET-0187.md) |
+| TICKET-0188 | Map canvas terrain height underlay | needs-approval | P2 | Greyscale height underlay from `sample_terrain_height`; [`tickets/TICKET-0188.md`](tickets/TICKET-0188.md) |
+| TICKET-0189 | World Forge Act lens (organize by acts) | needs-approval | P2 | Global Act filter + `acts[]`; DEC-0036; world_forge 163/163; [`tickets/TICKET-0189.md`](tickets/TICKET-0189.md) |
+| TICKET-0190 | Scene overlay for World Forge map markers | needs-approval | P2 | Scene/Sculpt poles+labels + focus; [`tickets/TICKET-0190.md`](tickets/TICKET-0190.md) |
 
 ## EPIC-0003: Narrative content (storyline, factions, side quests)
 
@@ -84,22 +92,23 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
-| TICKET-0030 | Open-world navigation design notes | ready | P1 | Fast travel, roads, barriers, soft gates; [`tickets/TICKET-0030.md`](tickets/TICKET-0030.md) |
-| TICKET-0031 | Map design language (biomes, landmarks, density) | ready | P1 | Align with dark-fantasy art direction; [`tickets/TICKET-0031.md`](tickets/TICKET-0031.md) |
-| TICKET-0032 | Streaming/LOD/budget acceptance for authored regions | proposed | P2 | Needs design notes first |
+| TICKET-0030 | Open-world navigation design notes | needs-approval | P1 | [`../features/open-world-navigation.md`](../features/open-world-navigation.md); [`tickets/TICKET-0030.md`](tickets/TICKET-0030.md) |
+| TICKET-0031 | Map design language (biomes, landmarks, density) | needs-approval | P1 | [`../features/map-design-language.md`](../features/map-design-language.md); [`tickets/TICKET-0031.md`](tickets/TICKET-0031.md) |
+| TICKET-0032 | Streaming/LOD/budget acceptance for authored regions | needs-approval | P2 | [`../features/streaming-lod-budgets.md`](../features/streaming-lod-budgets.md); [`tickets/TICKET-0032.md`](tickets/TICKET-0032.md) |
 
 ## EPIC-0005: Materials, shaders, and post-process
 
 - Status: ready
 - Goal: Shader/material authoring path and post-process effects (including ambient occlusion).
 - Roadmap home: extends active material assets; visual polish toward M8/M11.
-- Priority guidance: P2 — not ahead of M5 P0 (TICKET-0102).
+- Priority guidance: **P0 owner override 2026-07-17:** TICKET-0191 (glTF UV/albedo). Otherwise P2 — not ahead of M5 P0 (TICKET-0102).
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
 | TICKET-0040 | Dynamic material / PBR rendering slice | done | P2 | Opaque PBR shipped (owner approved); [`tickets/TICKET-0040.md`](tickets/TICKET-0040.md) |
 | TICKET-0041 | Shader authoring strategy (graphs vs code-first) | proposed | P2 | Decision interview before large investment |
 | TICKET-0042 | Post-process stack with ambient occlusion | done | P2 | SSAO v1 shipped (owner approved); [`tickets/TICKET-0042.md`](tickets/TICKET-0042.md) |
+| TICKET-0191 | glTF mesh UV + albedo texture import/render | needs-approval | P0 | Owner override; sample `baseColorTexture` for player mesh; [`tickets/TICKET-0191.md`](tickets/TICKET-0191.md) |
 
 ## EPIC-0006: RPG systems — quests and dialogue
 
@@ -169,10 +178,10 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
 | TICKET-0101 | glTF skeletal/skin data import path | done | P0 | Owner approved 2026-07-15; skeletal subset shipped; [`tickets/TICKET-0101.md`](tickets/TICKET-0101.md) |
-| TICKET-0102 | Animation clip asset format + hot reload | needs-approval | P0 | Clip import + library hot reload shipped; awaiting owner approval; [`tickets/TICKET-0102.md`](tickets/TICKET-0102.md) |
-| TICKET-0103 | Blend trees + layered animation state machines | proposed | P2 | Animator component + controller + Lua drive ([DEC-0022](../decisions/index.md#dec-0022-c-animator-backend-with-lua-drive-api)); [`tickets/TICKET-0103.md`](tickets/TICKET-0103.md) · [`../features/animator.md`](../features/animator.md) |
-| TICKET-0104 | Root motion extraction and character sync | proposed | P2 | |
-| TICKET-0105 | Animation events → gameplay/collision hooks | proposed | P2 | |
+| TICKET-0102 | Animation clip asset format + hot reload | done | P0 | Owner approved 2026-07-16; clip import + library hot reload; [`tickets/TICKET-0102.md`](tickets/TICKET-0102.md) |
+| TICKET-0103 | Blend trees + layered animation state machines | done | P2 | Owner approved 2026-07-16; controller + component + Lua drive; [`tickets/TICKET-0103.md`](tickets/TICKET-0103.md) |
+| TICKET-0104 | Root motion extraction and character sync | done | P2 | Owner approved 2026-07-16; DEC-0030; [`tickets/TICKET-0104.md`](tickets/TICKET-0104.md) |
+| TICKET-0105 | Animation events → gameplay/collision hooks | needs-approval | P2 | DEC-0031 controller timelineEvents → Lua `on_animation_event`; [`tickets/TICKET-0105.md`](tickets/TICKET-0105.md) |
 | TICKET-0106 | IK hooks + retargeting metadata | proposed | P2 | |
 | TICKET-0107 | miniaudio integration + spatial/event playback | proposed | P2 | |
 | TICKET-0108 | Full triangle mesh viewport picking | proposed | P2 | Deferred from M4; editor polish |
@@ -184,10 +193,11 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 - Status: proposed
 - Goal: Finish M10 specialized tools beyond the active editor MVP slice.
 - Roadmap home: **M10**.
-- Priority guidance: TICKET-0147–0151 are P2 (component authoring through collider overlays + expose existing colliders); other children remain P3 until M10 pull-forward.
+- Priority guidance: **TICKET-0182 is P0** (owner override — in-editor design docs). TICKET-0147–0151 are P2; other children remain P3 until M10 pull-forward.
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
+| TICKET-0182 | Editor Design Docs tab (read-only context MD) | needs-approval | P0 | Owner override; Viewports **Design Docs**; [`tickets/TICKET-0182.md`](tickets/TICKET-0182.md) |
 | TICKET-0131 | Imported mesh thumbnails | proposed | P3 | |
 | TICKET-0132 | Viewport gizmos for prefab part editing | proposed | P3 | |
 | TICKET-0133 | Play-state save/resume | proposed | P3 | Beyond test-session reset |
@@ -197,7 +207,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0137 | Particle/VFX editor preview | proposed | P3 | Pairs with TICKET-0125 |
 | TICKET-0138 | Profiler panel integration | proposed | P3 | |
 | TICKET-0147 | Entity component authoring + MCP add component/script | needs-approval | P2 | DEC-0016/0017 implemented; awaiting owner approval; [`tickets/TICKET-0147.md`](tickets/TICKET-0147.md) |
-| TICKET-0148 | Component reference: catalog and how they work | ready | P2 | Doc pass after 0147; core ECS + authored collider/scriptBinding; [`tickets/TICKET-0148.md`](tickets/TICKET-0148.md) |
+| TICKET-0148 | Component reference: catalog and how they work | needs-approval | P2 | Catalog: [`../architecture/components.md`](../architecture/components.md); [`tickets/TICKET-0148.md`](tickets/TICKET-0148.md) |
 | TICKET-0149 | Inspector: edit component props + open script | needs-approval | P2 | Implemented; awaiting owner approval; [`tickets/TICKET-0149.md`](tickets/TICKET-0149.md) |
 | TICKET-0150 | Viewport green collider overlays (box/sphere) | needs-approval | P2 | Implemented; awaiting owner approval; [`tickets/TICKET-0150.md`](tickets/TICKET-0150.md) |
 | TICKET-0151 | Expose existing prefab colliders as entity components | needs-approval | P2 | Implemented; awaiting owner approval; [`tickets/TICKET-0151.md`](tickets/TICKET-0151.md) |
@@ -283,9 +293,9 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 ## Suggested work order
 
 1. EPIC-0001 done — use Notion kanban + Priority for day-to-day flow.
-2. **P0 needs-approval:** TICKET-0102 (animation clip format + hot reload) — then M5 follow-ons (0103+).
-3. **P1 parallel:** EPIC-0003 story tickets, EPIC-0004 nav/map design; World Forge scope (TICKET-0010) awaiting owner approval — then schemas after 0021.
-4. **P2 when capacity:** M5 follow-ons after 0102; World Forge schemas after 0021.
+2. **P0 needs-approval (owner override):** TICKET-0191 glTF mesh UV + albedo; TICKET-0182 Design Docs. Prior P0 M5 clips done (0102).
+3. **P1/P2 needs-approval pile:** 0030–0032, 0105, World Forge / UI cards — owner review.
+4. **P2 when capacity:** M5 follow-ons (0106/0107/0110); numeric budgets TICKET-0139 later.
 5. Schema-first World Forge (0011–0014, P2) after faction canon (0021).
 6. Hold **P3** EPIC-0006/0007 and M6–M8 runtime tickets until M5 animation exit unless explicitly overridden.
 7. Mini-map (EPIC-0007) after region/POI IDs exist.

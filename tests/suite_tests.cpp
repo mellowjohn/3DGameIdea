@@ -12,11 +12,18 @@
 #include "engine/automation/editor_session.h"
 #include "engine/automation/scene_commands.h"
 #include "engine/assets/script_bindings_asset.h"
+#include "engine/animation/animator_runtime.h"
+#include "engine/animation/root_motion.h"
+#include "engine/assets/animator_controller_asset.h"
+#include "engine/physics/character_controller.h"
 #include "engine/scripting/lua_runtime.h"
 #include "engine/assets/hud_asset.h"
 #include "engine/assets/ui_canvas_asset.h"
 #include "engine/assets/ui_canvas_mutate.h"
+#include "engine/assets/world_forge_archetypes_asset.h"
+#include "engine/assets/world_forge_acts.h"
 #include "engine/assets/world_forge_factions_asset.h"
+#include "engine/assets/world_forge_pantheon_asset.h"
 #include "engine/assets/world_forge_relationships_asset.h"
 #include "engine/assets/world_forge_map_asset.h"
 #include "engine/assets/world_forge_quests_asset.h"
@@ -26,6 +33,7 @@
 #include "engine/standing/standing_runtime.h"
 #include "engine/dialogue/dialogue_graph_edit.h"
 #include "engine/dialogue/twee_import.h"
+#include "engine/ui/world_forge_editor.h"
 #include "engine/ui/world_forge_graph_camera.h"
 #include "engine/core/id_slug.h"
 #include "engine/automation/world_forge_commands.h"
@@ -168,7 +176,20 @@ int main(int argc,char**argv){
         r.check(assets.records().size()==1,"one asset found"); r.check(assets.validate().empty(),"dependencies valid");
         engine::MaterialAsset material;material.base_color={0.2f,0.3f,0.4f,1.0f};material.roughness=0.8f;material.physics.surface="stone";r.check(material.validate().has_value(),"material valid");auto parsed=engine::MaterialAsset::from_json(material.to_json());r.check(parsed&&parsed.value().to_json()==material.to_json(),"material deterministic round trip");
         material.metallic=1.5f;r.check(!material.validate(),"invalid metallic rejected");material.metallic=0;material.base_color[3]=0.5f;r.check(!material.validate(),"opaque alpha mismatch rejected");r.check(!engine::MaterialAsset::from_json("{}"),"malformed material rejected");
-        const auto gltf=root/"assets/sample.gltf";std::ofstream(gltf)<<R"({"asset":{"version":"2.0"},"buffers":[{"byteLength":96,"uri":"data:application/octet-stream;base64,AAAAvwAAAAAAAAC/AAAAPwAAAAAAAAC/AAAAPwAAAAAAAAA/AAAAvwAAAAAAAAA/AAAAAAAAAEAAAAAAAAABAAQAAQACAAQAAgADAAQAAwAAAAQAAAADAAIAAAACAAEA"}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":60},{"buffer":0,"byteOffset":60,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":5,"type":"VEC3"},{"bufferView":1,"componentType":5123,"count":18,"type":"SCALAR"}],"meshes":[{"primitives":[{"attributes":{"POSITION":0},"indices":1}]}]})";auto mesh=engine::import_gltf_mesh(gltf);r.check(mesh&&mesh.value().vertices.size()==18,"glTF triangle mesh imported");r.check(mesh&&!mesh.value().has_skinning(),"static glTF has no skinning");std::ofstream(gltf,std::ios::trunc)<<"{}";r.check(!engine::import_gltf_mesh(gltf),"malformed glTF rejected");
+        const auto gltf=root/"assets/sample.gltf";std::ofstream(gltf)<<R"({"asset":{"version":"2.0"},"buffers":[{"byteLength":96,"uri":"data:application/octet-stream;base64,AAAAvwAAAAAAAAC/AAAAPwAAAAAAAAC/AAAAPwAAAAAAAAA/AAAAvwAAAAAAAAA/AAAAAAAAAEAAAAAAAAABAAQAAQACAAQAAgADAAQAAwAAAAQAAAADAAIAAAACAAEA"}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":60},{"buffer":0,"byteOffset":60,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":5,"type":"VEC3"},{"bufferView":1,"componentType":5123,"count":18,"type":"SCALAR"}],"meshes":[{"primitives":[{"attributes":{"POSITION":0},"indices":1}]}]})";auto mesh=engine::import_gltf_mesh(gltf);r.check(mesh&&mesh.value().vertices.size()==18,"glTF triangle mesh imported");r.check(mesh&&!mesh.value().has_skinning(),"static glTF has no skinning");
+        const auto colored=root/"assets/colored.gltf";std::ofstream(colored)<<R"({"asset":{"version":"2.0"},"buffers":[{"byteLength":144,"uri":"data:application/octet-stream;base64,AAAAvwAAAAAAAAC/AAAAPwAAAAAAAAC/AAAAPwAAAAAAAAA/AAAAvwAAAAAAAAA/AAAAAAAAAEAAAAAAAACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AAABAAQAAQACAAQAAgADAAQAAwAAAAQAAAADAAIAAAACAAEA"}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":60},{"buffer":0,"byteOffset":60,"byteLength":48},{"buffer":0,"byteOffset":108,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":5,"type":"VEC3"},{"bufferView":1,"componentType":5126,"count":4,"type":"VEC3"},{"bufferView":2,"componentType":5123,"count":18,"type":"SCALAR"}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"COLOR_0":1},"indices":2}]}]})";
+        auto bad_color=engine::import_gltf_mesh(colored);r.check(!bad_color&&bad_color.error().code=="MESH-COLOR-COUNT","COLOR_0 count mismatch rejected");
+        std::ofstream(colored,std::ios::trunc)<<R"({"asset":{"version":"2.0"},"buffers":[{"byteLength":156,"uri":"data:application/octet-stream;base64,AAAAvwAAAAAAAAC/AAAAPwAAAAAAAAC/AAAAPwAAAAAAAAA/AAAAvwAAAAAAAAA/AAAAAAAAAEAAAAAAAACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AAABAAQAAQACAAQAAgADAAQAAwAAAAQAAAADAAIAAAACAAEA"}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":60},{"buffer":0,"byteOffset":60,"byteLength":60},{"buffer":0,"byteOffset":120,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":5,"type":"VEC3"},{"bufferView":1,"componentType":5126,"count":5,"type":"VEC3"},{"bufferView":2,"componentType":5123,"count":18,"type":"SCALAR"}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"COLOR_0":1},"indices":2}]}]})";
+        auto color_mesh=engine::import_gltf_mesh(colored);r.check(color_mesh&&color_mesh.value().vertices.size()==18,"COLOR_0 glTF imported");r.check(color_mesh&&color_mesh.value().vertices.front().r>0.9f&&color_mesh.value().vertices.front().g>0.9f&&color_mesh.value().vertices.front().b>0.9f,"COLOR_0 applied to vertices");
+        const auto textured=root/"assets/textured.gltf";std::ofstream(textured)<<R"({"asset":{"version":"2.0"},"buffers":[{"byteLength":66,"uri":"data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAABAAIA"}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36},{"buffer":0,"byteOffset":36,"byteLength":24},{"buffer":0,"byteOffset":60,"byteLength":6}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"},{"bufferView":1,"componentType":5126,"count":3,"type":"VEC2"},{"bufferView":2,"componentType":5123,"count":3,"type":"SCALAR"}],"images":[{"uri":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGP4z8DwHwRZGME0AwMAPv8GAPpcE7AAAAAASUVORK5CYII="}],"textures":[{"source":0}],"materials":[{"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"indices":2,"material":0}]}]})";
+        auto tex_mesh=engine::import_gltf_mesh(textured);
+        r.check(tex_mesh&&tex_mesh.value().vertices.size()==3,"TEXCOORD glTF imported");
+        r.check(tex_mesh&&std::abs(tex_mesh.value().vertices[1].u-1.0f)<1e-5f&&std::abs(tex_mesh.value().vertices[2].v-1.0f)<1e-5f,"TEXCOORD_0 applied to vertex UVs");
+        r.check(tex_mesh&&tex_mesh.value().has_albedo()&&tex_mesh.value().albedo_width==2&&tex_mesh.value().albedo_height==2,"baseColorTexture decoded to 2x2 RGBA albedo");
+        r.check(tex_mesh&&tex_mesh.value().albedo_rgba.size()==16&&tex_mesh.value().albedo_rgba[0]==255&&tex_mesh.value().albedo_rgba[1]==0&&tex_mesh.value().albedo_rgba[2]==0,"albedo top-left texel is red");
+        const auto uv_mismatch=root/"assets/uv-mismatch.gltf";std::ofstream(uv_mismatch)<<R"({"asset":{"version":"2.0"},"buffers":[{"byteLength":50,"uri":"data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAEAAgA="}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36},{"buffer":0,"byteOffset":36,"byteLength":8},{"buffer":0,"byteOffset":44,"byteLength":6}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"},{"bufferView":1,"componentType":5126,"count":1,"type":"VEC2"},{"bufferView":2,"componentType":5123,"count":3,"type":"SCALAR"}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"indices":2}]}]})";
+        auto uv_bad=engine::import_gltf_mesh(uv_mismatch);r.check(!uv_bad&&uv_bad.error().code=="MESH-UV-COUNT","TEXCOORD_0 count mismatch rejected");
+        std::ofstream(gltf,std::ios::trunc)<<"{}";r.check(!engine::import_gltf_mesh(gltf),"malformed glTF rejected");
         const auto skinned=root/"assets/skinned.gltf";
         std::ofstream(skinned)<<R"({
 "asset":{"version":"2.0"},
@@ -391,6 +412,70 @@ int main(int argc,char**argv){
             R"({"schemaVersion":1,"id":"t","entities":[{"id":"a","kind":"faction","canonStatus":"draft","parentId":"missing"}]})");
         r.check(!bad_parent&&bad_parent.error().code=="WORLD-FORGE-FACTION-PARENT","unknown parentId rejected");
         r.check(engine::WorldForgeFactionsAsset::validate_file(path).has_value(),"sample factions validate_file succeeds");
+
+        const auto pantheon_path=engine::default_world_forge_pantheon_path(project);
+        r.check(pantheon_path.filename()=="pantheon.worldforge.json","default pantheon path filename");
+        auto pantheon_loaded=engine::WorldForgePantheonAsset::load(pantheon_path);
+        r.check(pantheon_loaded.has_value(),"sample pantheon.worldforge.json loads");
+        r.check(pantheon_loaded&&pantheon_loaded.value().schema_version==1&&pantheon_loaded.value().id=="tessera_pantheon",
+            "pantheon sample schema and id");
+        r.check(pantheon_loaded&&pantheon_loaded.value().entities.size()==2,"pantheon seeds frangitur+creotar");
+        if(pantheon_loaded){
+            const auto round_trip=engine::WorldForgePantheonAsset::parse(pantheon_loaded.value().to_json());
+            r.check(round_trip&&round_trip.value().to_json()==pantheon_loaded.value().to_json(),
+                "pantheon to_json round trip");
+        }
+        const auto pantheon_bad_parent=engine::WorldForgePantheonAsset::parse(
+            R"({"schemaVersion":1,"id":"t","entities":[{"id":"a","kind":"deity","canonStatus":"draft","parentId":"missing"}]})");
+        r.check(!pantheon_bad_parent&&pantheon_bad_parent.error().code=="WORLD-FORGE-PANTHEON-PARENT",
+            "pantheon unknown parentId rejected");
+        const auto pantheon_cycle=engine::WorldForgePantheonAsset::parse(
+            R"({"schemaVersion":1,"id":"t","entities":[{"id":"a","kind":"deity","canonStatus":"draft","parentId":"b"},{"id":"b","kind":"deity","canonStatus":"draft","parentId":"a"}]})");
+        r.check(!pantheon_cycle&&pantheon_cycle.error().code=="WORLD-FORGE-PANTHEON-PARENT-CYCLE",
+            "pantheon parentId cycle rejected");
+        r.check(engine::WorldForgePantheonAsset::validate_file(pantheon_path).has_value(),
+            "sample pantheon validate_file succeeds");
+        const auto wf_pantheon=engine::apply_world_forge_operation(project,
+            nlohmann::json{{"action","validate"},{"kind","pantheon"}});
+        r.check(wf_pantheon.exit_code==engine::ExitCode::Success,"world_forge_apply validates pantheon");
+
+        const auto archetypes_path=engine::default_world_forge_archetypes_path(project);
+        r.check(archetypes_path.filename()=="archetypes.worldforge.json","default archetypes path filename");
+        auto archetypes_loaded=engine::WorldForgeArchetypesAsset::load(archetypes_path);
+        r.check(archetypes_loaded.has_value(),"sample archetypes.worldforge.json loads");
+        r.check(archetypes_loaded&&archetypes_loaded.value().schema_version==1&&
+                archetypes_loaded.value().id=="tessera_archetypes",
+            "archetypes sample schema and id");
+        r.check(archetypes_loaded&&archetypes_loaded.value().entities.size()==3,
+            "archetypes seeds squire+archer+acolyte");
+        if(archetypes_loaded){
+            const auto& entities=archetypes_loaded.value().entities;
+            r.check(entities[0].id=="squire"&&entities[0].kind==engine::WorldForgeArchetypeKind::Starting,
+                "squire starting archetype");
+            r.check(entities[1].id=="archer"&&entities[2].id=="acolyte","archer and acolyte seeded");
+            const auto round_trip=engine::WorldForgeArchetypesAsset::parse(archetypes_loaded.value().to_json());
+            r.check(round_trip&&round_trip.value().to_json()==archetypes_loaded.value().to_json(),
+                "archetypes to_json round trip");
+        }
+        const auto archetype_bad_kind=engine::WorldForgeArchetypesAsset::parse(
+            R"({"schemaVersion":1,"id":"t","entities":[{"id":"a","kind":"hero"}]})");
+        r.check(!archetype_bad_kind&&archetype_bad_kind.error().code=="WORLD-FORGE-ARCHETYPE-KIND",
+            "archetype bad kind rejected");
+        const auto archetype_bad_faction=engine::WorldForgeArchetypesAsset::parse(
+            R"({"schemaVersion":1,"id":"t","entities":[{"id":"a","kind":"advanced","unlock":{"factionId":"missing_faction"}}]})");
+        r.check(archetype_bad_faction.has_value(),"archetype with unknown faction parses before cross-ref");
+        if(archetype_bad_faction){
+            std::unordered_set<std::string> known{"kingdom_tessera"};
+            const auto refs=archetype_bad_faction.value().validate_faction_refs(known);
+            r.check(!refs&&refs.error().code=="WORLD-FORGE-ARCHETYPE-FACTION",
+                "archetype unknown unlock.factionId rejected");
+        }
+        r.check(engine::WorldForgeArchetypesAsset::validate_file(archetypes_path).has_value(),
+            "sample archetypes validate_file succeeds");
+        const auto wf_archetypes=engine::apply_world_forge_operation(project,
+            nlohmann::json{{"action","validate"},{"kind","archetypes"}});
+        r.check(wf_archetypes.exit_code==engine::ExitCode::Success,"world_forge_apply validates archetypes");
+
         const auto rel_path=engine::default_world_forge_relationships_path(project);
         r.check(rel_path.filename()=="relationships.worldforge.json","default relationships path filename");
         auto rel_loaded=engine::WorldForgeRelationshipsAsset::load(rel_path);
@@ -420,6 +505,14 @@ int main(int argc,char**argv){
         const auto bad_edge_kind=engine::WorldForgeRelationshipsAsset::parse(
             R"({"schemaVersion":1,"id":"t","nodes":[{"id":"a","kind":"person","canonStatus":"draft"},{"id":"b","kind":"person","canonStatus":"draft"}],"edges":[{"id":"e1","from":{"target":"node","id":"a"},"to":{"target":"node","id":"b"},"kind":"enemigos","canonStatus":"draft"}]})");
         r.check(!bad_edge_kind&&bad_edge_kind.error().code=="WORLD-FORGE-REL-EDGE-KIND","bad edge kind rejected");
+        const auto bad_node_parent=engine::WorldForgeRelationshipsAsset::parse(
+            R"({"schemaVersion":1,"id":"t","nodes":[{"id":"a","kind":"person","canonStatus":"draft","parentId":"missing"}],"edges":[]})");
+        r.check(!bad_node_parent&&bad_node_parent.error().code=="WORLD-FORGE-REL-PARENT",
+            "unknown node parentId rejected");
+        const auto node_parent_cycle=engine::WorldForgeRelationshipsAsset::parse(
+            R"({"schemaVersion":1,"id":"t","nodes":[{"id":"a","kind":"person","canonStatus":"draft","parentId":"b"},{"id":"b","kind":"person","canonStatus":"draft","parentId":"a"}],"edges":[]})");
+        r.check(!node_parent_cycle&&node_parent_cycle.error().code=="WORLD-FORGE-REL-PARENT-CYCLE",
+            "node parentId cycle rejected");
         {
             auto ok_graph=engine::WorldForgeRelationshipsAsset::parse(
                 R"({"schemaVersion":1,"id":"t","nodes":[{"id":"a","kind":"person","canonStatus":"draft"}],"edges":[{"id":"e1","from":{"target":"node","id":"a"},"to":{"target":"faction","id":"missing_faction"},"kind":"member_of","canonStatus":"draft"}]})");
@@ -470,6 +563,28 @@ int main(int argc,char**argv){
                 "unknown region factionId rejected when known set provided");
         }
         r.check(engine::WorldForgeMapAsset::validate_file(map_path).has_value(),"sample map validate_file succeeds");
+        {
+            auto anchored=engine::WorldForgeMapAsset::parse(
+                R"({"schemaVersion":1,"id":"t","regions":[{"id":"r1","kind":"region","canonStatus":"draft","anchor":{"x":10,"y":1,"z":20}}],"pois":[{"id":"p1","kind":"landmark","canonStatus":"draft","regionId":"r1","anchor":{"x":12,"y":1,"z":22}}],"links":[{"id":"l1","kind":"travel","fromKind":"region","fromId":"r1","toKind":"poi","toId":"p1","canonStatus":"draft"}]})");
+            r.check(anchored.has_value(),"map with anchors parses");
+            if(anchored){
+                const auto* ra=engine::resolve_map_endpoint_anchor(anchored.value(),
+                    engine::WorldForgeMapEndpointKind::Region,"r1");
+                const auto* pa=engine::resolve_map_endpoint_anchor(anchored.value(),
+                    engine::WorldForgeMapEndpointKind::Poi,"p1");
+                const auto* missing=engine::resolve_map_endpoint_anchor(anchored.value(),
+                    engine::WorldForgeMapEndpointKind::Region,"missing");
+                r.check(ra&&ra->x==10.0f&&ra->z==20.0f,"resolve region endpoint anchor");
+                r.check(pa&&pa->x==12.0f&&pa->z==22.0f,"resolve poi endpoint anchor");
+                r.check(missing==nullptr,"missing endpoint anchor is null");
+                r.check(engine::map_region_marker_key("r1")=="region:r1","region marker key");
+                r.check(engine::map_poi_marker_key("p1")=="poi:p1","poi marker key");
+                const auto world=engine::graph_screen_to_world(engine::WorldForgeGraphCamera{},100.0f,50.0f);
+                const auto back=engine::graph_world_to_screen_local(engine::WorldForgeGraphCamera{},world[0],world[1]);
+                r.check(std::fabs(back[0]-100.0f)<0.01f&&std::fabs(back[1]-50.0f)<0.01f,
+                    "map canvas screen/world round trip via graph camera");
+            }
+        }
         const auto quest_path=engine::default_world_forge_quests_path(project);
         r.check(quest_path.filename()=="quests.worldforge.json","default quests path filename");
         auto quest_loaded=engine::WorldForgeQuestsAsset::load(quest_path);
@@ -482,6 +597,13 @@ int main(int argc,char**argv){
             r.check(mq.id=="mq_act0_calrenoth"&&mq.kind==engine::WorldForgeQuestKind::Main&&
                 mq.dialogue.start_id=="dlg_act0_wrathful_conquest",
                 "mq_act0 is main quest hooked to Twine dialogue");
+            r.check(!mq.acts.empty()&&mq.acts[0]=="act0","mq_act0 has acts=[act0]");
+            r.check(engine::matches_world_forge_act_filter(mq.acts, mq.tags, "act0"),
+                "act0 filter matches mq_act0");
+            r.check(!engine::matches_world_forge_act_filter(mq.acts, mq.tags, "act1"),
+                "act1 filter excludes mq_act0");
+            r.check(engine::matches_world_forge_act_filter({}, {}, "act2"),
+                "empty acts is campaign-wide under act filter");
             const auto& q0=quest_loaded.value().quests[1];
             r.check(q0.id=="sq_01_cart_again"&&q0.objectives.size()==4&&q0.dialogue.start_id.empty(),
                 "sq_01 keeps soft-empty dialogue hooks until authored");
@@ -498,6 +620,9 @@ int main(int argc,char**argv){
         const auto empty_quest=engine::WorldForgeQuestsAsset::parse(
             R"({"schemaVersion":1,"id":"t","quests":[{"id":"","kind":"side","canonStatus":"draft","objectives":[],"forks":[]}]})");
         r.check(!empty_quest&&empty_quest.error().code=="WORLD-FORGE-QUEST-ID","empty quest id rejected");
+        const auto bad_act=engine::WorldForgeQuestsAsset::parse(
+            R"({"schemaVersion":1,"id":"t","quests":[{"id":"q1","kind":"side","canonStatus":"draft","acts":["act99"],"objectives":[],"forks":[]}]})");
+        r.check(!bad_act&&bad_act.error().code=="WORLD-FORGE-ACT-ID","bad act id rejected");
         const auto dup_objective=engine::WorldForgeQuestsAsset::parse(
             R"({"schemaVersion":1,"id":"t","quests":[{"id":"q1","kind":"side","canonStatus":"draft","objectives":[{"id":"a","summary":""},{"id":"a","summary":""}],"forks":[]}]})");
         r.check(!dup_objective&&dup_objective.error().code=="WORLD-FORGE-QUEST-OBJECTIVE-ID-DUP",
@@ -1913,6 +2038,271 @@ int main(int argc,char**argv){
         engine::EngineError error{"TEST-RUNTIME",engine::Severity::Error,engine::ErrorCategory::Validation,"diagnostics-test","visible error",std::nullopt,{},"fix","test-correlation",engine::ErrorPriority::P1High};engine::Logger::instance().write(error);
         r.check(engine::Logger::instance().error_count()==1,"error counter increments");r.check(engine::Logger::instance().recent_errors().size()==1,"recent error retained");
         std::ifstream input(path);std::string line;std::getline(input,line);r.check(line.find("\"code\":\"TEST-RUNTIME\"")!=std::string::npos,"JSONL error persisted");r.check(line.find("\"priority\":\"P1\"")!=std::string::npos,"priority label persisted");
+    }else if(suite=="animator"){
+        const auto root=std::filesystem::temp_directory_path()/("engine-animator-suite-"+engine::make_correlation_id());
+        std::filesystem::create_directories(root/"assets/models");
+        std::filesystem::create_directories(root/"assets/animators");
+        std::filesystem::create_directories(root/"assets/prefabs");
+        const auto clips_gltf=root/"assets/models/hero_clips.gltf";
+        std::ofstream(clips_gltf)<<R"({
+"asset":{"version":"2.0"},
+"nodes":[{"name":"Hip"}],
+"animations":[
+{"name":"Idle","samplers":[{"input":0,"output":1,"interpolation":"LINEAR"}],"channels":[{"sampler":0,"target":{"node":0,"path":"translation"}}]},
+{"name":"Walk","samplers":[{"input":0,"output":1,"interpolation":"LINEAR"}],"channels":[{"sampler":0,"target":{"node":0,"path":"translation"}}]},
+{"name":"Attack","samplers":[{"input":0,"output":1,"interpolation":"LINEAR"}],"channels":[{"sampler":0,"target":{"node":0,"path":"translation"}}]}
+],
+"accessors":[
+{"bufferView":0,"componentType":5126,"count":2,"type":"SCALAR","max":[1.0],"min":[0.0]},
+{"bufferView":1,"componentType":5126,"count":2,"type":"VEC3"}
+],
+"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":8},{"buffer":0,"byteOffset":8,"byteLength":24}],
+"buffers":[{"byteLength":32,"uri":"data:application/octet-stream;base64,AAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAPwAAAAA="}]
+})";
+        const auto controller_path=root/"assets/animators/hero.animator.json";
+        std::ofstream(controller_path)<<R"({
+"schemaVersion":1,
+"kind":"animatorController",
+"id":"hero_locomotion",
+"parameters":[
+  {"name":"speed","type":"float","default":0.0},
+  {"name":"attack","type":"trigger"}
+],
+"layers":[{
+  "name":"base",
+  "defaultState":"idle",
+  "blendMode":"override",
+  "states":[
+    {"name":"idle","motion":{"type":"clip","clipSource":"assets/models/hero_clips.gltf","clip":"Idle","loop":true}},
+    {"name":"locomotion","motion":{"type":"blendTree1D","parameter":"speed","children":[
+      {"threshold":0.0,"clipSource":"assets/models/hero_clips.gltf","clip":"Idle","loop":true},
+      {"threshold":1.0,"clipSource":"assets/models/hero_clips.gltf","clip":"Walk","loop":true}
+    ]}},
+    {"name":"attack","motion":{"type":"clip","clipSource":"assets/models/hero_clips.gltf","clip":"Attack","loop":false}}
+  ],
+  "transitions":[
+    {"from":"idle","to":"locomotion","duration":0.1,"conditions":[{"parameter":"speed","op":"greater","value":0.1}]},
+    {"from":"locomotion","to":"idle","duration":0.1,"conditions":[{"parameter":"speed","op":"lessOrEqual","value":0.1}]},
+    {"from":"*","to":"attack","duration":0.05,"conditions":[{"parameter":"attack","op":"trigger"}]}
+  ]
+}]
+})";
+        auto parsed=engine::AnimatorControllerAsset::load(controller_path);
+        r.check(parsed&&parsed.value().id=="hero_locomotion"&&parsed.value().layers.size()==1,"animator controller loads");
+        r.check(parsed&&parsed.value().layers[0].states.size()==3,"animator controller states parsed");
+        auto bad_ctrl=engine::AnimatorControllerAsset::parse(R"({"schemaVersion":1,"kind":"animatorController","id":"x","layers":[]})", "bad");
+        r.check(!bad_ctrl&&bad_ctrl.error().code=="ANIM-CTRL-LAYERS","empty layers rejected");
+
+        engine::AnimationClipLibrary clips;
+        engine::AnimatorRuntime animator;
+        animator.set_project_root(root);
+        animator.set_clip_library(&clips);
+        const std::string entity="00000000-0000-4000-8000-0000000000a1";
+        r.check(animator.attach(entity,"assets/animators/hero.animator.json").has_value(),"animator attach succeeds");
+        auto idle_state=animator.current_state(entity);
+        r.check(idle_state&&idle_state.value()=="idle","animator starts in idle");
+        r.check(animator.set_float(entity,"speed",0.5f).has_value(),"animator set_float succeeds");
+        animator.tick(0.0f);
+        auto mid_state=animator.current_state(entity);
+        auto mid_status=animator.status(entity);
+        r.check((mid_state&&mid_state.value()=="locomotion")||(mid_status&&mid_status.value().layers[0].in_transition),
+            "speed transition toward locomotion");
+        for(int i=0;i<5;++i) animator.tick(0.05f);
+        auto loco_state=animator.current_state(entity);
+        r.check(loco_state&&loco_state.value()=="locomotion","locomotion state after blend duration");
+        auto status=animator.status(entity);
+        r.check(status&&!status.value().active_clips.empty(),"active clip weights reported");
+        bool has_walk=false; float weight_sum=0.0f;
+        for(const auto& clip:status.value().active_clips){weight_sum+=clip.weight; if(clip.clip=="Walk") has_walk=true;}
+        r.check(has_walk&&weight_sum>0.9f,"blendTree1D includes Walk at speed 0.5");
+        r.check(animator.set_trigger(entity,"attack").has_value(),"animator set_trigger succeeds");
+        animator.tick(0.0f);
+        for(int i=0;i<4;++i) animator.tick(0.05f);
+        auto attack_state=animator.current_state(entity);
+        r.check(attack_state&&attack_state.value()=="attack","trigger any-state transition to attack");
+        auto cross=animator.crossfade(entity,"idle",0.0f);
+        auto idle_again=animator.current_state(entity);
+        r.check(cross&&idle_again&&idle_again.value()=="idle","crossfade instant to idle");
+        auto bad_float=animator.set_float(entity,"missing",1.0f);
+        r.check(!bad_float&&bad_float.error().code=="ANIM-PARAM-FLOAT","bad float param fails closed");
+
+        const auto bad_controller=root/"assets/animators/bad_clip.animator.json";
+        std::ofstream(bad_controller)<<R"({
+"schemaVersion":1,"kind":"animatorController","id":"bad","parameters":[],
+"layers":[{"name":"base","defaultState":"idle","states":[
+  {"name":"idle","motion":{"type":"clip","clipSource":"assets/models/hero_clips.gltf","clip":"MissingClip","loop":true}}
+],"transitions":[]}]}
+)";
+        engine::AnimatorRuntime bad_rt; bad_rt.set_project_root(root); bad_rt.set_clip_library(&clips);
+        r.check(bad_rt.attach("e-bad","assets/animators/bad_clip.animator.json").has_value(),"attach with bad clip still binds controller");
+        auto bad_status=bad_rt.status("e-bad");
+        r.check(bad_status&&bad_status.value().active_clips.empty()&&!bad_rt.recent_errors().empty(),"missing clip fails closed with diagnostics");
+
+        const auto prefab_path=root/"assets/prefabs/hero.prefab.json";
+        std::ofstream(prefab_path)<<R"({"schemaVersion":2,"entities":[{"name":"Body","mesh":{"primitive":"capsule","color":[0.3,0.4,0.8]}}],"components":[{"id":"animator-0","type":"animator","data":{"controller":"assets/animators/hero.animator.json","defaultState":"idle"}}]})";
+        auto prefab=engine::PrefabAsset::load(prefab_path);
+        r.check(prefab&&prefab.value().animators.size()==1&&prefab.value().animators[0].controller.find("hero.animator.json")!=std::string::npos,"prefab animator component parsed");
+        auto seeded=engine::seed_authored_components_from_prefab(prefab.value());
+        r.check(seeded.entries.size()==1&&seeded.entries[0].type==engine::AuthoredComponentType::Animator,"authored animator seeded from prefab");
+        auto round=engine::authored_component_entry_from_json(engine::authored_component_entry_to_json(seeded.entries[0]));
+        r.check(round&&round.value().animator.controller==seeded.entries[0].animator.controller,"animator component JSON round trip");
+
+        engine::LuaRuntime lua; lua.set_animator_runtime(&animator);
+        const auto script=root/"drive.lua";
+        std::ofstream(script)<<R"(
+function drive_anim(payload)
+  local data = engine.json_decode(payload)
+  engine.animator_set_float(data.entityId, "speed", data.speed)
+  engine.animator_set_trigger(data.entityId, "attack")
+end
+)";
+        r.check(lua.load_script(script).has_value(),"animator drive script loads");
+        r.check(animator.crossfade(entity,"idle",0.0f).has_value(),"reset idle before lua drive");
+        r.check(lua.call_handler("drive_anim", std::string("{\"entityId\":\"")+entity+"\",\"speed\":0.8}").has_value(),"lua animator drive succeeds");
+        animator.tick(0.0f);
+        for(int i=0;i<8;++i) animator.tick(0.05f);
+        auto lua_attack=animator.current_state(entity);
+        r.check(lua_attack&&lua_attack.value()=="attack","lua trigger reaches attack state");
+
+        // TICKET-0104 / DEC-0030: root motion extraction + character sync
+        const auto walk_bin=root/"assets/models/walk_root.bin";
+        {
+            // times 0,1 + Hip translation (0,0,0)->(0,0,2)
+            const float payload[]={0.0f,1.0f, 0.0f,0.0f,0.0f, 0.0f,0.0f,2.0f};
+            std::ofstream(walk_bin,std::ios::binary).write(reinterpret_cast<const char*>(payload),sizeof(payload));
+        }
+        const auto walk_gltf=root/"assets/models/walk_root.gltf";
+        std::ofstream(walk_gltf)<<R"({
+"asset":{"version":"2.0"},
+"nodes":[{"name":"Hip"}],
+"animations":[{"name":"WalkRoot","samplers":[{"input":0,"output":1,"interpolation":"LINEAR"}],"channels":[{"sampler":0,"target":{"node":0,"path":"translation"}}]}],
+"accessors":[
+{"bufferView":0,"componentType":5126,"count":2,"type":"SCALAR","max":[1.0],"min":[0.0]},
+{"bufferView":1,"componentType":5126,"count":2,"type":"VEC3"}
+],
+"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":8},{"buffer":0,"byteOffset":8,"byteLength":24}],
+"buffers":[{"byteLength":32,"uri":"walk_root.bin"}]
+})";
+        auto walk_set=engine::import_gltf_animation_clips(walk_gltf);
+        r.check(walk_set&&!walk_set.value().clips.empty(),"walk root clip imports");
+        auto root_delta=engine::extract_clip_root_motion_delta(walk_set.value().clips[0],"Hip",0.0f,0.5f,true);
+        r.check(root_delta&&root_delta.value().found_root_channel&&std::abs(root_delta.value().translation[2]-1.0f)<1e-4f,
+            "root motion extracts +Z half-second delta");
+        auto wrap_delta=engine::extract_clip_root_motion_delta(walk_set.value().clips[0],"Hip",0.75f,1.25f,true);
+        r.check(wrap_delta&&std::abs(wrap_delta.value().translation[2]-1.0f)<1e-3f,"root motion wraps looped clip delta");
+
+        const auto root_ctrl=root/"assets/animators/hero_root.animator.json";
+        std::ofstream(root_ctrl)<<R"({
+"schemaVersion":1,"kind":"animatorController","id":"hero_root","applyRootMotion":true,"rootJoint":"Hip","rootMotionY":false,
+"parameters":[{"name":"speed","type":"float","default":1.0}],
+"layers":[{"name":"base","defaultState":"walk","states":[
+  {"name":"walk","motion":{"type":"clip","clipSource":"assets/models/walk_root.gltf","clip":"WalkRoot","loop":true}}
+],"transitions":[]}]
+})";
+        engine::AnimatorRuntime root_rt; root_rt.set_project_root(root); root_rt.set_clip_library(&clips);
+        const std::string root_entity="root-motion-entity";
+        r.check(root_rt.attach(root_entity,"assets/animators/hero_root.animator.json").has_value(),"root-motion controller attaches");
+        auto arm=root_rt.apply_root_motion(root_entity);
+        r.check(arm&&arm.value(),"applyRootMotion enabled on instance");
+        root_rt.tick(1.0f/60.0f);
+        auto tick_delta=root_rt.root_motion_delta(root_entity);
+        r.check(tick_delta&&std::abs(tick_delta.value().translation[2]-(2.0f/60.0f))<1e-4f,"animator tick emits root delta");
+
+        engine::CollisionWorld cworld;
+        auto terrain=engine::generate_stylized_terrain({0,0},33,40);
+        auto terrain_body=terrain?cworld.add_heightfield(terrain.value(),{},engine::CellCoord{0,0})
+            :engine::Result<engine::CollisionBody>::failure(engine::EngineError{});
+        r.check(terrain&&terrain_body,"root-motion terrain ready");
+        const float ground=engine::sample_terrain_height(8.0f,8.0f);
+        auto created=engine::CharacterController::create(cworld,{8.0,ground+5.0,8.0});
+        r.check(created.has_value(),"root-motion character created");
+        auto character=std::move(created.value());
+        for(int i=0;i<180&&!character.on_ground();++i) (void)character.move({0,0,0},0.0f,1.0f/60.0f);
+        r.check(character.on_ground(),"root-motion character grounded");
+        const auto start_pos=character.position();
+        for(int i=0;i<60;++i){
+            auto synced=engine::sync_character_root_motion(character,root_rt,root_entity,0.0f,1.0f/60.0f);
+            r.check(synced&&synced.value(),"sync_character_root_motion applies");
+        }
+        const auto end_pos=character.position();
+        r.check(std::abs(end_pos.z-start_pos.z)>1.5,"animation-driven root motion moves capsule forward");
+
+        // TICKET-0105 / DEC-0031: controller timeline events → Lua
+        const auto event_ctrl=root/"assets/animators/hero_events.animator.json";
+        std::ofstream(event_ctrl)<<R"({
+"schemaVersion":1,"kind":"animatorController","id":"hero_events",
+"parameters":[],
+"layers":[{"name":"base","defaultState":"walk","states":[
+  {"name":"walk","motion":{"type":"clip","clipSource":"assets/models/walk_root.gltf","clip":"WalkRoot","loop":true}}
+],"transitions":[]}],
+"timelineEvents":[
+  {"state":"walk","time":0.25,"name":"footstep","layer":"base","payload":{"foot":"left"}},
+  {"state":"walk","time":0.75,"name":"footstep","payload":{"foot":"right"}}
+]
+})";
+        auto event_parsed=engine::AnimatorControllerAsset::load(event_ctrl);
+        r.check(event_parsed&&event_parsed.value().timeline_events.size()==2,"timelineEvents parse");
+        auto bad_event=engine::AnimatorControllerAsset::parse(R"({
+"schemaVersion":1,"kind":"animatorController","id":"bad_ev","parameters":[],
+"layers":[{"name":"base","defaultState":"idle","states":[{"name":"idle","motion":{"type":"clip","clipSource":"x.gltf","clip":"A","loop":true}}],"transitions":[]}],
+"timelineEvents":[{"state":"missing","time":0.1,"name":"x"}]
+})", "bad_ev");
+        r.check(!bad_event&&bad_event.error().code=="ANIM-CTRL-EVENT-STATE-MISSING","bad timelineEvent state rejected");
+
+        engine::AnimatorRuntime event_rt; event_rt.set_project_root(root); event_rt.set_clip_library(&clips);
+        const std::string event_entity="event-entity";
+        r.check(event_rt.attach(event_entity,"assets/animators/hero_events.animator.json").has_value(),"event controller attaches");
+        (void)event_rt.take_fired_events();
+        std::size_t first_hits=0;
+        for(int i=0;i<20;++i){ // 20 * 0.05 = 1.0s through one loop of WalkRoot
+            event_rt.tick(0.05f);
+            first_hits+=event_rt.take_fired_events().size();
+        }
+        r.check(first_hits==2,"timeline events fire once per cycle");
+        std::size_t second_hits=0;
+        for(int i=0;i<20;++i){
+            event_rt.tick(0.05f);
+            second_hits+=event_rt.take_fired_events().size();
+        }
+        r.check(second_hits==2,"timeline events re-fire after loop wrap");
+
+        engine::LuaRuntime event_lua; event_lua.set_animator_runtime(&event_rt);
+        const auto event_script=root/"anim_events.lua";
+        std::ofstream(event_script)<<R"(
+function on_animation_event(payload)
+  local data, err = engine.json_decode(payload)
+  if not data then
+    engine.blackboard_set("anim_event_err", tostring(err))
+    return
+  end
+  local count = engine.blackboard_get("anim_event_count") or 0
+  engine.blackboard_set("anim_event_count", count + 1)
+  engine.blackboard_set("anim_event_name", tostring(data.name or ""))
+end
+)";
+        r.check(event_lua.load_script(event_script).has_value(),"animation event script loads");
+        event_rt.detach(event_entity);
+        r.check(event_rt.attach(event_entity,"assets/animators/hero_events.animator.json").has_value(),"reattach for lua event smoke");
+        (void)event_rt.take_fired_events();
+        event_lua.blackboard_clear();
+        event_lua.clear_recent_errors();
+        std::size_t dispatched=0;
+        for(int i=0;i<10;++i){
+            event_rt.tick(0.05f);
+            for(const auto& fired:event_rt.take_fired_events()){
+                event_lua.dispatch_animation_event(fired);
+                ++dispatched;
+            }
+        }
+        r.check(dispatched>=1,"lua smoke received at least one fired event");
+        r.check(event_lua.recent_errors().empty(),"on_animation_event dispatch has no script errors");
+        auto count_entry=event_lua.blackboard_get("anim_event_count");
+        auto name_entry=event_lua.blackboard_get("anim_event_name");
+        r.check(count_entry&&count_entry->type==engine::ScriptBlackboardType::Number&&count_entry->number_value>=1.0,
+            "on_animation_event updates blackboard");
+        r.check(name_entry&&name_entry->string_value=="footstep","on_animation_event receives event name");
+
+        std::filesystem::remove_all(root);
     }else{std::cerr<<"unknown suite\n";return 2;}
     std::cout<<"{\"suite\":\""<<r.suite<<"\",\"assertions\":"<<r.assertions<<",\"passed\":"<<(r.assertions-r.failures)<<",\"failed\":"<<r.failures<<"}\n";
     return r.failures?1:0;

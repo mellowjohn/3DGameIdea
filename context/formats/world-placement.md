@@ -18,7 +18,9 @@ Optional `characterSettings` stores per-spawn overrides (capsule size, movement,
 
 ## Authored components (DEC-0016 / DEC-0017)
 
-Entities may include a `components` array. Collider and `scriptBinding` entries are seeded from the prefab on place. Prefab-linked entries use `"source": "prefab"` and `"overridden": false` until an instance edit sets `"overridden": true`. Prefab saves propagate into non-overridden instance components.
+Full catalog (core ECS + authored types, authoring matrix, extension checklist): [`../architecture/components.md`](../architecture/components.md).
+
+Entities may include a `components` array. Collider, `scriptBinding`, and `animator` entries are seeded from the prefab on place. Prefab-linked entries use `"source": "prefab"` and `"overridden": false` until an instance edit sets `"overridden": true`. Prefab saves propagate into non-overridden instance components.
 
 Legacy worlds that only reference a prefab (no `components` array) still spawn physics from prefab `collision[]`. The editor **exposes those as entity components** on load/select via `seed_missing_authored_components` / `ensure_authored_components_seeded`, so Inspector edit and green overlays share one authored list. Save the world to persist the seeded `components` array.
 

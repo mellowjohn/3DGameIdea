@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "tessera_pantheon",
+  "entities": [
+    {
+      "id": "frangitur",
+      "kind": "deity",
+      "displayName": "Frangitur",
+      "canonStatus": "established",
+      "summary": "The Great Evil; opponent/corrupting force tied to Nefarium and the Shroud narrative. Pantheon registry id aligns with relationships deity node.",
+      "storyRef": "context/story/frangitur-the-great-evil.md",
+      "tags": [
+        "great-evil"
+      ],
+      "parentId": "",
+      "openQuestions": [
+        "Exact mechanism of influence over Luceran and Imperium authority",
+        "Whether Frangitur is a fallen aspect of Creo (Creo not seeded until owner-approved)"
+      ]
+    },
+    {
+      "id": "creotar",
+      "kind": "deity",
+      "displayName": "Creotar",
+      "canonStatus": "draft",
+      "summary": "Vision-space being who warns the protagonist about Luceran and the Nefarium Shroud (Twine-backed draft). Pantheon registry id aligns with relationships deity node.",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "tags": [
+        "vision",
+        "knowledge"
+      ],
+      "parentId": "",
+      "openQuestions": [
+        "Canon status vs Creo; whether Creotar is established god identity or draft alias"
+      ]
+    }
+  ]
+}

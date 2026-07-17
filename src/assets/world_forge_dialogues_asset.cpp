@@ -1,4 +1,5 @@
 #include "engine/assets/world_forge_dialogues_asset.h"
+#include "engine/assets/world_forge_acts.h"
 
 #include <nlohmann/json.hpp>
 
@@ -179,6 +180,9 @@ Result<void> WorldForgeDialoguesAsset::validate() const {
                 "Duplicate dialogue tree id: " + tree.id, "Ensure every tree id is unique."));
         }
         if (const auto valid = validate_tree(tree); !valid) return Result<void>::failure(valid.error());
+        if (const auto acts_ok = validate_world_forge_acts(tree.acts, "dialogue tree", tree.id); !acts_ok) {
+            return Result<void>::failure(acts_ok.error());
+        }
     }
     return Result<void>::success();
 }
@@ -248,6 +252,7 @@ Result<WorldForgeDialoguesAsset> WorldForgeDialoguesAsset::parse(const std::stri
             tree.summary = tree_node.value("summary", std::string{});
             tree.story_ref = tree_node.value("storyRef", std::string{});
             tree.entry_node_id = tree_node.value("entryNodeId", std::string{});
+            tree.acts = read_string_array(tree_node.value("acts", nlohmann::json::array()));
             tree.tags = read_string_array(tree_node.value("tags", nlohmann::json::array()));
             tree.open_questions = read_string_array(tree_node.value("openQuestions", nlohmann::json::array()));
 
@@ -306,6 +311,7 @@ std::string WorldForgeDialoguesAsset::to_json() const {
         auto nodes_json = nlohmann::ordered_json::array();
         for (const auto& node : tree.nodes) nodes_json.push_back(write_node(node));
         tree_json["nodes"] = std::move(nodes_json);
+        tree_json["acts"] = write_string_array(tree.acts);
         tree_json["tags"] = write_string_array(tree.tags);
         tree_json["openQuestions"] = write_string_array(tree.open_questions);
         trees_json.push_back(std::move(tree_json));

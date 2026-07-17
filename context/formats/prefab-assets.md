@@ -158,7 +158,7 @@ Prefabs may declare authored collision parts independent of render meshes:
 - `halfExtent`: box half extents in meters (required for `box`)
 - `radius`: sphere radius in meters (required for `sphere`)
 
-### Optional `components` array (script bindings)
+### Optional `components` array (script bindings / animator)
 
 Non-collider components on the prefab asset:
 
@@ -168,11 +168,16 @@ Non-collider components on the prefab asset:
     "id": "script-0",
     "type": "scriptBinding",
     "data": { "kind": "handler", "bindingId": "use_campfire" }
+  },
+  {
+    "id": "animator-0",
+    "type": "animator",
+    "data": { "controller": "assets/animators/player.animator.json", "defaultState": "idle" }
   }
 ]
 ```
 
-`kind` is `interaction`, `combatHit`, `combatHurt`, or `handler`. Collider entries may also appear under `components` with `type: "collider"` and are merged into `collision[]` on load. Existing `collision[]`-only prefabs remain valid ([DEC-0017](../decisions/index.md#dec-0017-prefab-and-scene-component-authoring-with-unity-like-inheritance)).
+`kind` is `interaction`, `combatHit`, `combatHurt`, or `handler`. Animator `controller` is a project-relative `*.animator.json` ([`animator-controller-assets.md`](animator-controller-assets.md)). Collider entries may also appear under `components` with `type: "collider"` and are merged into `collision[]` on load. Existing `collision[]`-only prefabs remain valid ([DEC-0017](../decisions/index.md#dec-0017-prefab-and-scene-component-authoring-with-unity-like-inheritance)).
 
 On placement, `spawn_prefab_collision()` / `PlacementCollisionTracker` use entity authored components when present (effective volume = local override or linked prefab volume by id); otherwise they fall back to prefab `collision[]`.
 

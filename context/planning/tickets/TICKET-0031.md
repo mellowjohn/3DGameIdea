@@ -1,8 +1,8 @@
 # TICKET-0031: Map design language (biomes, landmarks, density)
 
 - Epic: EPIC-0004
-- Status: ready
-- Agent: unassigned
+- Status: needs-approval
+- Agent: cursor-agent
 - Priority: P1
 - Notion: https://app.notion.com/p/39ad3efc569581de8e13d43e87f1835e
 
@@ -12,18 +12,19 @@ Define a map design language for biomes, landmarks, and content density that mat
 
 ## Context links
 
+- [`../features/map-design-language.md`](../../features/map-design-language.md) (**deliverable**)
 - `context/art/visual-direction.md`
-- `context/story/story-vision.md` (World and Locations)
-- `context/features/navigation-grid.md`
-- Pair with TICKET-0030; feeds World Forge and TICKET-0032
+- `context/story/story-vision.md`
+- `context/formats/world-forge-map.md`
+- Pair: TICKET-0030; feeds TICKET-0032
 
 ## Acceptance criteria
 
-- [ ] Doc lists biome/region types appropriate to Tessera tone (muted earth, corruption contrast) without requiring photoreal detail.
-- [ ] Landmark rules: settlement lights, silhouettes, value separation — tied to visual direction.
-- [ ] Density guidance: how dense POIs/encounters should feel across 4×4 km (qualitative bands OK).
-- [ ] Notes how language will later map to World Forge region/POI IDs (no schema inventing required).
-- [ ] `epics.md` Notes link the doc.
+- [x] Biome/region types for Tessera tone without photoreal requirement.
+- [x] Landmark rules (lights, silhouettes, value) tied to visual direction.
+- [x] Density guidance bands across 4×4 km.
+- [x] Notes mapping to World Forge region/POI IDs (no new schema).
+- [x] `epics.md` Notes link the doc.
 
 ## Out of scope
 
@@ -39,6 +40,16 @@ Define a map design language for biomes, landmarks, and content density that mat
 
 - Doc-only review; cross-check against visual-direction constraints.
 
+## What changed
+
+- Summary: Defined biome bands (farmland, woods, highland, rock/mountain, settled, fortress/ruin, chaotic), landmark readability rules, and qualitative density bands (hub core → wilderness weave → chaotic pockets) with rough 4×4 km targets. Mapped concepts onto existing World Forge region/POI/link fields.
+- Files / surfaces: created `context/features/map-design-language.md`; updated `features/index.md`, `epics.md`, open-questions, this stub.
+- Schema / API: none; uses existing `map.worldforge.json` kinds/tags.
+- Seed / sample data: none.
+- Tests / verification: doc review vs visual-direction + ticket acceptance.
+- Decisions & tradeoffs: Kept bands qualitative; deferred numeric spawn budgets to TICKET-0032.
+- Leftover risk: Hub count and snow-in-v1 remain open preferences.
+
 ## Agent notes
 
-_(empty)_
+Delivered with TICKET-0030 in the same session.

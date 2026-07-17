@@ -1,4 +1,5 @@
 #include "engine/assets/world_forge_relationships_asset.h"
+#include "engine/assets/world_forge_acts.h"
 
 #include <nlohmann/json.hpp>
 
@@ -6,6 +7,8 @@
 #include <cctype>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace engine {
 namespace {
@@ -172,6 +175,7 @@ Result<void> WorldForgeRelationshipsAsset::validate() const {
             "Only World Forge relationships schemaVersion 1 is supported", "Use schemaVersion 1."));
     }
     std::unordered_set<std::string> node_ids;
+    std::unordered_map<std::string, std::string> parent_of;
     node_ids.reserve(nodes.size());
     for (const auto& node : nodes) {
         if (node.id.empty()) {
@@ -181,6 +185,35 @@ Result<void> WorldForgeRelationshipsAsset::validate() const {
         if (!node_ids.insert(node.id).second) {
             return Result<void>::failure(relationship_error("WORLD-FORGE-REL-NODE-ID-DUP", ErrorCategory::Validation,
                 "Duplicate relationship node id: " + node.id, "Ensure every node id is unique."));
+        }
+        if (const auto acts_ok = validate_world_forge_acts(node.acts, "relationship node", node.id); !acts_ok) {
+            return Result<void>::failure(acts_ok.error());
+        }
+        parent_of[node.id] = node.parent_id;
+    }
+    for (const auto& node : nodes) {
+        if (node.parent_id.empty()) continue;
+        if (node.parent_id == node.id) {
+            return Result<void>::failure(relationship_error("WORLD-FORGE-REL-PARENT", ErrorCategory::Validation,
+                "Relationship node parentId cannot reference itself: " + node.id,
+                "Point parentId at a different node or leave it empty."));
+        }
+        if (node_ids.find(node.parent_id) == node_ids.end()) {
+            return Result<void>::failure(relationship_error("WORLD-FORGE-REL-PARENT", ErrorCategory::Validation,
+                "Unknown parentId '" + node.parent_id + "' on node '" + node.id + "'",
+                "parentId must match another node id in the same file, or be empty."));
+        }
+        std::unordered_set<std::string> seen;
+        std::string walk = node.parent_id;
+        while (!walk.empty()) {
+            if (walk == node.id || !seen.insert(walk).second) {
+                return Result<void>::failure(relationship_error("WORLD-FORGE-REL-PARENT-CYCLE",
+                    ErrorCategory::Validation, "parentId cycle involving node '" + node.id + "'",
+                    "Break the parentId cycle."));
+            }
+            const auto it = parent_of.find(walk);
+            if (it == parent_of.end()) break;
+            walk = it->second;
         }
     }
     std::unordered_set<std::string> edge_ids;
@@ -290,7 +323,9 @@ Result<WorldForgeRelationshipsAsset> WorldForgeRelationshipsAsset::parse(const s
             entry.canon_status = canon.value();
             entry.summary = node.value("summary", std::string{});
             entry.story_ref = node.value("storyRef", std::string{});
+            entry.acts = read_string_array(node.value("acts", nlohmann::json::array()));
             entry.tags = read_string_array(node.value("tags", nlohmann::json::array()));
+            entry.parent_id = node.value("parentId", std::string{});
             entry.open_questions = read_string_array(node.value("openQuestions", nlohmann::json::array()));
             asset.nodes.push_back(std::move(entry));
         }
@@ -370,7 +405,9 @@ std::string WorldForgeRelationshipsAsset::to_json() const {
         entry["canonStatus"] = to_string(node.canon_status);
         entry["summary"] = node.summary;
         entry["storyRef"] = node.story_ref;
+        entry["acts"] = write_string_array(node.acts);
         entry["tags"] = write_string_array(node.tags);
+        entry["parentId"] = node.parent_id;
         entry["openQuestions"] = write_string_array(node.open_questions);
         nodes_json.push_back(std::move(entry));
     }

@@ -13,7 +13,7 @@ Lua provides gameplay logic that can change without recompiling the C++ engine a
 - Interaction enter/exit and combat hurt contact dispatch to Lua handlers
 - Sandboxed **`engine.*` host API v1**: `log`, `json_decode`, blackboard get/set
 
-Not included yet: inventory, stats, save migration, movement APIs, animator drive APIs, damage/audio/VFX, collision-query bindings, or broad engine API exposure. **Quest progression** is available via `engine.quest_*` ([DEC-0028](../decisions/index.md#dec-0028-explicit-quest-progression-runtime) / TICKET-0180). Runtime movement and physics (for example player jump) belong in C++ until bindings are added; see `context/architecture/content-vs-engine-workflows.md`. Animator drive bindings are planned under [DEC-0022](../decisions/index.md#dec-0022-c-animator-backend-with-lua-drive-api) / [`animator.md`](animator.md) (TICKET-0103) — Lua will set params / request states, not own the transition graph.
+Not included yet: inventory, stats, save migration, movement APIs, damage/audio/VFX, collision-query bindings, or broad engine API exposure. **Quest progression** is available via `engine.quest_*` ([DEC-0028](../decisions/index.md#dec-0028-explicit-quest-progression-runtime) / TICKET-0180). **Animator drive** is available via `engine.animator_*` ([DEC-0022](../decisions/index.md#dec-0022-c-animator-backend-with-lua-drive-api) / [`animator.md`](animator.md) / TICKET-0103) — Lua sets params / requests states; it does not own the transition graph. Runtime movement and physics (for example player jump) belong in C++ until bindings are added; see `context/architecture/content-vs-engine-workflows.md`.
 
 ## Live agent / content loop
 
@@ -62,8 +62,13 @@ Requires a running editor with MCP connection. Uses the same dispatch path as ga
 | `engine.quest_abandon(questId)` | Abandon active quest |
 | `engine.quest_status(questId)` | Table: status, currentObjectiveId/Summary, completedObjectiveIds |
 | `engine.quest_dialogue_hook(questId, stage)` | Lookup tree id (`start`/`current`/`complete`/`abandon`); does not advance |
+| `engine.animator_set_float(entityId, name, value)` | Drive float param ([DEC-0022](../decisions/index.md#dec-0022-c-animator-backend-with-lua-drive-api)) |
+| `engine.animator_set_bool(entityId, name, value)` | Drive bool param |
+| `engine.animator_set_trigger(entityId, name)` | Arm trigger (consumed on matching transition) |
+| `engine.animator_crossfade(entityId, state[, duration[, layer]])` | Request state (default duration `0.15`) |
+| `engine.animator_get_state(entityId[, layer])` | Current state name |
 
-Blackboard is a per-runtime scratchpad for flags, counters, and last-event IDs. Layout lives in `*.uicanvas.json` ([`ui-canvas.md`](ui-canvas.md)); Lua pushes values and stack ops. Quest state is session-only until TICKET-0114; HUD bind `quest.objectiveText` mirrors the primary active objective.
+Blackboard is a per-runtime scratchpad for flags, counters, and last-event IDs. Layout lives in `*.uicanvas.json` ([`ui-canvas.md`](ui-canvas.md)); Lua pushes values and stack ops. Quest state is session-only until TICKET-0114; HUD bind `quest.objectiveText` mirrors the primary active objective. Animator instances must be attached in C++ (`AnimatorRuntime::attach`) before Lua drive calls succeed.
 
 ## Handler contract
 
@@ -72,6 +77,8 @@ Handlers are global functions called with one JSON string argument.
 Interaction payload fields: `type`, `interactionId`, `placementEntityId`, `interactorId`, `volumeIndex`.
 
 Combat hurt payload fields: `attackerId`, `hurtPlacementEntityId`, `hurtCombatId`, `hurtVolumeIndex`.
+
+Animation event payload fields ([DEC-0031](../decisions/index.md#dec-0031-controller-authored-animation-timeline-events)): `entityId`, `name`, `state`, `layer`, `time`, `payload` (object). Global `on_animation_event` is optional — missing handler is silent.
 
 Decode with `engine.json_decode` when structured fields are needed.
 

@@ -2,7 +2,7 @@
 
 - Status: developing story context
 - Ticket: [TICKET-0020](../planning/tickets/TICKET-0020.md)
-- Decisions: [DEC-0001](../decisions/index.md#dec-0001-product-and-platform-target), [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances)
+- Decisions: [DEC-0001](../decisions/index.md#dec-0001-product-and-platform-target), [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances), [DEC-0032](../decisions/index.md#dec-0032-open-world-travel-discovery-map-and-dual-soft-gates), [DEC-0033](../decisions/index.md#dec-0033-anywhere-player-camp-as-editable-instance-dao-style)
 - Sources: [story-vision.md](story-vision.md), [prologue-and-opening.md](prologue-and-opening.md), Twine Act 0 [`sources/wrathful-conquest-act0.twee`](sources/wrathful-conquest-act0.twee) (IFID `18D3E14D-3321-4EC0-B2E7-197EC99657D7`)
 
 Named beats only — not full scripts or dialogue trees. Labels: **established** (aligned with current story context), **draft** (working, needs owner review), **open** (unresolved).
@@ -12,7 +12,7 @@ Named beats only — not full scripts or dialogue trees. Labels: **established**
 | Mode | Use | Loading |
 | --- | --- | --- |
 | Seamless open world (default) | Overland Tessera, towns, roads, soft-gated regions | Streaming / soft gates — no chapter load screens |
-| Rare optional instances | Dungeons, set-piece arenas, vision/dream spaces when isolation or density needs it | Prefer seamless handoff or short transition; avoid frequent full-world reloads |
+| Rare optional instances | Dungeons, set-piece arenas, vision/dream spaces, **player camp** when isolation or density needs it | Prefer seamless handoff or short transition; avoid frequent full-world reloads |
 
 Story “acts” are **narrative arcs**, not separate loaded chapters. Progress uses quest/story flags, region pressure, and soft gates. Instances are tools, not the campaign spine.
 
@@ -95,7 +95,8 @@ Story “acts” are **narrative arcs**, not separate loaded chapters. Progress 
 ### Beat A0-09 — Tutorial completion → Act 1 handoff
 
 - **Status:** draft
-- Vision ends; player returns to survivors / camp path (Twine: “next level”). Exact wake-up location TBD (**open**): O’hlundian evergreens retreat mentioned by Grenge vs first village hub from [story-vision.md](story-vision.md).
+- Vision ends; player wakes in the **O’hlundian evergreens** ([DEC-0032](../decisions/index.md#dec-0032-open-world-travel-discovery-map-and-dual-soft-gates)). Navigate on foot to the first village — do not auto-drop into the hub.
+- **Calrenoth on the map:** remains as a **ruined, impacted** seamless location the player can revisit (destroyed/attacked state), not a wiped instance.
 
 ---
 
@@ -103,13 +104,15 @@ Story “acts” are **narrative arcs**, not separate loaded chapters. Progress 
 
 ### Beat A1-01 — Survivor camp / retreat
 
-- **Status:** draft
-- Rejoin Arkand (and possibly Larrell / Grenge remnants depending on A0-07). Establish immediate survival goal and Creotar’s warning as personal quest seed.
+- **Status:** draft ([DEC-0033](../decisions/index.md#dec-0033-anywhere-player-camp-as-editable-instance-dao-style))
+- Evergreen wake / survivor path; rejoin Arkand (and possibly Larrell / Grenge remnants depending on A0-07). Establish immediate survival goal and Creotar’s warning as personal quest seed.
+- **Camp tutorial:** teach pitch/setup, talk to camp NPCs/companions, leave camp back to evergreens. After this, player may camp from (nearly) anywhere on the overland map via the same persistent camp instance (DAO-style).
+- Player then finds the road toward the first village on foot.
 
 ### Beat A1-02 — First village / town hub
 
-- **Status:** draft ([story-vision.md](story-vision.md) opening flow)
-- Unlock services, companion camp view concepts, and the wider campaign structure.
+- **Status:** draft ([story-vision.md](story-vision.md) opening flow); **Act 1 major hub** per DEC-0032
+- Unlock services, companion camp view concepts, tavern/carriage post (FT discovery), and the wider campaign structure.
 - Soft-open surrounding regions of the 4×4 km world.
 
 ### Beat A1-03 — Open-world unlock

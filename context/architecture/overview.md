@@ -6,6 +6,8 @@ The product is a Windows-first C++20 and Direct3D 12 engine for a single-player 
 
 Module boundaries are platform, core, rendering, world/ECS, assets, physics/collision, audio, animation, dialogue, particles/VFX, gameplay, scripting, editor, automation, diagnostics, and testing. Milestone 1 implements core, automation, and diagnostics. Other modules remain planned and must not be represented as complete.
 
+Entity component catalog (core ECS + authored collider / scriptBinding / animator, inherit/override, authoring matrix): [components.md](components.md).
+
 For routing feature work between C++ engine changes and MCP-driven Lua, prefab, and scene edits, see [content-vs-engine-workflows.md](content-vs-engine-workflows.md).
 
 ## Foundation Contracts

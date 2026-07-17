@@ -33,7 +33,11 @@ struct WorldForgeRelationshipNode {
     WorldForgeRelationshipCanonStatus canon_status = WorldForgeRelationshipCanonStatus::Draft;
     std::string summary;
     std::string story_ref;
+    /// Campaign act membership (`act0`..`act4`). Empty = campaign-wide. See DEC-0036.
+    std::vector<std::string> acts;
     std::vector<std::string> tags;
+    /// Empty means root. Non-empty must reference another node id in the same asset (TICKET-0185).
+    std::string parent_id;
     std::vector<std::string> open_questions;
 };
 

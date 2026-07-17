@@ -46,6 +46,8 @@ Act 0 working spine (Twine-backed, **draft**): Calrenoth siege with Arkand → C
 
 ## World and Locations
 
+**Tessera** is the world’s primary land — the Middle-earth-scale geography of the campaign ([DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land)). The **Kingdom of Tessera** is one polity within that land, not the land itself.
+
 Tessera includes high mountains, prairie, farmland, woods, and chaotic regions warped by supernatural forces. Candidate location types include towns, castles, cities, villages, groves, markets, islands, docks, plazas, bazaars, battlefields, forests, hills, and mountains.
 
 ## Difficulty-Dependent Story
@@ -55,7 +57,7 @@ The source material proposes “softcore” and “hardcore” modes that can al
 ## Open Questions and Conflicts
 
 - ~~The draft chapter-locked, instanced travel structure conflicts with accepted [DEC-0001](../decisions/index.md#dec-0001-product-and-platform-target)~~ — **resolved** by [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances) (soft gates + rare optional instances; minimize loads). See [campaign-beat-sheet.md](campaign-beat-sheet.md).
-- The overall world-map name remains TBD; Tessera currently names the kingdom and broader setting in different passages and needs a precise geographic definition.
+- ~~World-map / continent title TBD~~ — **resolved** [DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land): Tessera is the primary land; Kingdom of Tessera is the polity within it.
 - The exact morality scale, archetype thresholds, faction lock-in rules, and ending branches remain undefined.
 - “Softcore” and “hardcore” need final names and explicit narrative differences.
 - The source material mentions male and female versions of each character; whether that means player options, character variants, or the full cast remains unclear.

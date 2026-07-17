@@ -21,7 +21,9 @@
 #include "engine/world/combat_volumes.h"
 #include "engine/editor/editor_fonts.h"
 #include "engine/editor/editor_icons.h"
+#include "engine/ui/game_fonts.h"
 #include "engine/assets/asset_registry.h"
+#include "engine/assets/animator_controller_asset.h"
 #include "engine/automation/scene_commands.h"
 #include "engine/automation/editor_bridge.h"
 #include "engine/automation/automation_trace.h"
@@ -39,6 +41,7 @@
 #include "engine/ui/hud_runtime.h"
 #include "engine/ui/ui_canvas_editor.h"
 #include "engine/ui/world_forge_editor.h"
+#include "engine/assets/world_forge_acts.h"
 #include "engine/ui/imgui_png_texture.h"
 #include "engine/ui/ui_canvas_stack.h"
 #include "engine/assets/ui_canvas_asset.h"
@@ -71,12 +74,14 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <cstring>
 #include <deque>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -124,19 +129,20 @@ void hot_reload_ui_canvas_file(UiCanvasStack& stack, const std::filesystem::path
 }
 
 constexpr UINT frame_count = 2;
-struct Vertex { float x,y,z,r,g,b; };
+struct Vertex { float x,y,z,r,g,b,u=0,v=0; };
 struct RenderInstance {
     TransformComponent transform;
     std::string mesh_asset;
     PbrSurfaceParams pbr = PbrSurfaceParams::dielectric_default();
 };
 
-std::array<float, 24> pack_object_constants(const std::array<float, 16>& model, const PbrSurfaceParams& pbr) {
+std::array<float, 24> pack_object_constants(const std::array<float, 16>& model, const PbrSurfaceParams& pbr,
+    float use_albedo = 0.0f) {
     std::array<float, 24> constants{};
     std::memcpy(constants.data(), model.data(), sizeof(model));
     constants[16] = pbr.roughness;
     constants[17] = pbr.metallic;
-    constants[18] = 0.0f;
+    constants[18] = use_albedo; // materialParams.z toggles GPU albedo sampling
     constants[19] = 0.0f;
     constants[20] = pbr.emissive[0];
     constants[21] = pbr.emissive[1];
@@ -271,7 +277,7 @@ void append_imported_mesh_vertices(std::vector<Vertex>& vertices,
     for (const auto& imported : imported_meshes) {
         const UINT offset = static_cast<UINT>(vertices.size());
         for (const auto& vertex : imported.second.vertices)
-            vertices.push_back({vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b});
+            vertices.push_back({vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b, vertex.u, vertex.v});
         mesh_ranges[normalize_asset_path(imported.first)] = {offset, static_cast<UINT>(imported.second.vertices.size())};
     }
 }
@@ -584,7 +590,148 @@ public:
             sky_vertex_offset_ = 0;
             sky_vertex_count_ = 0;
         }
-        return upload_prop_vertices(vertices);
+        auto uploaded = upload_prop_vertices(vertices);
+        if (!uploaded) return uploaded;
+        return sync_mesh_albedos(imported_meshes);
+    }
+
+    // Decode-free RGBA8 upload into a committed texture + SRV. Self-contained fence keeps it usable during
+    // initialization (before the frame fence exists) and mid-frame syncs alike.
+    Result<void> upload_rgba_texture(const std::uint8_t* pixels, UINT width, UINT height,
+        D3D12_CPU_DESCRIPTOR_HANDLE srv_cpu, ComPtr<ID3D12Resource>& out_texture) {
+        if (!pixels || width == 0 || height == 0)
+            return Result<void>::failure(graphics_error("GFX-ALBEDO-ARGS", "Invalid albedo texture upload arguments"));
+        D3D12_RESOURCE_DESC tex_desc{};
+        tex_desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        tex_desc.Width = width;
+        tex_desc.Height = height;
+        tex_desc.DepthOrArraySize = 1;
+        tex_desc.MipLevels = 1;
+        tex_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        tex_desc.SampleDesc.Count = 1;
+        tex_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        D3D12_HEAP_PROPERTIES default_heap{};
+        default_heap.Type = D3D12_HEAP_TYPE_DEFAULT;
+        ComPtr<ID3D12Resource> texture;
+        HRESULT hr = device_->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &tex_desc,
+            D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&texture));
+        if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-ALBEDO-TEXTURE", "Could not create albedo texture", hr));
+
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
+        UINT num_rows = 0;
+        UINT64 row_size = 0;
+        UINT64 total = 0;
+        device_->GetCopyableFootprints(&tex_desc, 0, 1, 0, &footprint, &num_rows, &row_size, &total);
+
+        D3D12_HEAP_PROPERTIES upload_heap{};
+        upload_heap.Type = D3D12_HEAP_TYPE_UPLOAD;
+        D3D12_RESOURCE_DESC upload_desc{};
+        upload_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        upload_desc.Width = total;
+        upload_desc.Height = 1;
+        upload_desc.DepthOrArraySize = 1;
+        upload_desc.MipLevels = 1;
+        upload_desc.SampleDesc.Count = 1;
+        upload_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        ComPtr<ID3D12Resource> upload;
+        hr = device_->CreateCommittedResource(&upload_heap, D3D12_HEAP_FLAG_NONE, &upload_desc,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&upload));
+        if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-ALBEDO-UPLOAD", "Could not create albedo upload buffer", hr));
+
+        void* mapped = nullptr;
+        if (FAILED(upload->Map(0, nullptr, &mapped)) || !mapped)
+            return Result<void>::failure(graphics_error("GFX-ALBEDO-MAP", "Could not map albedo upload buffer"));
+        const UINT src_stride = width * 4;
+        for (UINT y = 0; y < height; ++y) {
+            std::memcpy(static_cast<std::uint8_t*>(mapped) + footprint.Offset + static_cast<std::size_t>(y) * footprint.Footprint.RowPitch,
+                pixels + static_cast<std::size_t>(y) * src_stride, src_stride);
+        }
+        upload->Unmap(0, nullptr);
+
+        ComPtr<ID3D12CommandAllocator> allocator;
+        hr = device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&allocator));
+        if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-ALBEDO-ALLOCATOR", "Could not create albedo upload allocator", hr));
+        ComPtr<ID3D12GraphicsCommandList> list;
+        hr = device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator.Get(), nullptr, IID_PPV_ARGS(&list));
+        if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-ALBEDO-CMDLIST", "Could not create albedo upload command list", hr));
+
+        D3D12_TEXTURE_COPY_LOCATION dst_loc{};
+        dst_loc.pResource = texture.Get();
+        dst_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dst_loc.SubresourceIndex = 0;
+        D3D12_TEXTURE_COPY_LOCATION src_loc{};
+        src_loc.pResource = upload.Get();
+        src_loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        src_loc.PlacedFootprint = footprint;
+        list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, nullptr);
+        auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        list->ResourceBarrier(1, &barrier);
+        list->Close();
+
+        ID3D12CommandList* lists[] = {list.Get()};
+        queue_->ExecuteCommandLists(1, lists);
+        ComPtr<ID3D12Fence> fence;
+        hr = device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+        if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-ALBEDO-FENCE", "Could not create albedo upload fence", hr));
+        hr = queue_->Signal(fence.Get(), 1);
+        if (SUCCEEDED(hr) && fence->GetCompletedValue() < 1) {
+            HANDLE event = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+            if (event) {
+                fence->SetEventOnCompletion(1, event);
+                WaitForSingleObject(event, INFINITE);
+                CloseHandle(event);
+            }
+        }
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+        srv.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srv.Texture2D.MipLevels = 1;
+        device_->CreateShaderResourceView(texture.Get(), &srv, srv_cpu);
+        out_texture = std::move(texture);
+        return Result<void>::success();
+    }
+
+    // (Re)build the shader-visible albedo SRV heap: slot 0 = white fallback, one aligned slot per imported mesh.
+    Result<void> sync_mesh_albedos(const std::vector<std::pair<std::string, ImportedMesh>>& imported_meshes) {
+        wait_for_gpu();
+        mesh_albedo_gpu_.clear();
+        mesh_albedo_textures_.clear();
+        mesh_white_gpu_ = {};
+        const UINT descriptor_count = 1u + static_cast<UINT>(imported_meshes.size());
+        D3D12_DESCRIPTOR_HEAP_DESC heap_desc{};
+        heap_desc.NumDescriptors = descriptor_count;
+        heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        HRESULT hr = device_->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&mesh_albedo_heap_));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-ALBEDO-HEAP", "Could not create mesh albedo descriptor heap", hr));
+        mesh_albedo_textures_.reserve(descriptor_count);
+        auto cpu = mesh_albedo_heap_->GetCPUDescriptorHandleForHeapStart();
+        auto gpu = mesh_albedo_heap_->GetGPUDescriptorHandleForHeapStart();
+        const std::uint8_t white[4] = {255, 255, 255, 255};
+        ComPtr<ID3D12Resource> white_texture;
+        auto white_uploaded = upload_rgba_texture(white, 1, 1, cpu, white_texture);
+        if (!white_uploaded) return white_uploaded;
+        mesh_white_gpu_ = gpu;
+        mesh_albedo_textures_.push_back(std::move(white_texture));
+        cpu.ptr += srv_stride_;
+        gpu.ptr += srv_stride_;
+        for (const auto& imported : imported_meshes) {
+            if (imported.second.has_albedo()) {
+                ComPtr<ID3D12Resource> texture;
+                auto uploaded = upload_rgba_texture(imported.second.albedo_rgba.data(), imported.second.albedo_width,
+                    imported.second.albedo_height, cpu, texture);
+                if (!uploaded) return uploaded;
+                mesh_albedo_gpu_[normalize_asset_path(imported.first)] = gpu;
+                mesh_albedo_textures_.push_back(std::move(texture));
+            }
+            cpu.ptr += srv_stride_;
+            gpu.ptr += srv_stride_;
+        }
+        return Result<void>::success();
     }
 
     Result<void> upload_terrain_vertices(const std::vector<Vertex>& vertices) {
@@ -645,6 +792,10 @@ public:
         command_list_->RSSetViewports(1, &viewport);
         command_list_->RSSetScissorRects(1, &scissor);
         command_list_->SetGraphicsRootSignature(root_signature_.Get());
+        if (mesh_albedo_heap_) {
+            ID3D12DescriptorHeap* albedo_heaps[] = {mesh_albedo_heap_.Get()};
+            command_list_->SetDescriptorHeaps(1, albedo_heaps);
+        }
         std::array<float, 48> frame_constants{};
         std::memcpy(frame_constants.data(), params.view_projection.data(), sizeof(params.view_projection));
         frame_constants[16] = params.camera_position[0];
@@ -664,19 +815,21 @@ public:
         frame_constants[45] = static_cast<float>(height_);
         bind_frame_constants(frame_constants);
         const std::array<float, 16> identity{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
-        const auto bind_object = [&](const std::array<float, 16>& model, const PbrSurfaceParams& pbr) {
-            const auto constants = pack_object_constants(model, pbr);
+        const auto bind_object = [&](const std::array<float, 16>& model, const PbrSurfaceParams& pbr,
+            D3D12_GPU_DESCRIPTOR_HANDLE albedo, float use_albedo) {
+            const auto constants = pack_object_constants(model, pbr, use_albedo);
             command_list_->SetGraphicsRoot32BitConstants(1, 24, constants.data(), 0);
+            if (mesh_albedo_heap_) command_list_->SetGraphicsRootDescriptorTable(2, albedo);
         };
         command_list_->IASetVertexBuffers(0, 1, &vertex_view_);
         command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         if (debug_world_ && sky_vertex_count_ > 0) {
             command_list_->SetPipelineState(sky_pipeline_.Get());
-            bind_object(identity, PbrSurfaceParams::dielectric_default());
+            bind_object(identity, PbrSurfaceParams::dielectric_default(), mesh_white_gpu_, 0.0f);
             command_list_->DrawInstanced(sky_vertex_count_, 1, sky_vertex_offset_, 0);
             command_list_->SetPipelineState(pipeline_.Get());
         }
-        bind_object(identity, params.terrain_pbr);
+        bind_object(identity, params.terrain_pbr, mesh_white_gpu_, 0.0f);
         if (terrain_vertex_count_ > 0) {
             command_list_->IASetVertexBuffers(0, 1, &terrain_vertex_view_);
             command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -689,7 +842,7 @@ public:
             model[12] = static_cast<float>(params.body_position.x);
             model[13] = static_cast<float>(params.body_position.y);
             model[14] = static_cast<float>(params.body_position.z);
-            bind_object(model, PbrSurfaceParams::dielectric_default());
+            bind_object(model, PbrSurfaceParams::dielectric_default(), mesh_white_gpu_, 0.0f);
             command_list_->DrawInstanced(36, 1, 0, 0);
         }
         for (const auto& instance : placed_objects) {
@@ -705,7 +858,14 @@ public:
                 transform.position[2]);
             std::array<float, 16> placed_model{};
             XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4*>(placed_model.data()), scale * rotation * translation);
-            bind_object(placed_model, instance.pbr);
+            D3D12_GPU_DESCRIPTOR_HANDLE albedo = mesh_white_gpu_;
+            float use_albedo = 0.0f;
+            const auto albedo_it = mesh_albedo_gpu_.find(normalize_asset_path(instance.mesh_asset));
+            if (albedo_it != mesh_albedo_gpu_.end()) {
+                albedo = albedo_it->second;
+                use_albedo = 1.0f;
+            }
+            bind_object(placed_model, instance.pbr, albedo, use_albedo);
             command_list_->DrawInstanced(found->second.second, 1, found->second.first, 0);
         }
         draw_foliage_instances(frame_constants, params.influence, params.time_seconds);
@@ -1057,7 +1217,9 @@ private:
             sky_vertex_offset_ = 0;
             sky_vertex_count_ = 0;
         }
-        return upload_prop_vertices(vertices);
+        auto uploaded = upload_prop_vertices(vertices);
+        if (!uploaded) return uploaded;
+        return sync_mesh_albedos(imported_meshes);
     }
 
     Result<void> create_pipeline() {
@@ -1078,10 +1240,13 @@ private:
                 float4 materialParams;
                 float4 emissive;
             };
-            struct In { float3 position:POSITION; float3 color:COLOR; };
-            struct Out { float4 position : SV_POSITION; float3 color : COLOR; float3 worldPos : TEXCOORD0; };
+            Texture2D<float4> albedoTex : register(t0);
+            SamplerState albedoSampler : register(s0);
+            struct In { float3 position:POSITION; float3 color:COLOR; float2 uv:TEXCOORD; };
+            struct Out { float4 position : SV_POSITION; float3 color : COLOR; float3 worldPos : TEXCOORD0; float2 uv : TEXCOORD1; };
             Out vs(In input) {
                 Out o;
+                o.uv = input.uv;
                 if (input.color.r < -0.5) {
                     o.position = float4(input.position.xy, input.position.z, 1.0);
                     o.worldPos = cameraAndFogStart.xyz;
@@ -1102,6 +1267,7 @@ private:
                     float3 zenith = float3(0.20, 0.26, 0.36);
                     return float4(lerp(horizon, zenith, saturate(t)), 1.0);
                 }
+                float3 albedo = (materialParams.z > 0.5) ? albedoTex.Sample(albedoSampler, input.uv).rgb : input.color;
                 float dist = distance(input.worldPos, cameraAndFogStart.xyz);
                 float fogRange = max(fogColorAndEnd.w - cameraAndFogStart.w, 0.001);
                 float fogFactor = saturate((fogColorAndEnd.w - dist) / fogRange);
@@ -1110,11 +1276,11 @@ private:
                 float3 normal = normalize(cross(dpdx, dpdy));
                 float3 V = normalize(cameraAndFogStart.xyz - input.worldPos);
                 float3 L = normalize(-lightAndAmbient.xyz);
-                float3 lit = input.color * lightAndAmbient.w;
-                lit += shadePbr(input.color, materialParams.x, materialParams.y, normal, V, L, float3(1.0, 1.0, 1.0));
-                lit += applyPointLightPbr(input.worldPos, input.color, materialParams.x, materialParams.y, normal, V,
+                float3 lit = albedo * lightAndAmbient.w;
+                lit += shadePbr(albedo, materialParams.x, materialParams.y, normal, V, L, float3(1.0, 1.0, 1.0));
+                lit += applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
                     pointLight0PosRadius, pointLight0ColorStrength);
-                lit += applyPointLightPbr(input.worldPos, input.color, materialParams.x, materialParams.y, normal, V,
+                lit += applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
                     pointLight1PosRadius, pointLight1ColorStrength);
                 lit += emissive.rgb;
                 return float4(lerp(fogColorAndEnd.rgb, lit, fogFactor), 1.0);
@@ -1131,7 +1297,7 @@ private:
         hr = D3DCompile(shader.c_str(), shader.size(), "debug_triangle", nullptr, nullptr, "ps", "ps_5_1", flags, 0, &ps, &errors);
         if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-PIXEL-SHADER", errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Pixel shader compilation failed", hr));
 
-        D3D12_ROOT_PARAMETER parameters[2]{};
+        D3D12_ROOT_PARAMETER parameters[3]{};
         parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         parameters[0].Descriptor.ShaderRegister = 0;
         parameters[0].Descriptor.RegisterSpace = 0;
@@ -1141,9 +1307,35 @@ private:
         parameters[1].Constants.RegisterSpace = 0;
         parameters[1].Constants.Num32BitValues = 24;
         parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        D3D12_DESCRIPTOR_RANGE albedo_range{};
+        albedo_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        albedo_range.NumDescriptors = 1;
+        albedo_range.BaseShaderRegister = 0; // t0
+        albedo_range.RegisterSpace = 0;
+        albedo_range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        parameters[2].DescriptorTable.NumDescriptorRanges = 1;
+        parameters[2].DescriptorTable.pDescriptorRanges = &albedo_range;
+        parameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        D3D12_STATIC_SAMPLER_DESC albedo_sampler{};
+        albedo_sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+        albedo_sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        albedo_sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        albedo_sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        albedo_sampler.MipLODBias = 0.0f;
+        albedo_sampler.MaxAnisotropy = 1;
+        albedo_sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+        albedo_sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+        albedo_sampler.MinLOD = 0.0f;
+        albedo_sampler.MaxLOD = D3D12_FLOAT32_MAX;
+        albedo_sampler.ShaderRegister = 0; // s0
+        albedo_sampler.RegisterSpace = 0;
+        albedo_sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
         D3D12_ROOT_SIGNATURE_DESC root{};
-        root.NumParameters = 2;
+        root.NumParameters = 3;
         root.pParameters = parameters;
+        root.NumStaticSamplers = 1;
+        root.pStaticSamplers = &albedo_sampler;
         root.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
         ComPtr<ID3DBlob> signature;
         hr = D3D12SerializeRootSignature(&root, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &errors);
@@ -1155,7 +1347,7 @@ private:
         state.pRootSignature = root_signature_.Get();
         state.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
         state.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
-        D3D12_INPUT_ELEMENT_DESC input[]={{"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},{"COLOR",0,DXGI_FORMAT_R32G32B32_FLOAT,0,12,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0}};state.InputLayout={input,2};
+        D3D12_INPUT_ELEMENT_DESC input[]={{"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},{"COLOR",0,DXGI_FORMAT_R32G32B32_FLOAT,0,12,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},{"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,24,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0}};state.InputLayout={input,3};
         state.BlendState.AlphaToCoverageEnable = FALSE;
         state.BlendState.IndependentBlendEnable = FALSE;
         const D3D12_RENDER_TARGET_BLEND_DESC blend{FALSE, FALSE, D3D12_BLEND_ONE, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
@@ -1586,8 +1778,9 @@ private:
         state.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
         D3D12_INPUT_ELEMENT_DESC input[] = {{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
                                                 D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-            {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
-        state.InputLayout = {input, 2};
+            {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+        state.InputLayout = {input, 3};
         state.BlendState.AlphaToCoverageEnable = FALSE;
         state.BlendState.IndependentBlendEnable = FALSE;
         const D3D12_RENDER_TARGET_BLEND_DESC blend{FALSE, FALSE, D3D12_BLEND_ONE, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
@@ -1818,6 +2011,12 @@ private:
     UINT sky_vertex_offset_=0;
     UINT sky_vertex_count_=0;
     std::map<std::string,std::pair<UINT,UINT>> mesh_ranges_;
+    // Per-mesh base-color textures (TICKET-0191). Slot 0 is a 1x1 white fallback; the rest are aligned with
+    // imported mesh order. Meshes without a texture stay absent from mesh_albedo_gpu_ and draw with vertex color.
+    ComPtr<ID3D12DescriptorHeap> mesh_albedo_heap_;
+    std::vector<ComPtr<ID3D12Resource>> mesh_albedo_textures_;
+    std::map<std::string, D3D12_GPU_DESCRIPTOR_HANDLE> mesh_albedo_gpu_;
+    D3D12_GPU_DESCRIPTOR_HANDLE mesh_white_gpu_{};
     std::array<ComPtr<ID3D12Resource>, frame_count> targets_;
     std::array<ComPtr<ID3D12CommandAllocator>, frame_count> allocators_;
     ComPtr<ID3D12GraphicsCommandList> command_list_;
@@ -1969,7 +2168,14 @@ void draw_placement_bounds_overlay(ImDrawList* draw_list, const PlacementScreenB
 struct EditorState {
     enum class TestSessionState : std::uint8_t { Inactive, Running, Paused };
     enum class TestSessionCommand : std::uint8_t { None, Start, Pause, Resume, End };
-    enum class ViewportTab : std::uint8_t { Scene, Sculpt, Game, UI, WorldForge };
+    enum class ViewportTab : std::uint8_t { Scene, Sculpt, Game, UI, WorldForge, DesignDocs };
+
+    struct DesignDocEntry {
+        std::string section;       // features | story | art
+        std::string relative_path; // context/...
+        std::string title;
+        std::string status; // from "Status:" line, lowercased token
+    };
 
     Scene scene;
     AssetRegistry assets;
@@ -2003,6 +2209,10 @@ struct EditorState {
     bool prefab_part_gizmo_was_using = false;
     std::filesystem::path project_root;
     bool show_collision_debug = false;
+    /// Editor-only Scene/Sculpt overlay for World Forge region/POI anchors (TICKET-0190).
+    bool show_world_forge_map_markers = true;
+    /// Set by UI; applied once in the editor frame after draw_editor.
+    bool request_focus_world_forge_marker = false;
     std::vector<WorldPosition> recent_contact_points;
     std::vector<InteractionEvent> recent_interaction_events;
     std::vector<CombatContactEvent> recent_combat_events;
@@ -2030,6 +2240,8 @@ struct EditorState {
     TerrainEditStore terrain_edits;
     TerrainEditHistory terrain_history;
     bool terrain_edits_dirty = false;
+    /// Bumped when sculpt heights change (World Forge Map Canvas underlay).
+    std::uint64_t terrain_height_revision = 1;
     TerrainPaintStore terrain_paint;
     TerrainPaintHistory terrain_paint_history;
     bool terrain_paint_dirty = false;
@@ -2081,6 +2293,13 @@ struct EditorState {
     std::unique_ptr<UiCanvasStack> ui_canvas_stack;
     UiCanvasEditorSession ui_canvas_editor;
     WorldForgeEditorSession world_forge_editor;
+    std::vector<DesignDocEntry> design_docs;
+    int design_docs_selected = -1;
+    int design_docs_status_filter = 0; // 0=All, 1=active, 2=planned, 3=complete, 4=other
+    std::string design_docs_body;
+    std::string design_docs_loaded_relative;
+    std::string design_docs_error;
+    std::uint32_t design_docs_scan_counter = 0;
     ScriptFileMonitor script_monitor;
     std::uint32_t script_reload_counter = 0;
     std::uint32_t bridge_poll_counter = 0;
@@ -2100,6 +2319,9 @@ struct EditorState {
     [[nodiscard]] bool ui_viewport_active() const { return active_viewport_tab == ViewportTab::UI; }
     [[nodiscard]] bool world_forge_viewport_active() const {
         return active_viewport_tab == ViewportTab::WorldForge;
+    }
+    [[nodiscard]] bool design_docs_viewport_active() const {
+        return active_viewport_tab == ViewportTab::DesignDocs;
     }
 };
 
@@ -2497,6 +2719,45 @@ bool draw_asset_path_combo(const char* label, std::string& path, const std::vect
     return changed;
 }
 
+std::vector<std::string> collect_animator_state_names(const EditorState& state, const std::string& controller_path) {
+    std::vector<std::string> states;
+    if (controller_path.empty() || state.project_root.empty()) return states;
+    const auto loaded = AnimatorControllerAsset::load(state.project_root / controller_path);
+    if (!loaded) return states;
+    for (const auto& layer : loaded.value().layers) {
+        for (const auto& layer_state : layer.states) {
+            if (layer_state.name.empty()) continue;
+            if (std::find(states.begin(), states.end(), layer_state.name) == states.end())
+                states.push_back(layer_state.name);
+        }
+    }
+    // Prefer idle-like rest poses at the top of the dropdown.
+    std::sort(states.begin(), states.end(), [](const std::string& a, const std::string& b) {
+        const bool a_idle = a == "idle" || a == "Idle";
+        const bool b_idle = b == "idle" || b == "Idle";
+        if (a_idle != b_idle) return a_idle;
+        return a < b;
+    });
+    return states;
+}
+
+bool draw_animator_property_fields(EditorState& state, AnimatorComponentData& animator) {
+    bool commit = false;
+    auto controllers = collect_asset_paths(state, ".animator.json");
+    if (!animator.controller.empty() &&
+        std::find(controllers.begin(), controllers.end(), animator.controller) == controllers.end())
+        controllers.insert(controllers.begin(), animator.controller);
+    if (draw_asset_path_combo("Controller", animator.controller, controllers, "(none)")) commit = true;
+
+    auto states = collect_animator_state_names(state, animator.controller);
+    if (!animator.default_state.empty() &&
+        std::find(states.begin(), states.end(), animator.default_state) == states.end())
+        states.insert(states.begin(), animator.default_state);
+    if (draw_asset_path_combo("Default State", animator.default_state, states, "(controller default)")) commit = true;
+    ImGui::TextDisabled("Convention: controller layer defaultState should be idle (rest pose).");
+    return commit;
+}
+
 void draw_character_asset_inspector(EditorState& state, bool placement_entity = false) {
     const std::string asset_path = state.inspector_asset_path
                                        ? normalize_asset_path(*state.inspector_asset_path)
@@ -2769,27 +3030,36 @@ void draw_play_session_inspector(EditorState& state) {
     if (state.test_session_active()) ImGui::TextDisabled("End test session to change play session bindings.");
 }
 
-TransformComponent character_visual_transform(const CharacterController& character) {
-    const auto body = character.debug_body();
-    TransformComponent transform;
-    transform.position = {static_cast<float>(body.position.x), static_cast<float>(body.position.y),
-                          static_cast<float>(body.position.z)};
-    constexpr float k_unit_radius = 0.5f;
-    constexpr float k_unit_half_height = 1.0f;
-    const float diameter_scale = body.radius / k_unit_radius;
-    const float height_scale = (body.half_extent.x + body.radius) / k_unit_half_height;
-    transform.scale = {diameter_scale, height_scale, diameter_scale};
-    return transform;
-}
-
 WorldPosition character_feet_pivot(const CharacterController& character) {
     const auto body = character.debug_body();
     return {body.position.x, body.position.y - static_cast<double>(body.half_extent.x + body.radius), body.position.z};
 }
 
+TransformComponent character_visual_transform(const CharacterController& character, const PrefabAsset& player_prefab) {
+    const auto body = character.debug_body();
+    TransformComponent transform;
+    const bool unit_capsule_proxy = !player_prefab.parts.empty() && player_prefab.parts.front().mesh.primitive.has_value()
+        && !player_prefab.parts.front().mesh.asset.has_value();
+    if (unit_capsule_proxy) {
+        transform.position = {static_cast<float>(body.position.x), static_cast<float>(body.position.y),
+                              static_cast<float>(body.position.z)};
+        constexpr float k_unit_radius = 0.5f;
+        constexpr float k_unit_half_height = 1.0f;
+        const float diameter_scale = body.radius / k_unit_radius;
+        const float height_scale = (body.half_extent.x + body.radius) / k_unit_half_height;
+        transform.scale = {diameter_scale, height_scale, diameter_scale};
+        return transform;
+    }
+    const auto feet = character_feet_pivot(character);
+    transform.position = {static_cast<float>(feet.x), static_cast<float>(feet.y), static_cast<float>(feet.z)};
+    transform.scale = {1.0f, 1.0f, 1.0f};
+    return transform;
+}
+
 void append_character_render_instances(const PrefabAsset& player_prefab, const CharacterController& character,
     std::vector<RenderInstance>& instances, const PrefabAsset::MaterialLookup& lookup_material = {}) {
-    expand_prefab_render_instances(player_prefab, character_visual_transform(character), instances, lookup_material);
+    expand_prefab_render_instances(player_prefab, character_visual_transform(character, player_prefab), instances,
+        lookup_material);
 }
 
 Result<void> ensure_runtime_player_assets(const std::filesystem::path& project_root, PrefabAsset& player_prefab,
@@ -2808,11 +3078,26 @@ Result<void> ensure_runtime_player_assets(const std::filesystem::path& project_r
     if (player_prefab.parts.empty())
         return Result<void>::failure(
             graphics_error("PLAYER-PREFAB-INVALID", "Player prefab has no render parts", E_FAIL));
-    const auto key = primitive_mesh_cache_key(*player_prefab.parts.front().mesh.primitive, player_prefab.parts.front().mesh.color);
+    const auto& part = player_prefab.parts.front();
+    if (part.mesh.asset) {
+        const auto key = normalize_asset_path(*part.mesh.asset);
+        for (const auto& mesh : imported_meshes) {
+            if (normalize_asset_path(mesh.first) == key) return Result<void>::success();
+        }
+        auto imported = import_project_mesh(project_root / key);
+        if (!imported) return Result<void>::failure(imported.error());
+        imported_meshes.emplace_back(key, std::move(imported.value()));
+        return Result<void>::success();
+    }
+    if (!part.mesh.primitive) {
+        return Result<void>::failure(graphics_error("PLAYER-PREFAB-INVALID",
+            "Player prefab part must reference a mesh asset or primitive", E_FAIL));
+    }
+    const auto key = primitive_mesh_cache_key(*part.mesh.primitive, part.mesh.color);
     for (const auto& mesh : imported_meshes) {
         if (mesh.first == key) return Result<void>::success();
     }
-    auto generated = generate_primitive_mesh(*player_prefab.parts.front().mesh.primitive, player_prefab.parts.front().mesh.color);
+    auto generated = generate_primitive_mesh(*part.mesh.primitive, part.mesh.color);
     if (!generated) return Result<void>::failure(generated.error());
     imported_meshes.emplace_back(key, std::move(generated.value()));
     return Result<void>::success();
@@ -3320,7 +3605,7 @@ void handle_editor_shortcuts(EditorState& state, bool camera_capture, MaterialAs
             state.status = result ? state.terrain_history.last_summary() : result.error().message;
             if (result && streamed_terrain && collision && terrain_material) {
                 reload_loaded_terrain_cells(state, streamed_terrain, collision, terrain_material);
-                state.terrain_edits_dirty = true;
+                state.terrain_edits_dirty = true; ++state.terrain_height_revision;
             }
         } else if (state.history.undo_size() > 0) {
             const auto result = state.history.undo(state.scene);
@@ -3346,7 +3631,7 @@ void handle_editor_shortcuts(EditorState& state, bool camera_capture, MaterialAs
             state.status = result ? state.terrain_history.last_summary() : result.error().message;
             if (result && streamed_terrain && collision && terrain_material) {
                 reload_loaded_terrain_cells(state, streamed_terrain, collision, terrain_material);
-                state.terrain_edits_dirty = true;
+                state.terrain_edits_dirty = true; ++state.terrain_height_revision;
             }
         } else if (state.history.redo_size() > 0) {
             const auto result = state.history.redo(state.scene);
@@ -3616,6 +3901,119 @@ void draw_collision_debug_overlays(CollisionWorld* collision, EditorState& state
         const LocalPosition half{body.radius, body.half_extent.x + body.radius, body.radius};
         draw_debug_aabb(draw_list, view_projection, frame, body.position, half, color, IM_COL32(0, 0, 0, 0));
     }
+}
+
+void ensure_world_forge_map_loaded_for_overlay(EditorState& state) {
+    auto& session = state.world_forge_editor;
+    if (session.loaded || state.project_root.empty()) return;
+    if (const auto result = session.reload(state.project_root); !result)
+        state.status = "World Forge load for markers failed: " + result.error().message;
+}
+
+std::optional<std::array<float, 3>> selected_world_forge_marker_world(const WorldForgeEditorSession& session) {
+    if (session.selected_id.empty()) return std::nullopt;
+    for (const auto& region : session.map.regions) {
+        if (region.id != session.selected_id || !region.anchor) continue;
+        return std::array<float, 3>{region.anchor->x, region.anchor->y, region.anchor->z};
+    }
+    for (const auto& poi : session.map.pois) {
+        if (poi.id != session.selected_id || !poi.anchor) continue;
+        return std::array<float, 3>{poi.anchor->x, poi.anchor->y, poi.anchor->z};
+    }
+    return std::nullopt;
+}
+
+void draw_world_forge_map_marker_overlays(EditorState& state, const ViewportFrame& frame,
+    const std::array<float, 16>& view_projection) {
+    if (!state.show_world_forge_map_markers) return;
+    if (state.active_viewport_tab != EditorState::ViewportTab::Scene &&
+        state.active_viewport_tab != EditorState::ViewportTab::Sculpt)
+        return;
+    ensure_world_forge_map_loaded_for_overlay(state);
+    const auto& session = state.world_forge_editor;
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    constexpr float k_pole_height = 4.0f;
+
+    auto draw_marker = [&](float x, float y, float z, bool is_poi, bool selected, const std::string& label) {
+        float base_sx = 0.0f;
+        float base_sy = 0.0f;
+        float top_sx = 0.0f;
+        float top_sy = 0.0f;
+        float depth = 0.0f;
+        const bool base_ok =
+            project_world_to_screen(view_projection, frame, x, y, z, base_sx, base_sy, depth);
+        const bool top_ok = project_world_to_screen(view_projection, frame, x, y + k_pole_height, z, top_sx, top_sy,
+            depth);
+        if (!base_ok && !top_ok) return;
+        const ImU32 fill = selected ? IM_COL32(245, 185, 55, 255)
+                                    : (is_poi ? IM_COL32(210, 150, 70, 255) : IM_COL32(70, 170, 120, 255));
+        const ImU32 outline = IM_COL32(255, 255, 255, 220);
+        if (base_ok && top_ok) {
+            draw_list->AddLine({base_sx, base_sy}, {top_sx, top_sy}, IM_COL32(0, 0, 0, 140), 4.0f);
+            draw_list->AddLine({base_sx, base_sy}, {top_sx, top_sy}, fill, 2.0f);
+        }
+        const float hx = top_ok ? top_sx : base_sx;
+        const float hy = top_ok ? top_sy : base_sy;
+        if (is_poi) {
+            draw_list->AddCircleFilled({hx, hy}, selected ? 8.0f : 6.5f, IM_COL32(0, 0, 0, 120));
+            draw_list->AddCircleFilled({hx, hy}, selected ? 7.0f : 5.5f, fill);
+            draw_list->AddCircle({hx, hy}, selected ? 7.0f : 5.5f, outline, 0, 1.5f);
+        } else {
+            const float half = selected ? 7.0f : 5.5f;
+            draw_list->AddRectFilled({hx - half + 1.0f, hy - half + 2.0f}, {hx + half + 1.0f, hy + half + 2.0f},
+                IM_COL32(0, 0, 0, 120), 2.0f);
+            draw_list->AddRectFilled({hx - half, hy - half}, {hx + half, hy + half}, fill, 2.0f);
+            draw_list->AddRect({hx - half, hy - half}, {hx + half, hy + half}, outline, 2.0f, 0, 1.5f);
+        }
+        if (!label.empty()) {
+            const ImVec2 text_size = ImGui::CalcTextSize(label.c_str());
+            const ImVec2 text_pos{hx - text_size.x * 0.5f, hy - text_size.y - 12.0f};
+            draw_list->AddRectFilled({text_pos.x - 3.0f, text_pos.y - 1.0f},
+                {text_pos.x + text_size.x + 3.0f, text_pos.y + text_size.y + 1.0f}, IM_COL32(8, 10, 14, 200), 3.0f);
+            draw_list->AddText(text_pos, IM_COL32(245, 245, 248, 255), label.c_str());
+        }
+    };
+
+    for (const auto& region : session.map.regions) {
+        if (!region.anchor) continue;
+        if (!matches_world_forge_act_filter(region.acts, region.tags, session.act_filter)) continue;
+        const std::string label = region.display_name.empty() ? region.id : region.display_name;
+        draw_marker(region.anchor->x, region.anchor->y, region.anchor->z, false, session.selected_id == region.id,
+            label);
+    }
+    for (const auto& poi : session.map.pois) {
+        if (!poi.anchor) continue;
+        if (!matches_world_forge_act_filter(poi.acts, poi.tags, session.act_filter)) continue;
+        const std::string label = poi.display_name.empty() ? poi.id : poi.display_name;
+        draw_marker(poi.anchor->x, poi.anchor->y, poi.anchor->z, true, session.selected_id == poi.id, label);
+    }
+}
+
+void apply_pending_world_forge_marker_focus(EditorState& state, DebugCamera& camera) {
+    if (!state.request_focus_world_forge_marker) return;
+    state.request_focus_world_forge_marker = false;
+    ensure_world_forge_map_loaded_for_overlay(state);
+    const auto target = selected_world_forge_marker_world(state.world_forge_editor);
+    if (!target) {
+        state.status = "Select an anchored World Forge region/POI to focus";
+        return;
+    }
+    constexpr float k_distance = 28.0f;
+    constexpr float k_height = 16.0f;
+    const float tx = (*target)[0];
+    const float ty = (*target)[1];
+    const float tz = (*target)[2];
+    const float cam_x = tx;
+    const float cam_y = ty + k_height;
+    const float cam_z = tz - k_distance;
+    const float dx = tx - cam_x;
+    const float dy = ty - cam_y;
+    const float dz = tz - cam_z;
+    const float yaw = std::atan2(dx, dz);
+    const float horiz = std::sqrt(dx * dx + dz * dz);
+    const float pitch = std::atan2(dy, (std::max)(horiz, 0.001f));
+    camera.set_pose({cam_x, cam_y, cam_z}, yaw, pitch);
+    state.status = "Focused Scene camera on World Forge marker";
 }
 
 std::string asset_browser_prefix(const std::string& folder) {
@@ -4374,6 +4772,473 @@ void draw_asset_browser(EditorState& state) {
     ImGui::EndChild();
 }
 
+std::filesystem::path repository_root_path() {
+#ifdef ENGINE_REPOSITORY_ROOT
+    return std::filesystem::path(ENGINE_REPOSITORY_ROOT);
+#else
+    return {};
+#endif
+}
+
+std::string extract_markdown_title(const std::string& text, const std::string& fallback) {
+    std::istringstream stream(text);
+    std::string line;
+    while (std::getline(stream, line)) {
+        if (line.rfind("# ", 0) == 0) {
+            auto title = line.substr(2);
+            while (!title.empty() && (title.back() == '\r' || title.back() == ' ')) title.pop_back();
+            if (!title.empty()) return title;
+        }
+    }
+    return fallback;
+}
+
+std::string extract_markdown_status(const std::string& text) {
+    std::istringstream stream(text);
+    std::string line;
+    while (std::getline(stream, line)) {
+        if (line.rfind("Status:", 0) != 0) continue;
+        auto value = line.substr(7);
+        while (!value.empty() && (value.front() == ' ' || value.front() == '\t')) value.erase(value.begin());
+        std::string token;
+        for (char ch : value) {
+            if (std::isalnum(static_cast<unsigned char>(ch)) || ch == '-' || ch == '_')
+                token.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+            else if (!token.empty())
+                break;
+        }
+        return token.empty() ? "unknown" : token;
+    }
+    return "unknown";
+}
+
+void scan_design_docs_folder(const std::filesystem::path& repo_root, const char* section,
+    std::vector<EditorState::DesignDocEntry>& out) {
+    const auto folder = repo_root / "context" / section;
+    if (!std::filesystem::exists(folder)) return;
+    for (const auto& entry : std::filesystem::directory_iterator(folder)) {
+        if (!entry.is_regular_file()) continue;
+        if (entry.path().extension() != ".md") continue;
+        std::ifstream input(entry.path());
+        if (!input) continue;
+        const std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        EditorState::DesignDocEntry doc;
+        doc.section = section;
+        doc.relative_path = ("context/" + std::string(section) + "/" + entry.path().filename().generic_string());
+        doc.title = extract_markdown_title(text, entry.path().stem().generic_string());
+        doc.status = extract_markdown_status(text);
+        out.push_back(std::move(doc));
+    }
+}
+
+void refresh_design_docs_catalog(EditorState& state) {
+    state.design_docs.clear();
+    state.design_docs_error.clear();
+    const auto repo = repository_root_path();
+    if (repo.empty() || !std::filesystem::exists(repo / "context")) {
+        state.design_docs_error = "Engine repository root / context/ not found (ENGINE_REPOSITORY_ROOT).";
+        return;
+    }
+    scan_design_docs_folder(repo, "features", state.design_docs);
+    scan_design_docs_folder(repo, "story", state.design_docs);
+    scan_design_docs_folder(repo, "art", state.design_docs);
+    std::sort(state.design_docs.begin(), state.design_docs.end(),
+        [](const EditorState::DesignDocEntry& a, const EditorState::DesignDocEntry& b) {
+            if (a.section != b.section) return a.section < b.section;
+            return a.title < b.title;
+        });
+}
+
+bool design_doc_matches_filter(const EditorState::DesignDocEntry& doc, int filter) {
+    if (filter == 0) return true;
+    if (filter == 1) return doc.status == "active";
+    if (filter == 2) return doc.status == "planned" || doc.status == "proposed";
+    if (filter == 3) return doc.status == "complete" || doc.status == "done";
+    return doc.status != "active" && doc.status != "planned" && doc.status != "proposed" && doc.status != "complete"
+        && doc.status != "done";
+}
+
+void load_design_doc_body(EditorState& state, const EditorState::DesignDocEntry& doc) {
+    state.design_docs_loaded_relative = doc.relative_path;
+    state.design_docs_body.clear();
+    state.design_docs_error.clear();
+    const auto path = repository_root_path() / doc.relative_path;
+    std::ifstream input(path);
+    if (!input) {
+        state.design_docs_error = "Could not read " + doc.relative_path;
+        return;
+    }
+    state.design_docs_body.assign((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+}
+
+std::string trim_markdown_whitespace(std::string value) {
+    while (!value.empty() && (value.front() == ' ' || value.front() == '\t' || value.front() == '\r'))
+        value.erase(value.begin());
+    while (!value.empty() && (value.back() == ' ' || value.back() == '\t' || value.back() == '\r'))
+        value.pop_back();
+    return value;
+}
+
+bool is_markdown_table_separator(const std::string& line) {
+    if (line.find('|') == std::string::npos) return false;
+    for (char ch : line) {
+        if (ch != '|' && ch != '-' && ch != ':' && ch != ' ' && ch != '\t') return false;
+    }
+    return line.find('-') != std::string::npos;
+}
+
+std::vector<std::string> split_markdown_table_row(const std::string& line) {
+    std::vector<std::string> cells;
+    std::string current;
+    bool started = false;
+    for (char ch : line) {
+        if (ch == '|') {
+            if (started) cells.push_back(trim_markdown_whitespace(current));
+            current.clear();
+            started = true;
+            continue;
+        }
+        if (!started && (ch == ' ' || ch == '\t')) continue;
+        started = true;
+        current.push_back(ch);
+    }
+    if (started && !trim_markdown_whitespace(current).empty())
+        cells.push_back(trim_markdown_whitespace(current));
+    // Drop empty leading/trailing cells from edge pipes.
+    while (!cells.empty() && cells.front().empty()) cells.erase(cells.begin());
+    while (!cells.empty() && cells.back().empty()) cells.pop_back();
+    return cells;
+}
+
+std::string cleanup_markdown_inline(std::string text) {
+    // [label](url) -> label
+    for (;;) {
+        const auto open = text.find('[');
+        if (open == std::string::npos) break;
+        const auto mid = text.find("](", open);
+        if (mid == std::string::npos) break;
+        const auto close = text.find(')', mid + 2);
+        if (close == std::string::npos) break;
+        const auto label = text.substr(open + 1, mid - open - 1);
+        text.replace(open, close - open + 1, label);
+    }
+    // `code` -> code
+    for (;;) {
+        const auto a = text.find('`');
+        if (a == std::string::npos) break;
+        const auto b = text.find('`', a + 1);
+        if (b == std::string::npos) break;
+        text.replace(a, b - a + 1, text.substr(a + 1, b - a - 1));
+    }
+    // **bold** / __bold__
+    auto strip_wrap = [&](const char* marker) {
+        const std::size_t n = std::strlen(marker);
+        for (;;) {
+            const auto a = text.find(marker);
+            if (a == std::string::npos) break;
+            const auto b = text.find(marker, a + n);
+            if (b == std::string::npos) break;
+            text.replace(a, b - a + n, text.substr(a + n, b - a - n));
+        }
+    };
+    strip_wrap("**");
+    strip_wrap("__");
+    // *italic* / _italic_ (single) — avoid eating underscores in snake_case ids by requiring spaces/boundaries
+    for (;;) {
+        const auto a = text.find('*');
+        if (a == std::string::npos) break;
+        const auto b = text.find('*', a + 1);
+        if (b == std::string::npos || b == a + 1) break;
+        text.replace(a, b - a + 1, text.substr(a + 1, b - a - 1));
+    }
+    // Checkbox markers
+    if (text.rfind("[ ] ", 0) == 0) text.replace(0, 4, "☐ ");
+    else if (text.rfind("[x] ", 0) == 0 || text.rfind("[X] ", 0) == 0) text.replace(0, 4, "☑ ");
+    return text;
+}
+
+void draw_markdown_text_line(const std::string& raw, const ImVec4* color = nullptr) {
+    const std::string cleaned = cleanup_markdown_inline(raw);
+    if (cleaned.empty()) {
+        ImGui::Spacing();
+        return;
+    }
+    if (color) ImGui::PushStyleColor(ImGuiCol_Text, *color);
+    ImGui::TextWrapped("%s", cleaned.c_str());
+    if (color) ImGui::PopStyleColor();
+}
+
+void draw_markdown_table(const std::vector<std::vector<std::string>>& rows) {
+    if (rows.empty() || rows.front().empty()) return;
+    const int columns = static_cast<int>(rows.front().size());
+    if (columns <= 0) return;
+    ImGui::Spacing();
+    if (ImGui::BeginTable("##md_table", columns,
+            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp
+                | ImGuiTableFlags_NoSavedSettings)) {
+        std::vector<std::string> headers;
+        headers.reserve(static_cast<std::size_t>(columns));
+        for (int c = 0; c < columns; ++c)
+            headers.push_back(cleanup_markdown_inline(rows.front()[static_cast<std::size_t>(c)]));
+        for (int c = 0; c < columns; ++c) ImGui::TableSetupColumn(headers[static_cast<std::size_t>(c)].c_str());
+        ImGui::TableHeadersRow();
+        for (std::size_t r = 1; r < rows.size(); ++r) {
+            ImGui::TableNextRow();
+            for (int c = 0; c < columns; ++c) {
+                ImGui::TableSetColumnIndex(c);
+                const std::string cell =
+                    c < static_cast<int>(rows[r].size()) ? cleanup_markdown_inline(rows[r][static_cast<std::size_t>(c)])
+                                                         : std::string{};
+                ImGui::TextWrapped("%s", cell.c_str());
+            }
+        }
+        ImGui::EndTable();
+    }
+    ImGui::Spacing();
+}
+
+void draw_markdown_readonly(const std::string& text) {
+    std::istringstream stream(text);
+    std::string line;
+    bool in_code_fence = false;
+    std::string code_block;
+    bool skipped_title = false;
+    std::vector<std::vector<std::string>> table_rows;
+
+    auto flush_table = [&]() {
+        if (!table_rows.empty()) {
+            draw_markdown_table(table_rows);
+            table_rows.clear();
+        }
+    };
+
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+
+        if (line.rfind("```", 0) == 0) {
+            flush_table();
+            if (!in_code_fence) {
+                in_code_fence = true;
+                code_block.clear();
+            } else {
+                in_code_fence = false;
+                ImGui::Spacing();
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.11f, 0.14f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.82f, 0.86f, 0.92f, 1.0f));
+                ImGui::BeginChild("##md_code_block", ImVec2(-FLT_MIN, 0.0f),
+                    ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
+                if (ImFont* mono = GameFonts::mono()) ImGui::PushFont(mono);
+                ImGui::TextUnformatted(code_block.c_str());
+                if (GameFonts::mono()) ImGui::PopFont();
+                ImGui::EndChild();
+                ImGui::PopStyleColor(2);
+                ImGui::Spacing();
+                code_block.clear();
+            }
+            continue;
+        }
+        if (in_code_fence) {
+            if (!code_block.empty()) code_block.push_back('\n');
+            code_block += line;
+            continue;
+        }
+
+        // Markdown tables
+        if (!line.empty() && line.find('|') != std::string::npos
+            && (line.front() == '|' || line.find('|') != line.size() - 1)) {
+            if (is_markdown_table_separator(line)) continue;
+            auto cells = split_markdown_table_row(line);
+            if (!cells.empty()) {
+                table_rows.push_back(std::move(cells));
+                continue;
+            }
+        } else {
+            flush_table();
+        }
+
+        if (line.empty()) {
+            ImGui::Dummy(ImVec2(0.0f, 6.0f));
+            continue;
+        }
+        if (line == "---" || line == "***" || line == "___") {
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            continue;
+        }
+
+        int heading = 0;
+        std::string heading_text;
+        if (line.rfind("#### ", 0) == 0) {
+            heading = 4;
+            heading_text = line.substr(5);
+        } else if (line.rfind("### ", 0) == 0) {
+            heading = 3;
+            heading_text = line.substr(4);
+        } else if (line.rfind("## ", 0) == 0) {
+            heading = 2;
+            heading_text = line.substr(3);
+        } else if (line.rfind("# ", 0) == 0) {
+            heading = 1;
+            heading_text = line.substr(2);
+        }
+
+        if (heading > 0) {
+            heading_text = cleanup_markdown_inline(heading_text);
+            if (heading == 1 && !skipped_title) {
+                skipped_title = true; // title already shown in the pane header
+                continue;
+            }
+            ImGui::Dummy(ImVec2(0.0f, heading == 2 ? 10.0f : 6.0f));
+            const ImVec4 colors[] = {
+                ImVec4(0.95f, 0.90f, 0.72f, 1.0f),
+                ImVec4(0.82f, 0.88f, 1.0f, 1.0f),
+                ImVec4(0.75f, 0.92f, 0.82f, 1.0f),
+                ImVec4(0.85f, 0.85f, 0.90f, 1.0f),
+            };
+            const ImVec4 color = colors[static_cast<std::size_t>(std::clamp(heading, 1, 4) - 1)];
+            if (heading <= 2 && GameFonts::display()) ImGui::PushFont(GameFonts::display());
+            ImGui::PushStyleColor(ImGuiCol_Text, color);
+            ImGui::TextWrapped("%s", heading_text.c_str());
+            ImGui::PopStyleColor();
+            if (heading <= 2 && GameFonts::display()) ImGui::PopFont();
+            if (heading <= 2) {
+                ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(color.x, color.y, color.z, 0.35f));
+                ImGui::Separator();
+                ImGui::PopStyleColor();
+            }
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            continue;
+        }
+
+        // Block quote
+        if (line.rfind("> ", 0) == 0) {
+            const ImVec4 quote_color(0.70f, 0.74f, 0.82f, 1.0f);
+            ImGui::Indent(10.0f);
+            draw_markdown_text_line(line.substr(2), &quote_color);
+            ImGui::Unindent(10.0f);
+            continue;
+        }
+
+        // Lists (unordered / ordered / task)
+        auto list_body = std::string{};
+        bool is_list = false;
+        if (line.rfind("- ", 0) == 0 || line.rfind("* ", 0) == 0 || line.rfind("+ ", 0) == 0) {
+            list_body = line.substr(2);
+            is_list = true;
+        } else if (line.size() >= 3 && std::isdigit(static_cast<unsigned char>(line[0]))) {
+            const auto dot = line.find(". ");
+            if (dot != std::string::npos && dot < 4) {
+                list_body = line.substr(dot + 2);
+                is_list = true;
+            }
+        }
+        if (is_list) {
+            ImGui::Bullet();
+            ImGui::SameLine();
+            draw_markdown_text_line(list_body);
+            continue;
+        }
+
+        draw_markdown_text_line(line);
+    }
+    flush_table();
+    if (in_code_fence && !code_block.empty()) {
+        if (ImFont* mono = GameFonts::mono()) ImGui::PushFont(mono);
+        ImGui::TextUnformatted(code_block.c_str());
+        if (GameFonts::mono()) ImGui::PopFont();
+    }
+}
+
+void draw_design_docs_viewport(EditorState& state) {
+    if (state.design_docs.empty() && state.design_docs_error.empty()) refresh_design_docs_catalog(state);
+    if (++state.design_docs_scan_counter >= 120) {
+        state.design_docs_scan_counter = 0;
+        const int previous = state.design_docs_selected;
+        std::string previous_path =
+            (previous >= 0 && previous < static_cast<int>(state.design_docs.size()))
+                ? state.design_docs[static_cast<std::size_t>(previous)].relative_path
+                : state.design_docs_loaded_relative;
+        refresh_design_docs_catalog(state);
+        state.design_docs_selected = -1;
+        for (int i = 0; i < static_cast<int>(state.design_docs.size()); ++i) {
+            if (state.design_docs[static_cast<std::size_t>(i)].relative_path == previous_path) {
+                state.design_docs_selected = i;
+                break;
+            }
+        }
+        if (state.design_docs_selected >= 0)
+            load_design_doc_body(state, state.design_docs[static_cast<std::size_t>(state.design_docs_selected)]);
+    }
+
+    ImGui::TextUnformatted("Design Docs");
+    ImGui::SameLine();
+    ImGui::TextDisabled("(read-only — repo context/ markdown)");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Refresh")) {
+        refresh_design_docs_catalog(state);
+        if (state.design_docs_selected >= 0
+            && state.design_docs_selected < static_cast<int>(state.design_docs.size()))
+            load_design_doc_body(state, state.design_docs[static_cast<std::size_t>(state.design_docs_selected)]);
+    }
+    ImGui::TextWrapped(
+        "Authoritative design notes for transparency. Edit in the repo / Notion backlog — not here.");
+
+    const char* filters[] = {"All", "active", "planned", "complete", "other"};
+    ImGui::SetNextItemWidth(140.0f);
+    ImGui::Combo("Status filter", &state.design_docs_status_filter, filters, IM_ARRAYSIZE(filters));
+
+    if (!state.design_docs_error.empty() && state.design_docs.empty()) {
+        ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.35f, 1.0f), "%s", state.design_docs_error.c_str());
+        return;
+    }
+
+    const float list_width = std::clamp(ImGui::GetContentRegionAvail().x * 0.34f, 220.0f, 360.0f);
+    ImGui::BeginChild("DesignDocsList", ImVec2(list_width, 0.0f), true);
+    std::string last_section;
+    for (int i = 0; i < static_cast<int>(state.design_docs.size()); ++i) {
+        const auto& doc = state.design_docs[static_cast<std::size_t>(i)];
+        if (!design_doc_matches_filter(doc, state.design_docs_status_filter)) continue;
+        if (doc.section != last_section) {
+            last_section = doc.section;
+            ImGui::SeparatorText(doc.section.c_str());
+        }
+        const bool selected = state.design_docs_selected == i;
+        ImGui::PushID(i);
+        if (ImGui::Selectable(doc.title.c_str(), selected)) {
+            state.design_docs_selected = i;
+            load_design_doc_body(state, doc);
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\nstatus: %s", doc.relative_path.c_str(), doc.status.c_str());
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s", doc.status.c_str());
+        ImGui::PopID();
+    }
+    ImGui::EndChild();
+    ImGui::SameLine();
+    ImGui::BeginChild("DesignDocsBody", ImVec2(0.0f, 0.0f), true);
+    if (state.design_docs_selected < 0 || state.design_docs_selected >= static_cast<int>(state.design_docs.size())) {
+        ImGui::TextDisabled("Select a document from the list.");
+    } else {
+        const auto& doc = state.design_docs[static_cast<std::size_t>(state.design_docs_selected)];
+        if (GameFonts::display()) ImGui::PushFont(GameFonts::display());
+        ImGui::TextColored(ImVec4(0.95f, 0.90f, 0.72f, 1.0f), "%s", doc.title.c_str());
+        if (GameFonts::display()) ImGui::PopFont();
+        ImGui::TextDisabled("%s", doc.relative_path.c_str());
+        ImGui::SameLine();
+        ImGui::TextDisabled("·");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.55f, 0.78f, 0.95f, 1.0f), "%s", doc.status.c_str());
+        ImGui::Separator();
+        ImGui::Dummy(ImVec2(0.0f, 4.0f));
+        if (!state.design_docs_error.empty())
+            ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.35f, 1.0f), "%s", state.design_docs_error.c_str());
+        else
+            draw_markdown_readonly(state.design_docs_body);
+    }
+    ImGui::EndChild();
+}
+
 void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capture, ImTextureID scene_texture,
     ImTextureID game_texture, const std::array<float, 16>& view, const std::array<float, 16>& projection,
     const std::array<float, 16>& view_projection, const std::array<float, 3>& camera_position,
@@ -4494,6 +5359,13 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             ImGui::EndTabItem();
         }
         ImGui::EndDisabled();
+        ImGui::BeginDisabled(state.test_session_active());
+        if (ImGui::BeginTabItem(ICON_FA_BOOK " Design Docs##ViewportDesignDocs", nullptr,
+                tab_flags(EditorState::ViewportTab::DesignDocs))) {
+            if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::DesignDocs;
+            ImGui::EndTabItem();
+        }
+        ImGui::EndDisabled();
         ImGui::EndTabBar();
         if (!state.lock_viewport_tab) state.force_select_viewport_tab = false;
     }
@@ -4502,6 +5374,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     const bool game_tab = state.active_viewport_tab == EditorState::ViewportTab::Game;
     const bool ui_tab = state.active_viewport_tab == EditorState::ViewportTab::UI;
     const bool world_forge_tab = state.active_viewport_tab == EditorState::ViewportTab::WorldForge;
+    const bool design_docs_tab = state.active_viewport_tab == EditorState::ViewportTab::DesignDocs;
     if (scene_tab && edit_mode && state.viewport_focused && !camera_capture && !ImGui::GetIO().WantTextInput) {
         if (ImGui::IsKeyPressed(ImGuiKey_1)) state.gizmo_operation = ImGuizmo::TRANSLATE;
         if (ImGui::IsKeyPressed(ImGuiKey_2)) state.gizmo_operation = ImGuizmo::ROTATE;
@@ -4582,7 +5455,12 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 }
             });
     } else if (world_forge_tab) {
-        draw_world_forge_viewport(state.world_forge_editor, state.project_root);
+        WorldForgeViewportDrawContext wf_ctx;
+        wf_ctx.terrain_edits = &state.terrain_edits;
+        wf_ctx.terrain_revision = state.terrain_height_revision;
+        draw_world_forge_viewport(state.world_forge_editor, state.project_root, wf_ctx);
+    } else if (design_docs_tab) {
+        draw_design_docs_viewport(state);
     } else if (available.x > 1.0f && available.y > 1.0f) {
         ImGui::Image(active_texture, available);
         state.viewport_hovered = ImGui::IsItemHovered();
@@ -4757,7 +5635,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                         state.terrain_brush_before[cell] = state.terrain_edits.cell_deltas_or_empty(cell);
                     state.terrain_brush_touched.insert(cell);
                 }
-                state.terrain_edits_dirty = true;
+                state.terrain_edits_dirty = true; ++state.terrain_height_revision;
                 if (streamed_terrain && collision && terrain_material) {
                     std::set<CellCoord> reload;
                     const auto loaded = streamed_terrain->loaded_cell_coordinates();
@@ -4791,7 +5669,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                         state.terrain_brush_before[cell] = state.terrain_edits.cell_deltas_or_empty(cell);
                     state.terrain_brush_touched.insert(cell);
                 }
-                state.terrain_edits_dirty = true;
+                state.terrain_edits_dirty = true; ++state.terrain_height_revision;
                 if (streamed_terrain && collision && terrain_material) {
                     std::set<CellCoord> reload;
                     const auto loaded = streamed_terrain->loaded_cell_coordinates();
@@ -4954,6 +5832,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 draw_viewport_selection_overlays(state, frame, view_projection);
             draw_collision_debug_overlays(collision, state, frame, view_projection, character, interactions, combat);
             draw_authored_collider_overlays(state, frame, view_projection);
+            draw_world_forge_map_marker_overlays(state, frame, view_projection);
             if (state.drop_preview_prefab)
                 ImGui::SetTooltip("Drop %s here", state.drop_preview_prefab->c_str());
     }
@@ -5081,6 +5960,9 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                         bool commit = false;
                         if (draft.type == AuthoredComponentType::Collider) {
                             commit = draw_collider_property_fields(draft.collider);
+                        } else if (draft.type == AuthoredComponentType::Animator) {
+                            state.inspector_component_edit_id = entry.id;
+                            commit = draw_animator_property_fields(state, draft.animator);
                         } else {
                             if (!state.inspector_component_edit_id ||
                                 *state.inspector_component_edit_id != entry.id) {
@@ -5144,6 +6026,29 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 const auto result = state.history.execute(state.scene,
                     std::make_unique<AddEntityComponentCommand>(*state.selected, std::move(entry)));
                 state.status = result ? "Script binding added" : result.error().message;
+                if (!result) Logger::instance().write(result.error());
+                else mark_scene_dirty(state);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Add Animator")) {
+                AuthoredComponentEntry entry;
+                entry.type = AuthoredComponentType::Animator;
+                entry.id = "animator-" + std::to_string(state.scene.authored_components(*state.selected)
+                        ? state.scene.authored_components(*state.selected)->entries.size()
+                        : 0);
+                const auto controllers = collect_asset_paths(state, ".animator.json");
+                entry.animator.controller = controllers.empty() ? std::string{} : controllers.front();
+                // Prefer idle as the instance override when that state exists on the controller.
+                const auto states = collect_animator_state_names(state, entry.animator.controller);
+                const bool has_idle =
+                    std::find(states.begin(), states.end(), "idle") != states.end() ||
+                    std::find(states.begin(), states.end(), "Idle") != states.end();
+                if (has_idle)
+                    entry.animator.default_state =
+                        std::find(states.begin(), states.end(), "idle") != states.end() ? "idle" : "Idle";
+                const auto result = state.history.execute(state.scene,
+                    std::make_unique<AddEntityComponentCommand>(*state.selected, std::move(entry)));
+                state.status = result ? "Animator added" : result.error().message;
                 if (!result) Logger::instance().write(result.error());
                 else mark_scene_dirty(state);
             }
@@ -5350,6 +6255,14 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     ImGui::SetNextWindowSize({center, bottom}, ImGuiCond_Always);
     ImGui::Begin("Diagnostics", nullptr, locked);
     ImGui::Checkbox("Show collision debug", &state.show_collision_debug);
+    ImGui::Checkbox("Show World Forge map markers", &state.show_world_forge_map_markers);
+    ImGui::BeginDisabled(!state.show_world_forge_map_markers ||
+                         !selected_world_forge_marker_world(state.world_forge_editor).has_value());
+    if (ImGui::Button("Focus selected WF marker##FocusWorldForgeMarker"))
+        state.request_focus_world_forge_marker = true;
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("Select an anchored region/POI in World Forge Map, then focus the Scene camera on it");
+    ImGui::EndDisabled();
     ImGui::Separator();
     ImGui::Text("Live automation (MCP)");
     if (ImGui::Checkbox("Enable MCP connection", &state.live_automation_enabled)) {
@@ -5964,6 +6877,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 debug_character ? &*debug_character : nullptr,
                 placement_collision ? &placement_collision->interaction_registry() : nullptr,
                 placement_collision ? &placement_collision->combat_registry() : nullptr);
+            apply_pending_world_forge_marker_focus(*editor, camera);
         }
         if (streamed_foliage && editor && streamed_foliage->dirty()) {
             const auto uploaded = renderer.set_foliage_batches(streamed_foliage->batches(), &editor->foliage_layers);

@@ -45,6 +45,8 @@ struct WorldForgeRegion {
     std::string story_ref;
     std::string parent_region_id;
     std::vector<std::string> faction_ids;
+    /// Campaign act membership (`act0`..`act4`). Empty = campaign-wide. See DEC-0036.
+    std::vector<std::string> acts;
     std::vector<std::string> tags;
     WorldForgeMapSoftGate soft_gate;
     std::optional<WorldForgeWorldAnchor> anchor;
@@ -61,6 +63,8 @@ struct WorldForgePoi {
     std::string story_ref;
     std::string scene_entity_id;
     std::string prefab_id;
+    /// Campaign act membership (`act0`..`act4`). Empty = campaign-wide. See DEC-0036.
+    std::vector<std::string> acts;
     std::vector<std::string> tags;
     std::optional<WorldForgeWorldAnchor> anchor;
     std::vector<std::string> open_questions;

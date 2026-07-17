@@ -28,9 +28,14 @@ Jolt `CharacterVirtual` capsule controller for third-person traversal over strea
 
 `debug_body()` returns a `CollisionDebugShape::Capsule` record for visualization.
 
+## Root motion (DEC-0030 / TICKET-0104)
+
+When an animator controller has `applyRootMotion: true`, call `sync_character_root_motion(controller, animator, entityId, yaw, dt)` instead of wish-velocity `move` for locomotion. That helper ticks the animator and applies clip-space root deltas (rotated by yaw) via `CharacterController::move_root_motion`. Horizontal distance is not max-speed clamped; gravity/jump remain unless `rootMotionY` is enabled.
+
 ## Limitations
 
-- No root motion, animation sync, or nav-grid snap yet.
+- Visual in-place root stripping for skinned meshes is not yet applied (capsule sync only).
+- No nav-grid snap yet.
 - No coyote time, double jump, or air control tuning yet.
 - Character-vs-character collision is not registered.
 - Navigation grid queries are not yet used for pathing or snap-to-walkable.

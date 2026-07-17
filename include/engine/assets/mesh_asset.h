@@ -9,7 +9,7 @@
 #include <vector>
 
 namespace engine {
-struct MeshVertex { float x=0,y=0,z=0,r=.45f,g=.32f,b=.18f; };
+struct MeshVertex { float x=0,y=0,z=0,r=.45f,g=.32f,b=.18f,u=0,v=0; };
 struct MeshBounds {
     float min_x = -0.5f;
     float min_y = -0.5f;
@@ -40,7 +40,15 @@ struct ImportedMesh {
     std::vector<ImportedSkin> skins;
     /** Parallel to `vertices` when the mesh carries JOINTS_0/WEIGHTS_0; otherwise empty. */
     std::vector<MeshJointInfluence> influences;
+    /** Optional engine-owned base-color texture (RGBA8, row-major top-down) from the first used material. */
+    std::vector<std::uint8_t> albedo_rgba;
+    std::uint32_t albedo_width = 0;
+    std::uint32_t albedo_height = 0;
     [[nodiscard]] bool has_skinning() const noexcept { return !skins.empty() || !influences.empty(); }
+    [[nodiscard]] bool has_albedo() const noexcept {
+        return albedo_width > 0 && albedo_height > 0
+            && albedo_rgba.size() == static_cast<std::size_t>(albedo_width) * albedo_height * 4;
+    }
     [[nodiscard]] Result<void> validate() const;
 };
 [[nodiscard]] Result<ImportedMesh> import_gltf_mesh(const std::filesystem::path& path);

@@ -10,10 +10,14 @@
 | Animation clip import + hot reload | active | `assets` validates glTF TRS clip import, LINEAR sampling, rejected CUBICSPLINE/bad targets, and `AnimationClipLibrary` validate-then-replace hot reload (keeps prior clips on failure) |
 | Material assets | active | `assets` validates deterministic round trips, malformed input, scalar bounds, and opacity consistency; `project_validation` validates project materials; `collision` and `debug_world_smoke` cover runtime integration |
 | World Forge factions | active | `world_forge` loads sample `factions.worldforge.json`, round-trips JSON, rejects empty/duplicate id, bad kind, unknown parentId; project validate loads when present |
-| World Forge relationships | active | `world_forge` loads sample `relationships.worldforge.json`, round-trips JSON, rejects bad node/edge ids, unknown node refs, self-loops, unknown faction refs when factions known; project validate cross-checks |
-| World Forge map | active | `world_forge` loads sample `map.worldforge.json`, round-trips JSON, rejects empty region id, unknown POI regionId, bad link refs, self-links, unknown factionIds when known; project validate cross-checks |
-| World Forge MCP apply | active | `automation` classifies `world_forge`; `apply_world_forge_operation` get/validate factions+map; apply rejects invalid payload |
-| World Forge editor UI | active (manual) | Viewports **World Forge** tab: Factions/Relationships/Map list+detail + Relationships **Graph** canvas (select syncs inspector); reload/save via `apply_world_forge_operation`; no automated GUI test |
+| World Forge pantheon | active | `world_forge` loads sample `pantheon.worldforge.json`, round-trips JSON, rejects unknown parentId and parent cycles; MCP validate pantheon |
+| World Forge archetypes | active | `world_forge` loads sample `archetypes.worldforge.json`, round-trips JSON, rejects bad kind and unknown unlock.factionId when factions known; MCP validate archetypes |
+| World Forge relationships | active | `world_forge` loads sample `relationships.worldforge.json`, round-trips JSON, rejects bad node/edge ids, unknown node refs, self-loops, unknown node parentId / parent cycles, unknown faction refs when factions known; project validate cross-checks |
+| World Forge map | active | `world_forge` loads sample `map.worldforge.json`, round-trips JSON, rejects empty region id, unknown POI regionId, bad link refs, self-links, unknown factionIds when known; resolve_map_endpoint_anchor + marker keys + camera XZ round-trip; project validate cross-checks |
+| World Forge MCP apply | active | `automation` classifies `world_forge`; `apply_world_forge_operation` get/validate factions+pantheon+map; apply rejects invalid payload |
+| World Forge editor UI | active (manual) | Viewports **World Forge** tab: Hierarchy + Archetypes + Relationships/Map (**List** + **Canvas** anchors/links + terrain underlay) + Relationships **Graph**; toolbar **Act** lens (DEC-0036); reload/save via `apply_world_forge_operation`; no automated GUI test |
+| World Forge Act lens | active | `world_forge` validates `acts` ids (`WORLD-FORGE-ACT-ID`); filter helpers treat empty acts as campaign-wide; sample quests expose `acts=[act0]` |
+| World Forge Scene markers | active (manual) | Diagnostics **Show World Forge map markers** draws poles/labels in Scene/Sculpt; focus button; no automated GUI test |
 | World partition/streaming | tested | `streaming`, `regression_all` |
 | Terrain metadata/cell persistence | tested | `terrain`, `regression_all` |
 | Low-poly terrain generation and collision | active | `terrain` validates topology, determinism, invalid inputs, seamless borders, cell addressing, material regions, neighborhood loading, 16 km² stress bounds, and streamed collision ownership; `collision` validates heightfield ray hits and cell unloading; `debug_world_smoke` validates GPU integration |
@@ -29,6 +33,6 @@
 | Free debug camera and 3D bridge | tested and visually captured | `camera` validates free and orbit cameras; `debug_world_smoke` validates depth-buffered D3D12/Jolt integration |
 | Runtime diagnostics | tested | `diagnostics` validates error counts, bounded feed, and JSONL persistence |
 | Editor MVP | active | `editor_smoke` validates SDL3/ImGui/ImGuizmo/D3D12 initialization and offscreen rendering; `editor_responsive_smoke` covers a 900×600 layout; deterministic captures verify panels, terrain, proxy, and gizmo composition; collision debug overlay shows placement volumes and recent trigger contacts |
-| Navigation, animation, dialogue, VFX, gameplay | partial | `navigation` covers walkability grids; `character` covers capsule traversal; `assets` covers animation clip import/hot reload; dialogue, VFX, and gameplay remain untested |
+| Navigation, animation, dialogue, VFX, gameplay | partial | `navigation` covers walkability grids; `character` covers capsule traversal; `assets` covers animation clip import/hot reload; `animator` covers controller graphs / blend trees / Lua drive / root-motion capsule sync; dialogue, VFX, and gameplay remain untested |
 
 CTest entries represent suites or integrations. Each named unit suite prints JSON containing assertion, pass, and failure counts. `regression_all` remains a broad backstop while assertions migrate into focused suites.

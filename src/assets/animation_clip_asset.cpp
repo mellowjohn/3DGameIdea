@@ -392,4 +392,74 @@ Result<std::array<float, 3>> sample_translation_channel(const AnimationClipChann
     });
 }
 
+namespace {
+
+const AnimationClipChannel* find_root_translation_channel(const AnimationClip& clip,
+    const std::string& root_joint_name) {
+    const AnimationClipChannel* fallback_root = nullptr;
+    const AnimationClipChannel* fallback_hip = nullptr;
+    for (const auto& channel : clip.channels) {
+        if (channel.path != AnimationChannelPath::Translation) continue;
+        if (!root_joint_name.empty() && channel.target_node_name == root_joint_name) return &channel;
+        if (channel.target_node_name == "Root" && !fallback_root) fallback_root = &channel;
+        if (channel.target_node_name == "Hip" && !fallback_hip) fallback_hip = &channel;
+    }
+    if (!root_joint_name.empty()) return nullptr;
+    if (fallback_root) return fallback_root;
+    return fallback_hip;
+}
+
+float wrap_sample_time(float time, float duration, bool loop) {
+    if (!(duration > 0.0f)) return 0.0f;
+    if (!loop) return std::clamp(time, 0.0f, duration);
+    const float wrapped = std::fmod(time, duration);
+    return wrapped < 0.0f ? wrapped + duration : wrapped;
+}
+
+} // namespace
+
+Result<RootMotionDelta> extract_clip_root_motion_delta(const AnimationClip& clip,
+    const std::string& root_joint_name, float from_seconds, float to_seconds, bool loop) {
+    RootMotionDelta delta;
+    const auto* channel = find_root_translation_channel(clip, root_joint_name);
+    if (!channel) return Result<RootMotionDelta>::success(delta);
+
+    delta.found_root_channel = true;
+    const float duration = clip.duration_seconds > 0.0f ? clip.duration_seconds : channel->times.back();
+    const float from_t = wrap_sample_time(from_seconds, duration, loop);
+    const float to_t = wrap_sample_time(to_seconds, duration, loop);
+
+    auto sample_at = [&](float t) -> Result<std::array<float, 3>> {
+        return sample_translation_channel(*channel, t);
+    };
+
+    if (loop && to_seconds > from_seconds && to_t < from_t - 1e-5f) {
+        // Wrapped: (from → end) + (start → to)
+        const auto a = sample_at(from_t);
+        const auto end = sample_at(duration);
+        const auto start = sample_at(0.0f);
+        const auto b = sample_at(to_t);
+        if (!a || !end || !start || !b) {
+            return Result<RootMotionDelta>::failure(a ? (end ? (start ? b.error() : start.error()) : end.error())
+                                                      : a.error());
+        }
+        delta.translation = {
+            (end.value()[0] - a.value()[0]) + (b.value()[0] - start.value()[0]),
+            (end.value()[1] - a.value()[1]) + (b.value()[1] - start.value()[1]),
+            (end.value()[2] - a.value()[2]) + (b.value()[2] - start.value()[2]),
+        };
+        return Result<RootMotionDelta>::success(delta);
+    }
+
+    const auto a = sample_at(from_t);
+    const auto b = sample_at(to_t);
+    if (!a || !b) return Result<RootMotionDelta>::failure(a ? b.error() : a.error());
+    delta.translation = {
+        b.value()[0] - a.value()[0],
+        b.value()[1] - a.value()[1],
+        b.value()[2] - a.value()[2],
+    };
+    return Result<RootMotionDelta>::success(delta);
+}
+
 } // namespace engine

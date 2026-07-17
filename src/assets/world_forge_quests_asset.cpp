@@ -1,4 +1,5 @@
 #include "engine/assets/world_forge_quests_asset.h"
+#include "engine/assets/world_forge_acts.h"
 
 #include <nlohmann/json.hpp>
 
@@ -158,6 +159,9 @@ Result<void> WorldForgeQuestsAsset::validate() const {
                     "Set a non-empty factionId."));
             }
         }
+        if (const auto acts_ok = validate_world_forge_acts(quest.acts, "quest", quest.id); !acts_ok) {
+            return Result<void>::failure(acts_ok.error());
+        }
     }
     return Result<void>::success();
 }
@@ -220,6 +224,7 @@ Result<WorldForgeQuestsAsset> WorldForgeQuestsAsset::parse(const std::string& te
             quest.region_id = node.value("regionId", std::string{});
             quest.starts = node.value("starts", std::string{});
             quest.dialogue = read_dialogue_hooks(node.value("dialogue", nlohmann::json::object()));
+            quest.acts = read_string_array(node.value("acts", nlohmann::json::array()));
             quest.tags = read_string_array(node.value("tags", nlohmann::json::array()));
             quest.open_questions = read_string_array(node.value("openQuestions", nlohmann::json::array()));
 
@@ -366,6 +371,7 @@ std::string WorldForgeQuestsAsset::to_json() const {
                 nlohmann::ordered_json{{"factionId", reward.faction_id}, {"delta", reward.delta}});
         }
         node["standingRewards"] = std::move(standing_rewards_json);
+        node["acts"] = write_string_array(quest.acts);
         node["tags"] = write_string_array(quest.tags);
         node["openQuestions"] = write_string_array(quest.open_questions);
         quests_json.push_back(std::move(node));

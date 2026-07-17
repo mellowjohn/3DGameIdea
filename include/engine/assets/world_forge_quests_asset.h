@@ -65,6 +65,8 @@ struct WorldForgeQuest {
     std::vector<WorldForgeQuestFork> forks;
     std::vector<WorldForgeQuestStandingRequirement> standing_requirements;
     std::vector<WorldForgeQuestStandingReward> standing_rewards;
+    /// Campaign act membership (`act0`..`act4`). Empty = campaign-wide. See DEC-0036.
+    std::vector<std::string> acts;
     std::vector<std::string> tags;
     std::vector<std::string> open_questions;
 };

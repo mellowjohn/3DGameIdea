@@ -41,6 +41,8 @@ For content assets, extend the registry entry with creator/source URL, acquisiti
 | spdlog | library | Production structured logging sink | pinned by baseline | MIT | planned integration |
 | Catch2 | library | Unit and integration tests | pinned by baseline | BSL-1.0 | planned integration |
 | Starting player Squire turnaround | concept art | Player-character art direction for the Squire starting archetype | 2026-07-03 import | Project-owned (author: project owner) | `context/art/reference/starting-player-squire-turnaround.png` |
+| Player character mesh v1 | mesh | Starting player visual for open-world RPG (Blockbench low-poly) | bake 2026-07-17 from Blockbench 5.1.4 export | Project-owned (author: project owner) | `samples/open-world-rpg/assets/models/player.gltf`; source `tools/art/player/player.blockbench.gltf`; bake `tools/bake_player_gltf.py` |
+| Player character atlas v1 | texture | Base-color atlas (256²) sampled as GPU albedo for the player mesh (TICKET-0191) | bake 2026-07-17 from Blockbench export | Project-owned (author: project owner) | `samples/open-world-rpg/assets/models/player.png` (baked by `tools/bake_player_gltf.py`; embedded in source `tools/art/player/player.blockbench.gltf`) |
 | Notion Wrathful Conquest | planning tool | Campaign hub + Engine Planning Board (Epics/Tickets) mirroring `EPIC`/`TICKET` IDs (DEC-0015) | board seeded 2026-07-10 | Notion proprietary SaaS; not redistributed | https://app.notion.com/p/39ad3efc569581309306e0d8e84cb026 |
 | Vite / React / TypeScript | blog toolchain | Wrathful Conquest public GitHub Pages devlog (`blog/`) | Vite 8 / React 19 | MIT | `blog/` |
 | react-router-dom | blog library | Client routes for archive and article pages | 7.x | MIT | `blog/` |

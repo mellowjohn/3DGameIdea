@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "tessera_archetypes",
+  "entities": [
+    {
+      "id": "squire",
+      "kind": "starting",
+      "displayName": "Squire",
+      "role": "Melee trainee, noble-house path",
+      "summary": "Starting archetype for melee trainees on the Cristallo-aligned noble-house path. Shared Tessera draft premise; not the fixed protagonist identity.",
+      "draftAdvancement": "Knight or Warrior/Barbarian by faction reputation",
+      "starterKitPrefabId": "assets/prefabs/Player/player.prefab.json",
+      "storyRef": "context/story/the-squire.md",
+      "tags": [
+        "starting",
+        "melee"
+      ]
+    },
+    {
+      "id": "archer",
+      "kind": "starting",
+      "displayName": "Archer",
+      "role": "Ranged fighter",
+      "summary": "Starting archetype for ranged fighters. Shared Tessera draft premise with Squire and Acolyte.",
+      "draftAdvancement": "Ranger or Marksman by faction reputation",
+      "starterKitPrefabId": "",
+      "storyRef": "context/story/character-creation.md",
+      "tags": [
+        "starting",
+        "ranged"
+      ]
+    },
+    {
+      "id": "acolyte",
+      "kind": "starting",
+      "displayName": "Acolyte",
+      "role": "Spellcaster initiate",
+      "summary": "Starting archetype for spellcaster initiates. Shared Tessera draft premise with Squire and Archer.",
+      "draftAdvancement": "Wizard or Sorcerer by faction reputation",
+      "starterKitPrefabId": "",
+      "storyRef": "context/story/character-creation.md",
+      "tags": [
+        "starting",
+        "magic"
+      ]
+    }
+  ]
+}

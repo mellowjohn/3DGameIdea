@@ -1710,7 +1710,18 @@
           0
         ],
         "characterAsset": "assets/characters/player.character.json"
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "controller": "assets/animators/example.animator.json"
+          },
+          "id": "animator-0",
+          "overridden": true,
+          "source": "instance",
+          "type": "animator"
+        }
+      ]
     },
     {
       "id": "75077c1f-3c53-4523-93d4-43ed24bbaf02",

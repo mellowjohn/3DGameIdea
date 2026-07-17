@@ -62,12 +62,19 @@ struct PrefabScriptBinding {
     std::string binding_id;
 };
 
+struct PrefabAnimator {
+    std::string id;
+    std::string controller;    // project-relative *.animator.json
+    std::string default_state; // optional
+};
+
 struct PrefabAsset {
     int schema_version = 1;
     std::string mesh;
     std::vector<PrefabPart> parts;
     std::vector<PrefabCollisionVolume> collision;
     std::vector<PrefabScriptBinding> script_bindings;
+    std::vector<PrefabAnimator> animators;
     std::optional<PrefabPointLight> light;
     std::optional<std::string> character_asset;
 

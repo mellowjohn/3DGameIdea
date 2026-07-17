@@ -47,7 +47,9 @@ Sample: `samples/open-world-rpg/assets/world-forge/relationships.worldforge.json
 }
 ```
 
-Optional `standingTransfer` ([DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer), default `0`): when both endpoints are `faction` and `kind` is `rival` or `opposes`, a primary standing delta `+D` applies `-D * standingTransfer` to the other faction (clamped). Must be ≥ 0.
+- Optional `parentId` on nodes (empty = root; must reference another node id; no self-parent or cycles) for Hierarchy → Persons trees (TICKET-0185).
+- Convention tag `companion` on `kind: person` nodes marks party companions. Hierarchy → Persons filter **Companions** shows only those nodes (not a separate World Forge tab).
+- Optional `standingTransfer` ([DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer), default `0`): when both endpoints are `faction` and `kind` is `rival` or `opposes`, a primary standing delta `+D` applies `-D * standingTransfer` to the other faction (clamped). Must be ≥ 0.
 
 ## Enums
 

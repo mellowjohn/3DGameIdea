@@ -184,6 +184,25 @@ Result<PrefabScriptBinding> read_script_binding_component(const nlohmann::json& 
     return Result<PrefabScriptBinding>::success(std::move(binding));
 }
 
+Result<PrefabAnimator> read_animator_component(const nlohmann::json& value) {
+    if (!value.is_object())
+        return Result<PrefabAnimator>::failure(
+            prefab_error("PREFAB-COMPONENT-INVALID", "Component entry must be an object"));
+    PrefabAnimator animator;
+    animator.id = value.value("id", std::string{});
+    const auto type = normalize_primitive_name(value.value("type", std::string{}));
+    if (type != "animator")
+        return Result<PrefabAnimator>::failure(
+            prefab_error("PREFAB-COMPONENT-TYPE", "Unsupported prefab component type (expected animator)"));
+    const auto& data = value.contains("data") ? value.at("data") : value;
+    animator.controller = data.value("controller", std::string{});
+    animator.default_state = data.value("defaultState", data.value("default_state", std::string{}));
+    if (animator.controller.empty())
+        return Result<PrefabAnimator>::failure(
+            prefab_error("PREFAB-COMPONENT-INVALID", "animator requires controller path"));
+    return Result<PrefabAnimator>::success(std::move(animator));
+}
+
 void expand_bounds_component(MeshBounds& bounds, float x, float y, float z) {
     if (x < bounds.min_x) bounds.min_x = x;
     if (y < bounds.min_y) bounds.min_y = y;
@@ -381,6 +400,14 @@ Result<PrefabAsset> PrefabAsset::load(const std::filesystem::path& path) {
                 asset.collision.push_back(std::move(collider));
                 continue;
             }
+            if (type == "animator") {
+                const auto animator = read_animator_component(entry);
+                if (!animator) return Result<PrefabAsset>::failure(animator.error());
+                PrefabAnimator component = animator.value();
+                if (component.id.empty()) component.id = "animator-" + std::to_string(asset.animators.size());
+                asset.animators.push_back(std::move(component));
+                continue;
+            }
             const auto binding = read_script_binding_component(entry);
             if (!binding) return Result<PrefabAsset>::failure(binding.error());
             PrefabScriptBinding script = binding.value();
@@ -389,7 +416,7 @@ Result<PrefabAsset> PrefabAsset::load(const std::filesystem::path& path) {
         }
     }
     if (asset.schema_version >= 2) {
-        if (asset.parts.empty() && asset.collision.empty() && asset.script_bindings.empty())
+        if (asset.parts.empty() && asset.collision.empty() && asset.script_bindings.empty() && asset.animators.empty())
             return Result<PrefabAsset>::failure(
                 prefab_error("PREFAB-PARTS-MISSING", "schemaVersion 2 prefabs require mesh parts, collision, or components"));
     } else if (asset.mesh.empty() && asset.parts.empty()) {
@@ -440,11 +467,16 @@ Result<void> PrefabAsset::save(const std::filesystem::path& path) const {
         }
         document["collision"] = std::move(collision_array);
     }
-    if (!script_bindings.empty()) {
+    if (!script_bindings.empty() || !animators.empty()) {
         nlohmann::json components = nlohmann::json::array();
         for (const auto& binding : script_bindings) {
             components.push_back({{"id", binding.id}, {"type", "scriptBinding"},
                 {"data", {{"kind", binding.kind}, {"bindingId", binding.binding_id}}}});
+        }
+        for (const auto& animator : animators) {
+            nlohmann::json data{{"controller", animator.controller}};
+            if (!animator.default_state.empty()) data["defaultState"] = animator.default_state;
+            components.push_back({{"id", animator.id}, {"type", "animator"}, {"data", std::move(data)}});
         }
         document["components"] = std::move(components);
     }

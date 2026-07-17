@@ -202,14 +202,14 @@ Local-color quests (`consequential: no`) do not move allegiance tracks.
 | Status | draft / proposal |
 | Consequential | no (allegiance); optional one-line callback **open** |
 | Starts | Hidden mushroom ring in weird grove (off-path, no quest marker). Interact → meet genie **Rak Zulla**. |
-| Objectives | 1) Eat (or refuse) offered mushrooms — refuse ends quest with taunt. 2) Hallucination sequence: chase **carpenter otters** across three landmark props (they “build” bridges of nonsense). 3) Confront **two cave trolls** arguing over a tiny hammer. 4) Return hammer to otters **or** give to Rak Zulla. 5) Wake at ring; loot chest. |
+| Objectives | 1) Eat (or refuse) offered mushrooms — refuse ends quest with taunt. 2) Hallucination sequence: chase **carpenter otters** across three landmark props (they “build” bridges of nonsense). Optional gag beat: a **lion gecko** cameo (prop / hallucination only — not a companion or cast character). 3) Confront **two cave trolls** arguing over a tiny hammer. 4) Return hammer to otters **or** give to Rak Zulla. 5) Wake at ring; loot chest. |
 | Fork | Help otters → `easter.rak_zulla.otters`. Help Rak Zulla keep hammer → `easter.rak_zulla.genie`. Refuse mushrooms → `easter.rak_zulla.refused`. |
 | Mainline impact | None required. **Proposal:** at most one Arkand/Vanessa joke line if `easter.rak_zulla.*` set. |
 | Faction / morality | None. |
 | Rewards | Otters: “Otter Union Card” (cosmetic junk). Genie: “Slightly Used Wish Stub” (joke item). Both paths: brag flag. |
 | If ignored | Ring never triggers; no world change. |
 
-Tone: isolated comedy pocket — must not rewrite Frangitur/Shroud lore.
+Tone: isolated comedy pocket — must not rewrite Frangitur/Shroud lore. **Lion gecko** is easter-egg flavor only (see [companions.md](companions.md)); do not promote it to a character concept.
 
 ---
 

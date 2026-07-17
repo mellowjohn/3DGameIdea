@@ -19,7 +19,7 @@ Related: [story index](index.md) · [faction gap review](factions.md#gaps-blocki
 ## Naming and identity
 
 - Reuse existing proper names exactly (spelling, titles). Prefer **Nefarium Shroud** over variants.
-- If a name is TBD (e.g. great orc leader, world-map name), say so — do not invent a placeholder that looks final.
+- If a name is TBD (e.g. great orc leader), say so — do not invent a placeholder that looks final. World geography: **Tessera** is the primary land; do not invent a continent title above it ([DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land)).
 - Flag naming conflicts with other story docs in the doc’s Open Questions section.
 
 ## Decision conflicts

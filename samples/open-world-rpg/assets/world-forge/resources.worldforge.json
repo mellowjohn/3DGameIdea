@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "tessera_resources",
+  "entities": [
+    {
+      "id": "nefarium",
+      "kind": "mineral",
+      "displayName": "Nefarium",
+      "summary": "Void-black mineral veined by crimson or sickly green energy. Absorbs light, pulses near conflict, and corrupts minds and land with prolonged exposure.",
+      "obtainNotes": "Found in tainted lands and cursed mines. Shattered crystals release blight mist. May be forged into weapons and armor that feed on hatred.",
+      "storyRef": "context/story/nefarium-and-the-shroud.md",
+      "rarity": "legendary",
+      "regionIds": [],
+      "tags": [
+        "cursed",
+        "void",
+        "frangitur"
+      ]
+    }
+  ]
+}

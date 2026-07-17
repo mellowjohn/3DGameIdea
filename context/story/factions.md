@@ -7,7 +7,7 @@
 
 | Faction / group | Status | What is established | What remains draft / open |
 | --- | --- | --- | --- |
-| Kingdom of Tessera | **draft** (arena vs faction choice open) | Dominant human occupying power; land fractured by chaotic forces; heroic medieval visual tone (*Gondor*/*Rohan* as references only) | Whether the kingdom is a playable faction choice or the political arena around others; precise geography vs setting name “Tessera” |
+| Kingdom of Tessera | **draft** (arena vs faction choice open) | Dominant human occupying power *within* Tessera ([DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land)); land fractured by chaotic forces; heroic medieval visual tone (*Gondor*/*Rohan* as references only) | Whether the kingdom is a playable faction choice or the political arena around others |
 | Chaotic Imperium | **established** (existence + leader); **open** (Frangitur/Shroud links) | Evil coalition of living + ethereal forces; dark Roman visual language (references only); led by Luceran the Hollow | How Imperium authority ties to Frangitur, the Nefarium Shroud, and Luceran’s remaining agency |
 | The Cristallo | **draft** | Religious/noble oligarchy; selective; higher social classes; refined architecture; hostile to woodland faction; can shift good/evil via player influence (proposal) | Theology, hierarchy, politics, relationship to Creo/Frangitur and the gods |
 | Arrotrebae of the Rampant Wilds | **draft** | Woodland multi-tribe coalition; chieftains as local battlelords; no single overlord; adversarial with Cristallo; tonal barbarian/druid references | Collective decision rules when chieftains disagree; named tribes; player influence mechanics |
@@ -18,7 +18,7 @@ Labels follow [story index continuity](index.md): **established** = current stor
 
 ## Kingdom of Tessera
 
-The Kingdom of Tessera is the dominant occupying power in the region and is populated primarily by humans across many cities and settlements. Chaotic forces have divided the land and fractured those previously aligned with its principal good faction.
+The Kingdom of Tessera is the dominant human occupying power **within Tessera** (the primary land of the world — [DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land)). It is populated primarily by humans across many cities and settlements. Chaotic forces have divided the land and fractured those previously aligned with its principal good faction.
 
 The kingdom's visual direction is heroic medieval fantasy, with *Gondor* and *Rohan* cited as tonal references rather than setting canon.
 

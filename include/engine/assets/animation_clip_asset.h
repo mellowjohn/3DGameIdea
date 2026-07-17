@@ -84,4 +84,17 @@ private:
 [[nodiscard]] Result<std::array<float, 3>> sample_translation_channel(
     const AnimationClipChannel& channel, float time_seconds);
 
+struct RootMotionDelta {
+    std::array<float, 3> translation{0.0f, 0.0f, 0.0f}; // clip-space meters
+    bool found_root_channel = false;
+};
+
+/**
+ * Translation delta of the root joint from time `from_seconds` to `to_seconds`.
+ * Handles looping wrap when `loop` is true and `to` wraps past duration.
+ * Joint match: exact `root_joint_name`, else first channel targeting "Root" / "Hip".
+ */
+[[nodiscard]] Result<RootMotionDelta> extract_clip_root_motion_delta(const AnimationClip& clip,
+    const std::string& root_joint_name, float from_seconds, float to_seconds, bool loop);
+
 } // namespace engine

@@ -13,6 +13,7 @@
       "factionIds": [
         "kingdom_tessera"
       ],
+      "acts": [],
       "tags": [
         "overland",
         "seamless"
@@ -37,6 +38,9 @@
       "factionIds": [
         "kingdom_tessera"
       ],
+      "acts": [
+        "act0"
+      ],
       "tags": [
         "act0",
         "siege",
@@ -45,6 +49,11 @@
       "softGate": {
         "enabled": true,
         "notes": "Prefer contiguous Calrenoth experience with soft gates; optional short instance only if density demands."
+      },
+      "anchor": {
+        "x": -43.69316482543945,
+        "y": 0.723411500453949,
+        "z": -0.29936978220939636
       },
       "openQuestions": [
         "Whether Calrenoth stays permanently ruined on the seamless map after Act 0"
@@ -61,6 +70,7 @@
       "factionIds": [
         "arrotrebae"
       ],
+      "acts": [],
       "tags": [
         "woodland",
         "arrotrebae"
@@ -86,10 +96,18 @@
       "storyRef": "context/story/campaign-beat-sheet.md",
       "sceneEntityId": "",
       "prefabId": "",
+      "acts": [
+        "act0"
+      ],
       "tags": [
         "act0",
         "gate"
       ],
+      "anchor": {
+        "x": -19.705955505371094,
+        "y": -1.3211249113082886,
+        "z": -0.21857452392578125
+      },
       "openQuestions": [
         "World-space anchor and scene entity UUID once placed in Scene"
       ]
@@ -104,10 +122,18 @@
       "storyRef": "context/story/campaign-beat-sheet.md",
       "sceneEntityId": "",
       "prefabId": "",
+      "acts": [
+        "act0"
+      ],
       "tags": [
         "act0",
         "companion-intro"
       ],
+      "anchor": {
+        "x": -35.705955505371094,
+        "y": -0.3524162471294403,
+        "z": 8.031425476074219
+      },
       "openQuestions": [
         "Exact placement relative to walls / battalions once set dressing exists"
       ]

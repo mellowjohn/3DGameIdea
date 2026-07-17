@@ -10,11 +10,16 @@
 
 namespace engine {
 
-enum class AuthoredComponentType : std::uint8_t { Collider, ScriptBinding };
+enum class AuthoredComponentType : std::uint8_t { Collider, ScriptBinding, Animator };
 
 struct ScriptBindingComponentData {
     std::string kind; // interaction | combatHit | combatHurt | handler
     std::string binding_id;
+};
+
+struct AnimatorComponentData {
+    std::string controller;      // project-relative *.animator.json
+    std::string default_state;   // optional override of layer default
 };
 
 struct AuthoredComponentEntry {
@@ -24,6 +29,7 @@ struct AuthoredComponentEntry {
     bool overridden = false;
     PrefabCollisionVolume collider{};
     ScriptBindingComponentData script{};
+    AnimatorComponentData animator{};
 };
 
 struct AuthoredComponentsComponent {

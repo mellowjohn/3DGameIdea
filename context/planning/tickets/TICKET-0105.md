@@ -1,39 +1,59 @@
 # TICKET-0105: Animation events → gameplay/collision hooks
 
 - Epic: EPIC-0008
-- Status: proposed
-- Agent: unassigned
+- Status: needs-approval
+- Agent: cursor-agent
 - Priority: P2
 - Notion: (see Notion Tickets DB by Ticket ID)
 
 ## Goal
 
-Animation events → gameplay/collision hooks. Expand acceptance when this ticket moves to ready/active.
+Controller-authored timeline markers fire during playback and reach Lua so gameplay can react (hit frames, footsteps) without a Lua-authored graph ([DEC-0031](../../decisions/index.md#dec-0031-controller-authored-animation-timeline-events)).
 
 ## Context links
 
 - `context/planning/epics.md` (EPIC-0008)
-- `context/roadmap.md`
-- Related tickets in the same epic (see epics.md)
+- `context/decisions/index.md` (DEC-0031, DEC-0022)
+- `context/formats/animator-controller-assets.md`
+- `context/features/animator.md`, `context/features/lua-scripting.md`
+- Related: TICKET-0103/0104 (animator + root motion); combat auto-enable deferred
 
 ## Acceptance criteria
 
-- [ ] Deliverable matches the ticket title and epics.md Notes.
-- [ ] Status/Priority mirrored in Notion when work starts.
-- [ ] Context indexes updated if behavior or formats change.
+- [x] `timelineEvents[]` on `*.animator.json` parse/validate/serialize (`state`, `time`, `name`, optional `layer`/`payload`).
+- [x] `AnimatorRuntime` fires loop-aware crossings once per cycle; `take_fired_events()` drains them.
+- [x] `LuaRuntime::dispatch_animation_event` → optional global `on_animation_event` with JSON payload.
+- [x] Invalid event state/layer/time/name fail closed at validate.
+- [x] `animator` suite covers fire-once, loop re-fire, and Lua smoke.
+- [x] Context docs + DEC-0031 recorded; Status → needs-approval (not done).
 
 ## Out of scope
 
-Anything beyond this ticket's Notes in epics.md; do not pull later milestone work early without owner override.
+- Auto-enable combat volumes from events (scripts/MCP may).
+- glTF extras / per-clip sidecars as the authoring home.
+- Visual animator graph UI (TICKET-0135).
+- Full play-session animator wiring polish (known leftover from 0103/0104).
 
 ## Dependencies
 
-See epics.md Notes and Priority ladder. Hold P3 / proposed work behind M5 animation exit unless overridden.
+After TICKET-0104; uses DEC-0022 Lua react path.
 
 ## Verification
 
-Per ticket type: rebuild `engine` for C++/shader changes; doc review for design tickets; named suites / `engine_project_validate` when applicable. Set Status to needs-approval after verification — never done.
+- Rebuild `engine` (MSVC debug).
+- CTest / suite `animator` — timeline + Lua assertions.
+- MCP: reconnect Cursor MCP after editor kill/rebuild if needed.
+
+## What changed
+
+- Summary: Authors place hit-frame/footstep markers on the animator controller; C++ fires them when state time crosses the marker (loop-aware); hosts drain events and dispatch to Lua `on_animation_event`. Engine does not auto-toggle combat volumes.
+- Files / surfaces touched: `animator_controller_asset` (parse/validate/json), `animator_runtime` (evaluate + drain), `lua_runtime` (dispatch), `tests/suite_tests.cpp` (`animator` suite), context formats/features/decisions/ticket/epics.
+- Schema / API / format deltas: `timelineEvents[]`; `AnimatorTimelineEvent` / `AnimatorFiredEvent`; `take_fired_events()`; `dispatch_animation_event`; validate codes `ANIM-CTRL-EVENT-*`; Lua handler `on_animation_event` payload `{entityId,name,state,layer,time,payload}`.
+- Seed / sample data: none in open-world-rpg (fixture-only in suite).
+- Tests / verification evidence: `engine` + `engine_suite_tests` rebuilt (MSVC Debug); `engine_suite_tests --suite animator` → **104/104**. Expected `ANIM-CLIP-MISSING` log from intentional bad-clip fixture.
+- Decisions & tradeoffs: DEC-0031 — controller timeline (not glTF extras); missing Lua handler silent; no auto combat enable.
+- Leftover risk / follow-ons: play-session still largely wish-velocity move; hosts must call `take_fired_events` + dispatch after tick; combat volume enable remains script-side.
 
 ## Agent notes
 
-_(stub — expand when picked up)_
+User chose option 1 (controller timeline). Handed off at needs-approval.

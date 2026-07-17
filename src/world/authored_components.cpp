@@ -126,12 +126,20 @@ const PrefabScriptBinding* find_prefab_script(const PrefabAsset& prefab, const s
     return nullptr;
 }
 
+const PrefabAnimator* find_prefab_animator(const PrefabAsset& prefab, const std::string& id) {
+    for (const auto& animator : prefab.animators) {
+        if (animator.id == id) return &animator;
+    }
+    return nullptr;
+}
+
 } // namespace
 
 std::string authored_component_type_name(AuthoredComponentType type) {
     switch (type) {
     case AuthoredComponentType::Collider: return "collider";
     case AuthoredComponentType::ScriptBinding: return "scriptBinding";
+    case AuthoredComponentType::Animator: return "animator";
     }
     return "collider";
 }
@@ -140,12 +148,14 @@ std::optional<AuthoredComponentType> parse_authored_component_type(const std::st
     const auto key = normalize_key(value);
     if (key == "collider") return AuthoredComponentType::Collider;
     if (key == "scriptbinding" || key == "script") return AuthoredComponentType::ScriptBinding;
+    if (key == "animator") return AuthoredComponentType::Animator;
     return std::nullopt;
 }
 
 AuthoredComponentsComponent seed_authored_components_from_prefab(const PrefabAsset& prefab) {
     AuthoredComponentsComponent components;
-    components.entries.reserve(prefab.collision.size() + prefab.script_bindings.size());
+    components.entries.reserve(
+        prefab.collision.size() + prefab.script_bindings.size() + prefab.animators.size());
     for (std::size_t index = 0; index < prefab.collision.size(); ++index) {
         AuthoredComponentEntry entry;
         entry.type = AuthoredComponentType::Collider;
@@ -165,6 +175,17 @@ AuthoredComponentsComponent seed_authored_components_from_prefab(const PrefabAss
         entry.script.binding_id = prefab.script_bindings[index].binding_id;
         entry.id = prefab.script_bindings[index].id.empty() ? ("script-" + std::to_string(index))
                                                               : prefab.script_bindings[index].id;
+        components.entries.push_back(std::move(entry));
+    }
+    for (std::size_t index = 0; index < prefab.animators.size(); ++index) {
+        AuthoredComponentEntry entry;
+        entry.type = AuthoredComponentType::Animator;
+        entry.from_prefab = true;
+        entry.overridden = false;
+        entry.animator.controller = prefab.animators[index].controller;
+        entry.animator.default_state = prefab.animators[index].default_state;
+        entry.id = prefab.animators[index].id.empty() ? ("animator-" + std::to_string(index))
+                                                        : prefab.animators[index].id;
         components.entries.push_back(std::move(entry));
     }
     components.generation = 1;
@@ -198,6 +219,12 @@ Result<void> validate_authored_component_entry(const AuthoredComponentEntry& ent
         if (!parsed) return Result<void>::failure(parsed.error());
         return Result<void>::success();
     }
+    if (entry.type == AuthoredComponentType::Animator) {
+        if (entry.animator.controller.empty())
+            return Result<void>::failure(
+                authored_error("COMPONENT-ANIMATOR-INVALID", "animator requires controller path"));
+        return Result<void>::success();
+    }
     if (entry.script.kind.empty() || entry.script.binding_id.empty())
         return Result<void>::failure(
             authored_error("COMPONENT-SCRIPT-INVALID", "scriptBinding requires kind and bindingId"));
@@ -225,7 +252,11 @@ std::string authored_component_entry_to_json(const AuthoredComponentEntry& entry
     nlohmann::json root{{"id", entry.id}, {"type", authored_component_type_name(entry.type)},
         {"source", entry.from_prefab ? "prefab" : "instance"}, {"overridden", entry.overridden}};
     if (entry.type == AuthoredComponentType::Collider) root["data"] = write_collision_object(entry.collider);
-    else
+    else if (entry.type == AuthoredComponentType::Animator) {
+        nlohmann::json data{{"controller", entry.animator.controller}};
+        if (!entry.animator.default_state.empty()) data["defaultState"] = entry.animator.default_state;
+        root["data"] = std::move(data);
+    } else
         root["data"] = {{"kind", entry.script.kind}, {"bindingId", entry.script.binding_id}};
     return root.dump();
 }
@@ -250,6 +281,10 @@ Result<AuthoredComponentEntry> authored_component_entry_from_json(const std::str
             entry.collider = volume.value();
             if (entry.collider.id.empty()) entry.collider.id = entry.id;
             if (entry.id.empty()) entry.id = entry.collider.id;
+        } else if (entry.type == AuthoredComponentType::Animator) {
+            entry.animator.controller = data.value("controller", std::string{});
+            entry.animator.default_state =
+                data.value("defaultState", data.value("default_state", std::string{}));
         } else {
             entry.script.kind = data.value("kind", std::string{});
             entry.script.binding_id = data.value("bindingId", data.value("binding_id", std::string{}));
@@ -307,6 +342,12 @@ std::size_t propagate_prefab_components_into_entries(
                 entry.collider.id = entry.id;
                 ++updated;
             }
+        } else if (entry.type == AuthoredComponentType::Animator) {
+            if (const auto* source = find_prefab_animator(prefab, entry.id)) {
+                entry.animator.controller = source->controller;
+                entry.animator.default_state = source->default_state;
+                ++updated;
+            }
         } else if (const auto* source = find_prefab_script(prefab, entry.id)) {
             entry.script.kind = source->kind;
             entry.script.binding_id = source->binding_id;
@@ -329,6 +370,8 @@ std::size_t propagate_prefab_components_into_entries(
                        if (!entry.from_prefab || entry.overridden) return false;
                        if (entry.type == AuthoredComponentType::Collider)
                            return find_prefab_collider(prefab, entry.id) == nullptr;
+                       if (entry.type == AuthoredComponentType::Animator)
+                           return find_prefab_animator(prefab, entry.id) == nullptr;
                        return find_prefab_script(prefab, entry.id) == nullptr;
                    }),
         next.end());

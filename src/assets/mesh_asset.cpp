@@ -1,12 +1,19 @@
 #include "engine/assets/mesh_asset.h"
 
+#include "engine/assets/png_decode.h"
+
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
+#include <fastgltf/types.hpp>
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <cstring>
 #include <limits>
 #include <string>
+#include <variant>
+#include <vector>
 
 namespace engine { namespace {
 EngineError mesh_error(std::string code,std::string message,std::string remedy="Export a triangle glTF/GLB with finite POSITION data and valid indices."){return {std::move(code),Severity::Error,ErrorCategory::AssetImport,"mesh-import",std::move(message),ENGINE_SOURCE_CONTEXT,{},std::move(remedy),make_correlation_id()};}
@@ -270,6 +277,81 @@ void build_bush_mesh(ImportedMesh& mesh, const std::string& variant, float r, fl
         append_ellipsoid(mesh.vertices, mesh.aabb, 0.05f, 0.41f, -0.20f, 0.28f, 0.21f, 0.28f, accent_r, accent_g, accent_b);
     }
 }
+
+Result<PngImage> decode_png_span(const std::byte* data, std::size_t size) {
+    return decode_png_bytes(std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(data), size));
+}
+
+/** Resolve and decode an image's pixels regardless of whether it lives inline, in a buffer view, or on disk. */
+Result<PngImage> decode_image_source(const fastgltf::Asset& asset, const fastgltf::Image& image,
+    const std::filesystem::path& gltf_parent) {
+    return std::visit(fastgltf::visitor{
+        [&](const fastgltf::sources::Array& array) -> Result<PngImage> {
+            return decode_png_span(array.bytes.data(), array.bytes.size_bytes());
+        },
+        [&](const fastgltf::sources::Vector& vec) -> Result<PngImage> {
+            return decode_png_span(vec.bytes.data(), vec.bytes.size());
+        },
+        [&](const fastgltf::sources::ByteView& view) -> Result<PngImage> {
+            return decode_png_span(view.bytes.data(), view.bytes.size_bytes());
+        },
+        [&](const fastgltf::sources::BufferView& source) -> Result<PngImage> {
+            const auto& buffer_view = asset.bufferViews[source.bufferViewIndex];
+            const auto& buffer = asset.buffers[buffer_view.bufferIndex];
+            return std::visit(fastgltf::visitor{
+                [&](const fastgltf::sources::Array& array) -> Result<PngImage> {
+                    return decode_png_span(array.bytes.data() + buffer_view.byteOffset, buffer_view.byteLength);
+                },
+                [&](const fastgltf::sources::Vector& vec) -> Result<PngImage> {
+                    return decode_png_span(vec.bytes.data() + buffer_view.byteOffset, buffer_view.byteLength);
+                },
+                [&](const fastgltf::sources::ByteView& view) -> Result<PngImage> {
+                    return decode_png_span(view.bytes.data() + buffer_view.byteOffset, buffer_view.byteLength);
+                },
+                [&](const auto&) -> Result<PngImage> {
+                    return Result<PngImage>::failure(mesh_error("MESH-TEXTURE-SOURCE",
+                        "baseColorTexture buffer has no loaded data",
+                        "Re-export with embedded or external PNG image data."));
+                },
+            }, buffer.data);
+        },
+        [&](const fastgltf::sources::URI& source) -> Result<PngImage> {
+            if (source.uri.isDataUri()) {
+                return Result<PngImage>::failure(mesh_error("MESH-TEXTURE-DATAURI",
+                    "Embedded data-URI image was not decoded by the parser",
+                    "Ensure the importer requests LoadExternalImages."));
+            }
+            return decode_png_file(gltf_parent / std::filesystem::path(source.uri.fspath()));
+        },
+        [&](const auto&) -> Result<PngImage> {
+            return Result<PngImage>::failure(mesh_error("MESH-TEXTURE-SOURCE",
+                "Unsupported baseColorTexture image source",
+                "Use an embedded or external PNG baseColorTexture."));
+        },
+    }, image.data);
+}
+
+/** Load the first material's PBR base-color texture into engine-owned RGBA pixels, if any. */
+Result<void> load_base_color_albedo(const fastgltf::Asset& asset, const fastgltf::Primitive& primitive,
+    const std::filesystem::path& gltf_parent, ImportedMesh& output) {
+    if (!primitive.materialIndex.has_value() || output.has_albedo()) return Result<void>::success();
+    const auto material_index = primitive.materialIndex.value();
+    if (material_index >= asset.materials.size()) return Result<void>::success();
+    const auto& material = asset.materials[material_index];
+    if (!material.pbrData.baseColorTexture.has_value()) return Result<void>::success();
+    const auto texture_index = material.pbrData.baseColorTexture.value().textureIndex;
+    if (texture_index >= asset.textures.size()) return Result<void>::success();
+    const auto& texture = asset.textures[texture_index];
+    if (!texture.imageIndex.has_value()) return Result<void>::success();
+    const auto image_index = texture.imageIndex.value();
+    if (image_index >= asset.images.size()) return Result<void>::success();
+    auto decoded = decode_image_source(asset, asset.images[image_index], gltf_parent);
+    if (!decoded) return Result<void>::failure(decoded.error());
+    output.albedo_rgba = std::move(decoded.value().rgba);
+    output.albedo_width = decoded.value().width;
+    output.albedo_height = decoded.value().height;
+    return Result<void>::success();
+}
 }
 Result<void> ImportedMesh::validate()const{
     if(vertices.empty()||vertices.size()%3!=0)return Result<void>::failure(mesh_error("MESH-TOPOLOGY-INVALID","Expanded mesh must contain a non-empty triangle list"));
@@ -290,7 +372,8 @@ Result<ImportedMesh> import_gltf_mesh(const std::filesystem::path& path) {
     auto data = fastgltf::GltfDataBuffer::FromPath(path);
     if (!data) return Result<ImportedMesh>::failure(mesh_error("MESH-FILE-READ", "Could not read glTF: " + path.generic_string()));
     fastgltf::Parser parser;
-    auto parsed = parser.loadGltf(data.get(), path.parent_path(), fastgltf::Options::LoadExternalBuffers);
+    auto parsed = parser.loadGltf(data.get(), path.parent_path(),
+        fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages);
     if (!parsed) {
         auto error = mesh_error("MESH-GLTF-PARSE", "fastgltf rejected " + path.generic_string());
         error.causes.push_back(std::string(fastgltf::getErrorMessage(parsed.error())));
@@ -315,6 +398,70 @@ Result<ImportedMesh> import_gltf_mesh(const std::filesystem::path& path) {
             std::vector<fastgltf::math::fvec3> positions;
             positions.reserve(accessor.count);
             fastgltf::iterateAccessor<fastgltf::math::fvec3>(asset, accessor, [&](auto value) { positions.push_back(value); });
+            std::vector<std::array<float, 3>> colors;
+            if (const auto color_attribute = primitive.findAttribute("COLOR_0");
+                color_attribute != primitive.attributes.end()) {
+                const auto& color_accessor = asset.accessors[color_attribute->accessorIndex];
+                if (color_accessor.count != positions.size()) {
+                    return Result<ImportedMesh>::failure(mesh_error("MESH-COLOR-COUNT",
+                        "COLOR_0 count must match POSITION count",
+                        "Export COLOR_0 with one color per mesh vertex."));
+                }
+                colors.resize(positions.size(), {.34f, .22f, .12f});
+                bool nonfinite = false;
+                if (color_accessor.type == fastgltf::AccessorType::Vec3) {
+                    std::size_t i = 0;
+                    fastgltf::iterateAccessor<fastgltf::math::fvec3>(asset, color_accessor, [&](auto value) {
+                        if (!std::isfinite(value.x()) || !std::isfinite(value.y()) || !std::isfinite(value.z()))
+                            nonfinite = true;
+                        colors[i++] = {value.x(), value.y(), value.z()};
+                    });
+                } else if (color_accessor.type == fastgltf::AccessorType::Vec4) {
+                    std::size_t i = 0;
+                    fastgltf::iterateAccessor<fastgltf::math::fvec4>(asset, color_accessor, [&](auto value) {
+                        if (!std::isfinite(value.x()) || !std::isfinite(value.y()) || !std::isfinite(value.z()))
+                            nonfinite = true;
+                        colors[i++] = {value.x(), value.y(), value.z()};
+                    });
+                } else {
+                    return Result<ImportedMesh>::failure(mesh_error("MESH-COLOR-TYPE",
+                        "COLOR_0 must be FLOAT VEC3 or VEC4",
+                        "Export vertex colors as float COLOR_0."));
+                }
+                if (nonfinite) {
+                    return Result<ImportedMesh>::failure(mesh_error("MESH-COLOR-NONFINITE",
+                        "COLOR_0 contain NaN or infinity", "Export finite vertex colors."));
+                }
+            }
+            std::vector<std::array<float, 2>> uvs;
+            if (const auto uv_attribute = primitive.findAttribute("TEXCOORD_0");
+                uv_attribute != primitive.attributes.end()) {
+                const auto& uv_accessor = asset.accessors[uv_attribute->accessorIndex];
+                if (uv_accessor.count != positions.size()) {
+                    return Result<ImportedMesh>::failure(mesh_error("MESH-UV-COUNT",
+                        "TEXCOORD_0 count must match POSITION count",
+                        "Export TEXCOORD_0 with one UV per mesh vertex."));
+                }
+                if (uv_accessor.type != fastgltf::AccessorType::Vec2
+                    || uv_accessor.componentType != fastgltf::ComponentType::Float) {
+                    return Result<ImportedMesh>::failure(mesh_error("MESH-UV-TYPE",
+                        "TEXCOORD_0 must be FLOAT VEC2",
+                        "Export texture coordinates as float TEXCOORD_0."));
+                }
+                uvs.resize(positions.size(), {0.0f, 0.0f});
+                bool nonfinite = false;
+                std::size_t i = 0;
+                fastgltf::iterateAccessor<fastgltf::math::fvec2>(asset, uv_accessor, [&](auto value) {
+                    if (!std::isfinite(value.x()) || !std::isfinite(value.y())) nonfinite = true;
+                    uvs[i++] = {value.x(), value.y()};
+                });
+                if (nonfinite) {
+                    return Result<ImportedMesh>::failure(mesh_error("MESH-UV-NONFINITE",
+                        "TEXCOORD_0 contain NaN or infinity", "Export finite texture coordinates."));
+                }
+            }
+            auto albedo_loaded = load_base_color_albedo(asset, primitive, path.parent_path(), output);
+            if (!albedo_loaded) return Result<ImportedMesh>::failure(albedo_loaded.error());
             auto source_influences = read_vertex_influences(asset, primitive, positions.size());
             if (!source_influences) return Result<ImportedMesh>::failure(source_influences.error());
             std::vector<std::uint32_t> indices;
@@ -348,7 +495,12 @@ Result<ImportedMesh> import_gltf_mesh(const std::filesystem::path& path) {
                 const float x = p.x();
                 const float y = p.y();
                 const float z = p.z();
-                output.vertices.push_back({x, y, z, .34f, .22f, .12f});
+                const float r = colors.empty() ? .34f : colors[index][0];
+                const float g = colors.empty() ? .22f : colors[index][1];
+                const float b = colors.empty() ? .12f : colors[index][2];
+                const float u = uvs.empty() ? 0.0f : uvs[index][0];
+                const float v = uvs.empty() ? 0.0f : uvs[index][1];
+                output.vertices.push_back({x, y, z, r, g, b, u, v});
                 if (expand_influences) output.influences.push_back(source_influences.value()[index]);
                 if (!bounds_initialized) {
                     output.aabb.min_x = output.aabb.max_x = x;

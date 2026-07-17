@@ -38,6 +38,8 @@ struct WorldForgeDialogueTree {
     std::string story_ref;
     std::string entry_node_id;
     std::vector<WorldForgeDialogueNode> nodes;
+    /// Campaign act membership (`act0`..`act4`). Empty = campaign-wide. See DEC-0036.
+    std::vector<std::string> acts;
     std::vector<std::string> tags;
     std::vector<std::string> open_questions;
 };
