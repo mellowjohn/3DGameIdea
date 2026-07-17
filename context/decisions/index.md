@@ -438,3 +438,18 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Consequences: TICKET-0189; [`../formats/world-forge-acts.md`](../formats/world-forge-acts.md).
 - Supersedes: none
 
+### DEC-0037: Git-backed authoring sync (in-editor)
+
+- Status: accepted
+- Date: 2026-07-17
+- Context: Multiple authors need to share World Forge / project content (e.g. one person on engine, another on World Forge) without a custom cloud save backend. Owner asked to polish the workflow and sync git from inside the engine.
+- Decision:
+  1. **Git is the universal authoring sync layer.** Diffable project data (World Forge JSON, scenes, prefabs, Lua, context docs) is shared by commit / push / pull against the project remote. Do not build a separate hosted “cloud save” service for authoring.
+  2. **In-editor Project Sync** wraps the system `git` CLI for the opened project root: at least **status**, **fetch**, **pull**, **commit** (explicit message; stage only project content paths), and **push**. Prefer OS/git credential helpers and SSH agent — never store remotes secrets inside the engine.
+  3. Operations are **command-backed** ([DEC-0003](../decisions/index.md#dec-0003-automation-first-tools)): GUI and headless/MCP share the same automation path with structured JSON errors.
+  4. After a successful **pull**, the editor offers a **safe reload** of World Forge (and documents when a dirty Scene/Sculpt session must be saved or discarded first). Merge-conflict resolution stays with git; the editor surfaces conflicted paths and fails closed rather than inventing a custom merge UI in v1.
+  5. This is **authoring/project sync**, not player save-game cloud sync and not live multi-user co-editing of one open session.
+- Rationale: Project assets are already text-friendly and versioned; git already provides remotes, auth, history, and conflict tools. In-editor actions remove the “leave the engine to sync” friction without reinventing hosting.
+- Consequences: EPIC-0014 (TICKET-0192–0195); feature doc [`../features/authoring-git-sync.md`](../features/authoring-git-sync.md). Requires `git` on PATH and a project that is a git working tree. Real-time collab and custom cloud backends remain out of scope.
+- Supersedes: none
+

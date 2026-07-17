@@ -11,6 +11,7 @@ This directory is durable memory for humans and AI agents. Source code remains a
 - `architecture/content-vs-engine-workflows.md` — when to edit C++ engine code vs MCP-driven project content
 - `decisions/index.md` — accepted and superseded decisions
 - `features/index.md` — feature inventory, status, and acceptance links
+- `features/authoring-git-sync.md` — multi-author project sync via git + in-editor Project Sync (EPIC-0014 / DEC-0037)
 - `features/world-forge-scope.md` — World Forge vs editor/MCP boundary (EPIC-0002 / TICKET-0010)
 - `story/index.md` — narrative premise, setting, characters, factions, and other story canon
 - `art/character-direction.md` — player-character art references and starter-kit direction
