@@ -424,6 +424,7 @@ EditorBridgeResponse status_action(const RepoContext& context) {
         const auto arrow = path.find(" -> ");
         if (arrow != std::string::npos) path = path.substr(arrow + 4);
         if (!entry_in_scope(context, path)) continue;
+        if (path_is_blocked(path)) continue;
         dirty.push_back(path);
         if (xy.find('U') != std::string::npos || xy == "AA" || xy == "DD") conflicted.push_back(path);
     }
@@ -552,11 +553,44 @@ EditorBridgeResponse commit_action(const RepoContext& context, const nlohmann::j
                 "Check path permissions and retry.")});
     }
 
+    // Resolve directory pathspecs to concrete cached files; drop anything blocked that slipped in.
+    const auto cached = run_git(context.repo_root, {"diff", "--cached", "--name-only", "-z"});
+    std::vector<std::string> staged_files;
+    {
+        std::string current;
+        for (char ch : cached.stdout_text) {
+            if (ch == '\0') {
+                if (!current.empty()) staged_files.push_back(current);
+                current.clear();
+            } else {
+                current.push_back(ch);
+            }
+        }
+        if (!current.empty()) staged_files.push_back(current);
+    }
+    std::vector<std::string> keep;
+    std::vector<std::string> drop;
+    for (const auto& path : staged_files) {
+        if (!entry_in_scope(context, path) || path_is_blocked(path)) drop.push_back(path);
+        else keep.push_back(path);
+    }
+    if (!drop.empty()) {
+        std::vector<std::string> reset_args = {"reset", "-q", "HEAD", "--"};
+        reset_args.insert(reset_args.end(), drop.begin(), drop.end());
+        (void)run_git(context.repo_root, reset_args);
+    }
+    if (keep.empty()) {
+        return make_response(ExitCode::ValidationFailed, "Nothing to commit in project scope",
+            {git_error("PROJECT-GIT-NOTHING-TO-COMMIT", ErrorCategory::Validation,
+                "No stageable project content paths remained after filtering build/secret artifacts.",
+                "Save World Forge / content files first, or pass explicit paths[].")});
+    }
+
     const auto commit = run_git(context.repo_root, {"commit", "-m", message});
     std::map<std::string, std::string> metadata;
     fill_common_metadata(metadata, context, "commit");
     metadata["message"] = message;
-    metadata["stagedPaths"] = join_lines(to_stage);
+    metadata["stagedPaths"] = join_lines(keep);
     metadata["stdout"] = trim_copy(commit.stdout_text);
     metadata["stderr"] = trim_copy(commit.stderr_text);
     if (commit.exit_code != 0) {
@@ -566,8 +600,10 @@ EditorBridgeResponse commit_action(const RepoContext& context, const nlohmann::j
                 "Configure user.name/user.email if needed, resolve conflicts, then retry.")},
             std::move(metadata));
     }
-    return make_response(ExitCode::Success, "Committed " + std::to_string(to_stage.size()) + " path(s)", {},
-        std::move(metadata), std::move(to_stage));
+    const auto staged_count = keep.size();
+    auto changed = keep;
+    return make_response(ExitCode::Success, "Committed " + std::to_string(staged_count) + " path(s)", {},
+        std::move(metadata), std::move(changed));
 }
 
 EditorBridgeResponse push_action(const RepoContext& context) {
