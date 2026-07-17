@@ -2,36 +2,6 @@
   "schemaVersion": 1,
   "entities": [
     {
-      "id": "00a235e1-a259-4156-9b19-4278974f023d",
-      "name": "Forest Tree -2,5",
-      "transform": {
-        "position": [
-          -10.06733512878418,
-          -1.0998642444610596,
-          28.35702896118164
-        ],
-        "rotation": [
-          0.0,
-          0.5427055358886719,
-          0.0,
-          -0.8399230241775513
-        ],
-        "scale": [
-          3.0813674926757813,
-          3.0813674926757813,
-          3.0813674926757813
-        ]
-      },
-      "parent": null,
-      "placement": {
-        "prefab": "assets/prefabs/scene assets/tree.prefab.json",
-        "cell": [
-          -1,
-          0
-        ]
-      }
-    },
-    {
       "id": "02b172e4-734c-444f-aff7-25693570139b",
       "name": "Forest Tree 5,-4",
       "transform": {
@@ -1740,7 +1710,18 @@
           0
         ],
         "characterAsset": "assets/characters/player.character.json"
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "controller": "assets/animators/example.animator.json"
+          },
+          "id": "animator-0",
+          "overridden": true,
+          "source": "instance",
+          "type": "animator"
+        }
+      ]
     },
     {
       "id": "75077c1f-3c53-4523-93d4-43ed24bbaf02",

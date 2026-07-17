@@ -50,6 +50,11 @@
           "dialogueId": "dlg_act0_wrathful_conquest"
         }
       ],
+      "standingRequirements": [],
+      "standingRewards": [],
+      "acts": [
+        "act0"
+      ],
       "tags": [
         "main",
         "act0",
@@ -109,6 +114,9 @@
           "dialogueId": ""
         }
       ],
+      "standingRequirements": [],
+      "standingRewards": [],
+      "acts": [],
       "tags": [
         "side",
         "arkand",
@@ -157,6 +165,9 @@
           "dialogueId": ""
         }
       ],
+      "standingRequirements": [],
+      "standingRewards": [],
+      "acts": [],
       "tags": [
         "side",
         "consequential",
@@ -166,26 +177,6 @@
         "Precise Act 1 unlock beat and watch faction id when authored",
         "Dialogue trees not authored yet (main quest uses Twine Act 0)"
       ]
-    },
-    {
-      "id": "test_quest",
-      "kind": "side",
-      "displayName": "Test Quest",
-      "canonStatus": "draft",
-      "summary": "",
-      "storyRef": "",
-      "consequential": false,
-      "regionId": "",
-      "starts": "",
-      "dialogue": {
-        "abandonId": "",
-        "completeId": "",
-        "startId": ""
-      },
-      "objectives": [],
-      "forks": [],
-      "tags": [],
-      "openQuestions": []
     }
   ]
 }
