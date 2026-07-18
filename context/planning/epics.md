@@ -120,11 +120,11 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
-| TICKET-0196 | Blended water material and render pass | proposed | P2 | Prerequisite: reflection/refraction, low-poly wave displacement; [`water-hydrology.md`](../features/water-hydrology.md) |
-| TICKET-0197 | Water persistence + Sculpt water tool + MCP | proposed | P2 | World-wide sea level, bounded regions, undo/save; mirror DEC-0018 patterns |
-| TICKET-0198 | Swim mode + deep-water fatigue and damage | proposed | P2 | Character controller; nav unwalkable underwater |
-| TICKET-0199 | World Forge hydrology + ferry route map authoring | proposed | P2 | Regions/polylines on Map canvas; links to dock POIs |
-| TICKET-0200 | Scripted floating vessels + shore materials | proposed | P3 | Hull snap to surface; mud/sand shore band; SQ-10 ferry slice |
+| TICKET-0196 | Blended water material and render pass | needs-approval | P2 | Water PSO + wave/refraction shader; [`water-hydrology.md`](../features/water-hydrology.md) |
+| TICKET-0197 | Water persistence + Sculpt water tool + MCP | needs-approval | P2 | `water-surfaces.json`, Sculpt Water tool, `engine_water_apply` |
+| TICKET-0198 | Swim mode + deep-water fatigue and damage | needs-approval | P2 | Character controller swim + nav/foliage hooks |
+| TICKET-0199 | World Forge hydrology + ferry route map authoring | needs-approval | P2 | Map schema `hydrologyRegions` / `ferryRoutes` |
+| TICKET-0200 | Scripted floating vessels + shore materials | needs-approval | P3 | Shore materials + `ferry_crossing.lua` sample |
 
 ## EPIC-0006: RPG systems — quests and dialogue
 
