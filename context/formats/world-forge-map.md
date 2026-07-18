@@ -2,7 +2,7 @@
 
 Status: active (schemaVersion 1) — TICKET-0013 · Epic EPIC-0002
 
-Diffable story geography: **regions**, **POIs**, and travel/soft-gate **links**. IDs and narrative metadata only — not mesh placement ([DEC-0019](../decisions/index.md#dec-0019-world-forge-editor-home-and-story-canon-split)). Scene entity / prefab refs are optional strings for later wiring.
+Diffable story geography: **regions**, **POIs**, travel/soft-gate **links**, **hydrology** planning bounds, and **ferry route** polylines. IDs and narrative metadata only — not mesh placement ([DEC-0019](../decisions/index.md#dec-0019-world-forge-editor-home-and-story-canon-split), [DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring)). Scene entity / prefab refs are optional strings for later wiring.
 
 ## Default path
 
@@ -69,10 +69,30 @@ Sample: `samples/open-world-rpg/assets/world-forge/map.worldforge.json`.
 
 Optional `anchor: { "x", "y", "z" }` on regions/POIs when a world-space hint exists. The World Forge Map **Canvas** (TICKET-0187) authors these anchors on an XZ top-down overlay; Scene/Sculpt still own mesh placement.
 
+### `hydrologyRegions[]`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string | Unique slug |
+| `kind` | enum | `lake` \| `river` \| `sea` |
+| `minX`, `maxX`, `minZ`, `maxZ` | number | World-space XZ bounding box |
+| `acts` | string[] | Optional act lens (`act0`..`act4`); empty = campaign-wide |
+| `summary` | string | Author notes |
+
+### `ferryRoutes[]`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string | Unique slug |
+| `fromPoiId`, `toPoiId` | string | Must reference POI ids in `pois[]` |
+| `points` | `{x,z}[]` | Optional world XZ polyline between docks |
+| `acts` | string[] | Optional act lens |
+| `summary` | string | Author notes |
+
 ## Editor Map Canvas
 
-- **List** — existing Regions / POIs / Links inspectors (anchors editable as xyz).
-- **Canvas** — pan/zoom XZ view (DEC-0027 camera), place/drag markers, draw links between anchored endpoints, optional greyscale terrain underlay (TICKET-0188).
+- **List** — Regions / POIs / Links / **Hydrology** / **Ferry** inspectors (anchors editable as xyz; hydrology bounds as min/max XZ; ferry routes as POI refs + point list).
+- **Canvas** — pan/zoom XZ view (DEC-0027 camera), place/drag markers, draw links between anchored endpoints, **draw hydrology bounding boxes**, **click-append ferry route polylines**, optional greyscale terrain underlay (TICKET-0188).
 
 ## Enums
 
@@ -82,15 +102,19 @@ Optional `anchor: { "x", "y", "z" }` on regions/POIs when a world-space hint exi
 | POI `kind` | `landmark` \| `settlement` \| `gate` \| `shrine` \| `camp` \| `other` |
 | link `kind` | `travel` \| `soft_gate` \| `story_gate` \| `adjacency` |
 | link `fromKind` / `toKind` | `region` \| `poi` |
+| hydrology `kind` | `lake` \| `river` \| `sea` |
 | `canonStatus` | `established` \| `draft` \| `proposal` \| `open` |
 
 ## Validation
 
 - `schemaVersion` must be `1`
 - Unique non-empty region / POI / link ids
+- Unique non-empty hydrology / ferry route ids
 - `parentRegionId` empty or another region id (no self)
 - Every POI `regionId` must exist
 - Link endpoints resolve to region/POI by `fromKind` / `toKind`; no self-loops
+- Ferry `fromPoiId` / `toPoiId` must reference POI ids; distinct endpoints
+- Hydrology `acts` and ferry `acts` use the same act tokens as regions/POIs
 - When factions file is present, region `factionIds` must match faction entity ids
 
 Error codes: `WORLD-FORGE-MAP-*` (see `WorldForgeMapAsset`).

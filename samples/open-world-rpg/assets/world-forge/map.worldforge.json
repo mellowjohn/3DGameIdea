@@ -137,6 +137,44 @@
       "openQuestions": [
         "Exact placement relative to walls / battalions once set dressing exists"
       ]
+    },
+    {
+      "id": "old_noll_dock",
+      "kind": "gate",
+      "displayName": "Old Noll Dock",
+      "canonStatus": "draft",
+      "regionId": "tessera_overland",
+      "summary": "SQ-10 ferry embark point on the mainland shore (World Forge planning stub).",
+      "storyRef": "context/story/side-quest-catalog.md",
+      "sceneEntityId": "",
+      "prefabId": "",
+      "acts": ["act1"],
+      "tags": ["ferry", "sq10"],
+      "anchor": {
+        "x": 120.0,
+        "y": 0.0,
+        "z": 40.0
+      },
+      "openQuestions": []
+    },
+    {
+      "id": "islet_of_cinders",
+      "kind": "landmark",
+      "displayName": "Islet of Cinders",
+      "canonStatus": "draft",
+      "regionId": "tessera_overland",
+      "summary": "SQ-10 ferry destination islet (World Forge planning stub).",
+      "storyRef": "context/story/side-quest-catalog.md",
+      "sceneEntityId": "",
+      "prefabId": "",
+      "acts": ["act1"],
+      "tags": ["ferry", "sq10"],
+      "anchor": {
+        "x": 240.0,
+        "y": 0.0,
+        "z": 70.0
+      },
+      "openQuestions": []
     }
   ],
   "links": [

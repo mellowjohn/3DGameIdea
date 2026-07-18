@@ -59,6 +59,8 @@ struct WorldForgeEditorSession {
         Regions,
         Pois,
         Links,
+        Hydrology,
+        FerryRoutes,
         Quests,
         Dialogues,
         DialogueGraph,
@@ -144,6 +146,12 @@ struct WorldForgeEditorSession {
     std::array<char, 96> create_link_from_id{};
     std::array<char, 96> create_link_to_id{};
 
+    std::array<char, 96> create_hydrology_name{};
+    WorldForgeHydrologyKind create_hydrology_kind = WorldForgeHydrologyKind::Lake;
+    std::array<char, 96> create_ferry_route_name{};
+    std::array<char, 96> create_ferry_from_poi_id{};
+    std::array<char, 96> create_ferry_to_poi_id{};
+
     std::array<char, 96> create_dialogue_tree_name{};
     std::array<char, 96> create_dialogue_tree_parent_quest{};
 
@@ -179,6 +187,14 @@ struct WorldForgeEditorSession {
     bool map_filter_regions = true;
     bool map_filter_pois = true;
     bool map_filter_links = true;
+    bool map_filter_hydrology = true;
+    bool map_filter_ferry_routes = true;
+    /// Click-drag on canvas sets bounds for this hydrology id (empty = off).
+    std::string map_hydrology_bounds_id;
+    bool map_hydrology_bounds_dragging = false;
+    std::array<float, 2> map_hydrology_bounds_drag_start{{0.0f, 0.0f}};
+    /// Click on canvas appends polyline points to this ferry route (empty = off).
+    std::string map_ferry_draw_id;
     bool map_show_terrain = true;
     bool map_show_grid = true;
     bool map_show_contours = true;

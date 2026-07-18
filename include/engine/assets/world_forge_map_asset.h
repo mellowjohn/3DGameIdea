@@ -92,6 +92,8 @@ struct WorldForgeFerryRoute {
     std::string from_poi_id;
     std::string to_poi_id;
     std::vector<WorldForgeFerryRoutePoint> points;
+    /// Campaign act membership (`act0`..`act4`). Empty = campaign-wide. See DEC-0036.
+    std::vector<std::string> acts;
     std::string summary;
 };
 

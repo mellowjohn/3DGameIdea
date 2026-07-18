@@ -535,8 +535,9 @@ int main(int argc,char**argv){
         r.check(map_loaded.has_value(),"sample map.worldforge.json loads");
         r.check(map_loaded&&map_loaded.value().schema_version==1&&map_loaded.value().id=="tessera_map",
             "map sample schema and id");
-        r.check(map_loaded&&map_loaded.value().regions.size()==3&&map_loaded.value().pois.size()==2&&
-            map_loaded.value().links.size()==2,"map sample seed counts");
+        r.check(map_loaded&&map_loaded.value().regions.size()==3&&map_loaded.value().pois.size()==4&&
+            map_loaded.value().links.size()==2&&map_loaded.value().hydrology_regions.size()==2&&
+            map_loaded.value().ferry_routes.size()==1,"map sample seed counts");
         if(map_loaded){
             const auto round_trip=engine::WorldForgeMapAsset::parse(map_loaded.value().to_json());
             r.check(round_trip&&round_trip.value().to_json()==map_loaded.value().to_json(),
@@ -558,6 +559,15 @@ int main(int argc,char**argv){
         const auto self_link=engine::WorldForgeMapAsset::parse(
             R"({"schemaVersion":1,"id":"t","regions":[{"id":"r1","kind":"region","canonStatus":"draft"}],"pois":[],"links":[{"id":"l1","kind":"travel","fromKind":"region","fromId":"r1","toKind":"region","toId":"r1","canonStatus":"draft"}]})");
         r.check(!self_link&&self_link.error().code=="WORLD-FORGE-MAP-SELF","self-link rejected");
+        const auto bad_ferry_poi=engine::WorldForgeMapAsset::parse(
+            R"({"schemaVersion":1,"id":"t","regions":[{"id":"r1","kind":"region","canonStatus":"draft"}],"pois":[{"id":"p1","kind":"landmark","canonStatus":"draft","regionId":"r1"}],"links":[],"ferryRoutes":[{"id":"f1","fromPoiId":"p1","toPoiId":"missing","points":[]}]})");
+        r.check(!bad_ferry_poi&&bad_ferry_poi.error().code=="WORLD-FORGE-MAP-FERRY-POI",
+            "unknown ferry toPoiId rejected");
+        const auto hydro_round=engine::WorldForgeMapAsset::parse(
+            R"({"schemaVersion":1,"id":"t","regions":[],"pois":[],"links":[],"hydrologyRegions":[{"id":"pond","kind":"lake","minX":-5,"maxX":5,"minZ":-3,"maxZ":3,"acts":["act1"],"summary":"test"}]})");
+        r.check(hydro_round.has_value()&&hydro_round.value().hydrology_regions.size()==1&&
+            hydro_round.value().hydrology_regions[0].kind==engine::WorldForgeHydrologyKind::Lake,
+            "hydrologyRegions parse");
         {
             auto ok_map=engine::WorldForgeMapAsset::parse(
                 R"({"schemaVersion":1,"id":"t","regions":[{"id":"r1","kind":"region","canonStatus":"draft","factionIds":["missing_faction"]}],"pois":[],"links":[]})");

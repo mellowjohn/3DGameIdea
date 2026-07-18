@@ -284,6 +284,51 @@ Result<void> WorldForgeMapAsset::validate() const {
                 "Map link cannot connect an endpoint to itself: " + link.id, "Use two distinct endpoints."));
         }
     }
+    std::unordered_set<std::string> hydrology_ids;
+    hydrology_ids.reserve(hydrology_regions.size());
+    for (const auto& hydro : hydrology_regions) {
+        if (hydro.id.empty()) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-HYDRO-ID", ErrorCategory::Validation,
+                "Hydrology region id is required", "Set a unique non-empty id for each hydrology region."));
+        }
+        if (!hydrology_ids.insert(hydro.id).second) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-HYDRO-ID-DUP", ErrorCategory::Validation,
+                "Duplicate hydrology region id: " + hydro.id, "Ensure every hydrology id is unique."));
+        }
+        if (const auto acts_ok = validate_world_forge_acts(hydro.acts, "hydrology", hydro.id); !acts_ok) {
+            return Result<void>::failure(acts_ok.error());
+        }
+    }
+    std::unordered_set<std::string> ferry_ids;
+    ferry_ids.reserve(ferry_routes.size());
+    for (const auto& route : ferry_routes) {
+        if (route.id.empty()) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-FERRY-ID", ErrorCategory::Validation,
+                "Ferry route id is required", "Set a unique non-empty id for each ferry route."));
+        }
+        if (!ferry_ids.insert(route.id).second) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-FERRY-ID-DUP", ErrorCategory::Validation,
+                "Duplicate ferry route id: " + route.id, "Ensure every ferry route id is unique."));
+        }
+        if (const auto acts_ok = validate_world_forge_acts(route.acts, "ferry route", route.id); !acts_ok) {
+            return Result<void>::failure(acts_ok.error());
+        }
+        if (route.from_poi_id.empty() || poi_ids.find(route.from_poi_id) == poi_ids.end()) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-FERRY-POI", ErrorCategory::Validation,
+                "Ferry route '" + route.id + "' fromPoiId must reference a POI in this file",
+                "Set fromPoiId to an existing POI id."));
+        }
+        if (route.to_poi_id.empty() || poi_ids.find(route.to_poi_id) == poi_ids.end()) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-FERRY-POI", ErrorCategory::Validation,
+                "Ferry route '" + route.id + "' toPoiId must reference a POI in this file",
+                "Set toPoiId to an existing POI id."));
+        }
+        if (route.from_poi_id == route.to_poi_id) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-FERRY-SELF", ErrorCategory::Validation,
+                "Ferry route cannot use the same POI for both endpoints: " + route.id,
+                "Choose distinct fromPoiId and toPoiId."));
+        }
+    }
     return Result<void>::success();
 }
 
@@ -462,6 +507,7 @@ Result<WorldForgeMapAsset> WorldForgeMapAsset::parse(const std::string& text, co
                 route.from_poi_id = node.value("fromPoiId", std::string{});
                 route.to_poi_id = node.value("toPoiId", std::string{});
                 route.summary = node.value("summary", std::string{});
+                route.acts = read_string_array(node.value("acts", nlohmann::json::array()));
                 if (node.contains("points") && node.at("points").is_array()) {
                     for (const auto& point : node.at("points")) {
                         if (!point.is_object()) continue;
@@ -579,6 +625,7 @@ std::string WorldForgeMapAsset::to_json() const {
         node["fromPoiId"] = route.from_poi_id;
         node["toPoiId"] = route.to_poi_id;
         node["summary"] = route.summary;
+        node["acts"] = write_string_array(route.acts);
         auto points_json = nlohmann::ordered_json::array();
         for (const auto& point : route.points) points_json.push_back({{"x", point.x}, {"z", point.z}});
         node["points"] = std::move(points_json);

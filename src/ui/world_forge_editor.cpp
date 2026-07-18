@@ -598,6 +598,13 @@ std::vector<std::string> collect_region_ids(const WorldForgeMapAsset& asset) {
     return out;
 }
 
+std::vector<std::string> collect_poi_ids(const WorldForgeMapAsset& asset) {
+    std::vector<std::string> out;
+    out.reserve(asset.pois.size());
+    for (const auto& p : asset.pois) out.push_back(p.id);
+    return out;
+}
+
 std::vector<std::string> collect_map_endpoint_ids(const WorldForgeMapAsset& asset) {
     std::vector<std::string> out;
     out.reserve(asset.regions.size() + asset.pois.size());
@@ -851,6 +858,34 @@ WorldForgeMapLink* find_link(WorldForgeMapAsset& asset, const std::string& id) {
 const WorldForgeMapLink* find_link(const WorldForgeMapAsset& asset, const std::string& id) {
     for (const auto& link : asset.links) {
         if (link.id == id) return &link;
+    }
+    return nullptr;
+}
+
+WorldForgeHydrologyRegion* find_hydrology(WorldForgeMapAsset& asset, const std::string& id) {
+    for (auto& region : asset.hydrology_regions) {
+        if (region.id == id) return &region;
+    }
+    return nullptr;
+}
+
+const WorldForgeHydrologyRegion* find_hydrology(const WorldForgeMapAsset& asset, const std::string& id) {
+    for (const auto& region : asset.hydrology_regions) {
+        if (region.id == id) return &region;
+    }
+    return nullptr;
+}
+
+WorldForgeFerryRoute* find_ferry_route(WorldForgeMapAsset& asset, const std::string& id) {
+    for (auto& route : asset.ferry_routes) {
+        if (route.id == id) return &route;
+    }
+    return nullptr;
+}
+
+const WorldForgeFerryRoute* find_ferry_route(const WorldForgeMapAsset& asset, const std::string& id) {
+    for (const auto& route : asset.ferry_routes) {
+        if (route.id == id) return &route;
     }
     return nullptr;
 }
@@ -1163,6 +1198,79 @@ bool add_map_link(WorldForgeEditorSession& session, std::string id, WorldForgeMa
     session.list_kind = WorldForgeEditorSession::ListKind::Links;
     session.dirty = true;
     session.status = "Added map link " + id;
+    return true;
+}
+
+std::string unique_hydrology_id(const WorldForgeMapAsset& asset, const std::string& preferred) {
+    return unique_slugify_id(
+        preferred, [&](const std::string& candidate) { return find_hydrology(asset, candidate) != nullptr; },
+        "hydrology");
+}
+
+void normalize_hydrology_bounds(WorldForgeHydrologyRegion& region) {
+    if (region.min_x > region.max_x) std::swap(region.min_x, region.max_x);
+    if (region.min_z > region.max_z) std::swap(region.min_z, region.max_z);
+}
+
+bool add_hydrology(WorldForgeEditorSession& session, std::string id, WorldForgeHydrologyKind kind) {
+    id = sanitize_id_token(std::move(id));
+    if (!is_valid_id_token(id) || find_hydrology(session.map, id)) return false;
+    WorldForgeHydrologyRegion region;
+    region.id = id;
+    region.kind = kind;
+    session.map.hydrology_regions.push_back(std::move(region));
+    session.selected_id = id;
+    session.list_kind = WorldForgeEditorSession::ListKind::Hydrology;
+    session.dirty = true;
+    session.status = "Added hydrology region " + id;
+    return true;
+}
+
+bool remove_hydrology(WorldForgeEditorSession& session, const std::string& id) {
+    auto& regions = session.map.hydrology_regions;
+    const auto it = std::find_if(regions.begin(), regions.end(), [&](const auto& r) { return r.id == id; });
+    if (it == regions.end()) return false;
+    regions.erase(it);
+    if (session.selected_id == id) session.selected_id.clear();
+    if (session.map_hydrology_bounds_id == id) session.map_hydrology_bounds_id.clear();
+    session.dirty = true;
+    session.status = "Removed hydrology region " + id;
+    return true;
+}
+
+std::string unique_ferry_route_id(const WorldForgeMapAsset& asset, const std::string& preferred) {
+    return unique_slugify_id(
+        preferred, [&](const std::string& candidate) { return find_ferry_route(asset, candidate) != nullptr; },
+        "ferry");
+}
+
+bool add_ferry_route(WorldForgeEditorSession& session, std::string id, std::string from_poi_id,
+    std::string to_poi_id) {
+    id = sanitize_id_token(std::move(id));
+    if (!is_valid_id_token(id) || find_ferry_route(session.map, id)) return false;
+    if (from_poi_id.empty() || to_poi_id.empty() || from_poi_id == to_poi_id) return false;
+    if (!find_poi(session.map, from_poi_id) || !find_poi(session.map, to_poi_id)) return false;
+    WorldForgeFerryRoute route;
+    route.id = id;
+    route.from_poi_id = std::move(from_poi_id);
+    route.to_poi_id = std::move(to_poi_id);
+    session.map.ferry_routes.push_back(std::move(route));
+    session.selected_id = id;
+    session.list_kind = WorldForgeEditorSession::ListKind::FerryRoutes;
+    session.dirty = true;
+    session.status = "Added ferry route " + id;
+    return true;
+}
+
+bool remove_ferry_route(WorldForgeEditorSession& session, const std::string& id) {
+    auto& routes = session.map.ferry_routes;
+    const auto it = std::find_if(routes.begin(), routes.end(), [&](const auto& r) { return r.id == id; });
+    if (it == routes.end()) return false;
+    routes.erase(it);
+    if (session.selected_id == id) session.selected_id.clear();
+    if (session.map_ferry_draw_id == id) session.map_ferry_draw_id.clear();
+    session.dirty = true;
+    session.status = "Removed ferry route " + id;
     return true;
 }
 
@@ -1629,6 +1737,73 @@ void draw_add_map_link_controls(WorldForgeEditorSession& session) {
                 session.create_link_to_id.fill('\0');
             } else {
                 session.status = "Could not create map link (invalid endpoints or duplicate id).";
+            }
+        }
+        ImGui::Unindent();
+    }
+}
+
+void draw_add_hydrology_controls(WorldForgeEditorSession& session) {
+    if (ImGui::CollapsingHeader("Create hydrology region##WorldForgeAddHydrology", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        const auto name = trim(session.create_hydrology_name.data());
+        const auto preview_id = name.empty() ? std::string{} : unique_hydrology_id(session.map, name);
+        draw_create_name_row("Display name", session.create_hydrology_name.data(), session.create_hydrology_name.size(),
+            preview_id);
+        draw_enum_combo("Kind##CreateHydrologyKind", session.create_hydrology_kind,
+            {WorldForgeHydrologyKind::Lake, WorldForgeHydrologyKind::River, WorldForgeHydrologyKind::Sea});
+        ImGui::TextDisabled("Set bounds on the Map canvas after creating.");
+        ImGui::Spacing();
+        if (ImGui::Button("Create hydrology region##WorldForgeCreateHydrology")) {
+            if (name.empty()) {
+                session.status = "Enter a display name for the hydrology region.";
+            } else if (add_hydrology(session, preview_id, session.create_hydrology_kind)) {
+                session.create_hydrology_name.fill('\0');
+            } else {
+                session.status = "Could not create hydrology region (invalid or duplicate id).";
+            }
+        }
+        ImGui::Unindent();
+    }
+}
+
+void draw_add_ferry_route_controls(WorldForgeEditorSession& session) {
+    if (ImGui::CollapsingHeader("Create ferry route##WorldForgeAddFerry", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        const auto name = trim(session.create_ferry_route_name.data());
+        const auto preview_id = name.empty() ? std::string{} : unique_ferry_route_id(session.map, name);
+        draw_create_name_row("Display name", session.create_ferry_route_name.data(),
+            session.create_ferry_route_name.size(), preview_id);
+        {
+            std::string from_id = trim(session.create_ferry_from_poi_id.data());
+            if (draw_id_combo("From dock POI##CreateFerryFrom", from_id, collect_poi_ids(session.map), false,
+                    "(select)")) {
+                std::snprintf(session.create_ferry_from_poi_id.data(), session.create_ferry_from_poi_id.size(), "%s",
+                    from_id.c_str());
+            }
+        }
+        {
+            std::string to_id = trim(session.create_ferry_to_poi_id.data());
+            if (draw_id_combo("To dock POI##CreateFerryTo", to_id, collect_poi_ids(session.map), false, "(select)")) {
+                std::snprintf(session.create_ferry_to_poi_id.data(), session.create_ferry_to_poi_id.size(), "%s",
+                    to_id.c_str());
+            }
+        }
+        ImGui::TextDisabled("Add route points on the Map canvas after creating.");
+        ImGui::Spacing();
+        if (ImGui::Button("Create ferry route##WorldForgeCreateFerry")) {
+            const auto from_id = trim(session.create_ferry_from_poi_id.data());
+            const auto to_id = trim(session.create_ferry_to_poi_id.data());
+            if (name.empty()) {
+                session.status = "Enter a display name for the ferry route.";
+            } else if (from_id.empty() || to_id.empty()) {
+                session.status = "Select both dock POIs for the ferry route.";
+            } else if (add_ferry_route(session, preview_id, from_id, to_id)) {
+                session.create_ferry_route_name.fill('\0');
+                session.create_ferry_from_poi_id.fill('\0');
+                session.create_ferry_to_poi_id.fill('\0');
+            } else {
+                session.status = "Could not create ferry route (invalid POIs or duplicate id).";
             }
         }
         ImGui::Unindent();
@@ -2157,6 +2332,13 @@ void ensure_map_terrain_underlay(WorldForgeEditorSession& session, const WorldFo
     for (const auto& poi : session.map.pois) {
         if (poi.anchor) expand(poi.anchor->x, poi.anchor->z);
     }
+    for (const auto& hydro : session.map.hydrology_regions) {
+        expand(hydro.min_x, hydro.min_z);
+        expand(hydro.max_x, hydro.max_z);
+    }
+    for (const auto& route : session.map.ferry_routes) {
+        for (const auto& point : route.points) expand(point.x, point.z);
+    }
     const float pad = any ? 120.0f : 0.0f;
     min_x -= pad;
     max_x += pad;
@@ -2372,13 +2554,86 @@ void draw_map_grid(ImDrawList* draw, const WorldForgeGraphCamera& cam, const ImV
         const auto b = graph_world_to_screen_local(cam, max_x, z);
         draw->AddLine(ImVec2(canvas_pos.x + a[0], canvas_pos.y + a[1]),
             ImVec2(canvas_pos.x + b[0], canvas_pos.y + b[1]),
-            major ? IM_COL32(255, 255, 255, 28) : IM_COL32(255, 255, 255, 12), 1.0f);
+            major ?             IM_COL32(255, 255, 255, 28) : IM_COL32(255, 255, 255, 12), 1.0f);
     }
+}
+
+ImU32 hydrology_kind_fill_color(WorldForgeHydrologyKind kind, bool selected) {
+    if (selected) return IM_COL32(245, 185, 55, 90);
+    switch (kind) {
+    case WorldForgeHydrologyKind::Lake: return IM_COL32(40, 120, 210, 70);
+    case WorldForgeHydrologyKind::River: return IM_COL32(50, 170, 200, 70);
+    case WorldForgeHydrologyKind::Sea: return IM_COL32(20, 60, 140, 80);
+    }
+    return IM_COL32(40, 120, 210, 70);
+}
+
+ImU32 hydrology_kind_border_color(WorldForgeHydrologyKind kind, bool selected) {
+    if (selected) return IM_COL32(255, 210, 90, 255);
+    switch (kind) {
+    case WorldForgeHydrologyKind::Lake: return IM_COL32(80, 170, 240, 220);
+    case WorldForgeHydrologyKind::River: return IM_COL32(90, 210, 230, 220);
+    case WorldForgeHydrologyKind::Sea: return IM_COL32(70, 120, 210, 230);
+    }
+    return IM_COL32(80, 170, 240, 220);
+}
+
+bool point_in_hydrology_rect(float x, float z, const WorldForgeHydrologyRegion& region) {
+    return x >= region.min_x && x <= region.max_x && z >= region.min_z && z <= region.max_z;
+}
+
+WorldForgeGraphBounds compute_map_canvas_fit_bounds(const WorldForgeMapAsset& asset, bool include_regions, bool include_pois,
+    bool include_hydrology, bool include_ferry, const std::string& act_filter) {
+    WorldForgeGraphBounds bounds{};
+    auto expand = [&](float x, float z) {
+        if (!bounds.valid) {
+            bounds.min_x = bounds.max_x = x;
+            bounds.min_z = bounds.max_z = z;
+            bounds.valid = true;
+        } else {
+            bounds.min_x = (std::min)(bounds.min_x, x);
+            bounds.max_x = (std::max)(bounds.max_x, x);
+            bounds.min_z = (std::min)(bounds.min_z, z);
+            bounds.max_z = (std::max)(bounds.max_z, z);
+        }
+    };
+    if (include_regions) {
+        for (const auto& region : asset.regions) {
+            if (!region.anchor) continue;
+            if (!matches_world_forge_act_filter(region.acts, region.tags, act_filter)) continue;
+            expand(region.anchor->x, region.anchor->z);
+        }
+    }
+    if (include_pois) {
+        for (const auto& poi : asset.pois) {
+            if (!poi.anchor) continue;
+            if (!matches_world_forge_act_filter(poi.acts, poi.tags, act_filter)) continue;
+            expand(poi.anchor->x, poi.anchor->z);
+        }
+    }
+    if (include_hydrology) {
+        for (const auto& hydro : asset.hydrology_regions) {
+            if (!matches_world_forge_act_filter(hydro.acts, {}, act_filter)) continue;
+            expand(hydro.min_x, hydro.min_z);
+            expand(hydro.max_x, hydro.max_z);
+        }
+    }
+    if (include_ferry) {
+        for (const auto& route : asset.ferry_routes) {
+            if (!matches_world_forge_act_filter(route.acts, {}, act_filter)) continue;
+            for (const auto& point : route.points) expand(point.x, point.z);
+            if (const auto* from = find_poi(asset, route.from_poi_id); from && from->anchor)
+                expand(from->anchor->x, from->anchor->z);
+            if (const auto* to = find_poi(asset, route.to_poi_id); to && to->anchor)
+                expand(to->anchor->x, to->anchor->z);
+        }
+    }
+    return bounds;
 }
 
 void draw_map_legend(ImDrawList* draw, const ImVec2& canvas_pos, const ImVec2& canvas_size) {
     const float box_w = 150.0f;
-    const float box_h = 78.0f;
+    const float box_h = 114.0f;
     const ImVec2 origin{canvas_pos.x + 10.0f, canvas_pos.y + canvas_size.y - box_h - 10.0f};
     draw->AddRectFilled(origin, ImVec2(origin.x + box_w, origin.y + box_h), IM_COL32(12, 14, 18, 200), 4.0f);
     draw->AddRect(origin, ImVec2(origin.x + box_w, origin.y + box_h), IM_COL32(80, 85, 95, 220), 4.0f);
@@ -2393,6 +2648,14 @@ void draw_map_legend(ImDrawList* draw, const ImVec2& canvas_pos, const ImVec2& c
     draw->AddLine(ImVec2(origin.x + 8.0f, y + 6.0f), ImVec2(origin.x + 24.0f, y + 6.0f), IM_COL32(100, 180, 220, 255),
         2.0f);
     draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), "Link");
+    y += 18.0f;
+    draw->AddRectFilled(ImVec2(origin.x + 8.0f, y), ImVec2(origin.x + 24.0f, y + 12.0f), IM_COL32(40, 120, 210, 160),
+        2.0f);
+    draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), "Hydrology");
+    y += 18.0f;
+    draw->AddLine(ImVec2(origin.x + 8.0f, y + 6.0f), ImVec2(origin.x + 24.0f, y + 6.0f), IM_COL32(240, 120, 60, 255),
+        2.0f);
+    draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), "Ferry");
     y += 18.0f;
     draw->AddText(ImVec2(origin.x + 8.0f, y - 1.0f), IM_COL32(180, 185, 195, 220), "orange=+Z  blue=+X");
 }
@@ -2429,6 +2692,53 @@ void set_map_marker_world_xz(WorldForgeEditorSession& session, const std::string
 }
 
 void draw_map_canvas_detail(WorldForgeEditorSession& session) {
+    if (auto* hydro = find_hydrology(session.map, session.selected_id)) {
+        ImGui::TextDisabled("Hydrology");
+        ImGui::Text("id: %s", hydro->id.c_str());
+        if (draw_enum_combo("Kind", hydro->kind,
+                {WorldForgeHydrologyKind::Lake, WorldForgeHydrologyKind::River, WorldForgeHydrologyKind::Sea}))
+            session.dirty = true;
+        float bounds[4] = {hydro->min_x, hydro->max_x, hydro->min_z, hydro->max_z};
+        if (ImGui::InputFloat4("bounds minX maxX minZ maxZ", bounds, "%.1f")) {
+            hydro->min_x = bounds[0];
+            hydro->max_x = bounds[1];
+            hydro->min_z = bounds[2];
+            hydro->max_z = bounds[3];
+            normalize_hydrology_bounds(*hydro);
+            session.dirty = true;
+            session.map_underlay_ready = false;
+        }
+        if (draw_acts_field(hydro->acts)) session.dirty = true;
+        if (draw_text_area("Summary", hydro->summary, 72.0f)) session.dirty = true;
+        const bool bounds_active = session.map_hydrology_bounds_id == hydro->id;
+        if (ImGui::Button(bounds_active ? "Stop draw bounds##MapHydroBounds" : "Draw bounds on map##MapHydroBounds")) {
+            session.map_hydrology_bounds_id = bounds_active ? std::string{} : hydro->id;
+            session.map_ferry_draw_id.clear();
+            session.status = bounds_active ? "Hydrology bounds draw off" : "Click-drag on map to set hydrology bounds";
+        }
+        return;
+    }
+    if (auto* route = find_ferry_route(session.map, session.selected_id)) {
+        ImGui::TextDisabled("Ferry route");
+        ImGui::Text("id: %s", route->id.c_str());
+        if (draw_id_combo("From POI", route->from_poi_id, collect_poi_ids(session.map), false)) session.dirty = true;
+        if (draw_id_combo("To POI", route->to_poi_id, collect_poi_ids(session.map), false)) session.dirty = true;
+        if (draw_acts_field(route->acts)) session.dirty = true;
+        if (draw_text_area("Summary", route->summary, 72.0f)) session.dirty = true;
+        ImGui::Text("Points: %zu", route->points.size());
+        if (ImGui::Button("Clear points##MapFerryClear")) {
+            route->points.clear();
+            session.dirty = true;
+        }
+        ImGui::SameLine();
+        const bool draw_active = session.map_ferry_draw_id == route->id;
+        if (ImGui::Button(draw_active ? "Stop add points##MapFerryDraw" : "Add points on map##MapFerryDraw")) {
+            session.map_ferry_draw_id = draw_active ? std::string{} : route->id;
+            session.map_hydrology_bounds_id.clear();
+            session.status = draw_active ? "Ferry point draw off" : "Click map to append ferry route points";
+        }
+        return;
+    }
     if (auto* region = find_region(session.map, session.selected_id)) {
         ImGui::TextDisabled("Region");
         ImGui::Text("id: %s", region->id.c_str());
@@ -2486,6 +2796,10 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
     ImGui::SameLine();
     ImGui::Checkbox("Links##MapCanvasFilterL", &session.map_filter_links);
     ImGui::SameLine();
+    ImGui::Checkbox("Hydrology##MapCanvasFilterH", &session.map_filter_hydrology);
+    ImGui::SameLine();
+    ImGui::Checkbox("Ferry##MapCanvasFilterF", &session.map_filter_ferry_routes);
+    ImGui::SameLine();
     ImGui::Checkbox("Terrain##MapCanvasTerrain", &session.map_show_terrain);
     ImGui::SameLine();
     ImGui::Checkbox("Contours##MapCanvasContours", &session.map_show_contours);
@@ -2522,9 +2836,14 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
     keys.reserve(positions.size());
     for (const auto& entry : positions) keys.push_back(entry.first);
     if (session.map_camera_fit_requested) {
-        auto bounds = compute_graph_bounds(positions, keys.empty() ? nullptr : &keys);
+        auto bounds = compute_map_canvas_fit_bounds(session.map, session.map_filter_regions, session.map_filter_pois,
+            session.map_filter_hydrology, session.map_filter_ferry_routes, session.act_filter);
         if (!bounds.valid) {
-            bounds = {-50.0f, 50.0f, -50.0f, 50.0f, true};
+            bounds.min_x = -50.0f;
+            bounds.max_x = 50.0f;
+            bounds.min_z = -50.0f;
+            bounds.max_z = 50.0f;
+            bounds.valid = true;
         }
         fit_graph_camera_to_bounds(cam, canvas_size.x, canvas_size.y, bounds, 48.0f);
         session.map_camera_fit_requested = false;
@@ -2571,6 +2890,70 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
     if (session.map_show_grid) draw_map_grid(draw, cam, canvas_pos, canvas_size, session.map_show_terrain);
 
     const float marker_radius = (std::clamp)(12.0f + 4.0f * cam.zoom, 10.0f, 20.0f);
+    std::string hovered_hydrology;
+    std::string hovered_ferry;
+    float best_ferry_dist = 10.0f;
+    if (session.map_filter_hydrology) {
+        for (const auto& hydro : session.map.hydrology_regions) {
+            if (!entity_matches_act_lens(session, hydro.acts, {})) continue;
+            const bool selected = session.selected_id == hydro.id;
+            const ImVec2 a = to_screen({hydro.min_x, hydro.min_z});
+            const ImVec2 b = to_screen({hydro.max_x, hydro.max_z});
+            const ImVec2 tl{(std::min)(a.x, b.x), (std::min)(a.y, b.y)};
+            const ImVec2 br{(std::max)(a.x, b.x), (std::max)(a.y, b.y)};
+            draw->AddRectFilled(tl, br, hydrology_kind_fill_color(hydro.kind, selected), 4.0f);
+            draw->AddRect(tl, br, hydrology_kind_border_color(hydro.kind, selected), 4.0f, 0,
+                selected ? 2.5f : 1.5f);
+            const char* kind_label = to_string(hydro.kind);
+            const ImVec2 ts = ImGui::CalcTextSize(kind_label);
+            const ImVec2 mid{(tl.x + br.x) * 0.5f, (tl.y + br.y) * 0.5f};
+            draw->AddRectFilled(ImVec2(mid.x - ts.x * 0.5f - 4.0f, mid.y - ts.y - 2.0f),
+                ImVec2(mid.x + ts.x * 0.5f + 4.0f, mid.y + 2.0f), IM_COL32(10, 12, 16, 180), 3.0f);
+            draw->AddText(ImVec2(mid.x - ts.x * 0.5f, mid.y - ts.y), IM_COL32(210, 235, 250, 255), kind_label);
+            if (hovered && !session.map_camera_panning && mouse.x >= tl.x && mouse.x <= br.x && mouse.y >= tl.y &&
+                mouse.y <= br.y)
+                hovered_hydrology = hydro.id;
+        }
+    }
+    if (session.map_filter_ferry_routes) {
+        for (const auto& route : session.map.ferry_routes) {
+            if (!entity_matches_act_lens(session, route.acts, {})) continue;
+            const bool selected = session.selected_id == route.id;
+            const ImU32 color = selected ? IM_COL32(255, 210, 90, 255) : IM_COL32(240, 120, 60, 255);
+            ImVec2 prev{};
+            bool has_prev = false;
+            for (const auto& point : route.points) {
+                const ImVec2 cur = to_screen({point.x, point.z});
+                if (has_prev) {
+                    draw->AddLine(prev, cur, IM_COL32(0, 0, 0, 120), selected ? 4.0f : 3.0f);
+                    draw->AddLine(prev, cur, color, selected ? 2.5f : 2.0f);
+                    if (hovered && !session.map_camera_panning) {
+                        const float dist =
+                            graph_point_segment_distance(mouse.x, mouse.y, prev.x, prev.y, cur.x, cur.y);
+                        if (dist < best_ferry_dist) {
+                            best_ferry_dist = dist;
+                            hovered_ferry = route.id;
+                        }
+                    }
+                }
+                draw->AddCircleFilled(cur, selected ? 4.5f : 3.5f, color);
+                prev = cur;
+                has_prev = true;
+            }
+            const auto* from = find_poi(session.map, route.from_poi_id);
+            const auto* to = find_poi(session.map, route.to_poi_id);
+            if (from && from->anchor && !route.points.empty()) {
+                const ImVec2 dock = to_screen({from->anchor->x, from->anchor->z});
+                const ImVec2 first = to_screen({route.points.front().x, route.points.front().z});
+                draw->AddLine(dock, first, IM_COL32(240, 120, 60, 120), 1.5f);
+            }
+            if (to && to->anchor && !route.points.empty()) {
+                const ImVec2 dock = to_screen({to->anchor->x, to->anchor->z});
+                const ImVec2 last = to_screen({route.points.back().x, route.points.back().z});
+                draw->AddLine(last, dock, IM_COL32(240, 120, 60, 120), 1.5f);
+            }
+        }
+    }
     std::string hovered_link;
     float best_link_dist = 10.0f;
     if (session.map_filter_links) {
@@ -2651,7 +3034,8 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
 
     draw_map_legend(draw, canvas_pos, canvas_size);
 
-    const auto bounds = compute_graph_bounds(positions, keys.empty() ? nullptr : &keys);
+    const auto bounds = compute_map_canvas_fit_bounds(session.map, session.map_filter_regions, session.map_filter_pois,
+        session.map_filter_hydrology, session.map_filter_ferry_routes, session.act_filter);
     const bool minimap_clicked = draw_world_forge_graph_minimap(draw, canvas_pos.x, canvas_pos.y, canvas_size.x,
         canvas_size.y, cam, bounds, positions, mouse.x, mouse.y,
         hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt);
@@ -2659,7 +3043,39 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
 
     if (!minimap_clicked && !session.map_camera_panning && active &&
         ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt) {
-        if (!hovered_marker.empty()) {
+        if (!session.map_ferry_draw_id.empty()) {
+            if (auto* route = find_ferry_route(session.map, session.map_ferry_draw_id)) {
+                const auto world = to_world(local);
+                route->points.push_back({world[0], world[1]});
+                session.selected_id = route->id;
+                session.dirty = true;
+                session.status = "Added ferry route point";
+            }
+        } else if (!session.map_hydrology_bounds_id.empty()) {
+            if (auto* hydro = find_hydrology(session.map, session.map_hydrology_bounds_id)) {
+                const auto world = to_world(local);
+                session.map_hydrology_bounds_dragging = true;
+                session.map_hydrology_bounds_drag_start = {world[0], world[1]};
+                hydro->min_x = world[0];
+                hydro->max_x = world[0];
+                hydro->min_z = world[1];
+                hydro->max_z = world[1];
+                session.selected_id = hydro->id;
+                session.dirty = true;
+                session.map_underlay_ready = false;
+                session.status = "Drawing hydrology bounds";
+            }
+        } else if (!hovered_hydrology.empty()) {
+            session.map_drag_key.clear();
+            session.selected_id = hovered_hydrology;
+            session.list_kind = ListKind::Hydrology;
+            session.map_place_id.clear();
+        } else if (!hovered_ferry.empty()) {
+            session.map_drag_key.clear();
+            session.selected_id = hovered_ferry;
+            session.list_kind = ListKind::FerryRoutes;
+            session.map_place_id.clear();
+        } else if (!hovered_marker.empty()) {
             session.map_drag_key = hovered_marker;
             session.selected_id = hovered_marker.rfind("poi:", 0) == 0 ? hovered_marker.substr(4) :
                                                                         hovered_marker.substr(7);
@@ -2698,9 +3114,25 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
         const auto world = to_world(local);
         set_map_marker_world_xz(session, session.map_drag_key, world[0], world[1], ctx);
     }
-    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) session.map_drag_key.clear();
+    if (session.map_hydrology_bounds_dragging && ImGui::IsMouseDragging(ImGuiMouseButton_Left) &&
+        !ImGui::GetIO().KeyAlt) {
+        if (auto* hydro = find_hydrology(session.map, session.map_hydrology_bounds_id)) {
+            const auto world = to_world(local);
+            hydro->min_x = (std::min)(session.map_hydrology_bounds_drag_start[0], world[0]);
+            hydro->max_x = (std::max)(session.map_hydrology_bounds_drag_start[0], world[0]);
+            hydro->min_z = (std::min)(session.map_hydrology_bounds_drag_start[1], world[1]);
+            hydro->max_z = (std::max)(session.map_hydrology_bounds_drag_start[1], world[1]);
+            session.dirty = true;
+            session.map_underlay_ready = false;
+        }
+    }
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        session.map_drag_key.clear();
+        session.map_hydrology_bounds_dragging = false;
+    }
 
-    ImGui::TextDisabled("zoom %.2f · wheel zoom · Alt/middle pan · click place/move anchors", cam.zoom);
+    ImGui::TextDisabled(
+        "zoom %.2f · wheel zoom · Alt/middle pan · draw hydrology/ferry from side panel when active", cam.zoom);
     ImGui::EndChild();
 }
 
@@ -4450,7 +4882,8 @@ void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDra
     }
 
     if (session.list_kind != ListKind::Regions && session.list_kind != ListKind::Pois &&
-        session.list_kind != ListKind::Links)
+        session.list_kind != ListKind::Links && session.list_kind != ListKind::Hydrology &&
+        session.list_kind != ListKind::FerryRoutes)
         session.list_kind = ListKind::Regions;
 
     if (ImGui::RadioButton("Regions##WorldForgeMapKind", session.list_kind == ListKind::Regions)) {
@@ -4467,10 +4900,22 @@ void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDra
         session.list_kind = ListKind::Links;
         session.selected_id.clear();
     }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Hydrology##WorldForgeMapKind", session.list_kind == ListKind::Hydrology)) {
+        session.list_kind = ListKind::Hydrology;
+        session.selected_id.clear();
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Ferry##WorldForgeMapKind", session.list_kind == ListKind::FerryRoutes)) {
+        session.list_kind = ListKind::FerryRoutes;
+        session.selected_id.clear();
+    }
     ImGui::Separator();
     if (session.list_kind == ListKind::Regions) draw_add_region_controls(session);
     else if (session.list_kind == ListKind::Pois) draw_add_poi_controls(session);
-    else draw_add_map_link_controls(session);
+    else if (session.list_kind == ListKind::Links) draw_add_map_link_controls(session);
+    else if (session.list_kind == ListKind::Hydrology) draw_add_hydrology_controls(session);
+    else draw_add_ferry_route_controls(session);
     ImGui::Separator();
 
     const ImVec2 avail = ImGui::GetContentRegionAvail();
@@ -4570,7 +5015,7 @@ void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDra
             if (draw_open_questions_field(poi->open_questions)) session.dirty = true;
         }
         ImGui::EndChild();
-    } else {
+    } else if (session.list_kind == ListKind::Links) {
         ImGui::BeginChild("WorldForgeLinksList", ImVec2(list_w, avail.y), true);
         if (session.map.links.empty()) ImGui::TextDisabled("(no links — use Add link above)");
         for (const auto& link : session.map.links) {
@@ -4610,6 +5055,121 @@ void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDra
             if (draw_text_area("Summary", link->summary, 80.0f)) session.dirty = true;
             if (draw_input_text("Story reference", link->story_ref)) session.dirty = true;
             if (draw_open_questions_field(link->open_questions)) session.dirty = true;
+        }
+        ImGui::EndChild();
+    } else if (session.list_kind == ListKind::Hydrology) {
+        ImGui::BeginChild("WorldForgeHydrologyList", ImVec2(list_w, avail.y), true);
+        if (session.map.hydrology_regions.empty())
+            ImGui::TextDisabled("(no hydrology regions — use Add hydrology above)");
+        for (const auto& hydro : session.map.hydrology_regions) {
+            if (!entity_matches_act_lens(session, hydro.acts, {})) continue;
+            std::string label = hydro.id + "  [" + to_string(hydro.kind) + "]";
+            const bool selected = session.selected_id == hydro.id;
+            if (ImGui::Selectable(label.c_str(), selected)) session.selected_id = hydro.id;
+        }
+        ImGui::EndChild();
+
+        ImGui::SameLine();
+        ImGui::BeginChild("WorldForgeHydrologyDetail", ImVec2(0.0f, avail.y), true);
+        auto* hydro = find_hydrology(session.map, session.selected_id);
+        if (!hydro) {
+            ImGui::TextDisabled("Select a hydrology region, or create one above");
+        } else {
+            ImGui::Text("id: %s", hydro->id.c_str());
+            if (ImGui::Button("Delete hydrology##WorldForgeDeleteHydrology")) {
+                const auto id = hydro->id;
+                if (remove_hydrology(session, id)) {
+                    ImGui::EndChild();
+                    return;
+                }
+                session.status = "Could not remove hydrology region";
+            }
+            ImGui::Separator();
+            if (draw_enum_combo("Kind", hydro->kind,
+                    {WorldForgeHydrologyKind::Lake, WorldForgeHydrologyKind::River, WorldForgeHydrologyKind::Sea}))
+                session.dirty = true;
+            float bounds[4] = {hydro->min_x, hydro->max_x, hydro->min_z, hydro->max_z};
+            if (ImGui::InputFloat4("bounds minX maxX minZ maxZ", bounds, "%.1f")) {
+                hydro->min_x = bounds[0];
+                hydro->max_x = bounds[1];
+                hydro->min_z = bounds[2];
+                hydro->max_z = bounds[3];
+                normalize_hydrology_bounds(*hydro);
+                session.dirty = true;
+                session.map_underlay_ready = false;
+            }
+            if (draw_acts_field(hydro->acts)) session.dirty = true;
+            if (draw_text_area("Summary", hydro->summary, 96.0f)) session.dirty = true;
+            const bool bounds_active = session.map_hydrology_bounds_id == hydro->id;
+            if (ImGui::Button(bounds_active ? "Stop draw bounds##ListHydroBounds" : "Draw bounds on map##ListHydroBounds")) {
+                session.map_hydrology_bounds_id = bounds_active ? std::string{} : hydro->id;
+                session.map_ferry_draw_id.clear();
+                if (session.map_canvas_mode) {
+                    session.status =
+                        bounds_active ? "Hydrology bounds draw off" : "Switch to Canvas and click-drag bounds";
+                } else {
+                    session.map_canvas_mode = true;
+                    session.list_kind = ListKind::MapCanvas;
+                    session.map_camera_fit_requested = true;
+                    session.status = "Canvas mode — click-drag to set hydrology bounds";
+                }
+            }
+        }
+        ImGui::EndChild();
+    } else {
+        ImGui::BeginChild("WorldForgeFerryList", ImVec2(list_w, avail.y), true);
+        if (session.map.ferry_routes.empty()) ImGui::TextDisabled("(no ferry routes — use Add ferry above)");
+        for (const auto& route : session.map.ferry_routes) {
+            if (!entity_matches_act_lens(session, route.acts, {})) continue;
+            std::string label = route.id + "  " + route.from_poi_id + " -> " + route.to_poi_id;
+            const bool selected = session.selected_id == route.id;
+            if (ImGui::Selectable(label.c_str(), selected)) session.selected_id = route.id;
+        }
+        ImGui::EndChild();
+
+        ImGui::SameLine();
+        ImGui::BeginChild("WorldForgeFerryDetail", ImVec2(0.0f, avail.y), true);
+        auto* route = find_ferry_route(session.map, session.selected_id);
+        if (!route) {
+            ImGui::TextDisabled("Select a ferry route, or create one above");
+        } else {
+            ImGui::Text("id: %s", route->id.c_str());
+            if (ImGui::Button("Delete ferry route##WorldForgeDeleteFerry")) {
+                const auto id = route->id;
+                if (remove_ferry_route(session, id)) {
+                    ImGui::EndChild();
+                    return;
+                }
+                session.status = "Could not remove ferry route";
+            }
+            ImGui::Separator();
+            if (draw_id_combo("From POI", route->from_poi_id, collect_poi_ids(session.map), false)) session.dirty = true;
+            if (draw_id_combo("To POI", route->to_poi_id, collect_poi_ids(session.map), false)) session.dirty = true;
+            if (draw_acts_field(route->acts)) session.dirty = true;
+            if (draw_text_area("Summary", route->summary, 96.0f)) session.dirty = true;
+            ImGui::Text("Points: %zu", route->points.size());
+            if (ImGui::Button("Clear points##ListFerryClear")) {
+                route->points.clear();
+                session.dirty = true;
+            }
+            ImGui::SameLine();
+            const bool draw_active = session.map_ferry_draw_id == route->id;
+            if (ImGui::Button(draw_active ? "Stop add points##ListFerryDraw" : "Add points on map##ListFerryDraw")) {
+                session.map_ferry_draw_id = draw_active ? std::string{} : route->id;
+                session.map_hydrology_bounds_id.clear();
+                if (session.map_canvas_mode) {
+                    session.status = draw_active ? "Ferry point draw off" : "Canvas mode — click to append points";
+                } else {
+                    session.map_canvas_mode = true;
+                    session.list_kind = ListKind::MapCanvas;
+                    session.map_camera_fit_requested = true;
+                    session.status = "Canvas mode — click to append ferry route points";
+                }
+            }
+            ImGui::Separator();
+            for (std::size_t i = 0; i < route->points.size(); ++i) {
+                ImGui::Text("point %zu: (%.1f, %.1f)", i, route->points[i].x, route->points[i].z);
+            }
         }
         ImGui::EndChild();
     }
@@ -5771,9 +6331,13 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
         case ListKind::Regions: selection_found = find_region(map, selected_id) != nullptr; break;
         case ListKind::Pois: selection_found = find_poi(map, selected_id) != nullptr; break;
         case ListKind::Links: selection_found = find_link(map, selected_id) != nullptr; break;
+        case ListKind::Hydrology: selection_found = find_hydrology(map, selected_id) != nullptr; break;
+        case ListKind::FerryRoutes: selection_found = find_ferry_route(map, selected_id) != nullptr; break;
         case ListKind::MapCanvas:
             selection_found = find_region(map, selected_id) != nullptr || find_poi(map, selected_id) != nullptr ||
-                              find_link(map, selected_id) != nullptr;
+                              find_link(map, selected_id) != nullptr ||
+                              find_hydrology(map, selected_id) != nullptr ||
+                              find_ferry_route(map, selected_id) != nullptr;
             break;
         case ListKind::Quests: selection_found = find_quest(quests, selected_id) != nullptr; break;
         case ListKind::Dialogues:
