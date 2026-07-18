@@ -110,6 +110,22 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0042 | Post-process stack with ambient occlusion | done | P2 | SSAO v1 shipped (owner approved); [`tickets/TICKET-0042.md`](tickets/TICKET-0042.md) |
 | TICKET-0191 | glTF mesh UV + albedo texture import/render | needs-approval | P0 | Owner override; sample `baseColorTexture` for player mesh; [`tickets/TICKET-0191.md`](tickets/TICKET-0191.md) |
 
+## EPIC-0015: Water and hydrology
+
+- Status: proposed
+- Goal: Gameplay water (swim, deep-water danger, scripted floating vessels), authored surfaces with low-poly reflective/refractive wave motion, Sculpt placement, World Forge map hydrology and ferry routes.
+- Roadmap home: extends terrain + materials; enables SQ-10 ferry/dive beats and open-world hard barriers.
+- Priority guidance: **P2** — after blended material pass (EPIC-0005) and alongside character controller stamina hooks. Owner decision: [DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring).
+- Feature doc: [`../features/water-hydrology.md`](../features/water-hydrology.md)
+
+| ID | Title | Status | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| TICKET-0196 | Blended water material and render pass | proposed | P2 | Prerequisite: reflection/refraction, low-poly wave displacement; [`water-hydrology.md`](../features/water-hydrology.md) |
+| TICKET-0197 | Water persistence + Sculpt water tool + MCP | proposed | P2 | World-wide sea level, bounded regions, undo/save; mirror DEC-0018 patterns |
+| TICKET-0198 | Swim mode + deep-water fatigue and damage | proposed | P2 | Character controller; nav unwalkable underwater |
+| TICKET-0199 | World Forge hydrology + ferry route map authoring | proposed | P2 | Regions/polylines on Map canvas; links to dock POIs |
+| TICKET-0200 | Scripted floating vessels + shore materials | proposed | P3 | Hull snap to surface; mud/sand shore band; SQ-10 ferry slice |
+
 ## EPIC-0006: RPG systems — quests and dialogue
 
 - Status: proposed

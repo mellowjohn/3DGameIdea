@@ -35,7 +35,7 @@ Shipped M4 grid ([navigation-grid.md](navigation-grid.md)):
 | AI / companion assist / “is this walkable?” | Navigation grid | Prefer grid queries over ad-hoc ray hacks |
 | Roads | Content + visual language | May later bias AI cost or FT discovery; not required for player move |
 | Soft / story gates | World Forge + quest runtime | Logic gates; do not carve the heightfield |
-| Hard barriers | Terrain slope, collision volumes, water/cliffs | Physics / authored colliders |
+| Hard barriers | Terrain slope, collision volumes, water/cliffs | Physics / authored colliders; **deep water** via swim fatigue + damage ([DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring)) |
 
 Grid limitations that design must accept until TICKET-0109: no character radius carving, no dynamic obstacles, queries fail for unloaded cells.
 
@@ -52,7 +52,7 @@ Grid limitations that design must accept until TICKET-0109: no character radius 
 
 | Kind | Player feels | Typical tools | Example |
 | --- | --- | --- | --- |
-| Hard barrier | Cannot pass without a different route or ability | Steep slope (> walkability), cliffs, walls, locked collision, deep water | Mountain wall around a high pass |
+| Hard barrier | Cannot pass without a different route or ability | Steep slope (> walkability), cliffs, walls, locked collision, **deep water** (swim fatigue → damage) | Mountain wall around a high pass; ocean/deep lake without shore escape |
 | Soft gate (checkpoint) | World exists beyond; systems refuse or warn | Dialogue, guards, quest flag, border crossing | Act boundary roadblock |
 | Soft gate (hostile frontier) | You can walk in; survival is the gate | Extreme enemies, disease/affliction, item/key requirements | Chaos hinterland |
 | Story gate | Narrative-critical lock (often one-way or beat-tied) | Quest objective + link `kind: story_gate` | Act 0 tutorial corridor exit |
@@ -75,7 +75,24 @@ Grid limitations that design must accept until TICKET-0109: no character radius 
 6. **Blocked states:** Deny while in combat, falling, rare instances, or story-flag locked.
 7. **Presentation:** Short fade / stream destination cells OK; avoid chapter-load UX.
 
-**Mounts (near-term):** horses only if any; account for player + up to three companions later. Other vehicles deferred.
+**Mounts (near-term):** horses only if any; account for player + up to three companions later. Boats/other vehicles deferred as **travel modes**, but **scripted ferries/ships that float on water** are in scope ([DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring)).
+
+## Water and swim ([DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring))
+
+Gameplay water — not decorative-only. See [`water-hydrology.md`](water-hydrology.md).
+
+| Rule | Detail |
+| --- | --- |
+| Sea level | One world-wide constant; terrain sculpt sets land height relative to it |
+| Authoring | Sculpt places water surfaces; World Forge Map plans rivers/lakes/seas and ferry routes |
+| Swim | Character controller swim mode when in water |
+| Shallow | Wading or low-cost swim (depth band TBD) |
+| Deep | Sustained swim drains fatigue; exhaustion causes damage over time — hard barrier for ocean/deep lakes |
+| Vessels | Scripted motion; hulls float on water surface (SQ-10 ferry reference) |
+| Open sea | Bounded authored regions; map-edge fog-of-war beyond |
+| Dry basins | No auto-fill unless terrain + placement justify it |
+| Nav grid | Underwater / deep samples unwalkable for AI assist |
+| Foliage | Suppressed underwater |
 
 ## Player camp ([DEC-0033](../decisions/index.md#dec-0033-anywhere-player-camp-as-editable-instance-dao-style))
 

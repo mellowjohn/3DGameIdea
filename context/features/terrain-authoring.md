@@ -28,3 +28,4 @@ Editor and runtime support for saved terrain height edits on top of procedural l
 ## Deferred
 
 - Surface region painting via material-index brushes, flatten/smooth brushes, imported heightmaps, discrete bush/stone/tree placement brushes, and Recast carving from edited meshes.
+- **Water sculpt tool** and persisted water surfaces — see [water-hydrology.md](water-hydrology.md) ([DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring)).

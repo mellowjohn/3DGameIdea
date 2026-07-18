@@ -453,3 +453,24 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Consequences: EPIC-0014 (TICKET-0192–0195); feature doc [`../features/authoring-git-sync.md`](../features/authoring-git-sync.md). Requires `git` on PATH and a project that is a git working tree. Real-time collab and custom cloud backends remain out of scope.
 - Supersedes: none
 
+### DEC-0038: Water, swim, and hydrology authoring
+
+- Status: accepted
+- Date: 2026-07-18
+- Context: Open-world design references docks, ferries, and deep-water barriers, but the engine had no water surfaces, swim mode, or hydrology authoring. Owner clarified product intent for gameplay water (swim, scripted vessels) and how Sculpt vs World Forge split responsibility.
+- Decision:
+  1. **Gameplay scope:** Water is gameplay, not decorative-only. Ship a **swim mode** on the character controller. **Ships and ferries** may use scripted motion (Lua/handlers) but must **float on water surfaces** and feel believable in presentation.
+  2. **Sea level:** One **world-wide sea level** constant for v1. Land/ocean relative height is adjusted with existing terrain sculpt tools (raise/lower/flatten). **Dry basins** remain dry unless terrain and authored water placement make fill sensible — no automatic flood-fill of every depression.
+  3. **Authoring split:** **Sculpt** owns water **placement and sculpting** (surfaces, fill levels, shore carving) with undo/save/MCP like terrain edits. **World Forge Map** owns **hydrology layout** at planning scale (rivers, lakes, seas, coastlines) and **ferry route** metadata linked to POIs — not mesh placement ([DEC-0019](../decisions/index.md#dec-0019-world-forge-editor-home-and-story-canon-split)).
+  4. **Procedural generation:** **Fully authored** for v1 — no Perlin/noise-driven auto lakes or river networks. Optional procedural helpers may come later; they are not the primary path.
+  5. **Water motion:** Water surfaces use a **scripted wave-motion simulation** (deterministic, tunable) so placed water reads natural in motion. Exact technique (e.g. summed sines, Gerstner) is an engine implementation choice.
+  6. **Deep vs shallow:** **Deep water** is a hard barrier implemented through **swim fatigue drain** and **damage over time** when the player must sustain swimming (deep lakes, ocean). Shallow wading may remain walkable or low-cost swim — exact depth bands are implementation tuning.
+  7. **Rendering:** Water uses **reflection and refraction** while matching **smooth low-poly** art direction ([DEC-0006](../decisions/index.md#dec-0006-smooth-low-poly-art-direction)). Requires a blended water material/render pass (prerequisite to opaque-only terrain today).
+  8. **Shores:** Where terrain meets water, transition to **mud or sand** shore materials when sensible; add **shore wave/foam** treatment when feasible.
+  9. **Open sea:** **Bounded sea regions** authored on the map — not an infinite ocean mesh for the whole 4×4 km slice. Map **edge fog-of-war** covers beyond authored bounds for now.
+  10. **Foliage:** **Suppress** ground-cover foliage underwater.
+  11. **Future liquids:** Lava and magic pools are **out of v1 scope** (same systems may extend later via materials + `physics.surface`).
+- Rationale: Matches seamless-world navigation (deep water as real danger), SQ-10 ferry/dive beats, DEC-0006 stylized look, and existing Sculpt/MCP + World Forge map split without duplicating Scene placement.
+- Consequences: EPIC-0015; feature doc [`../features/water-hydrology.md`](../features/water-hydrology.md). Update [`open-world-navigation.md`](../features/open-world-navigation.md), [`terrain-authoring.md`](../features/terrain-authoring.md), [`character-controller.md`](../features/character-controller.md), [`world-forge-scope.md`](../features/world-forge-scope.md). Blockers: blended material/water render pass, `WaterStore` (or equivalent) persistence, swim mode, deep-water stamina/damage rules, World Forge ferry-route schema. Boats remain script-driven rather than full physics sim in v1.
+- Supersedes: none
+

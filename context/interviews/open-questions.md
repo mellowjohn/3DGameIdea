@@ -99,3 +99,17 @@ Still open:
 - Exact hub settlement names/placements per act (authoring).
 
 **Resolved:** Tessera is the world’s primary land (Middle-earth-scale); Kingdom of Tessera is the polity within it — [DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land).
+
+## Water and hydrology (DEC-0038)
+
+**Resolved 2026-07-18** as [DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring): gameplay swim + scripted floating vessels; one world-wide sea level; Sculpt owns water placement/sculpting; World Forge Map owns hydrology layout and ferry routes; fully authored (no noise auto-hydrology); scripted wave motion; deep-water fatigue + damage; reflection/refraction low-poly water; mud/sand shores; bounded sea regions + map-edge fog; dry basins stay dry when sensible; suppress underwater foliage; lava/magic pools deferred. Feature doc: [`water-hydrology.md`](../features/water-hydrology.md).
+
+Still open (implementation tuning, not product forks):
+
+- Shallow vs deep depth thresholds (meters below surface or vs terrain bed).
+- Fatigue drain and health damage rates in deep water; link to stamina HUD if needed.
+- Wave simulation technique (Gerstner stack vs summed sines vs vertex-only scroll) within “scripted natural motion” constraint.
+- World Forge schema field names for hydrology regions and ferry route polylines.
+- Water persistence file path and cell schema (mirror terrain 33×33 / 40 m or region-based meshes).
+- Whether shallow water allows walking, wading slowdown only, or forced swim.
+- Ferry scripted crossing: fade vs visible hull animation duration defaults.
