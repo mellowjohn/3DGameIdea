@@ -1,6 +1,6 @@
 # Water Surfaces Format
 
-Persisted authored water for Sculpt and MCP (`assets/terrain/water-surfaces.json`). Implements [DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoride).
+Persisted authored water for Sculpt and MCP (`assets/terrain/water-surfaces.json`). Implements [DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring).
 
 ## Root fields
 
