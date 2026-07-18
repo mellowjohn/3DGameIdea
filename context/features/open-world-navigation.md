@@ -35,7 +35,7 @@ Shipped M4 grid ([navigation-grid.md](navigation-grid.md)):
 | AI / companion assist / “is this walkable?” | Navigation grid | Prefer grid queries over ad-hoc ray hacks |
 | Roads | Content + visual language | May later bias AI cost or FT discovery; not required for player move |
 | Soft / story gates | World Forge + quest runtime | Logic gates; do not carve the heightfield |
-| Hard barriers | Terrain slope, collision volumes, water/cliffs | Physics / authored colliders; **deep water** via swim fatigue + damage ([DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring)) |
+| Hard barriers | Terrain slope, collision volumes, water/cliffs | Physics / authored colliders; **deep water** via swim fatigue + damage ([DEC-0038](../decisions/index.md#dec-0039-water-swim-and-hydrology-authoring)) |
 
 Grid limitations that design must accept until TICKET-0109: no character radius carving, no dynamic obstacles, queries fail for unloaded cells.
 
@@ -75,9 +75,9 @@ Grid limitations that design must accept until TICKET-0109: no character radius 
 6. **Blocked states:** Deny while in combat, falling, rare instances, or story-flag locked.
 7. **Presentation:** Short fade / stream destination cells OK; avoid chapter-load UX.
 
-**Mounts (near-term):** horses only if any; account for player + up to three companions later. Boats/other vehicles deferred as **travel modes**, but **scripted ferries/ships that float on water** are in scope ([DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring)).
+**Mounts (near-term):** horses only if any; account for player + up to three companions later. Boats/other vehicles deferred as **travel modes**, but **scripted ferries/ships that float on water** are in scope ([DEC-0038](../decisions/index.md#dec-0039-water-swim-and-hydrology-authoring)).
 
-## Water and swim ([DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring))
+## Water and swim ([DEC-0038](../decisions/index.md#dec-0039-water-swim-and-hydrology-authoring))
 
 Gameplay water — not decorative-only. See [`water-hydrology.md`](water-hydrology.md).
 

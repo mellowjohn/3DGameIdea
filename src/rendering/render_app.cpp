@@ -9,6 +9,7 @@
 #include "engine/assets/play_session_settings.h"
 #include "engine/physics/collision_world.h"
 #include "engine/physics/character_controller.h"
+#include "engine/physics/rigidbody_locomotion.h"
 #include "engine/rendering/debug_camera.h"
 #include "engine/rendering/orbit_camera.h"
 #include "engine/rendering/pbr_lighting.h"
@@ -2703,15 +2704,24 @@ void open_script_binding(EditorState& state, const std::string& kind, const std:
 
 bool draw_collider_property_fields(PrefabCollisionVolume& volume) {
     bool commit = false;
-    int shape_index = volume.shape == PrefabCollisionShape::Box ? 0 : 1;
-    if (ImGui::Combo("Shape", &shape_index, "box\0sphere\0")) {
-        volume.shape = shape_index == 0 ? PrefabCollisionShape::Box : PrefabCollisionShape::Sphere;
+    int shape_index = volume.shape == PrefabCollisionShape::Box       ? 0
+                      : volume.shape == PrefabCollisionShape::Sphere ? 1
+                                                                     : 2;
+    if (ImGui::Combo("Shape", &shape_index, "box\0sphere\0capsule\0")) {
+        volume.shape = shape_index == 0   ? PrefabCollisionShape::Box
+                       : shape_index == 1 ? PrefabCollisionShape::Sphere
+                                          : PrefabCollisionShape::Capsule;
         commit = true;
     }
     if (volume.shape == PrefabCollisionShape::Box) {
         float half_extent[3] = {volume.half_extent.x, volume.half_extent.y, volume.half_extent.z};
         ImGui::InputFloat3("Half Extent", half_extent);
         volume.half_extent = {half_extent[0], half_extent[1], half_extent[2]};
+        if (ImGui::IsItemDeactivatedAfterEdit()) commit = true;
+    } else if (volume.shape == PrefabCollisionShape::Capsule) {
+        ImGui::InputFloat("Radius", &volume.radius);
+        if (ImGui::IsItemDeactivatedAfterEdit()) commit = true;
+        ImGui::InputFloat("Half Height", &volume.capsule_half_height);
         if (ImGui::IsItemDeactivatedAfterEdit()) commit = true;
     } else {
         ImGui::InputFloat("Radius", &volume.radius);
@@ -3110,6 +3120,22 @@ bool draw_animator_property_fields(EditorState& state, AnimatorComponentData& an
     return commit;
 }
 
+bool draw_rigidbody_property_fields(RigidbodyComponentData& rigidbody) {
+    bool commit = false;
+    const char* motion_items[] = {"dynamic", "kinematic"};
+    int motion_index = rigidbody.motion_type == "kinematic" ? 1 : 0;
+    if (ImGui::Combo("Motion Type", &motion_index, motion_items, 2)) {
+        rigidbody.motion_type = motion_items[motion_index];
+        commit = true;
+    }
+    if (ImGui::InputFloat("Mass", &rigidbody.mass, 0.1f, 1.0f, "%.3f")) commit = true;
+    if (ImGui::InputFloat("Linear Damping", &rigidbody.linear_damping, 0.01f, 0.1f, "%.3f")) commit = true;
+    if (ImGui::InputFloat("Angular Damping", &rigidbody.angular_damping, 0.01f, 0.1f, "%.3f")) commit = true;
+    if (ImGui::Checkbox("Use Gravity", &rigidbody.use_gravity)) commit = true;
+    if (ImGui::Checkbox("Freeze Rotation", &rigidbody.freeze_rotation)) commit = true;
+    return commit;
+}
+
 void draw_character_asset_inspector(EditorState& state, bool placement_entity = false) {
     const std::string asset_path = state.inspector_asset_path
                                        ? normalize_asset_path(*state.inspector_asset_path)
@@ -3185,9 +3211,11 @@ void draw_character_asset_inspector(EditorState& state, bool placement_entity = 
 void draw_camera_asset_inspector(EditorState& state) {
     const std::string asset_path = state.inspector_asset_path ? normalize_asset_path(*state.inspector_asset_path)
                                                                : normalize_asset_path(state.play_session.camera_asset);
-    ImGui::TextDisabled("Camera Asset");
+    ImGui::TextDisabled("Camera Asset (3rd-person RPG)");
     ImGui::Text("%s", asset_path.c_str());
     if (ImGui::InputFloat("Pivot Height", &state.camera_asset.pivot_height, 0.05f, 0.2f, "%.2f"))
+        state.camera_asset_dirty = true;
+    if (ImGui::InputFloat("Shoulder Offset", &state.camera_asset.shoulder_offset, 0.05f, 0.1f, "%.2f"))
         state.camera_asset_dirty = true;
     if (ImGui::InputFloat("Min Distance", &state.camera_asset.min_distance, 0.05f, 0.25f, "%.2f"))
         state.camera_asset_dirty = true;
@@ -3195,11 +3223,19 @@ void draw_camera_asset_inspector(EditorState& state) {
         state.camera_asset_dirty = true;
     if (ImGui::InputFloat("Default Distance", &state.camera_asset.default_distance, 0.1f, 0.5f, "%.2f"))
         state.camera_asset_dirty = true;
+    if (ImGui::InputFloat("Default Pitch", &state.camera_asset.default_pitch, 0.01f, 0.05f, "%.3f"))
+        state.camera_asset_dirty = true;
+    if (ImGui::InputFloat("Min Pitch", &state.camera_asset.min_pitch, 0.01f, 0.05f, "%.3f"))
+        state.camera_asset_dirty = true;
+    if (ImGui::InputFloat("Max Pitch", &state.camera_asset.max_pitch, 0.01f, 0.05f, "%.3f"))
+        state.camera_asset_dirty = true;
     if (ImGui::InputFloat("Collision Probe Radius", &state.camera_asset.collision_probe_radius, 0.01f, 0.05f, "%.3f"))
         state.camera_asset_dirty = true;
     if (ImGui::InputFloat("Collision Padding", &state.camera_asset.collision_padding, 0.01f, 0.05f, "%.3f"))
         state.camera_asset_dirty = true;
     if (ImGui::InputFloat("Look Sensitivity", &state.camera_asset.look_sensitivity, 0.0001f, 0.001f, "%.4f"))
+        state.camera_asset_dirty = true;
+    if (ImGui::InputFloat("Zoom Sensitivity (m/notch)", &state.camera_asset.zoom_sensitivity, 0.1f, 0.5f, "%.2f"))
         state.camera_asset_dirty = true;
     if (ImGui::InputFloat("Vertical FOV (rad)", &state.camera_asset.vertical_fov_radians, 0.01f, 0.1f, "%.4f"))
         state.camera_asset_dirty = true;
@@ -3207,21 +3243,22 @@ void draw_camera_asset_inspector(EditorState& state) {
         state.camera_asset_dirty = true;
     if (ImGui::InputFloat("Far Plane", &state.camera_asset.far_plane, 1.0f, 50.0f, "%.1f"))
         state.camera_asset_dirty = true;
-    ImGui::BeginDisabled(state.test_session_active());
-    if (ImGui::Button("Save Camera Asset") && !state.test_session_active()) {
+    if (ImGui::Button("Save Camera Asset")) {
         const auto valid = state.camera_asset.validate();
         if (!valid) {
             state.status = valid.error().message;
             Logger::instance().write(valid.error());
         } else {
             const auto saved = save_text_asset(state.project_root / asset_path, state.camera_asset.to_json());
-            state.status = saved ? "Camera asset saved" : saved.error().message;
-            if (!saved) Logger::instance().write(saved.error());
-            else state.camera_asset_dirty = false;
+            if (!saved) {
+                state.status = saved.error().message;
+                Logger::instance().write(saved.error());
+            }             else {
+                state.camera_asset_dirty = false;
+                state.status = "Camera asset saved";
+            }
         }
     }
-    ImGui::EndDisabled();
-    if (state.test_session_active()) ImGui::TextDisabled("End test session to save camera asset changes.");
 }
 
 void draw_material_asset_inspector(EditorState& state, MaterialAsset* terrain_material,
@@ -3387,9 +3424,15 @@ WorldPosition character_feet_pivot(const CharacterController& character) {
     return {body.position.x, body.position.y - static_cast<double>(body.half_extent.x + body.radius), body.position.z};
 }
 
-TransformComponent character_visual_transform(const CharacterController& character, const PrefabAsset& player_prefab) {
+TransformComponent character_visual_transform(const CharacterController& character, const PrefabAsset& player_prefab,
+    float facing_yaw) {
+    using namespace DirectX;
     const auto body = character.debug_body();
     TransformComponent transform;
+    // Blockbench/player.gltf faces −Z; controller walk basis uses yaw 0 → +Z.
+    constexpr float k_model_forward_yaw_offset = 3.14159265f;
+    const auto facing_q = XMQuaternionRotationRollPitchYaw(0.0f, facing_yaw + k_model_forward_yaw_offset, 0.0f);
+    XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(transform.rotation.data()), facing_q);
     const bool unit_capsule_proxy = !player_prefab.parts.empty() && player_prefab.parts.front().mesh.primitive.has_value()
         && !player_prefab.parts.front().mesh.asset.has_value();
     if (unit_capsule_proxy) {
@@ -3409,9 +3452,10 @@ TransformComponent character_visual_transform(const CharacterController& charact
 }
 
 void append_character_render_instances(const PrefabAsset& player_prefab, const CharacterController& character,
-    std::vector<RenderInstance>& instances, const PrefabAsset::MaterialLookup& lookup_material = {}) {
-    expand_prefab_render_instances(player_prefab, character_visual_transform(character, player_prefab), instances,
-        lookup_material);
+    float facing_yaw, std::vector<RenderInstance>& instances,
+    const PrefabAsset::MaterialLookup& lookup_material = {}) {
+    expand_prefab_render_instances(player_prefab, character_visual_transform(character, player_prefab, facing_yaw),
+        instances, lookup_material);
 }
 
 Result<void> ensure_runtime_player_assets(const std::filesystem::path& project_root, PrefabAsset& player_prefab,
@@ -5191,27 +5235,47 @@ void draw_asset_browser(EditorState& state) {
                     : is_camera ? IM_COL32(170, 145, 255, 230) : IM_COL32(145, 210, 150, 230);
                 draw_file_asset_icon(icon_color);
                 ImGui::SameLine();
-                ImGui::Selectable((display_name + "##asset-" + entry.first).c_str(),
-                    state.inspector_asset_path && normalize_asset_path(*state.inspector_asset_path) == normalized);
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", path.c_str());
-                begin_asset_file_drag_source(normalized, display_name, false);
-                ImGui::SameLine();
-                if (ImGui::SmallButton(("Inspect##" + entry.first).c_str())) {
+                const bool selected =
+                    state.inspector_asset_path && normalize_asset_path(*state.inspector_asset_path) == normalized;
+                if (ImGui::Selectable((display_name + "##asset-" + entry.first).c_str(), selected)) {
                     state.inspector_asset_path = normalized;
                     state.selected.reset();
                     state.rename_target.reset();
+                    state.inspector_player_spawn_entity.reset();
+                    bool loaded_ok = true;
                     if (is_character) {
-                        if (const auto loaded = CharacterAsset::load(state.project_root / normalized))
-                            state.character_asset = loaded.value();
+                        const auto loaded = CharacterAsset::load(state.project_root / normalized);
+                        if (loaded) state.character_asset = loaded.value();
+                        else {
+                            loaded_ok = false;
+                            state.status = loaded.error().message;
+                            Logger::instance().write(loaded.error());
+                        }
                     } else if (is_camera) {
-                        if (const auto loaded = CameraAsset::load(state.project_root / normalized))
+                        const auto loaded = CameraAsset::load(state.project_root / normalized);
+                        if (loaded) {
                             state.camera_asset = loaded.value();
-                    } else if (const auto loaded = MaterialAsset::load(state.project_root / normalized)) {
-                        state.material_asset = loaded.value();
-                        state.material_asset_dirty = false;
+                            state.camera_asset_dirty = false;
+                        } else {
+                            loaded_ok = false;
+                            state.status = loaded.error().message;
+                            Logger::instance().write(loaded.error());
+                        }
+                    } else {
+                        const auto loaded = MaterialAsset::load(state.project_root / normalized);
+                        if (loaded) {
+                            state.material_asset = loaded.value();
+                            state.material_asset_dirty = false;
+                        } else {
+                            loaded_ok = false;
+                            state.status = loaded.error().message;
+                            Logger::instance().write(loaded.error());
+                        }
                     }
-                    state.status = "Inspecting " + normalized;
+                    if (loaded_ok) state.status = "Inspecting " + normalized;
                 }
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\nClick to edit in Inspector", path.c_str());
+                begin_asset_file_drag_source(normalized, display_name, false);
             } else {
                 draw_file_asset_icon(IM_COL32(145, 154, 172, 230));
                 ImGui::SameLine();
@@ -6466,6 +6530,8 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                         } else if (draft.type == AuthoredComponentType::Animator) {
                             state.inspector_component_edit_id = entry.id;
                             commit = draw_animator_property_fields(state, draft.animator);
+                        } else if (draft.type == AuthoredComponentType::Rigidbody) {
+                            commit = draw_rigidbody_property_fields(draft.rigidbody);
                         } else {
                             if (!state.inspector_component_edit_id ||
                                 *state.inspector_component_edit_id != entry.id) {
@@ -6552,6 +6618,20 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 const auto result = state.history.execute(state.scene,
                     std::make_unique<AddEntityComponentCommand>(*state.selected, std::move(entry)));
                 state.status = result ? "Animator added" : result.error().message;
+                if (!result) Logger::instance().write(result.error());
+                else mark_scene_dirty(state);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Add Rigidbody")) {
+                AuthoredComponentEntry entry;
+                entry.type = AuthoredComponentType::Rigidbody;
+                entry.id = "rigidbody-" + std::to_string(state.scene.authored_components(*state.selected)
+                        ? state.scene.authored_components(*state.selected)->entries.size()
+                        : 0);
+                entry.rigidbody = RigidbodyComponentData{};
+                const auto result = state.history.execute(state.scene,
+                    std::make_unique<AddEntityComponentCommand>(*state.selected, std::move(entry)));
+                state.status = result ? "Rigidbody added" : result.error().message;
                 if (!result) Logger::instance().write(result.error());
                 else mark_scene_dirty(state);
             }
@@ -6648,11 +6728,14 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             state.prefab_bounds[normalized] = prefab.bounds(state.mesh_bounds, lookup_material);
             ImGui::Separator();
             ImGui::Text("Collision / Components");
-            ImGui::Text("Colliders: %zu | Script bindings: %zu", prefab.collision.size(), prefab.script_bindings.size());
+            ImGui::Text("Colliders: %zu | Scripts: %zu | Animators: %zu | Rigidbodies: %zu", prefab.collision.size(),
+                prefab.script_bindings.size(), prefab.animators.size(), prefab.rigidbodies.size());
             for (std::size_t index = 0; index < prefab.collision.size(); ++index) {
                 auto& volume = prefab.collision[index];
                 ImGui::PushID(static_cast<int>(index));
-                const char* shape_label = volume.shape == PrefabCollisionShape::Box ? "box" : "sphere";
+                const char* shape_label = volume.shape == PrefabCollisionShape::Box       ? "box"
+                                          : volume.shape == PrefabCollisionShape::Sphere ? "sphere"
+                                                                                         : "capsule";
                 const bool open =
                     ImGui::TreeNodeEx((volume.id + " (" + shape_label + ")").c_str(), ImGuiTreeNodeFlags_DefaultOpen);
                 if (open) {
@@ -6708,6 +6791,37 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 }
                 ImGui::PopID();
             }
+            for (std::size_t index = 0; index < prefab.rigidbodies.size(); ++index) {
+                auto& rigidbody = prefab.rigidbodies[index];
+                ImGui::PushID(static_cast<int>(2000 + index));
+                const std::string node_label = rigidbody.id + " [" + rigidbody.motion_type + "]";
+                const bool open = ImGui::TreeNodeEx(node_label.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                if (open) {
+                    RigidbodyComponentData draft;
+                    draft.motion_type = rigidbody.motion_type;
+                    draft.mass = rigidbody.mass;
+                    draft.linear_damping = rigidbody.linear_damping;
+                    draft.angular_damping = rigidbody.angular_damping;
+                    draft.use_gravity = rigidbody.use_gravity;
+                    draft.freeze_rotation = rigidbody.freeze_rotation;
+                    if (draw_rigidbody_property_fields(draft)) {
+                        rigidbody.motion_type = draft.motion_type;
+                        rigidbody.mass = draft.mass;
+                        rigidbody.linear_damping = draft.linear_damping;
+                        rigidbody.angular_damping = draft.angular_damping;
+                        rigidbody.use_gravity = draft.use_gravity;
+                        rigidbody.freeze_rotation = draft.freeze_rotation;
+                    }
+                    if (ImGui::SmallButton("Remove##rb")) {
+                        prefab.rigidbodies.erase(prefab.rigidbodies.begin() + static_cast<std::ptrdiff_t>(index));
+                        ImGui::TreePop();
+                        ImGui::PopID();
+                        break;
+                    }
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+            }
             if (ImGui::Button("Add Prefab Collider")) {
                 PrefabCollisionVolume volume;
                 volume.id = "collision-" + std::to_string(prefab.collision.size());
@@ -6722,6 +6836,12 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 binding.kind = "handler";
                 binding.binding_id = "new_handler";
                 prefab.script_bindings.push_back(std::move(binding));
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Add Prefab Rigidbody")) {
+                PrefabRigidbody rigidbody;
+                rigidbody.id = "rigidbody-" + std::to_string(prefab.rigidbodies.size());
+                prefab.rigidbodies.push_back(std::move(rigidbody));
             }
             if (ImGui::Button("Save Prefab")) {
                 const auto saved = prefab.save(state.project_root / normalized);
@@ -7013,6 +7133,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
     const auto started = std::chrono::steady_clock::now();
     std::unique_ptr<CollisionWorld> debug_world;
     std::optional<CharacterController> debug_character;
+    std::optional<RigidbodyLocomotion> player_locomotion;
     std::optional<StreamedTerrainField> streamed_terrain;
     std::optional<StreamedFoliageField> streamed_foliage;
     std::optional<StreamedWaterField> streamed_water;
@@ -7022,8 +7143,10 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
     CombatVolumeRegistry debug_combat_registry;
     DebugCamera camera;
     std::optional<OrbitCamera> orbit_camera;
+    float player_facing_yaw = 0.0f;
     float mouse_x=0,mouse_y=0;
     bool camera_look_active=false;
+    float pending_orbit_zoom = 0.0f;
     std::optional<EditorTestSessionRestore> editor_test_restore;
     std::unique_ptr<EditorBridgeServer> editor_bridge;
     if(options.debug_world){
@@ -7066,6 +7189,13 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             if(options.debug_world&&event.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&event.button.button==SDL_BUTTON_RIGHT&&(!editor||editor->viewport_hovered||(editor->test_session_active()&&editor->game_viewport_active()))){camera_look_active=true;SDL_SetWindowRelativeMouseMode(window,true);}
             if(options.debug_world&&event.type==SDL_EVENT_MOUSE_BUTTON_UP&&event.button.button==SDL_BUTTON_RIGHT){camera_look_active=false;SDL_SetWindowRelativeMouseMode(window,false);}
             if(options.debug_world&&camera_look_active&&event.type==SDL_EVENT_MOUSE_MOTION){mouse_x+=event.motion.xrel;mouse_y+=event.motion.yrel;}
+            // Accumulate wheel notches; meters-per-notch comes from the camera asset.
+            if (options.debug_world && event.type == SDL_EVENT_MOUSE_WHEEL) {
+                float dy = event.wheel.y;
+                if (event.wheel.integer_y != 0) dy = static_cast<float>(event.wheel.integer_y);
+                if (event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED) dy = -dy;
+                pending_orbit_zoom += dy;
+            }
             if (event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
                 int width = 0, height = 0;
                 SDL_GetWindowSizeInPixels(window, &width, &height);
@@ -7171,10 +7301,60 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 CharacterAsset spawn_character = editor->character_asset;
                 if (spawn_resolution.placement_entity)
                     spawn_character = resolve_character_for_spawn(*editor, *spawn_resolution.placement_entity);
-                auto created = CharacterController::create(*debug_world, spawn_resolution.position,
-                    spawn_character.controller_config());
-                if (created) {
-                    debug_character.emplace(std::move(created.value()));
+                player_locomotion.reset();
+                debug_character.reset();
+                bool started_rigidbody = false;
+                if (spawn_resolution.placement_entity && placement_collision) {
+                    const auto placement = editor->scene.placement(*spawn_resolution.placement_entity);
+                    if (placement) {
+                        const auto resolved = resolve_prefab_catalog_path(editor->prefab_catalog, placement->prefab_asset);
+                        const auto found = editor->prefab_catalog.find(resolved);
+                        if (found != editor->prefab_catalog.end()) {
+                            (void)editor->scene.ensure_authored_components_seeded(
+                                *spawn_resolution.placement_entity, found->second);
+                            (void)editor->scene.propagate_prefab_components(resolved, found->second);
+                        }
+                        const auto synced = placement_collision->sync(
+                            *debug_world, editor->scene, editor->prefab_catalog, true);
+                        if (synced) {
+                            if (const auto body =
+                                    placement_collision->motion_body_for(*spawn_resolution.placement_entity)) {
+                                float radius = spawn_character.capsule_radius;
+                                float half_height = spawn_character.capsule_half_height;
+                                if (const auto authored =
+                                        editor->scene.authored_components(*spawn_resolution.placement_entity)) {
+                                    const PrefabAsset* prefab =
+                                        found != editor->prefab_catalog.end() ? &found->second : nullptr;
+                                    for (const auto& volume :
+                                        effective_collision_volumes(&*authored, prefab)) {
+                                        if (volume.trigger || volume.is_interaction() || volume.is_combat_sensor())
+                                            continue;
+                                        if (volume.shape == PrefabCollisionShape::Capsule) {
+                                            radius = volume.radius;
+                                            half_height = volume.capsule_half_height;
+                                        }
+                                        break;
+                                    }
+                                }
+                                player_locomotion.emplace(*debug_world, *body, spawn_character.controller_config(),
+                                    radius, half_height);
+                                started_rigidbody = true;
+                            }
+                        }
+                    }
+                }
+                if (!started_rigidbody) {
+                    auto created = CharacterController::create(*debug_world, spawn_resolution.position,
+                        spawn_character.controller_config());
+                    if (!created) {
+                        editor->status = created.error().message;
+                        Logger::instance().write(created.error());
+                        editor_test_restore.reset();
+                    } else {
+                        debug_character.emplace(std::move(created.value()));
+                    }
+                }
+                if (started_rigidbody || debug_character) {
                     editor->character_asset = spawn_character;
                     editor->test_player_spawn_entity = spawn_resolution.placement_entity;
                     if (spawn_resolution.placement_entity) {
@@ -7184,7 +7364,9 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     }
                     orbit_camera.emplace(editor->camera_asset.orbit_config());
                     orbit_camera->set_sensitivity(editor->camera_asset.look_sensitivity);
-                    orbit_camera->set_orientation(camera.yaw(), camera.pitch());
+                    // Keep yaw from edit camera; start with authored RPG look-down pitch.
+                    orbit_camera->set_orientation(camera.yaw(), editor->camera_asset.default_pitch);
+                    player_facing_yaw = orbit_camera->yaw();
                     editor->test_session = EditorState::TestSessionState::Running;
                     editor->active_viewport_tab = EditorState::ViewportTab::Game;
                     if (editor->ui_canvas_stack) {
@@ -7198,16 +7380,16 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                             editor->lua_runtime->set_standing_runtime(editor->standing_runtime.get());
                         }
                     }
-                    editor->status = "Test session started (max speed " +
-                        std::to_string(static_cast<int>(spawn_character.max_speed)) + " m/s)";
+                    editor->status = started_rigidbody
+                        ? ("Test session started (Rigidbody loco, max speed " +
+                              std::to_string(static_cast<int>(spawn_character.max_speed)) + " m/s)")
+                        : ("Test session started (max speed " +
+                              std::to_string(static_cast<int>(spawn_character.max_speed)) + " m/s)");
                     append_editor_console(*editor,
-                        "Test session started: max_speed=" + std::to_string(spawn_character.max_speed) + " m/s",
+                        std::string("Test session started: ") + (started_rigidbody ? "rigidbody" : "character") +
+                            " max_speed=" + std::to_string(spawn_character.max_speed) + " m/s",
                         editor->show_movement_console);
                     debug_interaction_tracker.reset("player");
-                } else {
-                    editor->status = created.error().message;
-                    Logger::instance().write(created.error());
-                    editor_test_restore.reset();
                 }
             } else if (command == EditorState::TestSessionCommand::Pause &&
                        editor->test_session == EditorState::TestSessionState::Running) {
@@ -7222,6 +7404,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 if (editor_test_restore && editor_test_restore->spawn_entity && editor_test_restore->spawn_transform)
                     (void)editor->scene.set_transform(*editor_test_restore->spawn_entity, *editor_test_restore->spawn_transform);
                 debug_character.reset();
+                player_locomotion.reset();
                 orbit_camera.reset();
                 if (editor_test_restore) {
                     camera.set_pose(editor_test_restore->camera_position, editor_test_restore->camera_yaw,
@@ -7248,18 +7431,35 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         WorldPosition body_position{0, 1, 0};
         std::array<float, 16> view_projection_matrix = camera.view_projection();
         std::array<float, 3> camera_position = camera.position();
-        float movement_yaw = camera.yaw();
         int pixel_w = 1, pixel_h = 1;
         SDL_GetWindowSizeInPixels(window, &pixel_w, &pixel_h);
         if (orbit_camera) {
+            if (editor && editor->test_session_active()) {
+                // Keep orbit limits/framing in sync with inspector edits (zoom already applied live).
+                orbit_camera->set_config(editor->camera_asset.orbit_config());
+                orbit_camera->set_sensitivity(editor->camera_asset.look_sensitivity);
+            }
             const float fov = editor && editor->test_session_active() ? editor->camera_asset.vertical_fov_radians : 1.04719755f;
             const float near_plane = editor && editor->test_session_active() ? editor->camera_asset.near_plane : 0.1f;
             const float far_plane = editor && editor->test_session_active() ? editor->camera_asset.far_plane : 2000.0f;
-            (void)orbit_camera->set_perspective(fov, static_cast<float>(pixel_w) / static_cast<float>(std::max(pixel_h, 1)),
-                near_plane, far_plane);
-        } else
+            float aspect = static_cast<float>(pixel_w) / static_cast<float>(std::max(pixel_h, 1));
+            if (editor && editor->game_viewport_min && editor->game_viewport_max) {
+                const float gw = editor->game_viewport_max->x - editor->game_viewport_min->x;
+                const float gh = editor->game_viewport_max->y - editor->game_viewport_min->y;
+                if (gw > 1.0f && gh > 1.0f) aspect = gw / gh;
+            }
+            (void)orbit_camera->set_perspective(fov, aspect, near_plane, far_plane);
+            if (pending_orbit_zoom != 0.0f) {
+                const float meters_per_notch =
+                    editor ? std::max(0.05f, editor->camera_asset.zoom_sensitivity) : 1.5f;
+                orbit_camera->adjust_distance(pending_orbit_zoom * meters_per_notch);
+                pending_orbit_zoom = 0.0f;
+            }
+        } else {
+            pending_orbit_zoom = 0.0f;
             (void)camera.set_perspective(1.04719755f, static_cast<float>(pixel_w) / static_cast<float>(std::max(pixel_h, 1)),
                 0.1f, 2000.0f);
+        }
         if (debug_world) {
             const bool* keys = SDL_GetKeyboardState(nullptr);
             const bool editor_mode = editor.has_value();
@@ -7267,14 +7467,14 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             const bool test_running = editor_mode && editor->test_session_running();
             const bool game_tab = editor_mode && editor->game_viewport_active();
 
-            if (orbit_camera && debug_character && test_active) {
+            if (orbit_camera && (debug_character || player_locomotion) && test_active) {
                 if (camera_look_active && game_tab) orbit_camera->apply_look(mouse_x, mouse_y);
                 LocalPosition wish{};
                 if (test_running && game_tab) {
                     wish.x = (keys[SDL_SCANCODE_D] ? 1.0f : 0.0f) - (keys[SDL_SCANCODE_A] ? 1.0f : 0.0f);
                     wish.z = (keys[SDL_SCANCODE_W] ? 1.0f : 0.0f) - (keys[SDL_SCANCODE_S] ? 1.0f : 0.0f);
                 }
-                if (test_running && game_tab) {
+                if (test_running && game_tab && debug_character) {
                     const bool space_down = keys[SDL_SCANCODE_SPACE];
                     const bool space_pressed = space_down && !space_key_was_down;
                     if (space_pressed) (void)debug_character->jump();
@@ -7292,8 +7492,22 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                         debug_character->clear_pending_swim_damage();
                     }
                 }
-                body_position = debug_character->position();
-                (void)orbit_camera->update(character_feet_pivot(*debug_character), *debug_world);
+                if (player_locomotion) {
+                    body_position = player_locomotion->feet_position();
+                    (void)orbit_camera->update(body_position, *debug_world);
+                } else {
+                    body_position = debug_character->position();
+                    (void)orbit_camera->update(character_feet_pivot(*debug_character), *debug_world);
+                }
+                // Face along the lens look (not orbit yaw alone) so OTS shoulder offset does not skew the mesh.
+                {
+                    const auto eye = orbit_camera->position();
+                    const float target_x = static_cast<float>(body_position.x);
+                    const float target_z = static_cast<float>(body_position.z);
+                    player_facing_yaw =
+                        character_facing_yaw_from_camera_look(eye[0], eye[2], target_x, target_z, player_facing_yaw);
+                }
+
                 const WorldPosition probe{body_position.x, body_position.y + 1.2, body_position.z};
                 const InteractionVolumeRegistry& interact_reg =
                     placement_collision ? placement_collision->interaction_registry() : debug_interaction_registry;
@@ -7329,6 +7543,11 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 (void)debug_character->move(wish, orbit_camera->yaw(), frame_delta_seconds);
                 body_position = debug_character->position();
                 (void)orbit_camera->update(character_feet_pivot(*debug_character), *debug_world);
+                {
+                    const auto eye = orbit_camera->position();
+                    player_facing_yaw = character_facing_yaw_from_camera_look(eye[0], eye[2],
+                        static_cast<float>(body_position.x), static_cast<float>(body_position.z), player_facing_yaw);
+                }
                 const WorldPosition probe{body_position.x, body_position.y + 1.2, body_position.z};
                 (void)debug_interaction_tracker.update("player", probe, 0.65f, *debug_world, debug_interaction_registry);
                 const float yaw = orbit_camera->yaw();
@@ -7337,7 +7556,6 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 (void)query_combat_hits("player_attack", attack_probe, 1.0f, *debug_world, debug_combat_registry);
                 view_projection_matrix = orbit_camera->view_projection();
                 camera_position = orbit_camera->position();
-                movement_yaw = orbit_camera->yaw();
             } else {
                 const bool camera_keyboard =
                     editor_mode ? (camera_look_active && editor->viewport_focused) : camera_look_active;
@@ -7351,9 +7569,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 mouse_x = mouse_y = 0;
                 view_projection_matrix = camera.view_projection();
                 camera_position = camera.position();
-                movement_yaw = camera.yaw();
             }
-            space_key_was_down = keys[SDL_SCANCODE_SPACE];
         }
         if (streamed_terrain && debug_world) {
             const std::array<float, 3> stream_focus = editor ? camera.position() : camera_position;
@@ -7417,7 +7633,81 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 streamed_water->clear_render_data_dirty();
             }
         }
-        if(placement_collision&&debug_world&&editor){const auto synced=placement_collision->sync(*debug_world,editor->scene,editor->prefab_catalog);if(!synced){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(synced.error());}const bool editor_physics_step=!editor->test_session_active()||editor->test_session_running();if(editor_physics_step)(void)debug_world->step(frame_delta_seconds);if(editor_physics_step)for(const auto& contact_event:debug_world->drain_contact_events()){if(contact_event.type==ContactEventType::Enter&&contact_event.contact_point)editor->recent_contact_points.push_back(*contact_event.contact_point);const bool a_trigger=contact_event.layer_a==CollisionLayer::Trigger;const bool b_trigger=contact_event.layer_b==CollisionLayer::Trigger;if(a_trigger==b_trigger)continue;const auto trigger_body=a_trigger?contact_event.body_a:contact_event.body_b;const auto other_body=a_trigger?contact_event.body_b:contact_event.body_a;const auto binding=placement_collision->interaction_registry().find(trigger_body);if(!binding)continue;InteractionEvent mapped;mapped.type=contact_event.type==ContactEventType::Enter?InteractionEventType::Enter:InteractionEventType::Exit;mapped.placement_entity_id=binding->placement_entity_id;mapped.interaction_id=binding->interaction_id;mapped.volume_index=binding->volume_index;mapped.interactor_id=std::to_string(other_body.value);mapped.contact_point=contact_event.contact_point;editor->recent_interaction_events.push_back(mapped);}if(editor_physics_step)for(const auto& hit_body:placement_collision->combat_registry().bodies_for_role(CombatVolumeRole::Hit)){const auto binding=placement_collision->combat_registry().find(hit_body);if(!binding)continue;for(const auto& contact:query_combat_hits_from_body(binding->combat_id,hit_body,*debug_world,placement_collision->combat_registry()))editor->recent_combat_events.push_back(contact);}if(editor->recent_contact_points.size()>64)editor->recent_contact_points.erase(editor->recent_contact_points.begin(),editor->recent_contact_points.end()-64);if(editor->recent_interaction_events.size()>32)editor->recent_interaction_events.erase(editor->recent_interaction_events.begin(),editor->recent_interaction_events.end()-32);        if(editor->recent_combat_events.size()>32)editor->recent_combat_events.erase(editor->recent_combat_events.begin(),editor->recent_combat_events.end()-32);dispatch_pending_script_events(*editor);}
+        if (placement_collision && debug_world && editor) {
+            const bool simulate_dynamics = editor->test_session_running();
+            const auto synced =
+                placement_collision->sync(*debug_world, editor->scene, editor->prefab_catalog, simulate_dynamics);
+            if (!synced) {
+                SDL_DestroyWindow(window);
+                SDL_Quit();
+                return Result<RenderStats>::failure(synced.error());
+            }
+            if (simulate_dynamics && player_locomotion && editor->test_player_spawn_entity &&
+                editor->game_viewport_active()) {
+                if (const auto body = placement_collision->motion_body_for(*editor->test_player_spawn_entity)) {
+                    if (player_locomotion->body().value != body->value) {
+                        player_locomotion.emplace(*debug_world, *body, player_locomotion->config(),
+                            player_locomotion->capsule_radius(), player_locomotion->capsule_half_height());
+                    }
+                    const bool* loco_keys = SDL_GetKeyboardState(nullptr);
+                    LocalPosition wish{};
+                    wish.x = (loco_keys[SDL_SCANCODE_D] ? 1.0f : 0.0f) - (loco_keys[SDL_SCANCODE_A] ? 1.0f : 0.0f);
+                    wish.z = (loco_keys[SDL_SCANCODE_W] ? 1.0f : 0.0f) - (loco_keys[SDL_SCANCODE_S] ? 1.0f : 0.0f);
+                    const bool space_down = loco_keys[SDL_SCANCODE_SPACE];
+                    if (space_down && !space_key_was_down) (void)player_locomotion->jump();
+                    const float yaw = orbit_camera ? orbit_camera->yaw() : camera.yaw();
+                    (void)player_locomotion->move(wish, yaw, frame_delta_seconds);
+                }
+            }
+            const bool editor_physics_step = !editor->test_session_active() || editor->test_session_running();
+            if (editor_physics_step) (void)debug_world->step(frame_delta_seconds);
+            if (editor_physics_step && simulate_dynamics)
+                placement_collision->write_back_transforms(editor->scene, *debug_world);
+            if (editor_physics_step)
+                for (const auto& contact_event : debug_world->drain_contact_events()) {
+                    if (contact_event.type == ContactEventType::Enter && contact_event.contact_point)
+                        editor->recent_contact_points.push_back(*contact_event.contact_point);
+                    const bool a_trigger = contact_event.layer_a == CollisionLayer::Trigger;
+                    const bool b_trigger = contact_event.layer_b == CollisionLayer::Trigger;
+                    if (a_trigger == b_trigger) continue;
+                    const auto trigger_body = a_trigger ? contact_event.body_a : contact_event.body_b;
+                    const auto other_body = a_trigger ? contact_event.body_b : contact_event.body_a;
+                    const auto binding = placement_collision->interaction_registry().find(trigger_body);
+                    if (!binding) continue;
+                    InteractionEvent mapped;
+                    mapped.type = contact_event.type == ContactEventType::Enter ? InteractionEventType::Enter
+                                                                               : InteractionEventType::Exit;
+                    mapped.placement_entity_id = binding->placement_entity_id;
+                    mapped.interaction_id = binding->interaction_id;
+                    mapped.volume_index = binding->volume_index;
+                    mapped.interactor_id = std::to_string(other_body.value);
+                    mapped.contact_point = contact_event.contact_point;
+                    editor->recent_interaction_events.push_back(mapped);
+                }
+            if (editor_physics_step)
+                for (const auto& hit_body :
+                    placement_collision->combat_registry().bodies_for_role(CombatVolumeRole::Hit)) {
+                    const auto binding = placement_collision->combat_registry().find(hit_body);
+                    if (!binding) continue;
+                    for (const auto& contact : query_combat_hits_from_body(binding->combat_id, hit_body, *debug_world,
+                             placement_collision->combat_registry()))
+                        editor->recent_combat_events.push_back(contact);
+                }
+            if (editor->recent_contact_points.size() > 64)
+                editor->recent_contact_points.erase(editor->recent_contact_points.begin(),
+                    editor->recent_contact_points.end() - 64);
+            if (editor->recent_interaction_events.size() > 32)
+                editor->recent_interaction_events.erase(editor->recent_interaction_events.begin(),
+                    editor->recent_interaction_events.end() - 32);
+            if (editor->recent_combat_events.size() > 32)
+                editor->recent_combat_events.erase(editor->recent_combat_events.begin(),
+                    editor->recent_combat_events.end() - 32);
+            dispatch_pending_script_events(*editor);
+        }
+        if (debug_world) {
+            const bool* keys_after = SDL_GetKeyboardState(nullptr);
+            space_key_was_down = keys_after[SDL_SCANCODE_SPACE];
+        }
         if (options.editor) {
             if (editor->active_viewport_tab == EditorState::ViewportTab::WorldForge)
                 renderer.ensure_world_forge_placeholder_textures(editor->world_forge_editor);
@@ -7439,11 +7729,33 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             }
             streamed_foliage->clear_dirty();
         }
-        if (editor && editor->test_player_spawn_entity && debug_character && editor->test_session_active()) {
+        if (editor && editor->test_player_spawn_entity && editor->test_session_active()) {
             if (auto transform = editor->scene.transform(*editor->test_player_spawn_entity)) {
-                const auto body = debug_character->position();
-                transform->position = {static_cast<float>(body.x), static_cast<float>(body.y), static_cast<float>(body.z)};
-                (void)editor->scene.set_transform(*editor->test_player_spawn_entity, *transform);
+                if (debug_character) {
+                    const PrefabAsset* spawn_prefab = find_prefab(editor->prefab_catalog,
+                        normalize_asset_path(editor->character_asset.visual_prefab));
+                    if (spawn_prefab) {
+                        *transform = character_visual_transform(*debug_character, *spawn_prefab, player_facing_yaw);
+                    } else {
+                        *transform = character_visual_transform(*debug_character, PrefabAsset{}, player_facing_yaw);
+                    }
+                    (void)editor->scene.set_transform(*editor->test_player_spawn_entity, *transform);
+                } else if (player_locomotion) {
+                    using namespace DirectX;
+                    body_position = player_locomotion->feet_position();
+                    if (orbit_camera) {
+                        (void)orbit_camera->update(body_position, *debug_world);
+                        const auto eye = orbit_camera->position();
+                        player_facing_yaw = character_facing_yaw_from_camera_look(eye[0], eye[2],
+                            static_cast<float>(body_position.x), static_cast<float>(body_position.z),
+                            player_facing_yaw);
+                    }
+                    constexpr float k_model_forward_yaw_offset = 3.14159265f;
+                    const auto facing_q =
+                        XMQuaternionRotationRollPitchYaw(0.0f, player_facing_yaw + k_model_forward_yaw_offset, 0.0f);
+                    XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(transform->rotation.data()), facing_q);
+                    (void)editor->scene.set_transform(*editor->test_player_spawn_entity, *transform);
+                }
             }
         }
         std::vector<RenderInstance> placed_objects;
@@ -7473,7 +7785,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 player_prefab = &*runtime_player_prefab;
             }
             if (player_prefab) {
-                append_character_render_instances(*player_prefab, *debug_character, placed_objects, editor_material_lookup);
+                append_character_render_instances(*player_prefab, *debug_character, player_facing_yaw, placed_objects,
+                    editor_material_lookup);
                 draw_player_visual = true;
             }
         }
@@ -7482,6 +7795,16 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         if (debug_character) {
             const auto pos = debug_character->position();
             const auto vel = debug_character->linear_velocity();
+            WorldInfluenceSource source;
+            source.position = {static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)};
+            source.velocity = vel;
+            source.radius = 1.25f;
+            source.strength = 1.0f;
+            source.kind = "character";
+            influence_bus.add(std::move(source));
+        } else if (player_locomotion) {
+            const auto pos = player_locomotion->feet_position();
+            const auto vel = player_locomotion->linear_velocity();
             WorldInfluenceSource source;
             source.position = {static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)};
             source.velocity = vel;
@@ -7499,7 +7822,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         scene_pass.view_projection = camera.view_projection();
         scene_pass.camera_position = camera.position();
         scene_pass.body_position = body_position;
-        scene_pass.draw_physics_body = debug_character.has_value() && !draw_player_visual && (!editor || editor->test_session_active());
+        scene_pass.draw_physics_body = (debug_character.has_value() || player_locomotion.has_value()) &&
+            !draw_player_visual && (!editor || editor->test_session_active());
         scene_pass.influence = influence_bus.empty() ? nullptr : &influence_bus;
         scene_pass.time_seconds = foliage_time_seconds;
         scene_pass.terrain_pbr = terrain_pbr;
@@ -7507,7 +7831,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         scene_pass.water_roughness = water_roughness;
         Renderer::WorldPassParams game_pass = scene_pass;
         game_pass.draw_physics_body = false;
-        if (orbit_camera && debug_character && editor && editor->test_session_active()) {
+        if (orbit_camera && (debug_character || player_locomotion) && editor && editor->test_session_active()) {
             game_pass.view_projection = orbit_camera->view_projection();
             game_pass.camera_position = orbit_camera->position();
             game_pass.body_position = body_position;
@@ -7516,7 +7840,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         runtime_pass.view_projection = view_projection_matrix;
         runtime_pass.camera_position = camera_position;
         runtime_pass.body_position = body_position;
-        runtime_pass.draw_physics_body = debug_character.has_value() && !draw_player_visual;
+        runtime_pass.draw_physics_body = (debug_character.has_value() || player_locomotion.has_value()) && !draw_player_visual;
         runtime_pass.influence = influence_bus.empty() ? nullptr : &influence_bus;
         runtime_pass.time_seconds = foliage_time_seconds;
         runtime_pass.terrain_pbr = terrain_pbr;

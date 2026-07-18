@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 2,
+  "entities": [
+    {
+      "name": "Crate",
+      "transform": {
+        "position": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cube",
+        "color": [0.55, 0.38, 0.22]
+      }
+    }
+  ],
+  "components": [
+    {
+      "id": "collision-0",
+      "type": "collider",
+      "data": {
+        "shape": "box",
+        "layer": "dynamic",
+        "trigger": false,
+        "halfExtent": [0.5, 0.5, 0.5],
+        "transform": {
+          "position": [0.0, 0.5, 0.0],
+          "rotation": [0.0, 0.0, 0.0, 1.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      }
+    },
+    {
+      "id": "rigidbody-0",
+      "type": "rigidbody",
+      "data": {
+        "motionType": "dynamic",
+        "mass": 8.0,
+        "linearDamping": 0.15,
+        "angularDamping": 0.2,
+        "useGravity": true,
+        "freezeRotation": false
+      }
+    }
+  ]
+}

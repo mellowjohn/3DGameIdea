@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <sstream>
 
 namespace engine {
@@ -59,6 +60,7 @@ Result<PrefabCollisionVolume> parse_collision_object(const nlohmann::json& value
     const auto shape = normalize_key(value.value("shape", std::string{"box"}));
     if (shape == "box") volume.shape = PrefabCollisionShape::Box;
     else if (shape == "sphere") volume.shape = PrefabCollisionShape::Sphere;
+    else if (shape == "capsule") volume.shape = PrefabCollisionShape::Capsule;
     else
         return Result<PrefabCollisionVolume>::failure(authored_error("COMPONENT-COLLIDER-SHAPE", "Unsupported shape: " + shape));
     if (value.contains("layer")) {
@@ -76,6 +78,7 @@ Result<PrefabCollisionVolume> parse_collision_object(const nlohmann::json& value
         volume.half_extent = {extent[0], extent[1], extent[2]};
     }
     if (value.contains("radius")) volume.radius = value["radius"].get<float>();
+    if (value.contains("halfHeight")) volume.capsule_half_height = value["halfHeight"].get<float>();
     if (volume.trigger) volume.layer = CollisionLayer::Trigger;
     if (!volume.interaction_id.empty() || volume.is_combat_sensor()) {
         volume.trigger = true;
@@ -88,6 +91,10 @@ Result<PrefabCollisionVolume> parse_collision_object(const nlohmann::json& value
         if (volume.half_extent.x <= 0 || volume.half_extent.y <= 0 || volume.half_extent.z <= 0)
             return Result<PrefabCollisionVolume>::failure(
                 authored_error("COMPONENT-COLLIDER-INVALID", "Box halfExtent must be positive"));
+    } else if (volume.shape == PrefabCollisionShape::Capsule) {
+        if (!(volume.radius > 0) || !(volume.capsule_half_height > 0))
+            return Result<PrefabCollisionVolume>::failure(
+                authored_error("COMPONENT-COLLIDER-INVALID", "Capsule radius and halfHeight must be positive"));
     } else if (!(volume.radius > 0)) {
         return Result<PrefabCollisionVolume>::failure(
             authored_error("COMPONENT-COLLIDER-INVALID", "Sphere radius must be positive"));
@@ -98,7 +105,9 @@ Result<PrefabCollisionVolume> parse_collision_object(const nlohmann::json& value
 nlohmann::json write_collision_object(const PrefabCollisionVolume& volume) {
     nlohmann::json entry;
     if (!volume.id.empty()) entry["id"] = volume.id;
-    entry["shape"] = volume.shape == PrefabCollisionShape::Box ? "box" : "sphere";
+    entry["shape"] = volume.shape == PrefabCollisionShape::Box       ? "box"
+                     : volume.shape == PrefabCollisionShape::Sphere ? "sphere"
+                                                                    : "capsule";
     entry["layer"] = layer_name(volume.layer);
     entry["trigger"] = volume.trigger;
     if (!volume.interaction_id.empty()) entry["interaction"] = volume.interaction_id;
@@ -107,7 +116,10 @@ nlohmann::json write_collision_object(const PrefabCollisionVolume& volume) {
     entry["transform"] = write_transform(volume.transform);
     if (volume.shape == PrefabCollisionShape::Box)
         entry["halfExtent"] = nlohmann::json::array({volume.half_extent.x, volume.half_extent.y, volume.half_extent.z});
-    else
+    else if (volume.shape == PrefabCollisionShape::Capsule) {
+        entry["radius"] = volume.radius;
+        entry["halfHeight"] = volume.capsule_half_height;
+    } else
         entry["radius"] = volume.radius;
     return entry;
 }
@@ -133,6 +145,18 @@ const PrefabAnimator* find_prefab_animator(const PrefabAsset& prefab, const std:
     return nullptr;
 }
 
+const PrefabRigidbody* find_prefab_rigidbody(const PrefabAsset& prefab, const std::string& id) {
+    for (const auto& rigidbody : prefab.rigidbodies) {
+        if (rigidbody.id == id) return &rigidbody;
+    }
+    return nullptr;
+}
+
+bool is_valid_rigidbody_motion_type(const std::string& value) {
+    const auto key = normalize_key(value);
+    return key == "dynamic" || key == "kinematic";
+}
+
 } // namespace
 
 std::string authored_component_type_name(AuthoredComponentType type) {
@@ -140,6 +164,7 @@ std::string authored_component_type_name(AuthoredComponentType type) {
     case AuthoredComponentType::Collider: return "collider";
     case AuthoredComponentType::ScriptBinding: return "scriptBinding";
     case AuthoredComponentType::Animator: return "animator";
+    case AuthoredComponentType::Rigidbody: return "rigidbody";
     }
     return "collider";
 }
@@ -149,13 +174,14 @@ std::optional<AuthoredComponentType> parse_authored_component_type(const std::st
     if (key == "collider") return AuthoredComponentType::Collider;
     if (key == "scriptbinding" || key == "script") return AuthoredComponentType::ScriptBinding;
     if (key == "animator") return AuthoredComponentType::Animator;
+    if (key == "rigidbody") return AuthoredComponentType::Rigidbody;
     return std::nullopt;
 }
 
 AuthoredComponentsComponent seed_authored_components_from_prefab(const PrefabAsset& prefab) {
     AuthoredComponentsComponent components;
-    components.entries.reserve(
-        prefab.collision.size() + prefab.script_bindings.size() + prefab.animators.size());
+    components.entries.reserve(prefab.collision.size() + prefab.script_bindings.size() + prefab.animators.size() +
+        prefab.rigidbodies.size());
     for (std::size_t index = 0; index < prefab.collision.size(); ++index) {
         AuthoredComponentEntry entry;
         entry.type = AuthoredComponentType::Collider;
@@ -188,6 +214,21 @@ AuthoredComponentsComponent seed_authored_components_from_prefab(const PrefabAss
                                                         : prefab.animators[index].id;
         components.entries.push_back(std::move(entry));
     }
+    for (std::size_t index = 0; index < prefab.rigidbodies.size(); ++index) {
+        AuthoredComponentEntry entry;
+        entry.type = AuthoredComponentType::Rigidbody;
+        entry.from_prefab = true;
+        entry.overridden = false;
+        entry.rigidbody.motion_type = prefab.rigidbodies[index].motion_type;
+        entry.rigidbody.mass = prefab.rigidbodies[index].mass;
+        entry.rigidbody.linear_damping = prefab.rigidbodies[index].linear_damping;
+        entry.rigidbody.angular_damping = prefab.rigidbodies[index].angular_damping;
+        entry.rigidbody.use_gravity = prefab.rigidbodies[index].use_gravity;
+        entry.rigidbody.freeze_rotation = prefab.rigidbodies[index].freeze_rotation;
+        entry.id = prefab.rigidbodies[index].id.empty() ? ("rigidbody-" + std::to_string(index))
+                                                          : prefab.rigidbodies[index].id;
+        components.entries.push_back(std::move(entry));
+    }
     components.generation = 1;
     return components;
 }
@@ -211,6 +252,40 @@ std::vector<PrefabCollisionVolume> effective_collision_volumes(
     return {};
 }
 
+std::optional<RigidbodyComponentData> effective_rigidbody(
+    const AuthoredComponentsComponent* entity_components, const PrefabAsset* prefab) {
+    if (entity_components && !entity_components->entries.empty()) {
+        for (const auto& entry : entity_components->entries) {
+            if (entry.type != AuthoredComponentType::Rigidbody) continue;
+            RigidbodyComponentData data = entry.rigidbody;
+            if (entry.from_prefab && !entry.overridden && prefab) {
+                if (const auto* source = find_prefab_rigidbody(*prefab, entry.id)) {
+                    data.motion_type = source->motion_type;
+                    data.mass = source->mass;
+                    data.linear_damping = source->linear_damping;
+                    data.angular_damping = source->angular_damping;
+                    data.use_gravity = source->use_gravity;
+                    data.freeze_rotation = source->freeze_rotation;
+                }
+            }
+            return data;
+        }
+        return std::nullopt;
+    }
+    if (prefab && !prefab->rigidbodies.empty()) {
+        const auto& source = prefab->rigidbodies.front();
+        RigidbodyComponentData data;
+        data.motion_type = source.motion_type;
+        data.mass = source.mass;
+        data.linear_damping = source.linear_damping;
+        data.angular_damping = source.angular_damping;
+        data.use_gravity = source.use_gravity;
+        data.freeze_rotation = source.freeze_rotation;
+        return data;
+    }
+    return std::nullopt;
+}
+
 Result<void> validate_authored_component_entry(const AuthoredComponentEntry& entry) {
     if (entry.id.empty())
         return Result<void>::failure(authored_error("COMPONENT-ID-REQUIRED", "Component id is required"));
@@ -223,6 +298,19 @@ Result<void> validate_authored_component_entry(const AuthoredComponentEntry& ent
         if (entry.animator.controller.empty())
             return Result<void>::failure(
                 authored_error("COMPONENT-ANIMATOR-INVALID", "animator requires controller path"));
+        return Result<void>::success();
+    }
+    if (entry.type == AuthoredComponentType::Rigidbody) {
+        if (!is_valid_rigidbody_motion_type(entry.rigidbody.motion_type))
+            return Result<void>::failure(authored_error(
+                "COMPONENT-RIGIDBODY-MOTION", "rigidbody motionType must be dynamic or kinematic"));
+        if (!(entry.rigidbody.mass > 0.0f) || !std::isfinite(entry.rigidbody.mass))
+            return Result<void>::failure(
+                authored_error("COMPONENT-RIGIDBODY-MASS", "rigidbody mass must be finite and positive"));
+        if (!(entry.rigidbody.linear_damping >= 0.0f) || !std::isfinite(entry.rigidbody.linear_damping) ||
+            !(entry.rigidbody.angular_damping >= 0.0f) || !std::isfinite(entry.rigidbody.angular_damping))
+            return Result<void>::failure(authored_error(
+                "COMPONENT-RIGIDBODY-DAMPING", "rigidbody damping values must be finite and non-negative"));
         return Result<void>::success();
     }
     if (entry.script.kind.empty() || entry.script.binding_id.empty())
@@ -256,6 +344,10 @@ std::string authored_component_entry_to_json(const AuthoredComponentEntry& entry
         nlohmann::json data{{"controller", entry.animator.controller}};
         if (!entry.animator.default_state.empty()) data["defaultState"] = entry.animator.default_state;
         root["data"] = std::move(data);
+    } else if (entry.type == AuthoredComponentType::Rigidbody) {
+        root["data"] = {{"motionType", entry.rigidbody.motion_type}, {"mass", entry.rigidbody.mass},
+            {"linearDamping", entry.rigidbody.linear_damping}, {"angularDamping", entry.rigidbody.angular_damping},
+            {"useGravity", entry.rigidbody.use_gravity}, {"freezeRotation", entry.rigidbody.freeze_rotation}};
     } else
         root["data"] = {{"kind", entry.script.kind}, {"bindingId", entry.script.binding_id}};
     return root.dump();
@@ -285,6 +377,17 @@ Result<AuthoredComponentEntry> authored_component_entry_from_json(const std::str
             entry.animator.controller = data.value("controller", std::string{});
             entry.animator.default_state =
                 data.value("defaultState", data.value("default_state", std::string{}));
+        } else if (entry.type == AuthoredComponentType::Rigidbody) {
+            entry.rigidbody.motion_type =
+                data.value("motionType", data.value("motion_type", std::string{"dynamic"}));
+            entry.rigidbody.mass = data.value("mass", 1.0f);
+            entry.rigidbody.linear_damping =
+                data.value("linearDamping", data.value("linear_damping", 0.0f));
+            entry.rigidbody.angular_damping =
+                data.value("angularDamping", data.value("angular_damping", 0.05f));
+            entry.rigidbody.use_gravity = data.value("useGravity", data.value("use_gravity", true));
+            entry.rigidbody.freeze_rotation =
+                data.value("freezeRotation", data.value("freeze_rotation", false));
         } else {
             entry.script.kind = data.value("kind", std::string{});
             entry.script.binding_id = data.value("bindingId", data.value("binding_id", std::string{}));
@@ -348,6 +451,16 @@ std::size_t propagate_prefab_components_into_entries(
                 entry.animator.default_state = source->default_state;
                 ++updated;
             }
+        } else if (entry.type == AuthoredComponentType::Rigidbody) {
+            if (const auto* source = find_prefab_rigidbody(prefab, entry.id)) {
+                entry.rigidbody.motion_type = source->motion_type;
+                entry.rigidbody.mass = source->mass;
+                entry.rigidbody.linear_damping = source->linear_damping;
+                entry.rigidbody.angular_damping = source->angular_damping;
+                entry.rigidbody.use_gravity = source->use_gravity;
+                entry.rigidbody.freeze_rotation = source->freeze_rotation;
+                ++updated;
+            }
         } else if (const auto* source = find_prefab_script(prefab, entry.id)) {
             entry.script.kind = source->kind;
             entry.script.binding_id = source->binding_id;
@@ -372,6 +485,8 @@ std::size_t propagate_prefab_components_into_entries(
                            return find_prefab_collider(prefab, entry.id) == nullptr;
                        if (entry.type == AuthoredComponentType::Animator)
                            return find_prefab_animator(prefab, entry.id) == nullptr;
+                       if (entry.type == AuthoredComponentType::Rigidbody)
+                           return find_prefab_rigidbody(prefab, entry.id) == nullptr;
                        return find_prefab_script(prefab, entry.id) == nullptr;
                    }),
         next.end());

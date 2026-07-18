@@ -18,9 +18,12 @@ Status: active (TICKET-0103) — design locked by [DEC-0022](../decisions/index.
 3. **`AnimatorRuntime`**: attach/detach, param setters, automatic transitions, crossfade, `tick`, status with active clip weights.
 4. **Lua drive API**: `animator_set_float` / `animator_set_bool` / `animator_set_trigger` / `animator_crossfade` / `animator_get_state`.
 
-## Root motion (TICKET-0104 / DEC-0030)
+## Root motion (TICKET-0104 / DEC-0030, retarget TICKET-0199)
 
-Controllers may set `applyRootMotion` (+ optional `rootJoint` / `rootMotionY`). `AnimatorRuntime::tick` accumulates weighted root translation deltas; `sync_character_root_motion` drives `CharacterController::move_root_motion` so locomotion is animation-owned while input drives params/facing.
+Controllers may set `applyRootMotion` (+ optional `rootJoint` / `rootMotionY`). `AnimatorRuntime::tick` accumulates weighted root translation deltas.
+
+- **Rigidbody path (preferred):** `sync_rigidbody_root_motion(world, body, …)` / `apply_rigidbody_root_motion` set horizontal linear velocity on a dynamic `CollisionBody` (TICKET-0199).
+- **CharacterVirtual fallback:** `sync_character_root_motion` still drives `CharacterController::move_root_motion` for debug-world / non-Rigidbody callers.
 
 ## Timeline events (TICKET-0105 / DEC-0031)
 

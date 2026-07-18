@@ -118,6 +118,7 @@ Result<PrefabCollisionVolume> read_collision_volume(const nlohmann::json& value)
     const auto shape = normalize_primitive_name(value.value("shape", std::string{"box"}));
     if (shape == "box") volume.shape = PrefabCollisionShape::Box;
     else if (shape == "sphere") volume.shape = PrefabCollisionShape::Sphere;
+    else if (shape == "capsule") volume.shape = PrefabCollisionShape::Capsule;
     else
         return Result<PrefabCollisionVolume>::failure(
             prefab_error("PREFAB-COLLISION-SHAPE-INVALID", "Unsupported collision shape: " + shape));
@@ -136,6 +137,7 @@ Result<PrefabCollisionVolume> read_collision_volume(const nlohmann::json& value)
         volume.half_extent = {extent[0], extent[1], extent[2]};
     }
     if (value.contains("radius")) volume.radius = value["radius"].get<float>();
+    if (value.contains("halfHeight")) volume.capsule_half_height = value["halfHeight"].get<float>();
     if (volume.trigger) volume.layer = CollisionLayer::Trigger;
     if (!volume.interaction_id.empty()) {
         volume.trigger = true;
@@ -153,6 +155,10 @@ Result<PrefabCollisionVolume> read_collision_volume(const nlohmann::json& value)
         if (volume.half_extent.x <= 0 || volume.half_extent.y <= 0 || volume.half_extent.z <= 0)
             return Result<PrefabCollisionVolume>::failure(
                 prefab_error("PREFAB-COLLISION-INVALID", "Box halfExtent must be positive on every axis"));
+    } else if (volume.shape == PrefabCollisionShape::Capsule) {
+        if (!(volume.radius > 0) || !(volume.capsule_half_height > 0))
+            return Result<PrefabCollisionVolume>::failure(
+                prefab_error("PREFAB-COLLISION-INVALID", "Capsule radius and halfHeight must be positive"));
     } else if (!(volume.radius > 0)) {
         return Result<PrefabCollisionVolume>::failure(
             prefab_error("PREFAB-COLLISION-INVALID", "Sphere radius must be positive"));
@@ -201,6 +207,38 @@ Result<PrefabAnimator> read_animator_component(const nlohmann::json& value) {
         return Result<PrefabAnimator>::failure(
             prefab_error("PREFAB-COMPONENT-INVALID", "animator requires controller path"));
     return Result<PrefabAnimator>::success(std::move(animator));
+}
+
+Result<PrefabRigidbody> read_rigidbody_component(const nlohmann::json& value) {
+    if (!value.is_object())
+        return Result<PrefabRigidbody>::failure(
+            prefab_error("PREFAB-COMPONENT-INVALID", "Component entry must be an object"));
+    PrefabRigidbody rigidbody;
+    rigidbody.id = value.value("id", std::string{});
+    const auto type = normalize_primitive_name(value.value("type", std::string{}));
+    if (type != "rigidbody")
+        return Result<PrefabRigidbody>::failure(
+            prefab_error("PREFAB-COMPONENT-TYPE", "Unsupported prefab component type (expected rigidbody)"));
+    const auto& data = value.contains("data") ? value.at("data") : value;
+    rigidbody.motion_type = data.value("motionType", data.value("motion_type", std::string{"dynamic"}));
+    rigidbody.mass = data.value("mass", 1.0f);
+    rigidbody.linear_damping = data.value("linearDamping", data.value("linear_damping", 0.0f));
+    rigidbody.angular_damping = data.value("angularDamping", data.value("angular_damping", 0.05f));
+    rigidbody.use_gravity = data.value("useGravity", data.value("use_gravity", true));
+    rigidbody.freeze_rotation = data.value("freezeRotation", data.value("freeze_rotation", false));
+    const auto motion = normalize_primitive_name(rigidbody.motion_type);
+    if (motion != "dynamic" && motion != "kinematic")
+        return Result<PrefabRigidbody>::failure(
+            prefab_error("PREFAB-RIGIDBODY-MOTION", "rigidbody motionType must be dynamic or kinematic"));
+    if (!(rigidbody.mass > 0.0f) || !std::isfinite(rigidbody.mass))
+        return Result<PrefabRigidbody>::failure(
+            prefab_error("PREFAB-RIGIDBODY-MASS", "rigidbody mass must be finite and positive"));
+    if (!(rigidbody.linear_damping >= 0.0f) || !std::isfinite(rigidbody.linear_damping) ||
+        !(rigidbody.angular_damping >= 0.0f) || !std::isfinite(rigidbody.angular_damping))
+        return Result<PrefabRigidbody>::failure(
+            prefab_error("PREFAB-RIGIDBODY-DAMPING", "rigidbody damping must be finite and non-negative"));
+    rigidbody.motion_type = motion;
+    return Result<PrefabRigidbody>::success(std::move(rigidbody));
 }
 
 void expand_bounds_component(MeshBounds& bounds, float x, float y, float z) {
@@ -408,6 +446,14 @@ Result<PrefabAsset> PrefabAsset::load(const std::filesystem::path& path) {
                 asset.animators.push_back(std::move(component));
                 continue;
             }
+            if (type == "rigidbody") {
+                const auto rigidbody = read_rigidbody_component(entry);
+                if (!rigidbody) return Result<PrefabAsset>::failure(rigidbody.error());
+                PrefabRigidbody component = rigidbody.value();
+                if (component.id.empty()) component.id = "rigidbody-" + std::to_string(asset.rigidbodies.size());
+                asset.rigidbodies.push_back(std::move(component));
+                continue;
+            }
             const auto binding = read_script_binding_component(entry);
             if (!binding) return Result<PrefabAsset>::failure(binding.error());
             PrefabScriptBinding script = binding.value();
@@ -416,7 +462,8 @@ Result<PrefabAsset> PrefabAsset::load(const std::filesystem::path& path) {
         }
     }
     if (asset.schema_version >= 2) {
-        if (asset.parts.empty() && asset.collision.empty() && asset.script_bindings.empty() && asset.animators.empty())
+        if (asset.parts.empty() && asset.collision.empty() && asset.script_bindings.empty() && asset.animators.empty() &&
+            asset.rigidbodies.empty())
             return Result<PrefabAsset>::failure(
                 prefab_error("PREFAB-PARTS-MISSING", "schemaVersion 2 prefabs require mesh parts, collision, or components"));
     } else if (asset.mesh.empty() && asset.parts.empty()) {
@@ -449,7 +496,9 @@ Result<void> PrefabAsset::save(const std::filesystem::path& path) const {
         for (const auto& volume : collision) {
             nlohmann::json entry;
             if (!volume.id.empty()) entry["id"] = volume.id;
-            entry["shape"] = volume.shape == PrefabCollisionShape::Box ? "box" : "sphere";
+            entry["shape"] = volume.shape == PrefabCollisionShape::Box       ? "box"
+                             : volume.shape == PrefabCollisionShape::Sphere ? "sphere"
+                                                                            : "capsule";
             switch (volume.layer) {
             case CollisionLayer::StaticWorld: entry["layer"] = "staticWorld"; break;
             case CollisionLayer::Dynamic: entry["layer"] = "dynamic"; break;
@@ -461,13 +510,18 @@ Result<void> PrefabAsset::save(const std::filesystem::path& path) const {
             if (!volume.combat_hit_id.empty()) entry["combatHit"] = volume.combat_hit_id;
             if (!volume.combat_hurt_id.empty()) entry["combatHurt"] = volume.combat_hurt_id;
             entry["transform"] = write_transform(volume.transform);
-            if (volume.shape == PrefabCollisionShape::Box) entry["halfExtent"] = write_vec3({volume.half_extent.x, volume.half_extent.y, volume.half_extent.z});
-            else entry["radius"] = volume.radius;
+            if (volume.shape == PrefabCollisionShape::Box)
+                entry["halfExtent"] = write_vec3({volume.half_extent.x, volume.half_extent.y, volume.half_extent.z});
+            else if (volume.shape == PrefabCollisionShape::Capsule) {
+                entry["radius"] = volume.radius;
+                entry["halfHeight"] = volume.capsule_half_height;
+            } else
+                entry["radius"] = volume.radius;
             collision_array.push_back(std::move(entry));
         }
         document["collision"] = std::move(collision_array);
     }
-    if (!script_bindings.empty() || !animators.empty()) {
+    if (!script_bindings.empty() || !animators.empty() || !rigidbodies.empty()) {
         nlohmann::json components = nlohmann::json::array();
         for (const auto& binding : script_bindings) {
             components.push_back({{"id", binding.id}, {"type", "scriptBinding"},
@@ -477,6 +531,12 @@ Result<void> PrefabAsset::save(const std::filesystem::path& path) const {
             nlohmann::json data{{"controller", animator.controller}};
             if (!animator.default_state.empty()) data["defaultState"] = animator.default_state;
             components.push_back({{"id", animator.id}, {"type", "animator"}, {"data", std::move(data)}});
+        }
+        for (const auto& rigidbody : rigidbodies) {
+            components.push_back({{"id", rigidbody.id}, {"type", "rigidbody"},
+                {"data", {{"motionType", rigidbody.motion_type}, {"mass", rigidbody.mass},
+                    {"linearDamping", rigidbody.linear_damping}, {"angularDamping", rigidbody.angular_damping},
+                    {"useGravity", rigidbody.use_gravity}, {"freezeRotation", rigidbody.freeze_rotation}}}});
         }
         document["components"] = std::move(components);
     }

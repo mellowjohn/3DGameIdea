@@ -2588,13 +2588,13 @@ WorldForgeGraphBounds compute_map_canvas_fit_bounds(const WorldForgeMapAsset& as
     auto expand = [&](float x, float z) {
         if (!bounds.valid) {
             bounds.min_x = bounds.max_x = x;
-            bounds.min_z = bounds.max_z = z;
+            bounds.min_y = bounds.max_y = z;
             bounds.valid = true;
         } else {
             bounds.min_x = (std::min)(bounds.min_x, x);
             bounds.max_x = (std::max)(bounds.max_x, x);
-            bounds.min_z = (std::min)(bounds.min_z, z);
-            bounds.max_z = (std::max)(bounds.max_z, z);
+            bounds.min_y = (std::min)(bounds.min_y, z);
+            bounds.max_y = (std::max)(bounds.max_y, z);
         }
     };
     if (include_regions) {
@@ -2841,8 +2841,8 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
         if (!bounds.valid) {
             bounds.min_x = -50.0f;
             bounds.max_x = 50.0f;
-            bounds.min_z = -50.0f;
-            bounds.max_z = 50.0f;
+            bounds.min_y = -50.0f;
+            bounds.max_y = 50.0f;
             bounds.valid = true;
         }
         fit_graph_camera_to_bounds(cam, canvas_size.x, canvas_size.y, bounds, 48.0f);

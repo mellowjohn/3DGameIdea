@@ -100,9 +100,19 @@ Still open:
 
 **Resolved:** Tessera is the world’s primary land (Middle-earth-scale); Kingdom of Tessera is the polity within it — [DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land).
 
-## Water and hydrology (DEC-0038)
+## Authored Rigidbody / physics body (future)
 
-**Resolved 2026-07-18** as [DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring): gameplay swim + scripted floating vessels; one world-wide sea level; Sculpt owns water placement/sculpting; World Forge Map owns hydrology layout and ferry routes; fully authored (no noise auto-hydrology); scripted wave motion; deep-water fatigue + damage; reflection/refraction low-poly water; mud/sand shores; bounded sea regions + map-edge fog; dry basins stay dry when sensible; suppress underwater foliage; lava/magic pools deferred. Feature doc: [`water-hydrology.md`](../features/water-hydrology.md).
+**Resolved (body mode)** 2026-07-17 as [DEC-0038](../decisions/index.md#dec-0038-authored-rigidbody--dynamic-bodies-for-player-and-entities): authored **`rigidbody`** component; player and physics entities use **true dynamic** rigidbodies (forces / friction materials), not CharacterVirtual-as-a-mode. Epic: **EPIC-0015** (TICKET-0196–0199).
+
+Still open for design detail during implementation:
+
+- Default mass / friction / freeze-rotation for the player capsule (0198)
+- How jump, grounding, and stairs are expressed on a dynamic body (0198)
+- DEC-0030 root-motion retarget onto Rigidbody-backed entities (0199)
+
+## Water and hydrology (DEC-0039)
+
+**Resolved 2026-07-18** as [DEC-0039](../decisions/index.md#dec-0039-water-swim-and-hydrology-authoring): gameplay swim + scripted floating vessels; one world-wide sea level; Sculpt owns water placement/sculpting; World Forge Map owns hydrology layout and ferry routes; fully authored (no noise auto-hydrology); scripted wave motion; deep-water fatigue + damage; reflection/refraction low-poly water; mud/sand shores; bounded sea regions + map-edge fog; dry basins stay dry when sensible; suppress underwater foliage; lava/magic pools deferred. Feature doc: [`water-hydrology.md`](../features/water-hydrology.md).
 
 Still open (implementation tuning, not product forks):
 

@@ -1,18 +1,49 @@
-{
-  "schemaVersion": 2,
-  "characterAsset": "assets/characters/player.character.json",
-  "entities": [
-    {
-      "name": "Body",
-      "transform": {
-        "position": [0.0, 0.0, 0.0],
-        "rotation": [0.0, 0.0, 0.0, 1.0],
-        "scale": [1.0, 1.0, 1.0]
-      },
-      "parent": null,
-      "mesh": {
-        "asset": "assets/models/player.gltf"
-      }
-    }
-  ]
-}
+{
+  "schemaVersion": 2,
+  "characterAsset": "assets/characters/player.character.json",
+  "entities": [
+    {
+      "name": "Body",
+      "transform": {
+        "position": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "parent": null,
+      "mesh": {
+        "asset": "assets/models/player.gltf"
+      }
+    }
+  ],
+  "components": [
+    {
+      "id": "collision-0",
+      "type": "collider",
+      "data": {
+        "shape": "capsule",
+        "layer": "dynamic",
+        "trigger": false,
+        "radius": 0.35,
+        "halfHeight": 0.85,
+        "transform": {
+          "position": [0.0, 1.2, 0.0],
+          "rotation": [0.0, 0.0, 0.0, 1.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      }
+    },
+    {
+      "id": "rigidbody-0",
+      "type": "rigidbody",
+      "data": {
+        "motionType": "dynamic",
+        "mass": 70.0,
+        "linearDamping": 0.05,
+        "angularDamping": 0.05,
+        "useGravity": true,
+        "freezeRotation": true
+      }
+    }
+  ]
+}
+

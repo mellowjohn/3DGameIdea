@@ -2,7 +2,7 @@
 
 Status: active (schemaVersion 1) — TICKET-0013 · Epic EPIC-0002
 
-Diffable story geography: **regions**, **POIs**, travel/soft-gate **links**, **hydrology** planning bounds, and **ferry route** polylines. IDs and narrative metadata only — not mesh placement ([DEC-0019](../decisions/index.md#dec-0019-world-forge-editor-home-and-story-canon-split), [DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring)). Scene entity / prefab refs are optional strings for later wiring.
+Diffable story geography: **regions**, **POIs**, travel/soft-gate **links**, **hydrology** planning bounds, and **ferry route** polylines. IDs and narrative metadata only — not mesh placement ([DEC-0019](../decisions/index.md#dec-0019-world-forge-editor-home-and-story-canon-split), [DEC-0038](../decisions/index.md#dec-0039-water-swim-and-hydrology-authoring)). Scene entity / prefab refs are optional strings for later wiring.
 
 ## Default path
 

@@ -36,7 +36,7 @@ struct PrefabPart {
     PrefabMeshSource mesh;
 };
 
-enum class PrefabCollisionShape : std::uint8_t { Box, Sphere };
+enum class PrefabCollisionShape : std::uint8_t { Box, Sphere, Capsule };
 
 struct PrefabCollisionVolume {
     std::string id;
@@ -49,6 +49,8 @@ struct PrefabCollisionVolume {
     TransformComponent transform;
     LocalPosition half_extent{0.5f, 0.5f, 0.5f};
     float radius = 0.5f;
+    /** Cylinder half-height for Capsule (Jolt CapsuleShape); total height = 2*(halfHeight+radius). */
+    float capsule_half_height = 0.85f;
 
     [[nodiscard]] bool is_interaction() const { return !interaction_id.empty(); }
     [[nodiscard]] bool is_combat_hit() const { return !combat_hit_id.empty(); }
@@ -68,6 +70,16 @@ struct PrefabAnimator {
     std::string default_state; // optional
 };
 
+struct PrefabRigidbody {
+    std::string id;
+    std::string motion_type = "dynamic"; // dynamic | kinematic
+    float mass = 1.0f;
+    float linear_damping = 0.0f;
+    float angular_damping = 0.05f;
+    bool use_gravity = true;
+    bool freeze_rotation = false;
+};
+
 struct PrefabAsset {
     int schema_version = 1;
     std::string mesh;
@@ -75,6 +87,7 @@ struct PrefabAsset {
     std::vector<PrefabCollisionVolume> collision;
     std::vector<PrefabScriptBinding> script_bindings;
     std::vector<PrefabAnimator> animators;
+    std::vector<PrefabRigidbody> rigidbodies;
     std::optional<PrefabPointLight> light;
     std::optional<std::string> character_asset;
 

@@ -1,34 +1,26 @@
 # Orbit Camera
 
-Third-person orbit camera with collision-aware distance shortening.
+Third-person RPG orbit camera with collision-aware distance shortening (WoW / Dragon Age–style framing).
 
 ## Behavior
 
-- Orbits a world pivot (character feet plus configurable shoulder height) using yaw/pitch mouse look.
-- Default distance **5 m** (min **1.5 m**, max **8 m**), pivot height **1.6 m**.
-- Each update sweeps a **0.2 m** probe sphere from the pivot toward the desired eye position against static and dynamic collision. The nearest hit shortens the resolved distance with **0.15 m** padding.
-- `collision_shortened()` reports when geometry pulled the camera closer than the desired distance.
+- Orbits a shoulder/chest pivot (`pivotHeight` above feet) with yaw/pitch mouse look.
+- Optional **shoulder offset** places the eye slightly to camera-right while still aiming at the character (over-the-shoulder).
+- Default framing: **~10.5 m** distance, mild look-down pitch, **~65°** vertical FOV.
+- Pitch is soft-clamped (`minPitch` / `maxPitch`) so the view stays game-like.
+- **Scroll wheel** dollies desired distance between min/max (camera moves closer/farther; look stays on the player).
+- Collision shortening uses **StaticWorld only** so the player body does not pin the camera at min distance.
 
-## Debug world integration
+## Debug / play
 
-`engine run --debug-world` pairs the capsule character controller with `OrbitCamera`, loading character and camera assets from `play.session.json` when present.
+`engine run --debug-world` and editor **Game** tab test sessions use `OrbitCamera` with character + camera assets from `play.session.json`.
 
-- **WASD** moves the character relative to camera yaw.
-- **Right-drag** mouse look orbits the camera around the character.
-- Terrain streaming follows the resolved camera position.
+- **WASD** moves relative to camera yaw.
+- **Right-drag** orbits.
+- **Scroll** zooms.
 
-The editor viewport uses the free `DebugCamera` for placement work. Editor test sessions use orbit settings from the project's camera asset.
+## Configuration
 
-## Editor play session
+See [`../formats/camera-assets.md`](../formats/camera-assets.md). Sample: `samples/open-world-rpg/assets/cameras/game.camera.json`.
 
-Configure character and camera assets in the Inspector (no entity selected) or inspect `.character.json` / `.camera.json` files from the Asset Browser. Save asset JSON or `play.session.json` to persist bindings.
-
-## API
-
-`OrbitCamera::update(pivot, collision_world)` must run after the pivot moves and before reading `view_matrix()` / `view_projection()`.
-
-## Limitations
-
-- No scroll-wheel distance control yet.
-- Camera and character asset edits apply on the next test session start, not mid-session.
-- Camera probe does not ignore the followed character inner body (open space and wall tests use distant blockers).
+`OrbitCamera::update(pivot, collision_world)` must run after the pivot moves and before reading view matrices.

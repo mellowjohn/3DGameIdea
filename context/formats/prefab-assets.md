@@ -147,7 +147,7 @@ Prefabs may declare authored collision parts independent of render meshes:
 ]
 ```
 
-- `shape`: `box` or `sphere`
+- `shape`: `box`, `sphere`, or `capsule`
 - `id`: optional stable id (defaults to `collision-N` on load); used for Unity-like instance inheritance
 - `layer`: `staticWorld`, `dynamic`, `character`, or `trigger`
 - `trigger`: when true, the volume is a sensor regardless of `layer`
@@ -156,9 +156,10 @@ Prefabs may declare authored collision parts independent of render meshes:
 - `combatHurt`: optional hurtbox id; when present the volume is a trigger hurt sensor (`combatHit` and `combatHurt` are mutually exclusive)
 - `transform`: local-space offset relative to the placed prefab root
 - `halfExtent`: box half extents in meters (required for `box`)
-- `radius`: sphere radius in meters (required for `sphere`)
+- `radius`: sphere/capsule radius in meters (required for `sphere` / `capsule`)
+- `halfHeight`: capsule cylinder half-height in meters (required for `capsule`; total height ≈ `2*(halfHeight+radius)`)
 
-### Optional `components` array (script bindings / animator)
+### Optional `components` array (script bindings / animator / rigidbody)
 
 Non-collider components on the prefab asset:
 
@@ -173,11 +174,23 @@ Non-collider components on the prefab asset:
     "id": "animator-0",
     "type": "animator",
     "data": { "controller": "assets/animators/player.animator.json", "defaultState": "idle" }
+  },
+  {
+    "id": "rigidbody-0",
+    "type": "rigidbody",
+    "data": {
+      "motionType": "dynamic",
+      "mass": 1.0,
+      "linearDamping": 0.0,
+      "angularDamping": 0.05,
+      "useGravity": true,
+      "freezeRotation": false
+    }
   }
 ]
 ```
 
-`kind` is `interaction`, `combatHit`, `combatHurt`, or `handler`. Animator `controller` is a project-relative `*.animator.json` ([`animator-controller-assets.md`](animator-controller-assets.md)). Collider entries may also appear under `components` with `type: "collider"` and are merged into `collision[]` on load. Existing `collision[]`-only prefabs remain valid ([DEC-0017](../decisions/index.md#dec-0017-prefab-and-scene-component-authoring-with-unity-like-inheritance)).
+`kind` is `interaction`, `combatHit`, `combatHurt`, or `handler`. Animator `controller` is a project-relative `*.animator.json` ([`animator-controller-assets.md`](animator-controller-assets.md)). **Rigidbody** ([DEC-0038](../decisions/index.md#dec-0038-authored-rigidbody--dynamic-bodies-for-player-and-entities)): `motionType` is `dynamic` or `kinematic`; `mass` must be positive; damping ≥ 0. Runtime spawn of Jolt bodies is TICKET-0197. Collider entries may also appear under `components` with `type: "collider"` and are merged into `collision[]` on load. Existing `collision[]`-only prefabs remain valid ([DEC-0017](../decisions/index.md#dec-0017-prefab-and-scene-component-authoring-with-unity-like-inheritance)).
 
 On placement, `spawn_prefab_collision()` / `PlacementCollisionTracker` use entity authored components when present (effective volume = local override or linked prefab volume by id); otherwise they fall back to prefab `collision[]`.
 

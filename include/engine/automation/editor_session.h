@@ -13,6 +13,8 @@
 #include "engine/world/terrain_edits.h"
 #include "engine/world/terrain_paint.h"
 
+#include <nlohmann/json.hpp>
+
 #include <filesystem>
 #include <functional>
 #include <map>

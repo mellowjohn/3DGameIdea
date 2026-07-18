@@ -27,8 +27,10 @@ Result<void> WaterBrushStrokeCommand::revert(WaterStore& store) {
 }
 
 Result<void> WaterEditHistory::execute(WaterStore& store, std::unique_ptr<WaterEditCommand> command) {
-    if (!command) return Result<void>::failure({{"WATER-HISTORY-EMPTY", Severity::Error, ErrorCategory::Validation,
-        "water-history", "Water history command is null", ENGINE_SOURCE_CONTEXT, {}, "Provide a command.", make_correlation_id()}});
+    if (!command)
+        return Result<void>::failure(
+            EngineError{"WATER-HISTORY-EMPTY", Severity::Error, ErrorCategory::Validation, "water-history",
+                "Water history command is null", ENGINE_SOURCE_CONTEXT, {}, "Provide a command.", make_correlation_id()});
     const auto applied = command->apply(store);
     if (!applied) return applied;
     undo_.push_back(std::move(command));
@@ -39,8 +41,9 @@ Result<void> WaterEditHistory::execute(WaterStore& store, std::unique_ptr<WaterE
 
 Result<void> WaterEditHistory::undo(WaterStore& store) {
     if (undo_.empty())
-        return Result<void>::failure({{"WATER-UNDO-EMPTY", Severity::Error, ErrorCategory::Validation, "water-history",
-            "Nothing to undo", ENGINE_SOURCE_CONTEXT, {}, "Place water before undo.", make_correlation_id()}});
+        return Result<void>::failure(
+            EngineError{"WATER-UNDO-EMPTY", Severity::Error, ErrorCategory::Validation, "water-history",
+                "Nothing to undo", ENGINE_SOURCE_CONTEXT, {}, "Place water before undo.", make_correlation_id()});
     auto command = std::move(undo_.back());
     undo_.pop_back();
     const auto reverted = command->revert(store);
@@ -55,8 +58,9 @@ Result<void> WaterEditHistory::undo(WaterStore& store) {
 
 Result<void> WaterEditHistory::redo(WaterStore& store) {
     if (redo_.empty())
-        return Result<void>::failure({{"WATER-REDO-EMPTY", Severity::Error, ErrorCategory::Validation, "water-history",
-            "Nothing to redo", ENGINE_SOURCE_CONTEXT, {}, "Undo before redo.", make_correlation_id()}});
+        return Result<void>::failure(
+            EngineError{"WATER-REDO-EMPTY", Severity::Error, ErrorCategory::Validation, "water-history",
+                "Nothing to redo", ENGINE_SOURCE_CONTEXT, {}, "Undo before redo.", make_correlation_id()});
     auto command = std::move(redo_.back());
     redo_.pop_back();
     const auto applied = command->apply(store);

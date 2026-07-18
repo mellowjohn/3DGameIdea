@@ -453,7 +453,23 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Consequences: EPIC-0014 (TICKET-0192–0195); feature doc [`../features/authoring-git-sync.md`](../features/authoring-git-sync.md). Requires `git` on PATH and a project that is a git working tree. Real-time collab and custom cloud backends remain out of scope.
 - Supersedes: none
 
-### DEC-0038: Water, swim, and hydrology authoring
+### DEC-0038: Authored Rigidbody — dynamic bodies for player and entities
+
+- Status: accepted
+- Date: 2026-07-17
+- Context: Player locomotion today is a standalone `CharacterVirtual` (`CharacterController`) while props use `CollisionWorld` dynamic flags with no Unity-like Rigidbody authored component. Owner wants one physics component for the player and other entities that need physics, and chose **true dynamic rigidbodies** (not CharacterVirtual-under-a-mode).
+- Decision:
+  1. Introduce an authored **`rigidbody`** component (Add Component on prefabs/entities; DEC-0016/0017 inherit/override) that owns motion: mass, drag/friction (material or fields), constraints (e.g. freeze rotation), gravity toggle, and kinematic vs **dynamic** mode.
+  2. The component is **universal**: the same Add Component path applies to the **player prefab and any other prefab** that needs physics (NPCs, props, pushables, etc.). No player-only physics API once migration completes.
+  3. Entities that need physics use this component with **dynamic** rigidbody locomotion — input/scripts apply forces / target velocities on the Jolt dynamic body; friction and collisions come from the physics material / body, not a separate CharacterVirtual velocity integrator.
+  4. Authored **`collider`** volumes remain the shape source; Rigidbody is the motion body. Runtime body handles stay non-serialized (same rule as today’s transient physics ids).
+  5. Today’s `CharacterController` / `CharacterVirtual` path is **transitional** until the Rigidbody component ships and player spawn migrates. Root-motion sync ([DEC-0030](../decisions/index.md#dec-0030-animation-driven-root-motion)) must be retargeted from `CharacterController` to the Rigidbody-backed entity when that lands.
+  6. Pure static world colliders (terrain, buildings) stay static bodies — they do not require a Rigidbody component.
+- Rationale: Matches owner intent for Unity-like Rigidbody friction/forces and **prefab reuse** (drop Rigidbody + Collider on any prefab); avoids a permanent CharacterVirtual vs Rigidbody split.
+- Consequences: **EPIC-0015** (TICKET-0196 schema → 0197 spawn → 0198 player migrate → 0199 root-motion/samples). Update [`../architecture/components.md`](../architecture/components.md) and [`../features/character-controller.md`](../features/character-controller.md) as tickets land.
+- Supersedes: none (does not remove CharacterVirtual until migration tickets complete)
+
+### DEC-0039: Water, swim, and hydrology authoring
 
 - Status: accepted
 - Date: 2026-07-18
@@ -471,6 +487,6 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
   10. **Foliage:** **Suppress** ground-cover foliage underwater.
   11. **Future liquids:** Lava and magic pools are **out of v1 scope** (same systems may extend later via materials + `physics.surface`).
 - Rationale: Matches seamless-world navigation (deep water as real danger), SQ-10 ferry/dive beats, DEC-0006 stylized look, and existing Sculpt/MCP + World Forge map split without duplicating Scene placement.
-- Consequences: EPIC-0015; feature doc [`../features/water-hydrology.md`](../features/water-hydrology.md). Update [`open-world-navigation.md`](../features/open-world-navigation.md), [`terrain-authoring.md`](../features/terrain-authoring.md), [`character-controller.md`](../features/character-controller.md), [`world-forge-scope.md`](../features/world-forge-scope.md). Blockers: blended material/water render pass, `WaterStore` (or equivalent) persistence, swim mode, deep-water stamina/damage rules, World Forge ferry-route schema. Boats remain script-driven rather than full physics sim in v1.
+- Consequences: EPIC-0016; feature doc [`../features/water-hydrology.md`](../features/water-hydrology.md). Update [`open-world-navigation.md`](../features/open-world-navigation.md), [`terrain-authoring.md`](../features/terrain-authoring.md), [`character-controller.md`](../features/character-controller.md), [`world-forge-scope.md`](../features/world-forge-scope.md). Blockers: blended material/water render pass, `WaterStore` (or equivalent) persistence, swim mode, deep-water stamina/damage rules, World Forge ferry-route schema. Boats remain script-driven rather than full physics sim in v1.
 - Supersedes: none
 

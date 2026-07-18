@@ -16,6 +16,7 @@
 #include "engine/animation/root_motion.h"
 #include "engine/assets/animator_controller_asset.h"
 #include "engine/physics/character_controller.h"
+#include "engine/physics/rigidbody_locomotion.h"
 #include "engine/scripting/lua_runtime.h"
 #include "engine/assets/hud_asset.h"
 #include "engine/assets/ui_canvas_asset.h"
@@ -1258,6 +1259,88 @@ int main(int argc,char**argv){
         r.check(std::any_of(prefab_unload_events.begin(),prefab_unload_events.end(),[](const engine::ContactEvent& e){return e.type==engine::ContactEventType::Exit;}),"prefab trigger unloads with cell");
         (void)world.remove(prefab_inside.value());
         r.check(!world.debug_bodies().empty(),"collision debug bodies available");
+
+        // TICKET-0197: CollisionBodySettings + PlacementCollisionTracker Rigidbody path
+        {
+            engine::CollisionWorld settings_world;
+            auto settings_floor=settings_world.add_box({0,-1,0},{20,1,20},engine::CollisionLayer::StaticWorld,false);
+            r.check(settings_floor.has_value(),"0197 settings floor");
+            auto dyn_settings=engine::CollisionBodySettings::make_dynamic();
+            dyn_settings.mass=2.0f;
+            dyn_settings.linear_damping=0.1f;
+            auto falling=settings_world.add_box({0,8,0},{0.5f,0.5f,0.5f},engine::CollisionLayer::Dynamic,dyn_settings);
+            r.check(falling.has_value(),"0197 dynamic settings body");
+            const auto y0=settings_world.position(falling.value()).value().y;
+            for(int i=0;i<120;++i) r.check(settings_world.step(1.0f/60.0f).has_value(),"0197 fall step");
+            const auto y1=settings_world.position(falling.value()).value().y;
+            r.check(y1<y0-1.0,"0197 dynamic settings body falls");
+            r.check(y1>-0.5,"0197 dynamic settings body rests above floor");
+            auto kin_settings=engine::CollisionBodySettings::make_kinematic();
+            auto kinematic=settings_world.add_box({5,8,0},{0.5f,0.5f,0.5f},engine::CollisionLayer::Dynamic,kin_settings);
+            r.check(kinematic.has_value(),"0197 kinematic settings body");
+            const auto ky0=settings_world.position(kinematic.value()).value().y;
+            for(int i=0;i<60;++i) r.check(settings_world.step(1.0f/60.0f).has_value(),"0197 kinematic step");
+            const auto ky1=settings_world.position(kinematic.value()).value().y;
+            r.check(std::abs(ky1-ky0)<0.01,"0197 kinematic does not fall");
+            auto no_mass=engine::CollisionBodySettings::make_dynamic();
+            no_mass.mass=0.0f;
+            r.check(!settings_world.add_box({0,1,0},{0.5f,0.5f,0.5f},engine::CollisionLayer::Dynamic,no_mass),
+                "0197 invalid mass rejected");
+        }
+        {
+            engine::CollisionWorld track_world;
+            auto track_floor=track_world.add_box({0,-1,0},{20,1,20},engine::CollisionLayer::StaticWorld,false,engine::CellCoord{0,0});
+            r.check(track_floor.has_value(),"0197 tracker floor");
+            engine::PrefabAsset crate;
+            crate.schema_version=2;
+            engine::PrefabCollisionVolume box;
+            box.shape=engine::PrefabCollisionShape::Box;
+            box.layer=engine::CollisionLayer::StaticWorld;
+            box.half_extent={0.5f,0.5f,0.5f};
+            crate.collision.push_back(box);
+            engine::PrefabRigidbody rb;
+            rb.id="rigidbody-0";
+            rb.motion_type="dynamic";
+            rb.mass=1.0f;
+            crate.rigidbodies.push_back(rb);
+            engine::Scene scene;
+            engine::TransformComponent at;
+            at.position={0.0f,6.0f,0.0f};
+            auto placed=scene.place_world_object("crate","assets/prefabs/crate.prefab.json",at,std::nullopt,std::nullopt,&crate);
+            r.check(placed.has_value(),"0197 place rigidbody prefab");
+            std::map<std::string,engine::PrefabAsset> catalog;
+            catalog["assets/prefabs/crate.prefab.json"]=crate;
+            engine::PlacementCollisionTracker tracker;
+            r.check(tracker.sync(track_world,scene,catalog,true).has_value(),"0197 sync dynamic placement");
+            r.check(track_world.body_count()>=2,"0197 motion + floor bodies");
+            const auto y_before=scene.transform(placed.value())->position[1];
+            for(int i=0;i<120;++i){
+                r.check(track_world.step(1.0f/60.0f).has_value(),"0197 tracker physics step");
+                tracker.write_back_transforms(scene,track_world);
+                r.check(tracker.sync(track_world,scene,catalog,true).has_value(),"0197 sync after write-back");
+            }
+            const auto y_after=scene.transform(placed.value())->position[1];
+            r.check(y_after<y_before-1.0f,"0197 write-back lowers entity");
+            r.check(y_after>-0.6f,"0197 crate rests near floor");
+            engine::PrefabAsset static_prefab;
+            static_prefab.schema_version=2;
+            static_prefab.collision.push_back(box);
+            engine::TransformComponent static_at;
+            static_at.position={10.0f,6.0f,0.0f};
+            auto static_placed=scene.place_world_object("static","assets/prefabs/static.prefab.json",static_at,std::nullopt,std::nullopt,&static_prefab);
+            catalog["assets/prefabs/static.prefab.json"]=static_prefab;
+            r.check(static_placed.has_value()&&tracker.sync(track_world,scene,catalog,true).has_value(),"0197 sync static placement");
+            const auto static_y0=scene.transform(static_placed.value())->position[1];
+            for(int i=0;i<60;++i){
+                r.check(track_world.step(1.0f/60.0f).has_value(),"0197 static step");
+                tracker.write_back_transforms(scene,track_world);
+            }
+            r.check(std::abs(scene.transform(static_placed.value())->position[1]-static_y0)<0.001f,
+                "0197 no-Rigidbody placement stays put");
+            const auto count_before_unload=track_world.body_count();
+            track_world.unload_cell({0,0});
+            r.check(track_world.body_count()<count_before_unload,"0197 unload removes cell bodies");
+        }
     }else if(suite=="navigation"){
         auto grid=engine::build_navigation_grid({0,0});
         r.check(grid.has_value()&&grid.value().resolution==33&&grid.value().cell_size==128.0f,"navigation grid builds for partition cell");
@@ -1331,6 +1414,29 @@ int main(int argc,char**argv){
         world.unload_cell({5,5});
         r.check(character.move({0,0,1.0f},0.0f,1.0f/60.0f).has_value(),"character move survives unrelated cell unload");
         r.check(character.debug_body().shape==engine::CollisionDebugShape::Capsule,"character debug body reports capsule");
+        r.check(std::abs(engine::character_facing_yaw_from_velocity(0.0f, 3.0f, 1.5f) - 0.0f) < 1e-5f,
+            "facing forward uses +Z yaw 0");
+        r.check(std::abs(engine::character_facing_yaw_from_velocity(3.0f, 0.0f, 0.0f) - 1.5707963f) < 1e-4f,
+            "facing right uses +X yaw pi/2");
+        r.check(std::abs(engine::character_facing_yaw_from_velocity(0.0f, 0.0f, 0.75f) - 0.75f) < 1e-5f,
+            "facing keeps previous when idle");
+        r.check(std::abs(engine::character_facing_yaw_from_wish(0.0f, 1.0f, 0.4f, 1.5f) - 0.4f) < 1e-5f,
+            "wish forward faces camera yaw");
+        r.check(std::abs(engine::character_facing_yaw_from_wish(1.0f, 0.0f, 0.0f, 0.0f) - 1.5707963f) < 1e-4f,
+            "wish strafe-right faces +X");
+        r.check(std::abs(engine::character_facing_yaw_from_wish(0.0f, 0.0f, 0.4f, 0.9f) - 0.9f) < 1e-5f,
+            "wish idle keeps previous facing");
+        r.check(std::abs(engine::character_facing_yaw_from_camera_look(0.45f, -10.0f, 0.0f, 0.0f, 0.0f) +
+                             std::atan2(0.45f, 10.0f)) < 1e-4f,
+            "look facing counters shoulder offset");
+        // Build horizontal speed then release input — friction should stop the capsule quickly.
+        for(int i=0;i<60;++i) r.check(character.move({0,0,1.0f},0.0f,1.0f/60.0f).has_value(),"friction wind-up step");
+        for(int i=0;i<45;++i) r.check(character.move({0,0,0},0.0f,1.0f/60.0f).has_value(),"friction brake step");
+        {
+            const auto stopped=character.linear_velocity();
+            const float horiz=std::sqrt(stopped[0]*stopped[0]+stopped[2]*stopped[2]);
+            r.check(horiz<0.35f,"ground friction stops idle slide");
+        }
         for(int i=0;i<30;++i) r.check(character.move({0,0,0},0.0f,1.0f/60.0f).has_value(),"character settle before jump");
         r.check(character.on_ground(),"character on ground before jump");
         const float before_jump=character.position().y;
@@ -1363,13 +1469,68 @@ int main(int argc,char**argv){
         engine::CharacterControllerConfig invalid_jump_config;
         invalid_jump_config.jump_velocity=0.0f;
         r.check(!engine::CharacterController::create(world,{8.0,ground+1.0,8.0},invalid_jump_config),"invalid jump config rejected");
+
+        // TICKET-0198: RigidbodyLocomotion on dynamic capsule
+        {
+            engine::CollisionWorld loco_world;
+            auto floor=loco_world.add_box({0,-1,0},{20,1,20},engine::CollisionLayer::StaticWorld,false);
+            r.check(floor.has_value(),"0198 loco floor");
+            auto settings=engine::CollisionBodySettings::make_dynamic();
+            settings.mass=70.0f;
+            settings.freeze_rotation=true;
+            const float radius=0.35f;
+            const float half=0.85f;
+            const float center_y=half+radius+3.0f;
+            auto capsule=loco_world.add_capsule({0.0,center_y,0.0},radius,half,engine::CollisionLayer::Dynamic,settings);
+            r.check(capsule.has_value(),"0198 capsule body");
+            engine::CharacterControllerConfig loco_cfg;
+            loco_cfg.max_speed=6.0f;
+            engine::RigidbodyLocomotion loco(loco_world,capsule.value(),loco_cfg,radius,half);
+            bool landed=false;
+            for(int i=0;i<240;++i){
+                // Let gravity integrate without overwriting velocity every frame while airborne.
+                r.check(loco_world.step(1.0f/60.0f).has_value(),"0198 land step");
+                if(loco.on_ground()||loco.feet_position().y<0.15){landed=true;break;}
+            }
+            r.check(landed,"0198 locomotion lands");
+            for(int i=0;i<10;++i){
+                (void)loco.move({0,0,0},0.0f,1.0f/60.0f);
+                r.check(loco_world.step(1.0f/60.0f).has_value(),"0198 settle step");
+            }
+            r.check(loco.on_ground(),"0198 locomotion reports ground");
+            const auto feet_before=loco.feet_position();
+            for(int i=0;i<90;++i){
+                r.check(loco.move({0,0,1},0.0f,1.0f/60.0f).has_value(),"0198 walk move");
+                r.check(loco_world.step(1.0f/60.0f).has_value(),"0198 walk step");
+            }
+            const auto feet_after=loco.feet_position();
+            r.check(feet_after.z>feet_before.z+0.5,"0198 wish walks forward");
+            for(int i=0;i<60;++i){
+                r.check(loco.move({0,0,0},0.0f,1.0f/60.0f).has_value(),"0198 idle move");
+                r.check(loco_world.step(1.0f/60.0f).has_value(),"0198 idle step");
+            }
+            const auto vel=loco.linear_velocity();
+            const float hspeed=std::sqrt(vel[0]*vel[0]+vel[2]*vel[2]);
+            r.check(hspeed<0.35f,"0198 idle stops without ice slide");
+            const auto jumped=loco.jump();
+            r.check(jumped&&jumped.value(),"0198 grounded jump queued");
+            (void)loco.move({0,0,0},0.0f,1.0f/60.0f);
+            r.check(loco_world.step(1.0f/60.0f).has_value(),"0198 jump step");
+            r.check(loco.linear_velocity()[1]>0.5f,"0198 jump lifts");
+        }
     }else if(suite=="camera"){
         engine::DebugCamera camera;r.check(!camera.set_perspective(0,1,0.1f,100),"invalid perspective rejected");r.check(camera.set_perspective(1.0f,16.0f/9.0f,0.1f,2000).has_value(),"perspective accepted");
         auto start=camera.position();camera.apply({1,0,0,0,0,false},1.0f/60.0f);r.check(camera.position()[2]>start[2],"forward input moves camera");
         camera.apply({0,0,0,0,100000,false},1.0f/60.0f);r.check(camera.pitch()>=-1.55334f,"pitch clamps");auto matrix=camera.view_projection();r.check(std::all_of(matrix.begin(),matrix.end(),[](float v){return std::isfinite(v);}),"matrix finite");
         engine::CollisionWorld world;
         (void)world.add_box({0,-1,0},{10,1,10},engine::CollisionLayer::StaticWorld,false);
-        engine::OrbitCameraConfig orbit_config; orbit_config.default_distance=5.0f; orbit_config.pivot_height=1.6f;
+        engine::OrbitCameraConfig orbit_config;
+        orbit_config.default_distance=5.0f;
+        orbit_config.pivot_height=1.6f;
+        orbit_config.shoulder_offset=0.0f;
+        orbit_config.default_pitch=0.0f;
+        orbit_config.min_pitch=-0.2f;
+        orbit_config.max_pitch=1.2f;
         engine::OrbitCamera orbit(orbit_config);
         r.check(orbit.set_perspective(1.0f,16.0f/9.0f,0.1f,2000).has_value(),"orbit perspective accepted");
         r.check(orbit.update({0,0,0},world).has_value(),"orbit update succeeds");
@@ -1377,6 +1538,15 @@ int main(int argc,char**argv){
         const auto open_pos=orbit.position();
         const float open_dist=std::sqrt(open_pos[0]*open_pos[0]+(open_pos[1]-1.6f)*(open_pos[1]-1.6f)+open_pos[2]*open_pos[2]);
         r.check(std::abs(open_dist-5.0f)<0.25f,"orbit eye sits near configured distance from pivot");
+        {
+            engine::OrbitCamera zoom(orbit_config);
+            zoom.adjust_distance(1.5f);
+            r.check(std::abs(zoom.desired_distance()-3.5f)<0.01f,"scroll zoom pulls desired distance closer");
+            zoom.adjust_distance(-100.0f);
+            r.check(std::abs(zoom.desired_distance()-zoom.config().max_distance)<0.01f,"scroll zoom clamps at max distance");
+            zoom.adjust_distance(100.0f);
+            r.check(std::abs(zoom.desired_distance()-zoom.config().min_distance)<0.01f,"scroll zoom clamps at min distance");
+        }
         (void)world.add_box({0,2,-2.5f},{6,4,0.3f},engine::CollisionLayer::StaticWorld,false);
         r.check(orbit.update({0,0,0},world).has_value(),"orbit update with blocker succeeds");
         r.check(orbit.collision_shortened(),"orbit shortens when geometry blocks the ray");
@@ -1393,8 +1563,39 @@ int main(int argc,char**argv){
         r.check(aim_len>0.001f,"orbit eye offset from pivot");
         const float dot=(aim[0]*to_pivot_x+aim[1]*to_pivot_y+aim[2]*to_pivot_z)/aim_len;
         r.check(dot>0.999f,"orbit forward aims at pivot center after yaw");
+        // RPG over-the-shoulder: eye shifts right while still aiming at the character.
+        engine::CollisionWorld open_world;
+        (void)open_world.add_box({0,-1,0},{10,1,10},engine::CollisionLayer::StaticWorld,false);
+        engine::OrbitCameraConfig shoulder_cfg=orbit_config;
+        shoulder_cfg.shoulder_offset=0.5f;
+        engine::OrbitCamera shoulder_cam(shoulder_cfg);
+        r.check(shoulder_cam.set_perspective(1.0f,16.0f/9.0f,0.1f,2000).has_value(),"shoulder orbit perspective");
+        r.check(shoulder_cam.update({0,0,0},open_world).has_value(),"shoulder orbit update");
+        r.check(std::abs(shoulder_cam.position()[0]-0.5f)<0.05f,"shoulder offset shifts eye to camera-right");
+        const auto shoulder_aim=shoulder_cam.forward();
+        const auto shoulder_eye=shoulder_cam.position();
+        const float sx=-shoulder_eye[0],sy=1.6f-shoulder_eye[1],sz=-shoulder_eye[2];
+        const float sl=std::sqrt(sx*sx+sy*sy+sz*sz);
+        r.check(sl>0.001f&&(shoulder_aim[0]*sx+shoulder_aim[1]*sy+shoulder_aim[2]*sz)/sl>0.999f,
+            "shoulder camera still aims at pivot");
+        shoulder_cam.set_orientation(0.0f,2.0f);
+        r.check(shoulder_cam.pitch()<=shoulder_cfg.max_pitch+0.001f,"pitch clamps to maxPitch");
+        shoulder_cam.set_orientation(0.0f,-2.0f);
+        r.check(shoulder_cam.pitch()>=shoulder_cfg.min_pitch-0.001f,"pitch clamps to minPitch");
         auto orbit_matrix=orbit.view_projection();
         r.check(std::all_of(orbit_matrix.begin(),orbit_matrix.end(),[](float v){return std::isfinite(v);}),"orbit matrix finite");
+        // New optional RPG fields round-trip through camera assets.
+        engine::CameraAsset authored;
+        authored.default_distance=10.5f;
+        authored.min_distance=2.5f;
+        authored.max_distance=18.0f;
+        authored.shoulder_offset=0.45f;
+        authored.default_pitch=0.32f;
+        authored.min_pitch=-0.15f;
+        authored.max_pitch=1.25f;
+        auto reparsed=engine::CameraAsset::from_json(authored.to_json());
+        r.check(reparsed&&std::abs(reparsed.value().shoulder_offset-0.45f)<0.001f&&
+            std::abs(reparsed.value().default_pitch-0.32f)<0.001f,"camera asset RPG fields round-trip");
     }else if(suite=="interaction"){
         engine::InteractionVolumeRegistry registry;
         engine::InteractionOverlapTracker tracker;
@@ -1977,7 +2178,7 @@ int main(int argc,char**argv){
         const auto refresh = engine::execute_editor_operation(context, "asset_apply",
             "{\"action\":\"refresh_catalog\"}");
         r.check(refresh.exit_code == engine::ExitCode::Success, "asset catalog refresh succeeds offline");
-        r.check(refresh.metadata.at("prefabCount") == "6", "asset catalog refresh finds sample prefabs");
+        r.check(refresh.metadata.at("prefabCount") == "7", "asset catalog refresh finds sample prefabs");
         const auto terrain = engine::execute_editor_operation(context, "scene_apply",
             "{\"action\":\"sample_terrain\",\"x\":-2.5,\"z\":5.0}");
         r.check(terrain.exit_code == engine::ExitCode::Success, "terrain sample works without live scene");
@@ -2256,6 +2457,21 @@ int main(int argc,char**argv){
         auto round=engine::authored_component_entry_from_json(engine::authored_component_entry_to_json(seeded.entries[0]));
         r.check(round&&round.value().animator.controller==seeded.entries[0].animator.controller,"animator component JSON round trip");
 
+        const auto rb_prefab_path=root/"assets/prefabs/crate.prefab.json";
+        std::ofstream(rb_prefab_path)<<R"({"schemaVersion":2,"entities":[{"name":"Box","mesh":{"primitive":"cube","color":[0.6,0.4,0.2]}}],"components":[{"id":"rigidbody-0","type":"rigidbody","data":{"motionType":"dynamic","mass":2.5,"linearDamping":0.1,"angularDamping":0.2,"useGravity":true,"freezeRotation":false}}]})";
+        auto rb_prefab=engine::PrefabAsset::load(rb_prefab_path);
+        r.check(rb_prefab&&rb_prefab.value().rigidbodies.size()==1&&rb_prefab.value().rigidbodies[0].mass==2.5f,"prefab rigidbody component parsed");
+        auto rb_seeded=engine::seed_authored_components_from_prefab(rb_prefab.value());
+        r.check(rb_seeded.entries.size()==1&&rb_seeded.entries[0].type==engine::AuthoredComponentType::Rigidbody,"authored rigidbody seeded from prefab");
+        auto rb_round=engine::authored_component_entry_from_json(engine::authored_component_entry_to_json(rb_seeded.entries[0]));
+        r.check(rb_round&&rb_round.value().rigidbody.mass==2.5f&&rb_round.value().rigidbody.motion_type=="dynamic","rigidbody component JSON round trip");
+        engine::AuthoredComponentEntry bad_mass=rb_seeded.entries[0];
+        bad_mass.rigidbody.mass=0.0f;
+        r.check(!engine::validate_authored_component_entry(bad_mass),"rigidbody rejects non-positive mass");
+        engine::AuthoredComponentEntry bad_motion=rb_seeded.entries[0];
+        bad_motion.rigidbody.motion_type="static";
+        r.check(!engine::validate_authored_component_entry(bad_motion),"rigidbody rejects invalid motionType");
+
         engine::LuaRuntime lua; lua.set_animator_runtime(&animator);
         const auto script=root/"drive.lua";
         std::ofstream(script)<<R"(
@@ -2335,6 +2551,32 @@ end
         }
         const auto end_pos=character.position();
         r.check(std::abs(end_pos.z-start_pos.z)>1.5,"animation-driven root motion moves capsule forward");
+
+        // TICKET-0199: root motion on Rigidbody / CollisionBody
+        {
+            engine::CollisionWorld rb_world;
+            auto floor=rb_world.add_box({0,-1,0},{20,1,20},engine::CollisionLayer::StaticWorld,false);
+            r.check(floor.has_value(),"0199 root-motion floor");
+            auto settings=engine::CollisionBodySettings::make_dynamic();
+            settings.mass=70.0f;
+            settings.freeze_rotation=true;
+            auto body=rb_world.add_capsule({0.0,1.5,0.0},0.35f,0.85f,engine::CollisionLayer::Dynamic,settings);
+            r.check(body.has_value(),"0199 root-motion capsule body");
+            for(int i=0;i<120;++i) r.check(rb_world.step(1.0f/60.0f).has_value(),"0199 settle step");
+            const auto start=rb_world.position(body.value()).value();
+            engine::AnimatorRuntime rb_rt; rb_rt.set_project_root(root); rb_rt.set_clip_library(&clips);
+            const std::string rb_entity="root-motion-rb";
+            r.check(rb_rt.attach(rb_entity,"assets/animators/hero_root.animator.json").has_value(),"0199 rb controller attaches");
+            for(int i=0;i<60;++i){
+                auto synced=engine::sync_rigidbody_root_motion(rb_world,body.value(),rb_rt,rb_entity,0.0f,1.0f/60.0f);
+                r.check(synced&&synced.value(),"sync_rigidbody_root_motion applies");
+                r.check(rb_world.step(1.0f/60.0f).has_value(),"0199 root-motion physics step");
+            }
+            const auto end=rb_world.position(body.value()).value();
+            r.check(end.z>start.z+1.0,"animation-driven root motion moves rigidbody forward");
+            auto bad=engine::apply_rigidbody_root_motion(rb_world,{}, {0,0,1},1.0f/60.0f);
+            r.check(!bad,"0199 invalid body rejected");
+        }
 
         // TICKET-0105 / DEC-0031: controller timeline events → Lua
         const auto event_ctrl=root/"assets/animators/hero_events.animator.json";

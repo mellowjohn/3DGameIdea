@@ -1,7 +1,7 @@
 # Water and Hydrology
 
-Status: active ([DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring))  
-Epic: EPIC-0015
+Status: active ([DEC-0039](../decisions/index.md#dec-0039-water-swim-and-hydrology-authoring))  
+Epic: EPIC-0016
 
 Gameplay water for rivers, ponds, lakes, bounded seas, swim traversal, and scripted floating vessels. v1 is **fully authored** — no noise-driven auto hydrology.
 
@@ -99,11 +99,11 @@ Extend terrain MCP or add `engine_water_apply` with the same live-editor bridge 
 
 | Blocker | Owner |
 | --- | --- |
-| Blended / water render pass | EPIC-0005 / EPIC-0015 |
-| Swim mode + stamina/damage | EPIC-0015 + character controller |
-| Water persistence format | EPIC-0015 |
-| Sculpt Water tool UI | EPIC-0015 |
-| World Forge hydrology + ferry routes | EPIC-0002 / EPIC-0015 |
+| Blended / water render pass | EPIC-0005 / EPIC-0016 |
+| Swim mode + stamina/damage | EPIC-0016 + character controller |
+| Water persistence format | EPIC-0016 |
+| Sculpt Water tool UI | EPIC-0016 |
+| World Forge hydrology + ferry routes | EPIC-0002 / EPIC-0016 |
 | Fatigue/stamina HUD | EPIC-0007 (if not already present) |
 
 ## Out of v1 scope
