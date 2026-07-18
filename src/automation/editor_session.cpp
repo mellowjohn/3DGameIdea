@@ -1053,6 +1053,9 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
         if (operation == "terrain_apply") {
             return apply_terrain_operation(context, params);
         }
+        if (operation == "water_apply") {
+            return apply_water_operation(context, params);
+        }
         if (operation == "scene_apply" && params.value("action", std::string{}) == "sample_terrain") {
             nlohmann::json sample_params = params;
             sample_params["action"] = "sample";

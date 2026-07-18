@@ -78,6 +78,15 @@ Result<WorldForgeMapEndpointKind> parse_endpoint_kind(const std::string& raw) {
         "Unsupported map endpoint kind: " + raw, "Use region or poi."));
 }
 
+Result<WorldForgeHydrologyKind> parse_hydrology_kind(const std::string& raw) {
+    const auto key = lower_copy(raw);
+    if (key == "lake") return Result<WorldForgeHydrologyKind>::success(WorldForgeHydrologyKind::Lake);
+    if (key == "river") return Result<WorldForgeHydrologyKind>::success(WorldForgeHydrologyKind::River);
+    if (key == "sea") return Result<WorldForgeHydrologyKind>::success(WorldForgeHydrologyKind::Sea);
+    return Result<WorldForgeHydrologyKind>::failure(map_error("WORLD-FORGE-MAP-HYDRO-KIND", ErrorCategory::Validation,
+        "Unsupported hydrology kind: " + raw, "Use lake, river, or sea."));
+}
+
 std::vector<std::string> read_string_array(const nlohmann::json& node) {
     std::vector<std::string> out;
     if (!node.is_array()) return out;
@@ -177,6 +186,15 @@ const char* to_string(WorldForgeMapEndpointKind value) noexcept {
     case WorldForgeMapEndpointKind::Poi: return "poi";
     }
     return "region";
+}
+
+const char* to_string(WorldForgeHydrologyKind value) noexcept {
+    switch (value) {
+    case WorldForgeHydrologyKind::Lake: return "lake";
+    case WorldForgeHydrologyKind::River: return "river";
+    case WorldForgeHydrologyKind::Sea: return "sea";
+    }
+    return "lake";
 }
 
 std::filesystem::path default_world_forge_map_path(const std::filesystem::path& project_root) {
@@ -408,6 +426,55 @@ Result<WorldForgeMapAsset> WorldForgeMapAsset::parse(const std::string& text, co
             asset.links.push_back(std::move(link));
         }
 
+        if (json.contains("hydrologyRegions")) {
+            const auto hydrology = json.at("hydrologyRegions");
+            if (!hydrology.is_array()) {
+                return Result<WorldForgeMapAsset>::failure(map_error("WORLD-FORGE-MAP-HYDRO", ErrorCategory::Validation,
+                    "hydrologyRegions must be an array", "Provide a hydrologyRegions array."));
+            }
+            for (const auto& node : hydrology) {
+                if (!node.is_object()) continue;
+                WorldForgeHydrologyRegion region;
+                region.id = node.value("id", std::string{});
+                const auto kind = parse_hydrology_kind(node.value("kind", std::string{"lake"}));
+                if (!kind) return Result<WorldForgeMapAsset>::failure(kind.error());
+                region.kind = kind.value();
+                region.min_x = node.value("minX", 0.0f);
+                region.max_x = node.value("maxX", 0.0f);
+                region.min_z = node.value("minZ", 0.0f);
+                region.max_z = node.value("maxZ", 0.0f);
+                region.acts = read_string_array(node.value("acts", nlohmann::json::array()));
+                region.summary = node.value("summary", std::string{});
+                asset.hydrology_regions.push_back(std::move(region));
+            }
+        }
+
+        if (json.contains("ferryRoutes")) {
+            const auto routes = json.at("ferryRoutes");
+            if (!routes.is_array()) {
+                return Result<WorldForgeMapAsset>::failure(map_error("WORLD-FORGE-MAP-FERRY", ErrorCategory::Validation,
+                    "ferryRoutes must be an array", "Provide a ferryRoutes array."));
+            }
+            for (const auto& node : routes) {
+                if (!node.is_object()) continue;
+                WorldForgeFerryRoute route;
+                route.id = node.value("id", std::string{});
+                route.from_poi_id = node.value("fromPoiId", std::string{});
+                route.to_poi_id = node.value("toPoiId", std::string{});
+                route.summary = node.value("summary", std::string{});
+                if (node.contains("points") && node.at("points").is_array()) {
+                    for (const auto& point : node.at("points")) {
+                        if (!point.is_object()) continue;
+                        WorldForgeFerryRoutePoint entry;
+                        entry.x = point.value("x", 0.0f);
+                        entry.z = point.value("z", 0.0f);
+                        route.points.push_back(entry);
+                    }
+                }
+                asset.ferry_routes.push_back(std::move(route));
+            }
+        }
+
         if (const auto valid = asset.validate(); !valid) {
             return Result<WorldForgeMapAsset>::failure(valid.error());
         }
@@ -491,6 +558,33 @@ std::string WorldForgeMapAsset::to_json() const {
         links_json.push_back(std::move(node));
     }
     json["links"] = std::move(links_json);
+    auto hydrology_json = nlohmann::ordered_json::array();
+    for (const auto& region : hydrology_regions) {
+        nlohmann::ordered_json node;
+        node["id"] = region.id;
+        node["kind"] = to_string(region.kind);
+        node["minX"] = region.min_x;
+        node["maxX"] = region.max_x;
+        node["minZ"] = region.min_z;
+        node["maxZ"] = region.max_z;
+        node["acts"] = write_string_array(region.acts);
+        node["summary"] = region.summary;
+        hydrology_json.push_back(std::move(node));
+    }
+    json["hydrologyRegions"] = std::move(hydrology_json);
+    auto ferry_json = nlohmann::ordered_json::array();
+    for (const auto& route : ferry_routes) {
+        nlohmann::ordered_json node;
+        node["id"] = route.id;
+        node["fromPoiId"] = route.from_poi_id;
+        node["toPoiId"] = route.to_poi_id;
+        node["summary"] = route.summary;
+        auto points_json = nlohmann::ordered_json::array();
+        for (const auto& point : route.points) points_json.push_back({{"x", point.x}, {"z", point.z}});
+        node["points"] = std::move(points_json);
+        ferry_json.push_back(std::move(node));
+    }
+    json["ferryRoutes"] = std::move(ferry_json);
     return json.dump(2) + "\n";
 }
 

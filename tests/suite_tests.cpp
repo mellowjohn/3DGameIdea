@@ -52,6 +52,9 @@
 #include "engine/world/foliage_field.h"
 #include "engine/world/world_influence.h"
 #include "engine/automation/terrain_edit_commands.h"
+#include "engine/automation/water_edit_commands.h"
+#include "engine/world/water_store.h"
+#include "engine/world/water_field.h"
 #include "engine/world/navigation_grid.h"
 #include "engine/world/world_partition.h"
 #include "engine/world/scene.h"
@@ -969,6 +972,40 @@ int main(int argc,char**argv){
         engine::set_active_terrain_edits(&flatten_edits);
         r.check(std::abs(engine::sample_terrain_height(0.0f,0.0f)-flatten_target)<0.05f,"terrain flatten approaches target height");
         engine::set_active_terrain_edits(nullptr);
+    }else if(suite=="water"){
+        engine::WaterStore store;
+        store.set_sea_level(-0.35f);
+        const auto brushed=store.apply_place_brush(0.0f,0.0f,6.0f,0.8f);
+        r.check(brushed&&brushed.value().count({0,0})==1,"water place brush touches origin cell");
+        const auto round_trip=engine::WaterStore::from_json(store.to_json());
+        r.check(round_trip.has_value(),"water store round trip");
+        r.check(round_trip.value().sea_level()==store.sea_level(),"water store round trip keeps sea level");
+        engine::set_active_water_store(&store);
+        const auto surface=engine::sample_water_surface_y(0.0f,0.0f);
+        r.check(surface&&std::abs(*surface-store.sea_level())<0.001f,"sample_water_surface_y returns sea level over authored fill");
+        engine::WaterStore apply_store;
+        apply_store.set_sea_level(-0.35f);
+        engine::WaterEditHistory history;
+        bool dirty=false;
+        engine::EditorSessionContext context;
+        context.project_root=std::filesystem::path("samples/open-world-rpg");
+        context.water_store=&apply_store;
+        context.water_history=&history;
+        context.water_dirty=&dirty;
+        engine::set_active_water_store(&apply_store);
+        r.check(!engine::sample_water_surface_y(4.0f,4.0f),"water sample empty before brush stroke");
+        const auto placed=engine::execute_editor_operation(context,"water_apply",
+            R"({"action":"place","x":4,"z":4,"radius":3,"strength":0.6})");
+        r.check(placed.exit_code==engine::ExitCode::Success,"water_apply place succeeds");
+        r.check(history.undo_size()>=1,"water_apply place commits undo entry");
+        r.check(engine::sample_water_surface_y(4.0f,4.0f).has_value(),"water_apply place writes surface sample");
+        const auto undone=engine::execute_editor_operation(context,"water_apply",R"({"action":"undo"})");
+        r.check(undone.exit_code==engine::ExitCode::Success,"water_apply undo succeeds");
+        r.check(!engine::sample_water_surface_y(4.0f,4.0f),"water_apply undo restores prior fill");
+        engine::StreamedWaterField field;
+        r.check(field.update({0.0f,5.0f,0.0f},2,&store).has_value(),"streamed water loads a neighborhood");
+        r.check(field.loaded_cell_count()>0,"streamed water builds cell meshes");
+        engine::set_active_water_store(nullptr);
     }else if(suite=="world_influence"){
         engine::WorldInfluenceBus bus;
         const auto empty_dominant=bus.dominant_at(0.0f,0.0f);

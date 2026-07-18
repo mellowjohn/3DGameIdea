@@ -1,6 +1,7 @@
 #include "engine/world/navigation_grid.h"
 
 #include "engine/world/terrain.h"
+#include "engine/world/water_store.h"
 
 #include <algorithm>
 #include <cmath>
@@ -151,8 +152,17 @@ Result<NavigationGrid> build_navigation_grid(CellCoord partition_cell, float cel
     }
     for (std::uint32_t z = 0; z < resolution; ++z) {
         for (std::uint32_t x = 0; x < resolution; ++x) {
-            grid.walkable[static_cast<std::size_t>(z) * resolution + x] =
-                grid_slope(grid, x, z) <= max_walk_slope ? 1 : 0;
+            const float world_x = origin_x + x * step;
+            const float world_z = origin_z + z * step;
+            bool walkable = grid_slope(grid, x, z) <= max_walk_slope;
+            if (walkable) {
+                if (const auto surface = sample_water_surface_y(world_x, world_z)) {
+                    if (is_deep_water(world_x, world_z) ||
+                        grid.heights[static_cast<std::size_t>(z) * resolution + x] < *surface - 0.35f)
+                        walkable = false;
+                }
+            }
+            grid.walkable[static_cast<std::size_t>(z) * resolution + x] = walkable ? 1 : 0;
         }
     }
     return Result<NavigationGrid>::success(std::move(grid));

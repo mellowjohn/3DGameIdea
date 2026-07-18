@@ -11,6 +11,7 @@
 #include "engine/assets/ui_canvas_asset.h"
 #include "engine/assets/ui_canvas_mutate.h"
 #include "engine/scripting/lua_runtime.h"
+#include "engine/world/water_store.h"
 
 #include <nlohmann/json.hpp>
 
@@ -437,6 +438,27 @@ const char* k_tools_list_json = R"([
         }
     },
     {
+        "name": "engine_water_apply",
+        "description": "Apply live water surface sculpt through the editor water store. Prefer action batch with ops[] for many strokes. Single actions: place, erase, sample, undo, redo, save. place/erase accept radius and strength; erase also via action erase or erase:true. Mutate/save require editor MCP; sample works offline.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": { "type": "string" },
+                "x": { "type": "number" },
+                "z": { "type": "number" },
+                "radius": { "type": "number" },
+                "strength": { "type": "number" },
+                "erase": { "type": "boolean" },
+                "save": { "type": "boolean" },
+                "ops": {
+                    "type": "array",
+                    "items": { "type": "object" }
+                }
+            },
+            "required": ["action"]
+        }
+    },
+    {
         "name": "engine_project_validate",
         "description": "Validate the project manifest, world, and assets.",
         "inputSchema": { "type": "object", "properties": {}, "required": [] }
@@ -645,6 +667,24 @@ nlohmann::json handle_tools_call(const std::filesystem::path& project_root, cons
             return bridge_to_tool_result(execute_editor_operation(context, "terrain_apply", arguments.dump()));
         }
         return bridge_to_tool_result(forward_to_editor(project_root, "terrain_apply", arguments));
+    }
+    if (tool_name == "engine_water_apply") {
+        const auto action = arguments.value("action", std::string{});
+        EditorBridgeClient client(project_root);
+        if (!client.is_editor_running() && (action == "sample" || action == "sample_water")) {
+            EditorSessionContext context;
+            context.project_root = project_root;
+            WaterStore offline_store;
+            if (const auto loaded = WaterStore::load(default_water_surfaces_path(project_root)); loaded)
+                offline_store = std::move(loaded.value());
+            context.water_store = &offline_store;
+            const WaterStore* previous = active_water_store();
+            set_active_water_store(&offline_store);
+            const auto result = execute_editor_operation(context, "water_apply", arguments.dump());
+            set_active_water_store(previous);
+            return bridge_to_tool_result(result);
+        }
+        return bridge_to_tool_result(forward_to_editor(project_root, "water_apply", arguments));
     }
     if (tool_name == "engine_entity_component_apply")
         return bridge_to_tool_result(forward_to_editor(project_root, "entity_component_apply", arguments));

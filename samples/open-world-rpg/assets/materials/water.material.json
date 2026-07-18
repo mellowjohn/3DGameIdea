@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "baseColor": [0.08, 0.22, 0.35, 0.72],
+  "roughness": 0.05,
+  "metallic": 0.0,
+  "opacityMode": "blended",
+  "opacityCutoff": 0.5,
+  "emissive": [0.0, 0.0, 0.0],
+  "doubleSided": true,
+  "physics": {
+    "friction": 0.05,
+    "restitution": 0.0,
+    "density": 1000.0,
+    "surface": "water"
+  }
+}

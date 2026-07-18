@@ -34,6 +34,8 @@ add_library(engine_core
     src/world/scene.cpp
     src/automation/scene_commands.cpp
     src/automation/terrain_edit_commands.cpp
+    src/automation/water_edit_commands.cpp
+    src/automation/water_session.cpp
     src/assets/asset_registry.cpp
     src/assets/material_asset.cpp
     src/assets/character_asset.cpp
@@ -74,6 +76,8 @@ add_library(engine_core
     src/world/terrain.cpp
     src/world/terrain_edits.cpp
     src/world/terrain_paint.cpp
+    src/world/water_store.cpp
+    src/world/water_field.cpp
     src/world/foliage_layers.cpp
     src/world/foliage_density.cpp
     src/world/foliage_scatter.cpp
@@ -115,7 +119,7 @@ if(ENGINE_BUILD_TESTS)
     add_test(NAME regression_all COMMAND engine_tests)
     add_executable(engine_suite_tests tests/suite_tests.cpp)
     target_link_libraries(engine_suite_tests PRIVATE engine_core)
-    foreach(suite IN ITEMS core world world_influence assets world_forge streaming terrain foliage collision navigation character interaction combat camera diagnostics scripting automation hud animator)
+    foreach(suite IN ITEMS core world world_influence assets world_forge streaming terrain foliage water collision navigation character interaction combat camera diagnostics scripting automation hud animator)
         add_test(NAME ${suite} COMMAND engine_suite_tests --suite ${suite} --json)
         set_tests_properties(${suite} PROPERTIES LABELS "${suite};unit")
     endforeach()

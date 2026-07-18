@@ -1,6 +1,7 @@
 #include "engine/world/foliage_scatter.h"
 
 #include "engine/world/terrain.h"
+#include "engine/world/water_store.h"
 
 #include <DirectXMath.h>
 
@@ -82,6 +83,7 @@ std::vector<FoliageInstance> scatter_foliage_cell(CellCoord cell, const FoliageD
             const float sample_z = origin_z + static_cast<float>(z) * step;
             if (estimate_slope_ratio(sample_x, sample_z) > layer->max_slope_ratio) continue;
             const float ground_y = sample_terrain_height(sample_x, sample_z);
+            if (is_underwater(sample_x, sample_z, ground_y + 0.05f)) continue;
             const float distance_scale =
                 distance_falloff(camera_position, sample_x, ground_y, sample_z, config);
             if (distance_scale <= 0.0f) continue;
@@ -102,6 +104,7 @@ std::vector<FoliageInstance> scatter_foliage_cell(CellCoord cell, const FoliageD
                 const float world_x = sample_x + jitter_x;
                 const float world_z = sample_z + jitter_z;
                 const float world_y = sample_terrain_height(world_x, world_z);
+                if (is_underwater(world_x, world_z, world_y + 0.05f)) continue;
                 const float yaw = hash_unit(seed ^ 0x33u) * 6.2831853f;
                 const float scale = layer->scale_min +
                     (layer->scale_max - layer->scale_min) * hash_unit(seed ^ 0x44u);

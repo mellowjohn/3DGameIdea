@@ -24,6 +24,7 @@ enum class WorldForgeRegionKind : std::uint8_t {
 enum class WorldForgePoiKind : std::uint8_t { Landmark, Settlement, Gate, Shrine, Camp, Other };
 enum class WorldForgeMapLinkKind : std::uint8_t { Travel, SoftGate, StoryGate, Adjacency };
 enum class WorldForgeMapEndpointKind : std::uint8_t { Region, Poi };
+enum class WorldForgeHydrologyKind : std::uint8_t { Lake, River, Sea };
 
 struct WorldForgeMapSoftGate {
     bool enabled = false;
@@ -70,6 +71,30 @@ struct WorldForgePoi {
     std::vector<std::string> open_questions;
 };
 
+struct WorldForgeHydrologyRegion {
+    std::string id;
+    WorldForgeHydrologyKind kind = WorldForgeHydrologyKind::Lake;
+    float min_x = 0.0f;
+    float max_x = 0.0f;
+    float min_z = 0.0f;
+    float max_z = 0.0f;
+    std::vector<std::string> acts;
+    std::string summary;
+};
+
+struct WorldForgeFerryRoutePoint {
+    float x = 0.0f;
+    float z = 0.0f;
+};
+
+struct WorldForgeFerryRoute {
+    std::string id;
+    std::string from_poi_id;
+    std::string to_poi_id;
+    std::vector<WorldForgeFerryRoutePoint> points;
+    std::string summary;
+};
+
 struct WorldForgeMapLink {
     std::string id;
     WorldForgeMapLinkKind kind = WorldForgeMapLinkKind::Travel;
@@ -91,6 +116,8 @@ struct WorldForgeMapAsset {
     std::vector<WorldForgeRegion> regions;
     std::vector<WorldForgePoi> pois;
     std::vector<WorldForgeMapLink> links;
+    std::vector<WorldForgeHydrologyRegion> hydrology_regions;
+    std::vector<WorldForgeFerryRoute> ferry_routes;
 
     [[nodiscard]] Result<void> validate() const;
     [[nodiscard]] Result<void> validate_faction_refs(const std::unordered_set<std::string>& known_faction_ids) const;
@@ -109,6 +136,7 @@ struct WorldForgeMapAsset {
 [[nodiscard]] const char* to_string(WorldForgePoiKind value) noexcept;
 [[nodiscard]] const char* to_string(WorldForgeMapLinkKind value) noexcept;
 [[nodiscard]] const char* to_string(WorldForgeMapEndpointKind value) noexcept;
+[[nodiscard]] const char* to_string(WorldForgeHydrologyKind value) noexcept;
 
 [[nodiscard]] std::filesystem::path default_world_forge_map_path(const std::filesystem::path& project_root);
 

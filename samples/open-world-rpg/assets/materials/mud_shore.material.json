@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "baseColor": [0.28, 0.22, 0.16, 1.0],
+  "roughness": 0.96,
+  "metallic": 0.0,
+  "opacityMode": "opaque",
+  "opacityCutoff": 0.5,
+  "emissive": [0.0, 0.0, 0.0],
+  "doubleSided": false,
+  "physics": {
+    "friction": 0.95,
+    "restitution": 0.0,
+    "density": 1700.0,
+    "surface": "mud"
+  }
+}
