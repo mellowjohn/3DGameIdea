@@ -99,3 +99,13 @@ Still open:
 - Exact hub settlement names/placements per act (authoring).
 
 **Resolved:** Tessera is the world’s primary land (Middle-earth-scale); Kingdom of Tessera is the polity within it — [DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land).
+
+## Authored Rigidbody / physics body (future)
+
+**Resolved (body mode)** 2026-07-17 as [DEC-0038](../decisions/index.md#dec-0038-authored-rigidbody--dynamic-bodies-for-player-and-entities): authored **`rigidbody`** component; player and physics entities use **true dynamic** rigidbodies (forces / friction materials), not CharacterVirtual-as-a-mode. Epic: **EPIC-0015** (TICKET-0196–0199).
+
+Still open for design detail during implementation:
+
+- Default mass / friction / freeze-rotation for the player capsule (0198)
+- How jump, grounding, and stairs are expressed on a dynamic body (0198)
+- DEC-0030 root-motion retarget onto Rigidbody-backed entities (0199)

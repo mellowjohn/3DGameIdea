@@ -305,12 +305,27 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 | TICKET-0194 | Editor Project Sync panel | needs-approval | P2 | Diagnostics → Project Sync; [`tickets/TICKET-0194.md`](tickets/TICKET-0194.md) |
 | TICKET-0195 | Safe reload after pull (World Forge + dirty-session rules) | needs-approval | P2 | Reload offer after WF-changing pull; [`tickets/TICKET-0195.md`](tickets/TICKET-0195.md) |
 
+## EPIC-0015: Universal authored Rigidbody
+
+- Status: ready
+- Goal: Ship a Unity-like authored **`rigidbody`** component (DEC-0038) so the player and any physics prefab share one Add Component path — dynamic Jolt bodies with mass/friction/constraints; migrate player off transitional `CharacterVirtual`.
+- Roadmap home: Runtime physics / M10 editor components (cross-cutting gameplay foundation).
+- Priority guidance: **P2** chain 0196 → 0197 → 0198 (0199 soft). Owner wants universal prefab reuse; not ahead of P0 unless overridden.
+- Scope boundary: [DEC-0038](../decisions/index.md#dec-0038-authored-rigidbody--dynamic-bodies-for-player-and-entities); transitional note in [`../features/character-controller.md`](../features/character-controller.md).
+
+| ID | Title | Status | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| TICKET-0196 | Authored rigidbody component schema + Add Component | needs-approval | P2 | Enum/JSON/inspector/prefab; [`tickets/TICKET-0196.md`](tickets/TICKET-0196.md) |
+| TICKET-0197 | Spawn/sync dynamic bodies from Rigidbody + Collider | needs-approval | P2 | PlacementCollision + CollisionBodySettings + write-back; collision 567/567; [`tickets/TICKET-0197.md`](tickets/TICKET-0197.md) |
+| TICKET-0198 | Player locomotion on dynamic Rigidbody | needs-approval | P2 | RigidbodyLocomotion + capsule prefab; character 1212/1212; [`tickets/TICKET-0198.md`](tickets/TICKET-0198.md) |
+| TICKET-0199 | Root-motion retarget + sample physics prefabs | needs-approval | P2 | sync_rigidbody_root_motion + crate; camera 8m; animator 354/354; [`tickets/TICKET-0199.md`](tickets/TICKET-0199.md) |
+
 ## Suggested work order
 
 1. EPIC-0001 done — use Notion kanban + Priority for day-to-day flow.
 2. **P0 needs-approval (owner override):** TICKET-0191 glTF mesh UV + albedo; TICKET-0182 Design Docs. Prior P0 M5 clips done (0102).
 3. **P1/P2 needs-approval pile:** 0030–0032, 0105, World Forge / UI cards — owner review.
-4. **P2 when capacity:** M5 follow-ons (0106/0107/0110); numeric budgets TICKET-0139 later; **authoring sync** EPIC-0014 (0192 → 0193 → 0194/0195).
+4. **P2 when capacity:** M5 follow-ons (0106/0107/0110); numeric budgets TICKET-0139 later; **authoring sync** EPIC-0014 (0192 → 0193 → 0194/0195); **Rigidbody** EPIC-0015 (0196 → 0197 → 0198 → 0199).
 5. Schema-first World Forge (0011–0014, P2) after faction canon (0021).
 6. Hold **P3** EPIC-0006/0007 and M6–M8 runtime tickets until M5 animation exit unless explicitly overridden.
 7. Mini-map (EPIC-0007) after region/POI IDs exist.

@@ -26,4 +26,22 @@ TransformComponent multiply_transforms(const TransformComponent& parent, const T
     return result;
 }
 
+TransformComponent inverse_transform(const TransformComponent& transform) {
+    using namespace DirectX;
+    const auto matrix =
+        XMMatrixScaling(transform.scale[0], transform.scale[1], transform.scale[2]) *
+        XMMatrixRotationQuaternion(XMLoadFloat4(reinterpret_cast<const XMFLOAT4*>(transform.rotation.data()))) *
+        XMMatrixTranslation(transform.position[0], transform.position[1], transform.position[2]);
+    const auto inverse = XMMatrixInverse(nullptr, matrix);
+    TransformComponent result;
+    XMVECTOR scale;
+    XMVECTOR rotation;
+    XMVECTOR translation;
+    XMMatrixDecompose(&scale, &rotation, &translation, inverse);
+    XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(result.position.data()), translation);
+    XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(result.rotation.data()), rotation);
+    XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(result.scale.data()), scale);
+    return result;
+}
+
 } // namespace engine

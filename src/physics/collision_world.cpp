@@ -8,6 +8,7 @@
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/CastResult.h>
@@ -17,6 +18,7 @@
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <mutex>
 #include <set>
@@ -222,15 +224,38 @@ CollisionWorld::~CollisionWorld() {
 }
 Result<CollisionBody> CollisionWorld::add_box(WorldPosition p, LocalPosition h, CollisionLayer l, bool dynamic,
     std::optional<CellCoord> owner, const std::array<float, 4>& rotation) {
+    auto settings = dynamic ? CollisionBodySettings::make_dynamic() : CollisionBodySettings::make_static();
+    return add_box(p, h, l, settings, owner, rotation);
+}
+Result<CollisionBody> CollisionWorld::add_box(WorldPosition p, LocalPosition h, CollisionLayer l,
+    const CollisionBodySettings& settings, std::optional<CellCoord> owner, const std::array<float, 4>& rotation) {
     if (h.x <= 0 || h.y <= 0 || h.z <= 0)
         return Result<CollisionBody>::failure(error("COLLISION-SHAPE-INVALID", "Box extents must be positive"));
+    if (settings.motion != CollisionMotionType::Static &&
+        (!(settings.mass > 0) || !std::isfinite(settings.mass) || !(settings.linear_damping >= 0) ||
+            !std::isfinite(settings.linear_damping) || !(settings.angular_damping >= 0) ||
+            !std::isfinite(settings.angular_damping)))
+        return Result<CollisionBody>::failure(
+            error("COLLISION-BODY-SETTINGS", "Dynamic/kinematic mass must be positive and damping non-negative"));
+    EMotionType motion = EMotionType::Static;
+    if (settings.motion == CollisionMotionType::Dynamic) motion = EMotionType::Dynamic;
+    else if (settings.motion == CollisionMotionType::Kinematic) motion = EMotionType::Kinematic;
     auto& bi = impl_->physics.GetBodyInterface();
     BodyCreationSettings s(new BoxShape(Vec3(h.x, h.y, h.z)),
         RVec3(static_cast<Real>(p.x), static_cast<Real>(p.y), static_cast<Real>(p.z)),
-        Quat(rotation[0], rotation[1], rotation[2], rotation[3]), dynamic ? EMotionType::Dynamic : EMotionType::Static,
-        layer(l));
+        Quat(rotation[0], rotation[1], rotation[2], rotation[3]), motion, layer(l));
     if (l == CollisionLayer::Trigger) s.mIsSensor = true;
-    BodyID id = bi.CreateAndAddBody(s, dynamic ? EActivation::Activate : EActivation::DontActivate);
+    if (settings.motion != CollisionMotionType::Static) {
+        s.mOverrideMassProperties = EOverrideMassProperties::CalculateInertia;
+        s.mMassPropertiesOverride.mMass = settings.mass;
+        s.mLinearDamping = settings.linear_damping;
+        s.mAngularDamping = settings.angular_damping;
+        s.mGravityFactor = settings.use_gravity ? 1.0f : 0.0f;
+        if (settings.freeze_rotation)
+            s.mAllowedDOFs = EAllowedDOFs::TranslationX | EAllowedDOFs::TranslationY | EAllowedDOFs::TranslationZ;
+    }
+    const bool activate = settings.motion == CollisionMotionType::Dynamic;
+    BodyID id = bi.CreateAndAddBody(s, activate ? EActivation::Activate : EActivation::DontActivate);
     if (id.IsInvalid()) return Result<CollisionBody>::failure(error("COLLISION-BODY-CAPACITY", "Could not create box body"));
     const auto token = id.GetIndexAndSequenceNumber();
     impl_->bodies.insert(token);
@@ -240,18 +265,84 @@ Result<CollisionBody> CollisionWorld::add_box(WorldPosition p, LocalPosition h, 
 }
 Result<CollisionBody> CollisionWorld::add_sphere(WorldPosition p, float radius, CollisionLayer l, bool dynamic,
     std::optional<CellCoord> owner, const std::array<float, 4>& rotation) {
+    auto settings = dynamic ? CollisionBodySettings::make_dynamic() : CollisionBodySettings::make_static();
+    return add_sphere(p, radius, l, settings, owner, rotation);
+}
+Result<CollisionBody> CollisionWorld::add_sphere(WorldPosition p, float radius, CollisionLayer l,
+    const CollisionBodySettings& settings, std::optional<CellCoord> owner, const std::array<float, 4>& rotation) {
     if (!(radius > 0)) return Result<CollisionBody>::failure(error("COLLISION-SHAPE-INVALID", "Sphere radius must be positive"));
+    if (settings.motion != CollisionMotionType::Static &&
+        (!(settings.mass > 0) || !std::isfinite(settings.mass) || !(settings.linear_damping >= 0) ||
+            !std::isfinite(settings.linear_damping) || !(settings.angular_damping >= 0) ||
+            !std::isfinite(settings.angular_damping)))
+        return Result<CollisionBody>::failure(
+            error("COLLISION-BODY-SETTINGS", "Dynamic/kinematic mass must be positive and damping non-negative"));
+    EMotionType motion = EMotionType::Static;
+    if (settings.motion == CollisionMotionType::Dynamic) motion = EMotionType::Dynamic;
+    else if (settings.motion == CollisionMotionType::Kinematic) motion = EMotionType::Kinematic;
     auto& bi = impl_->physics.GetBodyInterface();
     BodyCreationSettings s(new SphereShape(radius),
         RVec3(static_cast<Real>(p.x), static_cast<Real>(p.y), static_cast<Real>(p.z)),
-        Quat(rotation[0], rotation[1], rotation[2], rotation[3]), dynamic ? EMotionType::Dynamic : EMotionType::Static,
-        layer(l));
+        Quat(rotation[0], rotation[1], rotation[2], rotation[3]), motion, layer(l));
     if (l == CollisionLayer::Trigger) s.mIsSensor = true;
-    BodyID id = bi.CreateAndAddBody(s, dynamic ? EActivation::Activate : EActivation::DontActivate);
+    if (settings.motion != CollisionMotionType::Static) {
+        s.mOverrideMassProperties = EOverrideMassProperties::CalculateInertia;
+        s.mMassPropertiesOverride.mMass = settings.mass;
+        s.mLinearDamping = settings.linear_damping;
+        s.mAngularDamping = settings.angular_damping;
+        s.mGravityFactor = settings.use_gravity ? 1.0f : 0.0f;
+        if (settings.freeze_rotation)
+            s.mAllowedDOFs = EAllowedDOFs::TranslationX | EAllowedDOFs::TranslationY | EAllowedDOFs::TranslationZ;
+    }
+    const bool activate = settings.motion == CollisionMotionType::Dynamic;
+    BodyID id = bi.CreateAndAddBody(s, activate ? EActivation::Activate : EActivation::DontActivate);
     if (id.IsInvalid()) return Result<CollisionBody>::failure(error("COLLISION-BODY-CAPACITY", "Could not create sphere body"));
     const auto token = id.GetIndexAndSequenceNumber();
     impl_->bodies.insert(token);
     impl_->body_info[token] = {l, CollisionDebugShape::Sphere, {}, radius, l == CollisionLayer::Trigger};
+    if (owner) impl_->cells[*owner].push_back(id);
+    return Result<CollisionBody>::success({token});
+}
+Result<CollisionBody> CollisionWorld::add_capsule(WorldPosition p, float radius, float half_height, CollisionLayer l,
+    bool dynamic, std::optional<CellCoord> owner, const std::array<float, 4>& rotation) {
+    auto settings = dynamic ? CollisionBodySettings::make_dynamic() : CollisionBodySettings::make_static();
+    return add_capsule(p, radius, half_height, l, settings, owner, rotation);
+}
+Result<CollisionBody> CollisionWorld::add_capsule(WorldPosition p, float radius, float half_height, CollisionLayer l,
+    const CollisionBodySettings& settings, std::optional<CellCoord> owner, const std::array<float, 4>& rotation) {
+    if (!(radius > 0) || !(half_height > 0))
+        return Result<CollisionBody>::failure(
+            error("COLLISION-SHAPE-INVALID", "Capsule radius and half height must be positive"));
+    if (settings.motion != CollisionMotionType::Static &&
+        (!(settings.mass > 0) || !std::isfinite(settings.mass) || !(settings.linear_damping >= 0) ||
+            !std::isfinite(settings.linear_damping) || !(settings.angular_damping >= 0) ||
+            !std::isfinite(settings.angular_damping)))
+        return Result<CollisionBody>::failure(
+            error("COLLISION-BODY-SETTINGS", "Dynamic/kinematic mass must be positive and damping non-negative"));
+    EMotionType motion = EMotionType::Static;
+    if (settings.motion == CollisionMotionType::Dynamic) motion = EMotionType::Dynamic;
+    else if (settings.motion == CollisionMotionType::Kinematic) motion = EMotionType::Kinematic;
+    auto& bi = impl_->physics.GetBodyInterface();
+    BodyCreationSettings s(new CapsuleShape(half_height, radius),
+        RVec3(static_cast<Real>(p.x), static_cast<Real>(p.y), static_cast<Real>(p.z)),
+        Quat(rotation[0], rotation[1], rotation[2], rotation[3]), motion, layer(l));
+    if (l == CollisionLayer::Trigger) s.mIsSensor = true;
+    if (settings.motion != CollisionMotionType::Static) {
+        s.mOverrideMassProperties = EOverrideMassProperties::CalculateInertia;
+        s.mMassPropertiesOverride.mMass = settings.mass;
+        s.mLinearDamping = settings.linear_damping;
+        s.mAngularDamping = settings.angular_damping;
+        s.mGravityFactor = settings.use_gravity ? 1.0f : 0.0f;
+        if (settings.freeze_rotation)
+            s.mAllowedDOFs = EAllowedDOFs::TranslationX | EAllowedDOFs::TranslationY | EAllowedDOFs::TranslationZ;
+    }
+    const bool activate = settings.motion == CollisionMotionType::Dynamic;
+    BodyID id = bi.CreateAndAddBody(s, activate ? EActivation::Activate : EActivation::DontActivate);
+    if (id.IsInvalid())
+        return Result<CollisionBody>::failure(error("COLLISION-BODY-CAPACITY", "Could not create capsule body"));
+    const auto token = id.GetIndexAndSequenceNumber();
+    impl_->bodies.insert(token);
+    impl_->body_info[token] = {l, CollisionDebugShape::Capsule, {half_height, 0.0f, 0.0f}, radius, l == CollisionLayer::Trigger};
     if (owner) impl_->cells[*owner].push_back(id);
     return Result<CollisionBody>::success({token});
 }
@@ -304,6 +395,36 @@ Result<WorldPosition> CollisionWorld::position(CollisionBody body) const {
         return Result<WorldPosition>::failure(error("COLLISION-BODY-NOT-FOUND", "Body does not exist"));
     auto p = impl_->physics.GetBodyInterface().GetPosition(BodyID(body.value));
     return Result<WorldPosition>::success({p.GetX(), p.GetY(), p.GetZ()});
+}
+Result<std::array<float, 4>> CollisionWorld::rotation(CollisionBody body) const {
+    if (!body.valid() || !impl_->bodies.count(body.value))
+        return Result<std::array<float, 4>>::failure(error("COLLISION-BODY-NOT-FOUND", "Body does not exist"));
+    const auto q = impl_->physics.GetBodyInterface().GetRotation(BodyID(body.value));
+    return Result<std::array<float, 4>>::success({q.GetX(), q.GetY(), q.GetZ(), q.GetW()});
+}
+Result<std::array<float, 3>> CollisionWorld::linear_velocity(CollisionBody body) const {
+    if (!body.valid() || !impl_->bodies.count(body.value))
+        return Result<std::array<float, 3>>::failure(error("COLLISION-BODY-NOT-FOUND", "Body does not exist"));
+    const auto v = impl_->physics.GetBodyInterface().GetLinearVelocity(BodyID(body.value));
+    return Result<std::array<float, 3>>::success({v.GetX(), v.GetY(), v.GetZ()});
+}
+Result<void> CollisionWorld::set_linear_velocity(CollisionBody body, const std::array<float, 3>& velocity) {
+    if (!body.valid() || !impl_->bodies.count(body.value))
+        return Result<void>::failure(error("COLLISION-BODY-NOT-FOUND", "Body does not exist"));
+    auto& bi = impl_->physics.GetBodyInterface();
+    bi.SetLinearVelocity(BodyID(body.value), Vec3(velocity[0], velocity[1], velocity[2]));
+    bi.ActivateBody(BodyID(body.value));
+    return Result<void>::success();
+}
+Result<void> CollisionWorld::set_transform(CollisionBody body, WorldPosition position,
+    const std::array<float, 4>& rotation) {
+    if (!body.valid() || !impl_->bodies.count(body.value))
+        return Result<void>::failure(error("COLLISION-BODY-NOT-FOUND", "Body does not exist"));
+    auto& bi = impl_->physics.GetBodyInterface();
+    bi.SetPositionAndRotation(BodyID(body.value),
+        RVec3(static_cast<Real>(position.x), static_cast<Real>(position.y), static_cast<Real>(position.z)),
+        Quat(rotation[0], rotation[1], rotation[2], rotation[3]), EActivation::Activate);
+    return Result<void>::success();
 }
 void CollisionWorld::unload_cell(CellCoord cell) {
     auto found = impl_->cells.find(cell);

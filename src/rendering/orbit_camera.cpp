@@ -16,16 +16,33 @@ float vector_length(float x, float y, float z) { return std::sqrt(x * x + y * y 
 } // namespace
 
 OrbitCamera::OrbitCamera(OrbitCameraConfig config)
-    : config_(config), desired_distance_(config.default_distance), resolved_distance_(config.default_distance) {}
+    : config_(config), desired_distance_(config.default_distance), resolved_distance_(config.default_distance),
+      pitch_(config.default_pitch) {
+    clamp_pitch();
+}
+
+void OrbitCamera::clamp_pitch() {
+    const float lo = std::min(config_.min_pitch, config_.max_pitch);
+    const float hi = std::max(config_.min_pitch, config_.max_pitch);
+    pitch_ = std::clamp(pitch_, lo, hi);
+}
 
 void OrbitCamera::apply_look(float mouse_dx, float mouse_dy) {
     yaw_ += mouse_dx * sensitivity_;
-    pitch_ = std::clamp(pitch_ - mouse_dy * sensitivity_, -1.55334f, 1.55334f);
+    pitch_ -= mouse_dy * sensitivity_;
+    clamp_pitch();
+}
+
+void OrbitCamera::adjust_distance(float delta_meters) {
+    if (!std::isfinite(delta_meters)) return;
+    desired_distance_ =
+        std::clamp(desired_distance_ - delta_meters, config_.min_distance, config_.max_distance);
 }
 
 void OrbitCamera::set_orientation(float yaw, float pitch) {
     yaw_ = yaw;
-    pitch_ = std::clamp(pitch, -1.55334f, 1.55334f);
+    pitch_ = pitch;
+    clamp_pitch();
 }
 
 void OrbitCamera::set_config(const OrbitCameraConfig& config) {
@@ -33,6 +50,7 @@ void OrbitCamera::set_config(const OrbitCameraConfig& config) {
     desired_distance_ = std::clamp(desired_distance_, config_.min_distance, config_.max_distance);
     if (std::abs(desired_distance_ - config_.default_distance) < 0.001f)
         desired_distance_ = config_.default_distance;
+    clamp_pitch();
 }
 
 void OrbitCamera::set_sensitivity(float sensitivity) {
@@ -44,7 +62,18 @@ std::array<float, 3> OrbitCamera::orbit_offset(float distance) const {
     const float sp = std::sin(pitch_);
     const float sy = std::sin(yaw_);
     const float cy = std::cos(yaw_);
+    // yaw 0 / pitch 0 → behind on −Z, looking toward +Z (character forward).
     return {-sy * cp * distance, sp * distance, -cy * cp * distance};
+}
+
+std::array<float, 3> OrbitCamera::shoulder_right() const {
+    const float cy = std::cos(yaw_);
+    const float sy = std::sin(yaw_);
+    return {cy, 0.0f, -sy};
+}
+
+WorldPosition OrbitCamera::look_target() const {
+    return {pivot_.x, pivot_.y + static_cast<double>(config_.pivot_height), pivot_.z};
 }
 
 Result<void> OrbitCamera::update(WorldPosition pivot, const CollisionWorld& world) {
@@ -52,35 +81,41 @@ Result<void> OrbitCamera::update(WorldPosition pivot, const CollisionWorld& worl
     collision_shortened_ = false;
     resolved_distance_ = std::clamp(desired_distance_, config_.min_distance, config_.max_distance);
 
-    const auto offset = orbit_offset(resolved_distance_);
-    const WorldPosition pivot_center{pivot.x, pivot.y + static_cast<double>(config_.pivot_height), pivot.z};
-    const WorldPosition desired_eye{pivot_center.x + offset[0], pivot_center.y + offset[1], pivot_center.z + offset[2]};
+    const WorldPosition pivot_center = look_target();
+    const auto radial = orbit_offset(resolved_distance_);
+    const auto right = shoulder_right();
+    const float shoulder = config_.shoulder_offset;
+    const WorldPosition desired_eye{pivot_center.x + radial[0] + right[0] * shoulder,
+        pivot_center.y + radial[1] + right[1] * shoulder, pivot_center.z + radial[2] + right[2] * shoulder};
 
-    const LocalPosition sweep{
-        static_cast<float>(desired_eye.x - pivot_center.x),
+    const LocalPosition sweep{static_cast<float>(desired_eye.x - pivot_center.x),
         static_cast<float>(desired_eye.y - pivot_center.y),
         static_cast<float>(desired_eye.z - pivot_center.z)};
     const float sweep_length = vector_length(sweep.x, sweep.y, sweep.z);
+    float eye_scale = 1.0f;
     if (sweep_length > 0.001f) {
+        // Only collide against world geometry — Dynamic/Character include the player body and
+        // would pin the camera at min distance (self-hit), killing scroll zoom.
+        CollisionQueryFilter filter;
+        filter.layer = CollisionLayer::StaticWorld;
+        const auto hit = world.sweep_sphere(pivot_center, sweep, config_.collision_probe_radius, filter);
         float hit_fraction = 1.0f;
-        for (const auto layer : {CollisionLayer::StaticWorld, CollisionLayer::Dynamic}) {
-            CollisionQueryFilter filter;
-            filter.layer = layer;
-            const auto hit = world.sweep_sphere(pivot_center, sweep, config_.collision_probe_radius, filter);
-            if (hit && hit.value().has_value())
-                hit_fraction = std::min(hit_fraction, hit.value().value().fraction);
-        }
+        if (hit && hit.value().has_value()) hit_fraction = hit.value().value().fraction;
         if (hit_fraction < 1.0f) {
-            const float shortened = resolved_distance_ * hit_fraction - config_.collision_padding;
-            resolved_distance_ = std::max(config_.min_distance, shortened);
-            collision_shortened_ = resolved_distance_ + config_.collision_padding < desired_distance_;
+            const float padded = std::max(0.0f, hit_fraction - (config_.collision_padding / sweep_length));
+            eye_scale = padded;
+            collision_shortened_ = true;
+            resolved_distance_ = std::max(config_.min_distance, resolved_distance_ * padded);
         }
     }
 
-    const auto resolved_offset = orbit_offset(resolved_distance_);
-    position_[0] = static_cast<float>(pivot_center.x + resolved_offset[0]);
-    position_[1] = static_cast<float>(pivot_center.y + resolved_offset[1]);
-    position_[2] = static_cast<float>(pivot_center.z + resolved_offset[2]);
+    const auto resolved_radial = orbit_offset(resolved_distance_);
+    // Keep shoulder proportionally when collision pulls in so framing stays over-the-shoulder.
+    const float shoulder_scale = collision_shortened_ ? eye_scale : 1.0f;
+    const float shoulder_applied = shoulder * shoulder_scale;
+    position_[0] = static_cast<float>(pivot_center.x + resolved_radial[0] + right[0] * shoulder_applied);
+    position_[1] = static_cast<float>(pivot_center.y + resolved_radial[1] + right[1] * shoulder_applied);
+    position_[2] = static_cast<float>(pivot_center.z + resolved_radial[2] + right[2] * shoulder_applied);
     return Result<void>::success();
 }
 
@@ -96,12 +131,11 @@ Result<void> OrbitCamera::set_perspective(float f, float a, float n, float z) {
 }
 
 std::array<float, 3> OrbitCamera::forward() const {
-    const float target_x = static_cast<float>(pivot_.x);
-    const float target_y = static_cast<float>(pivot_.y + static_cast<double>(config_.pivot_height));
-    const float target_z = static_cast<float>(pivot_.z);
-    const float dx = target_x - position_[0];
-    const float dy = target_y - position_[1];
-    const float dz = target_z - position_[2];
+    // Aim at the character pivot (not the shoulder-shifted eye), classic RPG framing.
+    const auto target = look_target();
+    const float dx = static_cast<float>(target.x) - position_[0];
+    const float dy = static_cast<float>(target.y) - position_[1];
+    const float dz = static_cast<float>(target.z) - position_[2];
     const float length = vector_length(dx, dy, dz);
     if (!(length > 0)) return {0, 0, 1};
     return {dx / length, dy / length, dz / length};

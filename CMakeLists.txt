@@ -88,6 +88,7 @@ add_library(engine_core
     src/world/navigation_grid.cpp
     src/physics/collision_world.cpp
     src/physics/character_controller.cpp
+    src/physics/rigidbody_locomotion.cpp
     src/rendering/debug_camera.cpp
     src/rendering/orbit_camera.cpp
     src/rendering/editor_fonts.cpp

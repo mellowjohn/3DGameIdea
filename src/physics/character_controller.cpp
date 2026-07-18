@@ -77,7 +77,8 @@ Result<CharacterController> CharacterController::create(CollisionWorld& world, W
         return Result<CharacterController>::failure(
             character_error("CHARACTER-SHAPE-INVALID", "Capsule radius and half height must be positive"));
     if (!(config.max_slope_ratio > 0) || !(config.step_height > 0) || !(config.max_speed > 0) || !(config.gravity > 0) ||
-        !(config.jump_velocity > 0))
+        !(config.jump_velocity > 0) || !(config.ground_acceleration > 0) || !(config.ground_friction > 0) ||
+        !(config.air_acceleration > 0))
         return Result<CharacterController>::failure(
             character_error("CHARACTER-CONFIG-INVALID", "Movement configuration values must be positive"));
 
@@ -114,37 +115,86 @@ Result<void> CharacterController::move(const LocalPosition& wish_velocity, float
     const float forward_z = std::cos(yaw_radians);
     const float right_x = std::cos(yaw_radians);
     const float right_z = -std::sin(yaw_radians);
-    Vec3 desired{
+    Vec3 wish{
         right_x * wish_velocity.x + forward_x * wish_velocity.z,
-        wish_velocity.y,
+        0.0f,
         right_z * wish_velocity.x + forward_z * wish_velocity.z};
 
-    const float horizontal = std::sqrt(desired.GetX() * desired.GetX() + desired.GetZ() * desired.GetZ());
-    if (horizontal > 0.0f) {
-        const float target_speed = horizontal <= 1.0f ? horizontal * impl_->config.max_speed : impl_->config.max_speed;
-        const float scale = target_speed / horizontal;
-        desired.SetX(desired.GetX() * scale);
-        desired.SetZ(desired.GetZ() * scale);
+    const float wish_horizontal = std::sqrt(wish.GetX() * wish.GetX() + wish.GetZ() * wish.GetZ());
+    if (wish_horizontal > 0.0f) {
+        const float target_speed =
+            wish_horizontal <= 1.0f ? wish_horizontal * impl_->config.max_speed : impl_->config.max_speed;
+        const float scale = target_speed / wish_horizontal;
+        wish.SetX(wish.GetX() * scale);
+        wish.SetZ(wish.GetZ() * scale);
+    }
+
+    const auto ground_state = impl_->character->GetGroundState();
+    const bool on_walkable = ground_state == CharacterBase::EGroundState::OnGround;
+    const bool on_steep = ground_state == CharacterBase::EGroundState::OnSteepGround;
+    const bool supported = on_walkable || on_steep;
+
+    // Climb / slide along the contact plane instead of digging horizontal-only velocity into the slope.
+    if (supported && wish_horizontal > 0.0f) {
+        const Vec3 normal = impl_->character->GetGroundNormal();
+        const float into_ground = wish.Dot(normal);
+        if (into_ground < 0.0f) wish -= normal * into_ground;
     }
 
     Vec3 velocity = impl_->character->GetLinearVelocity();
-    if (impl_->character->GetGroundState() == CharacterBase::EGroundState::OnGround &&
-        impl_->character->GetGroundVelocity().Dot(impl_->character->GetUp()) <= 0.0f) {
-        velocity = impl_->character->GetGroundVelocity();
+    if (on_walkable && impl_->character->GetGroundVelocity().Dot(impl_->character->GetUp()) <= 0.0f) {
+        const Vec3 ground_velocity = impl_->character->GetGroundVelocity();
+        velocity.SetX(ground_velocity.GetX());
+        velocity.SetZ(ground_velocity.GetZ());
+        if (!impl_->jump_requested) velocity.SetY(ground_velocity.GetY());
     }
-    velocity.SetX(desired.GetX());
-    velocity.SetZ(desired.GetZ());
-    if (impl_->character->GetGroundState() == CharacterBase::EGroundState::OnGround) {
+
+    const bool has_wish = wish.LengthSq() > 1.0e-6f;
+    const float accel = on_walkable ? impl_->config.ground_acceleration
+                                    : (on_steep ? impl_->config.ground_acceleration * 0.5f : impl_->config.air_acceleration);
+    const float friction = supported ? impl_->config.ground_friction : 0.0f;
+
+    if (!has_wish) {
+        // Idle friction — kill slope-parallel drift so steep/walkable ground does not feel icy.
+        if (supported) {
+            const float speed = velocity.Length();
+            const float drop = friction * seconds;
+            if (speed <= drop) velocity = Vec3::sZero();
+            else velocity *= (speed - drop) / speed;
+        } else {
+            const float speed = std::sqrt(velocity.GetX() * velocity.GetX() + velocity.GetZ() * velocity.GetZ());
+            const float drop = impl_->config.air_acceleration * 0.25f * seconds;
+            if (speed > 0.0f) {
+                const float new_speed = speed > drop ? speed - drop : 0.0f;
+                const float scale = new_speed / speed;
+                velocity.SetX(velocity.GetX() * scale);
+                velocity.SetZ(velocity.GetZ() * scale);
+            }
+        }
+    } else {
+        Vec3 target = wish;
+        if (!supported) target.SetY(0.0f);
+        Vec3 delta = target - velocity;
+        if (!supported) delta.SetY(0.0f);
+        const float delta_len = delta.Length();
+        const float max_delta = accel * seconds;
+        if (delta_len > max_delta && delta_len > 0.0f) delta *= max_delta / delta_len;
+        velocity += delta;
+    }
+
+    if (on_walkable) {
         if (impl_->jump_requested) {
             velocity.SetY(impl_->config.jump_velocity);
             impl_->jump_requested = false;
-        } else {
-            velocity.SetY(desired.GetY());
         }
     } else {
-        velocity.SetY(velocity.GetY() - impl_->config.gravity * seconds);
+        // Airborne, or moving on steep ground. Idle steep braking is finished above; skip adding
+        // gravity into velocity here so ExtendedUpdate does not immediately re-ice-slide.
+        if (!(on_steep && !has_wish))
+            velocity.SetY(velocity.GetY() - impl_->config.gravity * seconds);
         impl_->jump_requested = false;
     }
+
     impl_->character->SetLinearVelocity(velocity);
 
     CharacterVirtual::ExtendedUpdateSettings update_settings;
@@ -155,6 +205,15 @@ Result<void> CharacterController::move(const LocalPosition& wish_velocity, float
 
     impl_->character->ExtendedUpdate(seconds, Vec3(0, -impl_->config.gravity, 0), update_settings, g_bp_filter,
         g_object_filter, g_body_filter, g_shape_filter, temp_from(*world_));
+
+    // ExtendedUpdate can reintroduce slope-parallel slide from gravity; pin idle supported motion.
+    if (!has_wish) {
+        const auto state_after = impl_->character->GetGroundState();
+        if (state_after == CharacterBase::EGroundState::OnGround ||
+            state_after == CharacterBase::EGroundState::OnSteepGround) {
+            impl_->character->SetLinearVelocity(Vec3::sZero());
+        }
+    }
     return Result<void>::success();
 }
 

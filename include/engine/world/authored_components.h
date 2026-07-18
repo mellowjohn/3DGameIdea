@@ -10,7 +10,7 @@
 
 namespace engine {
 
-enum class AuthoredComponentType : std::uint8_t { Collider, ScriptBinding, Animator };
+enum class AuthoredComponentType : std::uint8_t { Collider, ScriptBinding, Animator, Rigidbody };
 
 struct ScriptBindingComponentData {
     std::string kind; // interaction | combatHit | combatHurt | handler
@@ -22,6 +22,15 @@ struct AnimatorComponentData {
     std::string default_state;   // optional override of layer default
 };
 
+struct RigidbodyComponentData {
+    std::string motion_type = "dynamic"; // dynamic | kinematic
+    float mass = 1.0f;
+    float linear_damping = 0.0f;
+    float angular_damping = 0.05f;
+    bool use_gravity = true;
+    bool freeze_rotation = false;
+};
+
 struct AuthoredComponentEntry {
     std::string id;
     AuthoredComponentType type = AuthoredComponentType::Collider;
@@ -30,6 +39,7 @@ struct AuthoredComponentEntry {
     PrefabCollisionVolume collider{};
     ScriptBindingComponentData script{};
     AnimatorComponentData animator{};
+    RigidbodyComponentData rigidbody{};
 };
 
 struct AuthoredComponentsComponent {
@@ -42,6 +52,9 @@ struct AuthoredComponentsComponent {
 
 [[nodiscard]] AuthoredComponentsComponent seed_authored_components_from_prefab(const PrefabAsset& prefab);
 [[nodiscard]] std::vector<PrefabCollisionVolume> effective_collision_volumes(
+    const AuthoredComponentsComponent* entity_components, const PrefabAsset* prefab);
+/** First Rigidbody on the entity/prefab, if any (DEC-0038 — one motion body per entity). */
+[[nodiscard]] std::optional<RigidbodyComponentData> effective_rigidbody(
     const AuthoredComponentsComponent* entity_components, const PrefabAsset* prefab);
 
 [[nodiscard]] Result<void> validate_authored_component_entry(const AuthoredComponentEntry& entry);

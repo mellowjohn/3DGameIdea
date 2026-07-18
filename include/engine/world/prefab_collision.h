@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -20,9 +21,16 @@ namespace engine {
 
 class PlacementCollisionTracker final {
 public:
+    /**
+     * @param simulate_dynamics When false (editor idle), authored dynamic Rigidbodies spawn as kinematic so crates
+     * do not fall during edit. When true (play/test running or runtime), use authored motion type.
+     */
     [[nodiscard]] Result<void> sync(CollisionWorld& world, const Scene& scene,
-        const std::map<std::string, PrefabAsset>& catalog);
+        const std::map<std::string, PrefabAsset>& catalog, bool simulate_dynamics = true);
+    /** Copy motion-body poses into scene transforms for physics-driven placements. */
+    void write_back_transforms(Scene& scene, CollisionWorld& world);
     void clear(CollisionWorld& world);
+    [[nodiscard]] std::optional<CollisionBody> motion_body_for(const EntityId& id) const;
     [[nodiscard]] const InteractionVolumeRegistry& interaction_registry() const { return interaction_registry_; }
     [[nodiscard]] const CombatVolumeRegistry& combat_registry() const { return combat_registry_; }
 
@@ -32,7 +40,11 @@ private:
         TransformComponent transform;
         CellCoord cell{};
         std::uint64_t components_generation = 0;
-        std::vector<CollisionBody> bodies;
+        bool simulate_dynamics = true;
+        bool physics_driven = false;
+        TransformComponent motion_local{}; // solid collider local TR used for write-back (scale baked into shape)
+        std::optional<CollisionBody> motion_body;
+        std::vector<CollisionBody> bodies; // sensors + motion (motion also in motion_body)
     };
 
     std::map<std::string, TrackedPlacement> tracked_;
