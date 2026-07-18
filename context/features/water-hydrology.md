@@ -1,6 +1,6 @@
 # Water and Hydrology
 
-Status: planned ([DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring))  
+Status: active ([DEC-0038](../decisions/index.md#dec-0038-water-swim-and-hydrology-authoring))  
 Epic: EPIC-0015
 
 Gameplay water for rivers, ponds, lakes, bounded seas, swim traversal, and scripted floating vessels. v1 is **fully authored** — no noise-driven auto hydrology.
