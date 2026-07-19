@@ -16,6 +16,9 @@
 #include "engine/rendering/viewport_picking.h"
 #include "engine/world/terrain.h"
 #include "engine/world/terrain_field.h"
+#include "engine/world/water_field.h"
+#include "engine/world/water_store.h"
+#include "engine/automation/water_edit_commands.h"
 #include "engine/world/transform_utils.h"
 #include "engine/world/prefab_collision.h"
 #include "engine/world/interaction_volumes.h"
@@ -39,6 +42,7 @@
 #include "engine/assets/world_forge_quests_asset.h"
 #include "engine/assets/world_forge_factions_asset.h"
 #include "engine/assets/world_forge_relationships_asset.h"
+#include "engine/assets/world_forge_map_asset.h"
 #include "engine/assets/hud_asset.h"
 #include "engine/ui/hud_runtime.h"
 #include "engine/ui/ui_canvas_editor.h"
@@ -169,6 +173,7 @@ const char* k_pbr_hlsl_helpers = R"(
                 return NdotX / max(NdotX * (1.0 - k) + k, 0.0001);
             }
             float3 shadePbr(float3 albedo, float roughness, float metallic, float3 N, float3 V, float3 L, float3 lightRadiance) {
+                if (!all(isfinite(N)) || !all(isfinite(V)) || !all(isfinite(L))) return 0.0;
                 float NdotL = saturate(dot(N, L));
                 if (NdotL <= 0.0) return 0.0;
                 float3 H = normalize(L + V);
@@ -451,8 +456,8 @@ public:
         if(FAILED(hr)) return Result<void>::failure(graphics_error("GFX-DSV-HEAP","Could not create depth heap",hr));
         srv_stride_=device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         if(editor){D3D12_DESCRIPTOR_HEAP_DESC imgui_desc{};imgui_desc.NumDescriptors=10;imgui_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;imgui_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;hr=device_->CreateDescriptorHeap(&imgui_desc,IID_PPV_ARGS(&imgui_heap_));if(FAILED(hr))return Result<void>::failure(graphics_error("EDITOR-DESCRIPTOR-HEAP","Could not create editor descriptor heap",hr));}
-        // Post-process descriptor heap (depth, lit color, AO) is shader-visible and created even outside the editor.
-        D3D12_DESCRIPTOR_HEAP_DESC post_desc{};post_desc.NumDescriptors=3;post_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;post_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        // Post-process descriptor heap: depth, lit, AO, water scene-color copy.
+        D3D12_DESCRIPTOR_HEAP_DESC post_desc{};post_desc.NumDescriptors=4;post_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;post_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
         hr=device_->CreateDescriptorHeap(&post_desc,IID_PPV_ARGS(&post_srv_heap_));
         if(FAILED(hr)) return Result<void>::failure(graphics_error("GFX-POST-DESCRIPTOR-HEAP","Could not create post-process descriptor heap",hr));
 
@@ -468,6 +473,8 @@ public:
         if (!targets) return targets;
         auto pipeline = create_pipeline();
         if (!pipeline) return pipeline;
+        auto water_pipeline = create_water_pipeline();
+        if (!water_pipeline) return water_pipeline;
         auto ssao_pipelines = create_ssao_pipelines();
         if (!ssao_pipelines) return ssao_pipelines;
         auto frame_cb = create_frame_constant_buffer();
@@ -513,6 +520,7 @@ public:
         viewport_target_.Reset();
         game_viewport_target_.Reset();
         lit_color_.Reset();
+        water_scene_color_.Reset();
         ao_target_.Reset();
         const HRESULT hr = swap_chain_->ResizeBuffers(frame_count, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
         if (FAILED(hr)) return Result<void>::failure(device_error("GFX-RESIZE", "Could not resize swap-chain buffers", hr));
@@ -524,7 +532,9 @@ public:
 
     Result<void> create_frame_constant_buffer() {
         frame_cb_.Reset();
+        water_frame_cb_.Reset();
         frame_cb_mapped_ = nullptr;
+        water_frame_cb_mapped_ = nullptr;
         D3D12_HEAP_PROPERTIES heap{};
         heap.Type = D3D12_HEAP_TYPE_UPLOAD;
         D3D12_RESOURCE_DESC desc{};
@@ -542,12 +552,27 @@ public:
         hr = frame_cb_->Map(0, nullptr, &frame_cb_mapped_);
         if (FAILED(hr) || !frame_cb_mapped_)
             return Result<void>::failure(graphics_error("GFX-FRAME-CB-MAP", "Could not map frame constant buffer", hr));
+        // Separate upload CB for water: overwriting the world frame CB before ExecuteCommandLists was
+        // zeroing fog/lighting for every mesh draw (black terrain/trees, blue sky only).
+        hr = device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&water_frame_cb_));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-WATER-FRAME-CB", "Could not create water frame constant buffer", hr));
+        hr = water_frame_cb_->Map(0, nullptr, &water_frame_cb_mapped_);
+        if (FAILED(hr) || !water_frame_cb_mapped_)
+            return Result<void>::failure(
+                graphics_error("GFX-WATER-FRAME-CB-MAP", "Could not map water frame constant buffer", hr));
         return Result<void>::success();
     }
 
     void bind_frame_constants(const std::array<float, 48>& frame_constants) {
         std::memcpy(frame_cb_mapped_, frame_constants.data(), sizeof(frame_constants));
         command_list_->SetGraphicsRootConstantBufferView(0, frame_cb_->GetGPUVirtualAddress());
+    }
+
+    void bind_water_frame_constants(const std::array<float, 48>& frame_constants) {
+        std::memcpy(water_frame_cb_mapped_, frame_constants.data(), sizeof(frame_constants));
+        command_list_->SetGraphicsRootConstantBufferView(0, water_frame_cb_->GetGPUVirtualAddress());
     }
 
     Result<void> upload_prop_vertices(const std::vector<Vertex>& vertices) {
@@ -765,6 +790,35 @@ public:
         return Result<void>::success();
     }
 
+    Result<void> upload_water_vertices(const std::vector<Vertex>& vertices) {
+        wait_for_gpu();
+        water_vertex_buffer_.Reset();
+        water_vertex_count_ = static_cast<UINT>(vertices.size());
+        water_vertex_view_ = {};
+        if (vertices.empty()) return Result<void>::success();
+        D3D12_HEAP_PROPERTIES heap{};
+        heap.Type = D3D12_HEAP_TYPE_UPLOAD;
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        desc.Width = vertices.size() * sizeof(Vertex);
+        desc.Height = 1;
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = 1;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        auto hr = device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                   nullptr, IID_PPV_ARGS(&water_vertex_buffer_));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-WATER-BUFFER", "Could not create water geometry buffer", hr));
+        void* mapped = nullptr;
+        water_vertex_buffer_->Map(0, nullptr, &mapped);
+        std::memcpy(mapped, vertices.data(), vertices.size() * sizeof(Vertex));
+        water_vertex_buffer_->Unmap(0, nullptr);
+        water_vertex_view_ = {water_vertex_buffer_->GetGPUVirtualAddress(),
+                              static_cast<UINT>(vertices.size() * sizeof(Vertex)), sizeof(Vertex)};
+        return Result<void>::success();
+    }
+
     struct WorldPassParams {
         std::array<float, 16> view_projection{};
         std::array<float, 3> camera_position{};
@@ -773,6 +827,8 @@ public:
         const WorldInfluenceBus* influence = nullptr;
         float time_seconds = 0.0f;
         PbrSurfaceParams terrain_pbr = PbrSurfaceParams::dielectric_default();
+        std::array<float, 4> water_color{0.06f, 0.18f, 0.30f, 0.96f};
+        float water_roughness = 0.05f;
     };
 
     void draw_world_pass(ID3D12Resource* color_target, D3D12_CPU_DESCRIPTOR_HANDLE rtv, const WorldPassParams& params,
@@ -781,7 +837,7 @@ public:
         auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
             D3D12_RESOURCE_STATE_RENDER_TARGET);
         command_list_->ResourceBarrier(1, &barrier);
-        const float clear[] = {0.11f, 0.16f, 0.24f, 1.0f};
+        const float clear[] = {0.32f, 0.48f, 0.68f, 1.0f};
         auto dsv = dsv_heap_->GetCPUDescriptorHandleForHeapStart();
         command_list_->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
         command_list_->ClearRenderTargetView(rtv, clear, 0, nullptr);
@@ -803,15 +859,16 @@ public:
         frame_constants[16] = params.camera_position[0];
         frame_constants[17] = params.camera_position[1];
         frame_constants[18] = params.camera_position[2];
-        frame_constants[19] = 90.0f;
-        frame_constants[20] = 0.10f;
-        frame_constants[21] = 0.14f;
-        frame_constants[22] = 0.20f;
-        frame_constants[23] = 560.0f;
-        frame_constants[24] = -0.35f;
+        frame_constants[19] = 100.0f;
+        frame_constants[20] = 0.28f;
+        frame_constants[21] = 0.36f;
+        frame_constants[22] = 0.48f;
+        frame_constants[23] = 640.0f;
+        // Daytime sun direction (world → light) and ambient fill.
+        frame_constants[24] = -0.40f;
         frame_constants[25] = -0.85f;
-        frame_constants[26] = -0.25f;
-        frame_constants[27] = 0.58f;
+        frame_constants[26] = -0.30f;
+        frame_constants[27] = 0.42f;
         pack_point_lights(frame_constants, point_lights, params.camera_position);
         frame_constants[44] = static_cast<float>(width_);
         frame_constants[45] = static_cast<float>(height_);
@@ -872,6 +929,69 @@ public:
         }
         draw_foliage_instances(frame_constants, params.influence, params.time_seconds);
         barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        command_list_->ResourceBarrier(1, &barrier);
+    }
+
+    void draw_water_pass(ID3D12Resource* color_target, D3D12_CPU_DESCRIPTOR_HANDLE rtv, const WorldPassParams& params) {
+        if (water_vertex_count_ == 0 || !water_pipeline_ || !water_scene_color_) return;
+
+        // Snapshot the opaque lit scene before water writes it — sampling lit_color_ while blending
+        // into it caused shoreline fuzz / highlight feedback.
+        D3D12_RESOURCE_BARRIER pre_copy[2] = {
+            CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                D3D12_RESOURCE_STATE_COPY_SOURCE),
+            CD3DX12_RESOURCE_BARRIER_placeholder(water_scene_color_.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                D3D12_RESOURCE_STATE_COPY_DEST),
+        };
+        command_list_->ResourceBarrier(2, pre_copy);
+        command_list_->CopyResource(water_scene_color_.Get(), color_target);
+        D3D12_RESOURCE_BARRIER post_copy[2] = {
+            CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_COPY_SOURCE,
+                D3D12_RESOURCE_STATE_RENDER_TARGET),
+            CD3DX12_RESOURCE_BARRIER_placeholder(water_scene_color_.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE),
+        };
+        command_list_->ResourceBarrier(2, post_copy);
+
+        auto dsv = dsv_heap_->GetCPUDescriptorHandleForHeapStart();
+        command_list_->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+        D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(width_), static_cast<float>(height_), 0.0f, 1.0f};
+        D3D12_RECT scissor{0, 0, static_cast<LONG>(width_), static_cast<LONG>(height_)};
+        command_list_->RSSetViewports(1, &viewport);
+        command_list_->RSSetScissorRects(1, &scissor);
+        ID3D12DescriptorHeap* post_heaps[] = {post_srv_heap_.Get()};
+        command_list_->SetDescriptorHeaps(1, post_heaps);
+        command_list_->SetGraphicsRootSignature(water_root_signature_.Get());
+        command_list_->SetPipelineState(water_pipeline_.Get());
+        std::array<float, 48> frame_constants{};
+        std::memcpy(frame_constants.data(), params.view_projection.data(), sizeof(params.view_projection));
+        frame_constants[16] = params.camera_position[0];
+        frame_constants[17] = params.camera_position[1];
+        frame_constants[18] = params.camera_position[2];
+        // Match opaque pass sun so water specular/glints share the same light direction.
+        frame_constants[24] = -0.40f;
+        frame_constants[25] = -0.85f;
+        frame_constants[26] = -0.30f;
+        frame_constants[27] = 0.42f;
+        frame_constants[44] = static_cast<float>(width_);
+        frame_constants[45] = static_cast<float>(height_);
+        bind_water_frame_constants(frame_constants);
+        std::array<float, 8> water_constants{};
+        water_constants[0] = params.time_seconds;
+        water_constants[1] = params.water_roughness;
+        water_constants[2] = 0.06f; // waveAmplitude (keep small so the sheet doesn't read as floating)
+        water_constants[3] = 0.22f; // waveFrequency
+        water_constants[4] = params.water_color[0];
+        water_constants[5] = params.water_color[1];
+        water_constants[6] = params.water_color[2];
+        water_constants[7] = params.water_color[3];
+        command_list_->SetGraphicsRoot32BitConstants(1, 8, water_constants.data(), 0);
+        command_list_->SetGraphicsRootDescriptorTable(2, post_water_gpu_);
+        command_list_->IASetVertexBuffers(0, 1, &water_vertex_view_);
+        command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        command_list_->DrawInstanced(water_vertex_count_, 1, 0, 0);
+        auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_RENDER_TARGET,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         command_list_->ResourceBarrier(1, &barrier);
     }
@@ -972,14 +1092,16 @@ public:
         command_list_->ResourceBarrier(1, &barrier);
         D3D12_CPU_DESCRIPTOR_HANDLE backbuffer_rtv = rtv_heap_->GetCPUDescriptorHandleForHeapStart();
         backbuffer_rtv.ptr += static_cast<SIZE_T>(frame_index_) * rtv_stride_;
-        const float clear[] = {0.11f, 0.16f, 0.24f, 1.0f};
+        const float clear[] = {0.32f, 0.48f, 0.68f, 1.0f};
         command_list_->OMSetRenderTargets(1, &backbuffer_rtv, FALSE, nullptr);
         command_list_->ClearRenderTargetView(backbuffer_rtv, clear, 0, nullptr);
         if (editor_initialized_) {
             draw_world_pass(lit_color_.Get(), lit_rtv_, world, placed_objects, point_lights, true);
+            draw_water_pass(lit_color_.Get(), lit_rtv_, world);
             apply_ssao(viewport_target_.Get(), viewport_rtv_, /*destination_returns_to_srv=*/true, world);
             if (game_world) {
                 draw_world_pass(lit_color_.Get(), lit_rtv_, *game_world, placed_objects, point_lights, false);
+                draw_water_pass(lit_color_.Get(), lit_rtv_, *game_world);
                 apply_ssao(game_viewport_target_.Get(), game_viewport_rtv_, /*destination_returns_to_srv=*/true,
                     *game_world);
             }
@@ -995,6 +1117,7 @@ public:
             command_list_->RSSetScissorRects(1, &imgui_scissor);
         } else {
             draw_world_pass(lit_color_.Get(), lit_rtv_, world, placed_objects, point_lights, true);
+            draw_water_pass(lit_color_.Get(), lit_rtv_, world);
             apply_ssao(targets_[frame_index_].Get(), backbuffer_rtv, /*destination_returns_to_srv=*/false, world);
         }
         if(editor_initialized_){ImGui::Render();ID3D12DescriptorHeap* heaps[]={imgui_heap_.Get()};command_list_->SetDescriptorHeaps(1,heaps);ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(),command_list_.Get());}
@@ -1007,10 +1130,17 @@ public:
         ComPtr<ID3D12Resource> readback;
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
         UINT64 readback_size = 0;
+        // Prefer the composited scene viewport (editor) or backbuffer (runtime) so captures are not an empty clear.
+        ID3D12Resource* capture_source = targets_[frame_index_].Get();
+        D3D12_RESOURCE_STATES capture_state = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        if (editor_initialized_ && viewport_target_) {
+            capture_source = viewport_target_.Get();
+            capture_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        }
         if (capture) {
-            auto copy_barrier = CD3DX12_RESOURCE_BARRIER_placeholder(targets_[frame_index_].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+            auto copy_barrier = CD3DX12_RESOURCE_BARRIER_placeholder(capture_source, capture_state, D3D12_RESOURCE_STATE_COPY_SOURCE);
             command_list_->ResourceBarrier(1, &copy_barrier);
-            const auto desc = targets_[frame_index_]->GetDesc();
+            const auto desc = capture_source->GetDesc();
             device_->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &readback_size);
             D3D12_HEAP_PROPERTIES heap{};
             heap.Type = D3D12_HEAP_TYPE_READBACK;
@@ -1029,11 +1159,20 @@ public:
             destination.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
             destination.PlacedFootprint = footprint;
             D3D12_TEXTURE_COPY_LOCATION source{};
-            source.pResource = targets_[frame_index_].Get();
+            source.pResource = capture_source;
             source.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
             source.SubresourceIndex = 0;
             command_list_->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
-            barrier = CD3DX12_RESOURCE_BARRIER_placeholder(targets_[frame_index_].Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_PRESENT);
+            if (capture_source == targets_[frame_index_].Get()) {
+                barrier = CD3DX12_RESOURCE_BARRIER_placeholder(capture_source, D3D12_RESOURCE_STATE_COPY_SOURCE,
+                    D3D12_RESOURCE_STATE_PRESENT);
+            } else {
+                auto restore = CD3DX12_RESOURCE_BARRIER_placeholder(capture_source, D3D12_RESOURCE_STATE_COPY_SOURCE,
+                    D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                command_list_->ResourceBarrier(1, &restore);
+                barrier = CD3DX12_RESOURCE_BARRIER_placeholder(targets_[frame_index_].Get(),
+                    D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+            }
         } else {
             barrier = CD3DX12_RESOURCE_BARRIER_placeholder(targets_[frame_index_].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
         }
@@ -1171,6 +1310,13 @@ private:
         HRESULT lit_hr=device_->CreateCommittedResource(&texture_heap,D3D12_HEAP_FLAG_NONE,&lit_desc,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,&lit_clear,IID_PPV_ARGS(&lit_color_));
         if(FAILED(lit_hr))return Result<void>::failure(graphics_error("GFX-LIT-TARGET","Could not create lit-color intermediate target",lit_hr));
         lit_rtv_=handle;device_->CreateRenderTargetView(lit_color_.Get(),nullptr,lit_rtv_);handle.ptr+=rtv_stride_;
+        // Stable scene-color copy for water refraction (water writes lit_color_ and must not sample it).
+        water_scene_color_.Reset();
+        HRESULT water_scene_hr=device_->CreateCommittedResource(&texture_heap,D3D12_HEAP_FLAG_NONE,&lit_desc,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,&lit_clear,IID_PPV_ARGS(&water_scene_color_));
+        if(FAILED(water_scene_hr))
+            return Result<void>::failure(graphics_error("GFX-WATER-SCENE-TARGET",
+                "Could not create water scene-color copy target", water_scene_hr));
         // Half-res AO target.
         ao_width_=std::max<UINT>(1,width_/2);ao_height_=std::max<UINT>(1,height_/2);
         D3D12_RESOURCE_DESC ao_desc{};ao_desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;ao_desc.Width=ao_width_;ao_desc.Height=ao_height_;ao_desc.DepthOrArraySize=1;ao_desc.MipLevels=1;ao_desc.Format=DXGI_FORMAT_R8_UNORM;ao_desc.SampleDesc.Count=1;ao_desc.Layout=D3D12_TEXTURE_LAYOUT_UNKNOWN;ao_desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
@@ -1188,7 +1334,7 @@ private:
         D3D12_DEPTH_STENCIL_VIEW_DESC dsv_view{};dsv_view.Format=DXGI_FORMAT_D32_FLOAT;dsv_view.ViewDimension=D3D12_DSV_DIMENSION_TEXTURE2D;
         device_->CreateDepthStencilView(depth_.Get(),&dsv_view,dsv_heap_->GetCPUDescriptorHandleForHeapStart());
 
-        // Post-process shader-visible descriptors: slot 0 = depth SRV, slot 1 = lit SRV, slot 2 = AO SRV.
+        // Post-process SRVs: 0 depth, 1 lit, 2 AO, 3 water_scene (refraction source).
         auto post_cpu=post_srv_heap_->GetCPUDescriptorHandleForHeapStart();
         auto post_gpu=post_srv_heap_->GetGPUDescriptorHandleForHeapStart();
         D3D12_SHADER_RESOURCE_VIEW_DESC depth_srv{};depth_srv.Format=DXGI_FORMAT_R32_FLOAT;depth_srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;depth_srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;depth_srv.Texture2D.MipLevels=1;
@@ -1201,6 +1347,9 @@ private:
         post_cpu.ptr+=srv_stride_;post_gpu.ptr+=srv_stride_;
         D3D12_SHADER_RESOURCE_VIEW_DESC ao_srv{};ao_srv.Format=ao_desc.Format;ao_srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;ao_srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;ao_srv.Texture2D.MipLevels=1;
         device_->CreateShaderResourceView(ao_target_.Get(),&ao_srv,post_cpu);
+        post_cpu.ptr+=srv_stride_;post_gpu.ptr+=srv_stride_;
+        device_->CreateShaderResourceView(water_scene_color_.Get(),&lit_srv,post_cpu);
+        post_water_gpu_=post_gpu;
         return Result<void>::success();
     }
 
@@ -1265,27 +1414,32 @@ private:
             float4 ps(Out input) : SV_TARGET {
                 if (input.color.r < -0.5) {
                     float t = 1.0 - (input.position.y / max(viewportSize.y, 1.0));
-                    float3 horizon = float3(0.10, 0.14, 0.20);
-                    float3 zenith = float3(0.20, 0.26, 0.36);
+                    float3 horizon = float3(0.38, 0.52, 0.70);
+                    float3 zenith = float3(0.18, 0.34, 0.58);
                     return float4(lerp(horizon, zenith, saturate(t)), 1.0);
                 }
                 float3 albedo = (materialParams.z > 0.5) ? albedoTex.Sample(albedoSampler, input.uv).rgb : input.color;
+                if (dot(albedo, albedo) < 1e-6) albedo = float3(0.35, 0.45, 0.28);
                 float dist = distance(input.worldPos, cameraAndFogStart.xyz);
                 float fogRange = max(fogColorAndEnd.w - cameraAndFogStart.w, 0.001);
                 float fogFactor = saturate((fogColorAndEnd.w - dist) / fogRange);
                 float3 dpdx = ddx(input.worldPos);
                 float3 dpdy = ddy(input.worldPos);
-                float3 normal = normalize(cross(dpdx, dpdy));
+                float3 nrm = cross(dpdx, dpdy);
+                float3 normal = (dot(nrm, nrm) > 1e-12) ? normalize(nrm) : float3(0, 1, 0);
                 float3 V = normalize(cameraAndFogStart.xyz - input.worldPos);
                 float3 L = normalize(-lightAndAmbient.xyz);
-                float3 lit = albedo * lightAndAmbient.w;
-                lit += shadePbr(albedo, materialParams.x, materialParams.y, normal, V, L, float3(1.0, 1.0, 1.0));
-                lit += applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
+                if (dot(normal, V) < 0.0) normal = -normal;
+                float3 lit = albedo * lightAndAmbient.w + emissive.rgb;
+                float3 direct = shadePbr(albedo, materialParams.x, materialParams.y, normal, V, L, float3(1.35, 1.25, 1.1));
+                if (all(isfinite(direct))) lit += direct;
+                float3 p0 = applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
                     pointLight0PosRadius, pointLight0ColorStrength);
-                lit += applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
+                float3 p1 = applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
                     pointLight1PosRadius, pointLight1ColorStrength);
-                lit += emissive.rgb;
-                return float4(lerp(fogColorAndEnd.rgb, lit, fogFactor), 1.0);
+                if (all(isfinite(p0))) lit += p0;
+                if (all(isfinite(p1))) lit += p1;
+                return float4(saturate(lerp(fogColorAndEnd.rgb, lit, fogFactor)), 1.0);
             }
         )";
         ComPtr<ID3DBlob> vs, ps, errors;
@@ -1373,6 +1527,195 @@ private:
         if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-SKY-PIPELINE", "Could not create sky pipeline", hr));
         const auto foliage_pipeline = create_foliage_pipeline(ps);
         if (!foliage_pipeline) return Result<void>::failure(foliage_pipeline.error());
+        return Result<void>::success();
+    }
+
+    Result<void> create_water_pipeline() {
+        const char* water_shader = R"(
+            cbuffer Frame : register(b0) {
+                float4x4 viewProjection;
+                float4 cameraAndFogStart;
+                float4 fogColorAndEnd;
+                float4 lightAndAmbient;
+                float4 pointLight0PosRadius;
+                float4 pointLight0ColorStrength;
+                float4 pointLight1PosRadius;
+                float4 pointLight1ColorStrength;
+                float4 viewportSize;
+            };
+            cbuffer WaterParams : register(b1) {
+                float timeSeconds;
+                float roughness;
+                float waveAmplitude;
+                float waveFrequency;
+                float4 tint;
+            };
+            Texture2D sceneColor : register(t0);
+            SamplerState linearClamp : register(s0);
+            struct In { float3 position:POSITION; float3 color:COLOR; float2 uv:TEXCOORD; };
+            struct Out { float4 position : SV_POSITION; float3 worldPos : TEXCOORD0; float2 uv : TEXCOORD1; float3 color : COLOR; };
+            float waveHeight(float2 xz, float t) {
+                float w1 = sin(xz.x * waveFrequency + t * 1.7) * waveAmplitude;
+                float w2 = cos(xz.y * waveFrequency * 0.85 + t * 1.3) * waveAmplitude * 0.65;
+                float w3 = sin((xz.x + xz.y) * waveFrequency * 0.45 + t * 2.1) * waveAmplitude * 0.35;
+                return w1 + w2 + w3;
+            }
+            float3 waveNormal(float2 xz, float t) {
+                float f = waveFrequency;
+                float a = waveAmplitude;
+                float dhdx = cos(xz.x * f + t * 1.7) * a * f
+                    + cos((xz.x + xz.y) * f * 0.45 + t * 2.1) * a * 0.35 * f * 0.45;
+                float dhdz = -sin(xz.y * f * 0.85 + t * 1.3) * a * 0.65 * f * 0.85
+                    + cos((xz.x + xz.y) * f * 0.45 + t * 2.1) * a * 0.35 * f * 0.45;
+                return normalize(float3(-dhdx, 1.0, -dhdz));
+            }
+            float hash21(float2 p) {
+                float3 p3 = frac(float3(p.xyx) * 0.1031);
+                p3 += dot(p3, p3.yzx + 33.33);
+                return frac((p3.x + p3.y) * p3.z);
+            }
+            Out vs(In input) {
+                Out o;
+                o.uv = input.uv;
+                o.color = input.color;
+                float3 pos = input.position;
+                pos.y += waveHeight(pos.xz, timeSeconds);
+                float4 world = float4(pos, 1.0);
+                o.worldPos = world.xyz;
+                o.position = mul(viewProjection, world);
+                return o;
+            }
+            float4 ps(Out input) : SV_TARGET {
+                float2 uv = input.position.xy / max(viewportSize.xy, float2(1.0, 1.0));
+                // sceneColor is a pre-water copy of the lit buffer (never the live RT).
+                float2 refractOffset = float2(sin(input.worldPos.x * 0.15 + timeSeconds) * 0.0025,
+                    cos(input.worldPos.z * 0.12 + timeSeconds * 0.9) * 0.0025);
+                float3 refracted = sceneColor.Sample(linearClamp, uv + refractOffset).rgb;
+                float3 V = normalize(cameraAndFogStart.xyz - input.worldPos);
+                float3 N = waveNormal(input.worldPos.xz, timeSeconds);
+                float3 L = normalize(-lightAndAmbient.xyz);
+                float3 H = normalize(L + V);
+                float3 sky = lerp(float3(0.22, 0.30, 0.42), float3(0.16, 0.28, 0.46), saturate(V.y * 0.5 + 0.5));
+                float fresnel = pow(1.0 - saturate(dot(N, V)), 3.0);
+                float3 waterColor = lerp(tint.rgb, sky, fresnel * 0.55);
+                // Vertex uv.x = column depth (m). Strong absorption so bed facets don't read through.
+                // Cover already mixes refraction; keep alpha high so RT alpha-blend doesn't double-expose the bed.
+                float depthM = max(input.uv.x, 0.0);
+                float optical = saturate(1.0 - exp(-depthM * 2.4));
+                float cover = lerp(0.55, 0.985, optical);
+                float3 color = lerp(refracted, waterColor, cover);
+                color = lerp(color, tint.rgb * 0.28, optical * 0.75);
+
+                // Soft tinted sheen + crest glints — same hue family as the water material, lit by sun/ambient.
+                float ndotl = saturate(dot(N, L));
+                float lighting = saturate(lightAndAmbient.w * 0.85 + ndotl * 0.95);
+                float specPower = lerp(48.0, 96.0, saturate(1.0 - roughness * 4.0));
+                float sheen = pow(saturate(dot(N, H)), specPower) * ndotl;
+                float crest = saturate(waveHeight(input.worldPos.xz, timeSeconds) / max(waveAmplitude, 1e-4) * 0.5 + 0.5);
+                float2 sparkleUv = input.worldPos.xz * 2.4 + float2(timeSeconds * 0.28, -timeSeconds * 0.18);
+                float sparkleCell = hash21(floor(sparkleUv));
+                float sparkle = smoothstep(0.88, 0.985, sparkleCell) * smoothstep(0.6, 0.95, crest);
+                float twinkle = 0.75 + 0.25 * sin(timeSeconds * 5.5 + sparkleCell * 28.0);
+                // Lift the material tint slightly toward sky/fresnel; never jump to hot white/yellow.
+                float3 glistenTint = saturate(lerp(tint.rgb * 1.35, waterColor * 1.15, 0.45));
+                float glistenAmt = (sheen * (0.14 + fresnel * 0.18) + sparkle * twinkle * 0.07) * lighting;
+                color += glistenTint * glistenAmt;
+
+                float alpha = lerp(0.78, max(tint.a, 0.97), optical);
+                return float4(saturate(color), alpha);
+            }
+        )";
+        ComPtr<ID3DBlob> vs, ps, errors;
+        UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
+#ifndef NDEBUG
+        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+        HRESULT hr = D3DCompile(water_shader, strlen(water_shader), "water_shader", nullptr, nullptr, "vs", "vs_5_1",
+            flags, 0, &vs, &errors);
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-WATER-VS",
+                errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Water VS failed", hr));
+        errors.Reset();
+        hr = D3DCompile(water_shader, strlen(water_shader), "water_shader", nullptr, nullptr, "ps", "ps_5_1", flags,
+            0, &ps, &errors);
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-WATER-PS",
+                errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Water PS failed", hr));
+
+        D3D12_ROOT_PARAMETER parameters[3]{};
+        parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        parameters[0].Descriptor.ShaderRegister = 0;
+        parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        parameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        parameters[1].Constants.ShaderRegister = 1;
+        parameters[1].Constants.Num32BitValues = 8;
+        parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        // Single SRV: pre-water lit scene copy (t0). Depth stays bound as DSV for testing only.
+        D3D12_DESCRIPTOR_RANGE ranges[1]{};
+        ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        ranges[0].NumDescriptors = 1;
+        ranges[0].BaseShaderRegister = 0;
+        ranges[0].OffsetInDescriptorsFromTableStart = 0;
+        parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        parameters[2].DescriptorTable.NumDescriptorRanges = 1;
+        parameters[2].DescriptorTable.pDescriptorRanges = ranges;
+        parameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        D3D12_STATIC_SAMPLER_DESC sampler{};
+        sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+        sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        sampler.ShaderRegister = 0;
+        sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        D3D12_ROOT_SIGNATURE_DESC root{};
+        root.NumParameters = 3;
+        root.pParameters = parameters;
+        root.NumStaticSamplers = 1;
+        root.pStaticSamplers = &sampler;
+        root.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+        ComPtr<ID3DBlob> signature;
+        hr = D3D12SerializeRootSignature(&root, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &errors);
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-WATER-ROOT",
+                errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Water root failed", hr));
+        hr = device_->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(),
+            IID_PPV_ARGS(&water_root_signature_));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-WATER-ROOT-CREATE", "Could not create water root", hr));
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC state{};
+        state.pRootSignature = water_root_signature_.Get();
+        state.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
+        state.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
+        D3D12_INPUT_ELEMENT_DESC input[] = {{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
+                                                D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+        state.InputLayout = {input, 3};
+        D3D12_RENDER_TARGET_BLEND_DESC blend{};
+        blend.BlendEnable = TRUE;
+        blend.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        blend.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+        blend.BlendOp = D3D12_BLEND_OP_ADD;
+        blend.SrcBlendAlpha = D3D12_BLEND_ONE;
+        blend.DestBlendAlpha = D3D12_BLEND_ZERO;
+        blend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+        blend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+        state.BlendState.RenderTarget[0] = blend;
+        state.SampleMask = UINT_MAX;
+        state.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+        state.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+        state.DepthStencilState.DepthEnable = TRUE;
+        state.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+        state.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        state.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        state.NumRenderTargets = 1;
+        state.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        state.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+        state.SampleDesc.Count = 1;
+        hr = device_->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(&water_pipeline_));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-WATER-PIPELINE", "Could not create water pipeline", hr));
         return Result<void>::success();
     }
 
@@ -1706,18 +2049,25 @@ private:
                 float dist = distance(input.worldPos, cameraAndFogStart.xyz);
                 float fogRange = max(fogColorAndEnd.w - cameraAndFogStart.w, 0.001);
                 float fogFactor = saturate((fogColorAndEnd.w - dist) / fogRange);
+                float3 albedo = input.color;
+                if (dot(albedo, albedo) < 1e-6) albedo = float3(0.30, 0.48, 0.22);
                 float3 dpdx = ddx(input.worldPos);
                 float3 dpdy = ddy(input.worldPos);
-                float3 normal = normalize(cross(dpdx, dpdy));
+                float3 nrm = cross(dpdx, dpdy);
+                float3 normal = (dot(nrm, nrm) > 1e-12) ? normalize(nrm) : float3(0, 1, 0);
                 float3 V = normalize(cameraAndFogStart.xyz - input.worldPos);
                 float3 L = normalize(-lightAndAmbient.xyz);
-                float3 lit = input.color * lightAndAmbient.w;
-                lit += shadePbr(input.color, 1.0, 0.0, normal, V, L, float3(1.0, 1.0, 1.0));
-                lit += applyPointLightPbr(input.worldPos, input.color, 1.0, 0.0, normal, V, pointLight0PosRadius,
+                if (dot(normal, V) < 0.0) normal = -normal;
+                float3 lit = albedo * lightAndAmbient.w;
+                float3 direct = shadePbr(albedo, 1.0, 0.0, normal, V, L, float3(1.35, 1.25, 1.1));
+                if (all(isfinite(direct))) lit += direct;
+                float3 p0 = applyPointLightPbr(input.worldPos, albedo, 1.0, 0.0, normal, V, pointLight0PosRadius,
                     pointLight0ColorStrength);
-                lit += applyPointLightPbr(input.worldPos, input.color, 1.0, 0.0, normal, V, pointLight1PosRadius,
+                float3 p1 = applyPointLightPbr(input.worldPos, albedo, 1.0, 0.0, normal, V, pointLight1PosRadius,
                     pointLight1ColorStrength);
-                return float4(lerp(fogColorAndEnd.rgb, lit, fogFactor), 1.0);
+                if (all(isfinite(p0))) lit += p0;
+                if (all(isfinite(p1))) lit += p1;
+                return float4(saturate(lerp(fogColorAndEnd.rgb, lit, fogFactor)), 1.0);
             }
         )";
         ComPtr<ID3DBlob> vs, ps, errors;
@@ -1959,6 +2309,10 @@ private:
             frame_cb_->Unmap(0, nullptr);
             frame_cb_mapped_ = nullptr;
         }
+        if (water_frame_cb_ && water_frame_cb_mapped_) {
+            water_frame_cb_->Unmap(0, nullptr);
+            water_frame_cb_mapped_ = nullptr;
+        }
         if (ssao_cb_ && ssao_cb_mapped_) {
             ssao_cb_->Unmap(0, nullptr);
             ssao_cb_mapped_ = nullptr;
@@ -1997,11 +2351,12 @@ private:
     D3D12_GPU_DESCRIPTOR_HANDLE game_viewport_gpu_{};
     // SSAO v1 post-process resources: world always draws into lit_color_, then apply_ssao() reads depth_ + lit_color_
     // to produce ao_target_ (half-res) and composite the result into the editor viewport(s) or the swap chain.
-    ComPtr<ID3D12Resource> lit_color_, ao_target_;
+    // water_scene_color_ is a pre-water copy of lit_color_ so refraction can sample without feedback.
+    ComPtr<ID3D12Resource> lit_color_, water_scene_color_, ao_target_;
     D3D12_CPU_DESCRIPTOR_HANDLE lit_rtv_{}, ao_rtv_{};
     UINT ao_width_ = 1, ao_height_ = 1;
     ComPtr<ID3D12DescriptorHeap> post_srv_heap_;
-    D3D12_GPU_DESCRIPTOR_HANDLE post_depth_gpu_{}, post_lit_gpu_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE post_depth_gpu_{}, post_lit_gpu_{}, post_water_gpu_{};
     ComPtr<ID3D12RootSignature> ssao_root_signature_, composite_root_signature_;
     ComPtr<ID3D12PipelineState> ssao_pipeline_, composite_pipeline_;
     ComPtr<ID3D12Resource> ssao_cb_, composite_cb_;
@@ -2010,6 +2365,11 @@ private:
     D3D12_VERTEX_BUFFER_VIEW vertex_view_{};
     D3D12_VERTEX_BUFFER_VIEW terrain_vertex_view_{};
     UINT terrain_vertex_count_=0;
+    ComPtr<ID3D12Resource> water_vertex_buffer_;
+    D3D12_VERTEX_BUFFER_VIEW water_vertex_view_{};
+    UINT water_vertex_count_=0;
+    ComPtr<ID3D12RootSignature> water_root_signature_;
+    ComPtr<ID3D12PipelineState> water_pipeline_;
     UINT sky_vertex_offset_=0;
     UINT sky_vertex_count_=0;
     std::map<std::string,std::pair<UINT,UINT>> mesh_ranges_;
@@ -2028,7 +2388,9 @@ private:
     ComPtr<ID3D12RootSignature> foliage_root_signature_;
     ComPtr<ID3D12PipelineState> foliage_pipeline_;
     ComPtr<ID3D12Resource> frame_cb_;
+    ComPtr<ID3D12Resource> water_frame_cb_;
     void* frame_cb_mapped_ = nullptr;
+    void* water_frame_cb_mapped_ = nullptr;
     ComPtr<ID3D12Resource> foliage_instance_buffer_;
     ComPtr<ID3D12DescriptorHeap> foliage_srv_heap_;
     D3D12_CPU_DESCRIPTOR_HANDLE foliage_instance_srv_cpu_{};
@@ -2236,12 +2598,15 @@ struct EditorState {
     bool character_asset_dirty = false;
     bool camera_asset_dirty = false;
     bool material_asset_dirty = false;
-    enum class SculptTool : std::uint8_t { Height, Flatten, Paint, Foliage };
+    enum class SculptTool : std::uint8_t { Height, Flatten, Paint, Foliage, Water };
 
     SculptTool sculpt_tool = SculptTool::Height;
     TerrainEditStore terrain_edits;
     TerrainEditHistory terrain_history;
     bool terrain_edits_dirty = false;
+    WaterStore water_store;
+    WaterEditHistory water_history;
+    bool water_dirty = false;
     /// Bumped when sculpt heights change (World Forge Map Canvas underlay).
     std::uint64_t terrain_height_revision = 1;
     TerrainPaintStore terrain_paint;
@@ -2269,6 +2634,8 @@ struct EditorState {
     std::set<CellCoord> terrain_paint_brush_touched;
     std::map<CellCoord, FoliageCellSnapshot> foliage_brush_before;
     std::set<CellCoord> foliage_brush_touched;
+    std::map<CellCoord, WaterCellSnapshot> water_brush_before;
+    std::set<CellCoord> water_brush_touched;
     std::optional<EntityId> test_player_spawn_entity;
     std::optional<EntityId> inspector_player_spawn_entity;
     bool show_movement_console = false;
@@ -2544,6 +2911,9 @@ EditorSessionContext make_editor_session_context(EditorState& state, bool editor
     context.foliage_density_history = &state.foliage_density_history;
     context.foliage_density_dirty = &state.foliage_density_dirty;
     context.foliage_layers = &state.foliage_layers;
+    context.water_store = &state.water_store;
+    context.water_history = &state.water_history;
+    context.water_dirty = &state.water_dirty;
     context.editor_running = editor_running;
     context.live_automation_enabled = state.live_automation_enabled;
     context.test_session_active = state.test_session_active();
@@ -2591,6 +2961,7 @@ void apply_active_terrain_material(EditorState& state, MaterialAsset* terrain_ma
     StreamedTerrainField* streamed_terrain, CollisionWorld* collision);
 void reload_loaded_terrain_cells(EditorState& state, StreamedTerrainField* streamed_terrain, CollisionWorld* collision,
     MaterialAsset* terrain_material, bool height_changed = true);
+void reload_loaded_water_cells(EditorState& state, StreamedWaterField* streamed_water);
 void commit_terrain_brush_stroke(EditorState& state);
 void commit_terrain_paint_stroke(EditorState& state);
 void commit_foliage_density_stroke(EditorState& state);
@@ -3488,6 +3859,16 @@ void reload_loaded_terrain_cells(EditorState& state, StreamedTerrainField* strea
     }
 }
 
+void reload_loaded_water_cells(EditorState& state, StreamedWaterField* streamed_water) {
+    if (!streamed_water) return;
+    const auto loaded = streamed_water->loaded_cell_coordinates();
+    if (loaded.empty()) {
+        streamed_water->mark_render_data_dirty();
+        return;
+    }
+    (void)streamed_water->reload_cells(loaded, &state.water_store);
+}
+
 std::string sanitize_asset_filename(std::string name) {
     if (name.empty()) return "material";
     std::transform(name.begin(), name.end(), name.begin(),
@@ -3610,10 +3991,32 @@ void commit_terrain_brush_stroke(EditorState& state) {
     state.terrain_brush_touched.clear();
 }
 
+void commit_water_stroke(EditorState& state) {
+    if (!state.terrain_brush_active) return;
+    std::map<CellCoord, WaterCellSnapshot> after;
+    for (const auto& cell : state.water_brush_touched)
+        after[cell] = WaterCellSnapshot{state.water_store.cell_fill_or_empty(cell)};
+    if (!state.water_brush_touched.empty()) {
+        const auto result = state.water_history.execute(state.water_store,
+            std::make_unique<WaterBrushStrokeCommand>(state.water_brush_before, std::move(after)));
+        if (!result) {
+            state.status = result.error().message;
+            Logger::instance().write(result.error());
+        } else {
+            state.water_dirty = true;
+            state.status = "Water stroke committed";
+        }
+    }
+    state.terrain_brush_active = false;
+    state.water_brush_before.clear();
+    state.water_brush_touched.clear();
+}
+
 void commit_active_terrain_stroke(EditorState& state) {
     if (!state.terrain_brush_active) return;
     if (state.sculpt_tool == EditorState::SculptTool::Paint) commit_terrain_paint_stroke(state);
     else if (state.sculpt_tool == EditorState::SculptTool::Foliage) commit_foliage_density_stroke(state);
+    else if (state.sculpt_tool == EditorState::SculptTool::Water) commit_water_stroke(state);
     else commit_terrain_brush_stroke(state);
     state.terrain_flatten_target_valid = false;
 }
@@ -3691,7 +4094,7 @@ void process_test_session_ui_input(EditorState& state) {
 }
 
 void handle_editor_shortcuts(EditorState& state, bool camera_capture, MaterialAsset* terrain_material,
-    StreamedTerrainField* streamed_terrain, CollisionWorld* collision) {
+    StreamedTerrainField* streamed_terrain, StreamedWaterField* streamed_water, CollisionWorld* collision) {
     if (camera_capture || ImGui::GetIO().WantTextInput) return;
     const bool editor_focus = ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow);
     if (!editor_focus) return;
@@ -3725,16 +4128,31 @@ void handle_editor_shortcuts(EditorState& state, bool camera_capture, MaterialAs
                 state.status = foliage_saved.error().message;
                 Logger::instance().write(foliage_saved.error());
             } else {
+                const auto water_saved = state.water_store.save_atomic(default_water_surfaces_path(state.project_root));
+                if (!water_saved) {
+                    state.status = water_saved.error().message;
+                    Logger::instance().write(water_saved.error());
+                } else {
                 state.terrain_edits_dirty = false;
                 state.terrain_paint_dirty = false;
                 state.foliage_density_dirty = false;
+                state.water_dirty = false;
                 state.scene_dirty = false;
-                state.status = "World, terrain sculpt, terrain paint, and foliage saved";
+                state.status = "World, terrain sculpt, paint, foliage, and water saved";
+                }
             }
         }
     }
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z)) {
-        if (state.sculpt_viewport_active() && state.sculpt_tool == EditorState::SculptTool::Foliage &&
+        if (state.sculpt_viewport_active() && state.sculpt_tool == EditorState::SculptTool::Water &&
+            state.water_history.undo_size() > 0) {
+            const auto result = state.water_history.undo(state.water_store);
+            state.status = result ? state.water_history.last_summary() : result.error().message;
+            if (result) {
+                state.water_dirty = true;
+                reload_loaded_water_cells(state, streamed_water);
+            }
+        } else if (state.sculpt_viewport_active() && state.sculpt_tool == EditorState::SculptTool::Foliage &&
             state.foliage_density_history.undo_size() > 0) {
             const auto result = state.foliage_density_history.undo(state.foliage_density);
             state.status = result ? state.foliage_density_history.last_summary() : result.error().message;
@@ -3760,7 +4178,15 @@ void handle_editor_shortcuts(EditorState& state, bool camera_capture, MaterialAs
         }
     }
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y)) {
-        if (state.sculpt_viewport_active() && state.sculpt_tool == EditorState::SculptTool::Foliage &&
+        if (state.sculpt_viewport_active() && state.sculpt_tool == EditorState::SculptTool::Water &&
+            state.water_history.redo_size() > 0) {
+            const auto result = state.water_history.redo(state.water_store);
+            state.status = result ? state.water_history.last_summary() : result.error().message;
+            if (result) {
+                state.water_dirty = true;
+                reload_loaded_water_cells(state, streamed_water);
+            }
+        } else if (state.sculpt_viewport_active() && state.sculpt_tool == EditorState::SculptTool::Foliage &&
             state.foliage_density_history.redo_size() > 0) {
             const auto result = state.foliage_density_history.redo(state.foliage_density);
             state.status = result ? state.foliage_density_history.last_summary() : result.error().message;
@@ -4488,7 +4914,8 @@ void begin_asset_file_drag_source(const std::string& normalized_path, const std:
 }
 
 void draw_sculpt_toolbar(EditorState& state, StreamedTerrainField* streamed_terrain, StreamedFoliageField* streamed_foliage,
-    CollisionWorld* collision, MaterialAsset* terrain_material, const std::array<float, 3>& camera_position) {
+    StreamedWaterField* streamed_water, CollisionWorld* collision, MaterialAsset* terrain_material,
+    const std::array<float, 3>& camera_position) {
     if (ImGui::RadioButton("Sculpt##tool", state.sculpt_tool == EditorState::SculptTool::Height)) {
         commit_active_terrain_stroke(state);
         state.sculpt_tool = EditorState::SculptTool::Height;
@@ -4507,6 +4934,11 @@ void draw_sculpt_toolbar(EditorState& state, StreamedTerrainField* streamed_terr
     if (ImGui::RadioButton("Foliage##tool", state.sculpt_tool == EditorState::SculptTool::Foliage)) {
         commit_active_terrain_stroke(state);
         state.sculpt_tool = EditorState::SculptTool::Foliage;
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Water##tool", state.sculpt_tool == EditorState::SculptTool::Water)) {
+        commit_active_terrain_stroke(state);
+        state.sculpt_tool = EditorState::SculptTool::Water;
     }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(88.0f);
@@ -4593,6 +5025,45 @@ void draw_sculpt_toolbar(EditorState& state, StreamedTerrainField* streamed_terr
         }
         ImGui::SameLine();
         ImGui::TextDisabled("| Painted cells: %zu", state.terrain_paint.cell_coordinates().size());
+    } else if (state.sculpt_tool == EditorState::SculptTool::Water) {
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(88.0f);
+        float sea_level = state.water_store.sea_level();
+        if (ImGui::InputFloat("Sea Level##water", &sea_level, 0.1f, 0.5f, "%.2f m")) {
+            state.water_store.set_sea_level(sea_level);
+            state.water_dirty = true;
+            reload_loaded_water_cells(state, streamed_water);
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("Place: drag | Erase: Shift+drag");
+        ImGui::SameLine();
+        ImGui::BeginDisabled(state.water_history.undo_size() == 0);
+        if (editor_icon_button("water_undo", ICON_FA_UNDO, "Undo water stroke (Ctrl+Z)")) {
+            const auto result = state.water_history.undo(state.water_store);
+            state.status = result ? state.water_history.last_summary() : result.error().message;
+            if (result) {
+                state.water_dirty = true;
+                reload_loaded_water_cells(state, streamed_water);
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(state.water_history.redo_size() == 0);
+        if (editor_icon_button("water_redo", ICON_FA_REDO, "Redo water stroke (Ctrl+Y)")) {
+            const auto result = state.water_history.redo(state.water_store);
+            state.status = result ? state.water_history.last_summary() : result.error().message;
+            if (result) {
+                state.water_dirty = true;
+                reload_loaded_water_cells(state, streamed_water);
+            }
+        }
+        ImGui::EndDisabled();
+        if (state.water_dirty) {
+            ImGui::SameLine();
+            ImGui::TextColored({1.0f, 0.8f, 0.2f, 1.0f}, "Unsaved water (Ctrl+S)");
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("| Water cells: %zu", state.water_store.cell_coordinates().size());
     } else {
         if (ImGui::RadioButton("Paint##foliage_mode", state.foliage_brush_mode == EditorState::FoliageBrushMode::Paint))
             state.foliage_brush_mode = EditorState::FoliageBrushMode::Paint;
@@ -5410,8 +5881,9 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     ImTextureID game_texture, const std::array<float, 16>& view, const std::array<float, 16>& projection,
     const std::array<float, 16>& view_projection, const std::array<float, 3>& camera_position,
     StreamedTerrainField* streamed_terrain = nullptr, StreamedFoliageField* streamed_foliage = nullptr,
-    MaterialAsset* terrain_material = nullptr, const CharacterController* character = nullptr,
-    const InteractionVolumeRegistry* interactions = nullptr, const CombatVolumeRegistry* combat = nullptr) {
+    StreamedWaterField* streamed_water = nullptr, MaterialAsset* terrain_material = nullptr,
+    const CharacterController* character = nullptr, const InteractionVolumeRegistry* interactions = nullptr,
+    const CombatVolumeRegistry* combat = nullptr) {
     const auto* main = ImGui::GetMainViewport();
     const ImVec2 origin{main->WorkPos.x, main->WorkPos.y + 20.0f};
     const ImVec2 extent{main->WorkSize.x, std::max(1.0f, main->WorkSize.y - 20.0f)};
@@ -5447,10 +5919,18 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                         state.status = foliage_saved.error().message;
                         Logger::instance().write(foliage_saved.error());
                     } else {
+                        const auto water_saved =
+                            state.water_store.save_atomic(default_water_surfaces_path(state.project_root));
+                        if (!water_saved) {
+                            state.status = water_saved.error().message;
+                            Logger::instance().write(water_saved.error());
+                        } else {
                         state.terrain_edits_dirty = false;
                         state.terrain_paint_dirty = false;
                         state.foliage_density_dirty = false;
-                        state.status = "World, terrain sculpt, terrain paint, and foliage saved";
+                        state.water_dirty = false;
+                        state.status = "World, terrain sculpt, terrain paint, foliage, and water saved";
+                        }
                     }
                 }
             }
@@ -5486,7 +5966,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         }
         ImGui::EndMainMenuBar();
     }
-    handle_editor_shortcuts(state, camera_capture, terrain_material, streamed_terrain, collision);
+    handle_editor_shortcuts(state, camera_capture, terrain_material, streamed_terrain, streamed_water, collision);
 
     const bool edit_mode = !state.test_session_active();
     ImGui::SetNextWindowPos({origin.x + left, origin.y}, ImGuiCond_Always);
@@ -5572,7 +6052,10 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         if (editor_icon_button("gizmo_scale", ICON_FA_EXPAND_ALT, "Scale [3]"))
             state.gizmo_operation = ImGuizmo::SCALE;
     }
-    if (edit_mode && sculpt_tab) draw_sculpt_toolbar(state, streamed_terrain, streamed_foliage, collision, terrain_material, camera_position);
+    if (edit_mode && sculpt_tab) {
+        draw_sculpt_toolbar(state, streamed_terrain, streamed_foliage, streamed_water, collision, terrain_material,
+            camera_position);
+    }
     if (state.test_session == EditorState::TestSessionState::Inactive) {
         ImGui::SameLine();
         if (editor_icon_button("test_start", ICON_FA_PLAY, "Start Test (F5)"))
@@ -5929,6 +6412,37 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 state.status = erase ? "Erasing foliage" : "Painting foliage";
             };
 
+            const auto apply_water_brush_at = [&](const WorldPosition& hit, bool shift_held) {
+                const bool erase = shift_held;
+                const auto touched = erase
+                    ? state.water_store.apply_erase_brush(static_cast<float>(hit.x), static_cast<float>(hit.z),
+                          state.terrain_brush_radius, state.terrain_brush_strength)
+                    : state.water_store.apply_place_brush(static_cast<float>(hit.x), static_cast<float>(hit.z),
+                          state.terrain_brush_radius, state.terrain_brush_strength);
+                if (!touched) {
+                    state.status = touched.error().message;
+                    Logger::instance().write(touched.error());
+                    return;
+                }
+                for (const auto& cell : touched.value()) {
+                    if (state.water_brush_before.find(cell) == state.water_brush_before.end())
+                        state.water_brush_before[cell] = WaterCellSnapshot{state.water_store.cell_fill_or_empty(cell)};
+                    state.water_brush_touched.insert(cell);
+                }
+                state.water_dirty = true;
+                if (streamed_water) {
+                    std::set<CellCoord> reload;
+                    const auto loaded = streamed_water->loaded_cell_coordinates();
+                    for (const auto& cell : touched.value())
+                        if (loaded.find(cell) != loaded.end()) reload.insert(cell);
+                    if (!reload.empty()) {
+                        const auto reloaded = streamed_water->reload_cells(reload, &state.water_store);
+                        if (!reloaded) Logger::instance().write(reloaded.error());
+                    }
+                }
+                state.status = erase ? "Erasing water" : "Placing water";
+            };
+
             if (state.viewport_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 state.terrain_brush_active = true;
                 state.terrain_brush_before.clear();
@@ -5937,12 +6451,16 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 state.terrain_paint_brush_touched.clear();
                 state.foliage_brush_before.clear();
                 state.foliage_brush_touched.clear();
+                state.water_brush_before.clear();
+                state.water_brush_touched.clear();
                 state.terrain_flatten_target_valid = false;
                 if (const auto hit = viewport_raycast(collision, frame, view, projection, mouse)) {
                     if (state.sculpt_tool == EditorState::SculptTool::Paint)
                         apply_terrain_paint_brush_at(*hit);
                     else if (state.sculpt_tool == EditorState::SculptTool::Foliage)
                         apply_foliage_brush_at(*hit, ImGui::GetIO().KeyShift);
+                    else if (state.sculpt_tool == EditorState::SculptTool::Water)
+                        apply_water_brush_at(*hit, ImGui::GetIO().KeyShift);
                     else if (state.sculpt_tool == EditorState::SculptTool::Flatten)
                         apply_terrain_flatten_brush_at(*hit);
                     else
@@ -5955,6 +6473,8 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                         apply_terrain_paint_brush_at(*hit);
                     else if (state.sculpt_tool == EditorState::SculptTool::Foliage)
                         apply_foliage_brush_at(*hit, ImGui::GetIO().KeyShift);
+                    else if (state.sculpt_tool == EditorState::SculptTool::Water)
+                        apply_water_brush_at(*hit, ImGui::GetIO().KeyShift);
                     else if (state.sculpt_tool == EditorState::SculptTool::Flatten)
                         apply_terrain_flatten_brush_at(*hit);
                     else
@@ -5983,9 +6503,11 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                                                   ? IM_COL32(140, 210, 255, 180)
                                                   : state.sculpt_tool == EditorState::SculptTool::Foliage
                                                         ? IM_COL32(120, 220, 140, 180)
-                                                        : state.sculpt_tool == EditorState::SculptTool::Flatten
-                                                              ? IM_COL32(180, 160, 255, 180)
-                                                              : IM_COL32(255, 210, 120, 180);
+                                                        : state.sculpt_tool == EditorState::SculptTool::Water
+                                                              ? IM_COL32(90, 170, 255, 180)
+                                                              : state.sculpt_tool == EditorState::SculptTool::Flatten
+                                                                    ? IM_COL32(180, 160, 255, 180)
+                                                                    : IM_COL32(255, 210, 120, 180);
                     draw_list->AddCircle({sx, sy}, radius_px, brush_color, 0, 2.0f);
                     draw_list->AddCircleFilled({sx, sy}, 2.0f, brush_color);
                 }
@@ -6578,6 +7100,9 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
 
     MaterialAsset terrain_material;
     TerrainEditStore runtime_terrain_edits;
+    WaterStore runtime_water;
+    std::array<float, 4> water_color{0.08f, 0.22f, 0.35f, 0.88f};
+    float water_roughness = 0.05f;
     if(options.debug_world&&!options.project_root.empty()){
         const auto path=options.project_root/"assets/materials/terrain.material.json";
         auto loaded=MaterialAsset::load(path);
@@ -6585,10 +7110,15 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         terrain_material=loaded.value();
         const auto edits_path=default_terrain_edits_path(options.project_root);
         if(std::filesystem::exists(edits_path)){const auto edits_loaded=TerrainEditStore::load(edits_path);if(!edits_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(edits_loaded.error());}runtime_terrain_edits=std::move(edits_loaded.value());}
-        if(!options.editor)set_active_terrain_edits(&runtime_terrain_edits);
+        const auto water_path=default_water_surfaces_path(options.project_root);
+        if(std::filesystem::exists(water_path)){const auto water_loaded=WaterStore::load(water_path);if(!water_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(water_loaded.error());}runtime_water=std::move(water_loaded.value());}
+        if(const auto map_loaded=WorldForgeMapAsset::load(default_world_forge_map_path(options.project_root));map_loaded){std::vector<WaterSeaRegion> sea_regions;for(const auto& region:map_loaded.value().hydrology_regions){if(region.kind!=WorldForgeHydrologyKind::Sea)continue;sea_regions.push_back(WaterSeaRegion{region.id,region.min_x,region.max_x,region.min_z,region.max_z});}runtime_water.set_sea_regions(std::move(sea_regions));}
+        const auto water_material_path=options.project_root/"assets/materials/water.material.json";
+        if(const auto water_material=MaterialAsset::load(water_material_path);water_material){water_color=water_material.value().base_color;water_roughness=water_material.value().roughness;}
+        if(!options.editor){set_active_terrain_edits(&runtime_terrain_edits);set_active_water_store(&runtime_water);}
     }
     std::optional<EditorState> editor;
-    if(options.editor){auto scene=Scene::load(options.world_path);if(!scene){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(scene.error());}EditorState value;value.scene=std::move(scene.value());const auto ids=value.scene.entity_ids();if(!ids.empty())value.selected=ids.front();value.world_path=options.world_path;auto scanned=value.assets.scan(options.project_root);if(!scanned){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(scanned.error());}const auto prefabs=load_prefab_catalog(value,options.project_root);if(!prefabs){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(prefabs.error());}const auto play=load_editor_play_session(value);if(!play){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(play.error());}sync_player_placement_tags(value);(void)value.scene.repair_prefab_paths(value.prefab_catalog);if(value.scene.seed_missing_authored_components(value.prefab_catalog)>0)value.scene_dirty=true;value.character_asset.visual_prefab=resolve_prefab_catalog_path(value.prefab_catalog,value.character_asset.visual_prefab);const auto edits_path=default_terrain_edits_path(options.project_root);if(std::filesystem::exists(edits_path)){const auto edits_loaded=TerrainEditStore::load(edits_path);if(!edits_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(edits_loaded.error());}value.terrain_edits=std::move(edits_loaded.value());}const auto paint_path=default_terrain_paint_path(options.project_root);if(std::filesystem::exists(paint_path)){const auto paint_loaded=TerrainPaintStore::load(paint_path);if(!paint_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(paint_loaded.error());}value.terrain_paint=std::move(paint_loaded.value());}const auto foliage_layers_path=default_foliage_layers_path(options.project_root);if(std::filesystem::exists(foliage_layers_path)){const auto layers_loaded=FoliageLayerPalette::load(foliage_layers_path);if(!layers_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(layers_loaded.error());}value.foliage_layers=std::move(layers_loaded.value());}else{value.foliage_layers.schema_version=1;value.foliage_layers.layers={{"grass","Grass","grass_blade",{0.14f,0.22f,0.10f},0.55f,1.0f,0.15f,0.55f,0.35f,1.2f,0.55f,"grass_walk"},{"flower","Flower","flower_clump",{0.62f,0.28f,0.48f},0.45f,0.85f,0.03f,0.45f,0.1f,0.9f,0.45f,"",FoliageScatterMode::GroundCover,64},{"bush","Bush","bush",{0.14f,0.22f,0.10f},0.85f,1.15f,1.0f,0.5f,0.08f,1.4f,0.95f,"",FoliageScatterMode::Discrete,72}};}const auto foliage_density_path=default_foliage_density_path(options.project_root);if(std::filesystem::exists(foliage_density_path)){const auto foliage_loaded=FoliageDensityStore::load(foliage_density_path);if(!foliage_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(foliage_loaded.error());}value.foliage_density=std::move(foliage_loaded.value());}value.terrain_paint_brush_material=value.terrain_material_path;warm_material_cache(value);if(!options.initial_viewport.empty()){const auto&v=options.initial_viewport;if(v=="sculpt")value.active_viewport_tab=EditorState::ViewportTab::Sculpt;else if(v=="game")value.active_viewport_tab=EditorState::ViewportTab::Game;else if(v=="ui")value.active_viewport_tab=EditorState::ViewportTab::UI;else if(v=="world-forge"||v=="world_forge"||v=="worldforge")value.active_viewport_tab=EditorState::ViewportTab::WorldForge;else value.active_viewport_tab=EditorState::ViewportTab::Scene;value.force_select_viewport_tab=true;value.lock_viewport_tab=true;}editor=std::move(value);set_active_terrain_edits(&editor->terrain_edits);SDL_SetWindowTitle(window,"AI RPG Engine Editor");}
+    if(options.editor){auto scene=Scene::load(options.world_path);if(!scene){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(scene.error());}EditorState value;value.scene=std::move(scene.value());const auto ids=value.scene.entity_ids();if(!ids.empty())value.selected=ids.front();value.world_path=options.world_path;auto scanned=value.assets.scan(options.project_root);if(!scanned){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(scanned.error());}const auto prefabs=load_prefab_catalog(value,options.project_root);if(!prefabs){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(prefabs.error());}const auto play=load_editor_play_session(value);if(!play){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(play.error());}sync_player_placement_tags(value);(void)value.scene.repair_prefab_paths(value.prefab_catalog);if(value.scene.seed_missing_authored_components(value.prefab_catalog)>0)value.scene_dirty=true;value.character_asset.visual_prefab=resolve_prefab_catalog_path(value.prefab_catalog,value.character_asset.visual_prefab);const auto edits_path=default_terrain_edits_path(options.project_root);if(std::filesystem::exists(edits_path)){const auto edits_loaded=TerrainEditStore::load(edits_path);if(!edits_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(edits_loaded.error());}value.terrain_edits=std::move(edits_loaded.value());}const auto paint_path=default_terrain_paint_path(options.project_root);if(std::filesystem::exists(paint_path)){const auto paint_loaded=TerrainPaintStore::load(paint_path);if(!paint_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(paint_loaded.error());}value.terrain_paint=std::move(paint_loaded.value());}const auto foliage_layers_path=default_foliage_layers_path(options.project_root);if(std::filesystem::exists(foliage_layers_path)){const auto layers_loaded=FoliageLayerPalette::load(foliage_layers_path);if(!layers_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(layers_loaded.error());}value.foliage_layers=std::move(layers_loaded.value());}else{value.foliage_layers.schema_version=1;value.foliage_layers.layers={{"grass","Grass","grass_blade",{0.14f,0.22f,0.10f},0.55f,1.0f,0.15f,0.55f,0.35f,1.2f,0.55f,"grass_walk"},{"flower","Flower","flower_clump",{0.62f,0.28f,0.48f},0.45f,0.85f,0.03f,0.45f,0.1f,0.9f,0.45f,"",FoliageScatterMode::GroundCover,64},{"bush","Bush","bush",{0.14f,0.22f,0.10f},0.85f,1.15f,1.0f,0.5f,0.08f,1.4f,0.95f,"",FoliageScatterMode::Discrete,72}};}const auto foliage_density_path=default_foliage_density_path(options.project_root);if(std::filesystem::exists(foliage_density_path)){const auto foliage_loaded=FoliageDensityStore::load(foliage_density_path);if(!foliage_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(foliage_loaded.error());}value.foliage_density=std::move(foliage_loaded.value());}const auto water_path=default_water_surfaces_path(options.project_root);if(std::filesystem::exists(water_path)){const auto water_loaded=WaterStore::load(water_path);if(!water_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(water_loaded.error());}value.water_store=std::move(water_loaded.value());}if(const auto map_loaded=WorldForgeMapAsset::load(default_world_forge_map_path(options.project_root));map_loaded){std::vector<WaterSeaRegion> sea_regions;for(const auto& region:map_loaded.value().hydrology_regions){if(region.kind!=WorldForgeHydrologyKind::Sea)continue;sea_regions.push_back(WaterSeaRegion{region.id,region.min_x,region.max_x,region.min_z,region.max_z});}value.water_store.set_sea_regions(std::move(sea_regions));}value.terrain_paint_brush_material=value.terrain_material_path;warm_material_cache(value);if(!options.initial_viewport.empty()){const auto&v=options.initial_viewport;if(v=="sculpt")value.active_viewport_tab=EditorState::ViewportTab::Sculpt;else if(v=="game")value.active_viewport_tab=EditorState::ViewportTab::Game;else if(v=="ui")value.active_viewport_tab=EditorState::ViewportTab::UI;else if(v=="world-forge"||v=="world_forge"||v=="worldforge")value.active_viewport_tab=EditorState::ViewportTab::WorldForge;else value.active_viewport_tab=EditorState::ViewportTab::Scene;value.force_select_viewport_tab=true;value.lock_viewport_tab=true;}editor=std::move(value);set_active_terrain_edits(&editor->terrain_edits);set_active_water_store(&editor->water_store);SDL_SetWindowTitle(window,"AI RPG Engine Editor");}
     std::vector<std::pair<std::string, ImportedMesh>> imported_meshes;
     std::optional<PrefabAsset> runtime_player_prefab;
     if (editor) {
@@ -6728,6 +7258,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
     std::optional<RigidbodyLocomotion> player_locomotion;
     std::optional<StreamedTerrainField> streamed_terrain;
     std::optional<StreamedFoliageField> streamed_foliage;
+    std::optional<StreamedWaterField> streamed_water;
+    std::uint64_t water_terrain_revision_seen = 0;
     std::optional<PlacementCollisionTracker> placement_collision;
     InteractionVolumeRegistry debug_interaction_registry;
     InteractionOverlapTracker debug_interaction_tracker;
@@ -6744,6 +7276,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         debug_world=std::make_unique<CollisionWorld>();
         streamed_terrain.emplace();
         streamed_foliage.emplace();
+        streamed_water.emplace();
         if (editor) {
             streamed_foliage->set_palette(&editor->foliage_layers);
             streamed_foliage->set_density(&editor->foliage_density);
@@ -6816,6 +7349,9 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                         const auto loaded = streamed_terrain->loaded_cell_coordinates();
                         if (!loaded.empty()) (void)streamed_foliage->rebuild_cells(loaded, camera.position());
                     };
+                }
+                if (streamed_water) {
+                    context.reload_water = [&]() { reload_loaded_water_cells(*editor, &*streamed_water); };
                 }
                 auto response = execute_editor_operation(context, request.operation, request.params_json);
                 if (response.exit_code == ExitCode::Success && request.operation == "lua_apply") {
@@ -7069,6 +7605,16 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     (void)debug_character->move(wish, orbit_camera->yaw(), frame_delta_seconds);
                     if (editor) record_movement_debug(*editor, *debug_character, wish, frame_delta_seconds, position_before);
                 }
+                if (test_running && game_tab && editor->ui_canvas_stack && debug_character) {
+                    const float pending_damage = debug_character->pending_swim_damage();
+                    if (pending_damage > 0.0f) {
+                        auto& hud = editor->ui_canvas_stack->hud();
+                        const double current = hud.get_number("player.health").value_or(100.0);
+                        const double max = hud.get_number("player.healthMax").value_or(100.0);
+                        hud.set_health(current - static_cast<double>(pending_damage), max);
+                        debug_character->clear_pending_swim_damage();
+                    }
+                }
                 if (player_locomotion) {
                     body_position = player_locomotion->feet_position();
                     (void)orbit_camera->update(body_position, *debug_world);
@@ -7084,6 +7630,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     player_facing_yaw =
                         character_facing_yaw_from_camera_look(eye[0], eye[2], target_x, target_z, player_facing_yaw);
                 }
+
                 const WorldPosition probe{body_position.x, body_position.y + 1.2, body_position.z};
                 const InteractionVolumeRegistry& interact_reg =
                     placement_collision ? placement_collision->interaction_registry() : debug_interaction_registry;
@@ -7185,6 +7732,36 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 streamed_terrain->clear_render_data_dirty();
             }
         }
+        if (streamed_water && debug_world) {
+            const std::array<float, 3> stream_focus = editor ? camera.position() : camera_position;
+            const WaterStore* water = editor ? &editor->water_store : &runtime_water;
+            const auto updated = streamed_water->update(stream_focus, StreamedWaterField::k_default_radius, water);
+            if (!updated) {
+                SDL_DestroyWindow(window);
+                SDL_Quit();
+                return Result<RenderStats>::failure(updated.error());
+            }
+            // Terrain sculpt changes bed height; rebuild water so sheets clip/skirt to the new basin.
+            if (editor && editor->terrain_height_revision != water_terrain_revision_seen) {
+                water_terrain_revision_seen = editor->terrain_height_revision;
+                reload_loaded_water_cells(*editor, &*streamed_water);
+            }
+            if (streamed_water->render_data_dirty()) {
+                const auto water_vertices = streamed_water->build_render_vertices();
+                std::vector<Vertex> upload;
+                upload.reserve(water_vertices.size());
+                for (const auto& vertex : water_vertices)
+                    upload.push_back(
+                        {vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b, vertex.depth, 0.0f});
+                const auto uploaded = renderer.upload_water_vertices(upload);
+                if (!uploaded) {
+                    SDL_DestroyWindow(window);
+                    SDL_Quit();
+                    return Result<RenderStats>::failure(uploaded.error());
+                }
+                streamed_water->clear_render_data_dirty();
+            }
+        }
         if (placement_collision && debug_world && editor) {
             const bool simulate_dynamics = editor->test_session_running();
             const auto synced =
@@ -7266,8 +7843,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             draw_editor(*editor, debug_world.get(), camera_look_active, renderer.scene_viewport_texture(),
                 renderer.game_viewport_texture(), camera.view_matrix(), camera.projection_matrix(),
                 camera.view_projection(), camera.position(), streamed_terrain ? &*streamed_terrain : nullptr,
-                streamed_foliage ? &*streamed_foliage : nullptr, &terrain_material,
-                debug_character ? &*debug_character : nullptr,
+                streamed_foliage ? &*streamed_foliage : nullptr, streamed_water ? &*streamed_water : nullptr,
+                &terrain_material, debug_character ? &*debug_character : nullptr,
                 placement_collision ? &placement_collision->interaction_registry() : nullptr,
                 placement_collision ? &placement_collision->combat_registry() : nullptr);
             apply_pending_world_forge_marker_focus(*editor, camera);
@@ -7302,6 +7879,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                             static_cast<float>(body_position.x), static_cast<float>(body_position.z),
                             player_facing_yaw);
                     }
+                    transform->position = {static_cast<float>(body_position.x), static_cast<float>(body_position.y),
+                        static_cast<float>(body_position.z)};
                     constexpr float k_model_forward_yaw_offset = 3.14159265f;
                     const auto facing_q =
                         XMQuaternionRotationRollPitchYaw(0.0f, player_facing_yaw + k_model_forward_yaw_offset, 0.0f);
@@ -7379,6 +7958,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         scene_pass.influence = influence_bus.empty() ? nullptr : &influence_bus;
         scene_pass.time_seconds = foliage_time_seconds;
         scene_pass.terrain_pbr = terrain_pbr;
+        scene_pass.water_color = water_color;
+        scene_pass.water_roughness = water_roughness;
         Renderer::WorldPassParams game_pass = scene_pass;
         game_pass.draw_physics_body = false;
         if (orbit_camera && (debug_character || player_locomotion) && editor && editor->test_session_active()) {
@@ -7394,6 +7975,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         runtime_pass.influence = influence_bus.empty() ? nullptr : &influence_bus;
         runtime_pass.time_seconds = foliage_time_seconds;
         runtime_pass.terrain_pbr = terrain_pbr;
+        runtime_pass.water_color = water_color;
+        runtime_pass.water_roughness = water_roughness;
         auto rendered = editor ? renderer.render(capture, scene_pass, placed_objects, point_lights, &game_pass)
                                  : renderer.render(capture, runtime_pass, placed_objects, point_lights);
         if (!rendered) { SDL_DestroyWindow(window); SDL_Quit(); return Result<RenderStats>::failure(rendered.error()); }

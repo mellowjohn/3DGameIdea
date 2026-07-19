@@ -11,6 +11,8 @@
 #include "engine/assets/ui_canvas_asset.h"
 #include "engine/assets/ui_canvas_mutate.h"
 #include "engine/scripting/lua_runtime.h"
+#include "engine/world/terrain_edits.h"
+#include "engine/world/water_store.h"
 
 #include <nlohmann/json.hpp>
 
@@ -408,7 +410,7 @@ const char* k_tools_list_json = R"([
     },
     {
         "name": "engine_terrain_apply",
-        "description": "Apply live terrain height/paint/foliage through the editor sculpt stores. Prefer action batch with ops[] for many strokes (one bridge round-trip and one reload). Single actions: raise, lower, flatten, paint, paint_foliage, paint_foliage_mixed, sample, undo, redo, save. paint_foliage uses layer id/index (grass/flower/bush/...) and optional erase. Mutate/save require editor MCP; sample works offline. Flatten blends toward targetHeight (default: height at x/z).",
+        "description": "Apply live terrain height/paint/foliage through the editor sculpt stores. Prefer high-level carve_channel/raise_banks/set_height for rivers, or batch with ops[]. Actions: raise, lower, flatten, set_height, carve_channel, raise_banks, paint, paint_foliage, paint_foliage_mixed, sample, undo, redo, save, batch. set_height sets toward targetHeight in one stroke (strength 0-1 blend). carve_channel/raise_banks take points:[{x,z}] plus halfWidth/bedDepth|bedHeight/bankOffset/bankWidth/bankHeight|bankClearance/step. Mutate/save require editor MCP; sample works offline.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -418,6 +420,20 @@ const char* k_tools_list_json = R"([
                 "radius": { "type": "number" },
                 "strength": { "type": "number" },
                 "targetHeight": { "type": "number" },
+                "points": {
+                    "type": "array",
+                    "items": { "type": "object" },
+                    "description": "Polyline samples {x,z} for carve_channel / raise_banks"
+                },
+                "halfWidth": { "type": "number" },
+                "bedDepth": { "type": "number" },
+                "bedHeight": { "type": "number" },
+                "bankOffset": { "type": "number" },
+                "bankWidth": { "type": "number" },
+                "bankHeight": { "type": "number" },
+                "bankClearance": { "type": "number" },
+                "seaLevel": { "type": "number" },
+                "step": { "type": "number" },
                 "material": { "type": "string" },
                 "layer": {
                     "type": "string",
@@ -428,6 +444,33 @@ const char* k_tools_list_json = R"([
                 "kind": { "type": "string" },
                 "groundOffset": { "type": "number" },
                 "save": { "type": "boolean" },
+                "ops": {
+                    "type": "array",
+                    "items": { "type": "object" }
+                }
+            },
+            "required": ["action"]
+        }
+    },
+    {
+        "name": "engine_water_apply",
+        "description": "Apply live water surface sculpt through the editor water store. Prefer place_along with points:[{x,z}] for rivers, or batch with ops[]. Actions: place, erase, place_along, sample, undo, redo, save, batch. place/erase accept radius and strength; place_along also accepts step/save. Mutate/save require editor MCP; sample works offline.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": { "type": "string" },
+                "x": { "type": "number" },
+                "z": { "type": "number" },
+                "radius": { "type": "number" },
+                "strength": { "type": "number" },
+                "erase": { "type": "boolean" },
+                "save": { "type": "boolean" },
+                "step": { "type": "number" },
+                "points": {
+                    "type": "array",
+                    "items": { "type": "object" },
+                    "description": "Polyline samples {x,z} for place_along"
+                },
                 "ops": {
                     "type": "array",
                     "items": { "type": "object" }
@@ -642,9 +685,42 @@ nlohmann::json handle_tools_call(const std::filesystem::path& project_root, cons
         if (!client.is_editor_running() && (action == "sample" || action == "sample_terrain")) {
             EditorSessionContext context;
             context.project_root = project_root;
-            return bridge_to_tool_result(execute_editor_operation(context, "terrain_apply", arguments.dump()));
+            TerrainEditStore offline_edits;
+            if (const auto loaded = TerrainEditStore::load(default_terrain_edits_path(project_root)); loaded)
+                offline_edits = std::move(loaded.value());
+            context.terrain_edits = &offline_edits;
+            const TerrainEditStore* previous = active_terrain_edits();
+            set_active_terrain_edits(&offline_edits);
+            const auto result = execute_editor_operation(context, "terrain_apply", arguments.dump());
+            set_active_terrain_edits(previous);
+            return bridge_to_tool_result(result);
         }
         return bridge_to_tool_result(forward_to_editor(project_root, "terrain_apply", arguments));
+    }
+    if (tool_name == "engine_water_apply") {
+        const auto action = arguments.value("action", std::string{});
+        EditorBridgeClient client(project_root);
+        if (!client.is_editor_running() && (action == "sample" || action == "sample_water")) {
+            EditorSessionContext context;
+            context.project_root = project_root;
+            TerrainEditStore offline_edits;
+            if (const auto loaded = TerrainEditStore::load(default_terrain_edits_path(project_root)); loaded)
+                offline_edits = std::move(loaded.value());
+            WaterStore offline_store;
+            if (const auto loaded = WaterStore::load(default_water_surfaces_path(project_root)); loaded)
+                offline_store = std::move(loaded.value());
+            context.terrain_edits = &offline_edits;
+            context.water_store = &offline_store;
+            const TerrainEditStore* previous_edits = active_terrain_edits();
+            const WaterStore* previous = active_water_store();
+            set_active_terrain_edits(&offline_edits);
+            set_active_water_store(&offline_store);
+            const auto result = execute_editor_operation(context, "water_apply", arguments.dump());
+            set_active_water_store(previous);
+            set_active_terrain_edits(previous_edits);
+            return bridge_to_tool_result(result);
+        }
+        return bridge_to_tool_result(forward_to_editor(project_root, "water_apply", arguments));
     }
     if (tool_name == "engine_entity_component_apply")
         return bridge_to_tool_result(forward_to_editor(project_root, "entity_component_apply", arguments));

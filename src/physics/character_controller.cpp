@@ -1,4 +1,6 @@
-#include "engine/physics/character_controller.h"
+﻿#include "engine/physics/character_controller.h"
+
+#include "engine/world/water_store.h"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Core/TempAllocator.h>
@@ -64,6 +66,9 @@ struct CharacterController::Impl {
     float capsule_radius = 0.35f;
     float capsule_half_height = 0.85f;
     bool jump_requested = false;
+    bool swimming = false;
+    float swim_fatigue = 0.0f;
+    float pending_swim_damage = 0.0f;
 };
 
 CharacterController::CharacterController(CollisionWorld& world) : world_(&world) {}
@@ -115,18 +120,53 @@ Result<void> CharacterController::move(const LocalPosition& wish_velocity, float
     const float forward_z = std::cos(yaw_radians);
     const float right_x = std::cos(yaw_radians);
     const float right_z = -std::sin(yaw_radians);
+
+    const WorldPosition feet = position();
+    const float probe_y = static_cast<float>(feet.y) + impl_->capsule_half_height * 0.5f;
+    impl_->swimming = is_underwater(static_cast<float>(feet.x), static_cast<float>(feet.z), probe_y);
+    const bool deep = impl_->swimming && is_deep_water(static_cast<float>(feet.x), static_cast<float>(feet.z));
+
     Vec3 wish{
         right_x * wish_velocity.x + forward_x * wish_velocity.z,
-        0.0f,
+        impl_->swimming ? wish_velocity.y : 0.0f,
         right_z * wish_velocity.x + forward_z * wish_velocity.z};
 
+    const float max_speed = impl_->swimming ? impl_->config.swim_max_speed : impl_->config.max_speed;
     const float wish_horizontal = std::sqrt(wish.GetX() * wish.GetX() + wish.GetZ() * wish.GetZ());
     if (wish_horizontal > 0.0f) {
-        const float target_speed =
-            wish_horizontal <= 1.0f ? wish_horizontal * impl_->config.max_speed : impl_->config.max_speed;
+        const float target_speed = wish_horizontal <= 1.0f ? wish_horizontal * max_speed : max_speed;
         const float scale = target_speed / wish_horizontal;
         wish.SetX(wish.GetX() * scale);
         wish.SetZ(wish.GetZ() * scale);
+    }
+
+    if (impl_->swimming && deep && wish_horizontal > 0.05f) {
+        impl_->swim_fatigue = std::clamp(impl_->swim_fatigue + impl_->config.swim_fatigue_drain * seconds, 0.0f, 1.0f);
+        if (impl_->swim_fatigue >= 1.0f)
+            impl_->pending_swim_damage += impl_->config.swim_damage_per_second * seconds;
+    } else if (!impl_->swimming) {
+        impl_->swim_fatigue = std::max(0.0f, impl_->swim_fatigue - seconds * 0.35f);
+    }
+
+    if (impl_->swimming) {
+        Vec3 velocity = impl_->character->GetLinearVelocity();
+        velocity.SetX(wish.GetX());
+        velocity.SetZ(wish.GetZ());
+        velocity.SetY(wish.GetY());
+        if (std::abs(wish.GetY()) < 0.01f && impl_->jump_requested)
+            velocity.SetY(impl_->config.jump_velocity * 0.65f);
+        impl_->jump_requested = false;
+        impl_->character->SetLinearVelocity(velocity);
+
+        CharacterVirtual::ExtendedUpdateSettings update_settings;
+        update_settings.mStickToFloorStepDown = Vec3(0, -0.5f, 0);
+        update_settings.mWalkStairsStepUp = Vec3(0, impl_->config.step_height, 0);
+        update_settings.mWalkStairsMinStepForward = 0.02f;
+        update_settings.mWalkStairsStepForwardTest = 0.15f;
+        const float gravity = impl_->config.gravity * 0.15f;
+        impl_->character->ExtendedUpdate(seconds, Vec3(0, -gravity, 0), update_settings, g_bp_filter, g_object_filter,
+            g_body_filter, g_shape_filter, temp_from(*world_));
+        return Result<void>::success();
     }
 
     const auto ground_state = impl_->character->GetGroundState();
@@ -155,7 +195,7 @@ Result<void> CharacterController::move(const LocalPosition& wish_velocity, float
     const float friction = supported ? impl_->config.ground_friction : 0.0f;
 
     if (!has_wish) {
-        // Idle friction — kill slope-parallel drift so steep/walkable ground does not feel icy.
+        // Idle friction ΓÇö kill slope-parallel drift so steep/walkable ground does not feel icy.
         if (supported) {
             const float speed = velocity.Length();
             const float drop = friction * seconds;
@@ -269,7 +309,7 @@ Result<void> CharacterController::move_root_motion(const LocalPosition& world_de
 Result<bool> CharacterController::jump() {
     if (!impl_ || !impl_->character)
         return Result<bool>::failure(character_error("CHARACTER-NOT-READY", "Character controller is not initialized"));
-    if (!on_ground()) return Result<bool>::success(false);
+    if (!on_ground() && !impl_->swimming) return Result<bool>::success(false);
     impl_->jump_requested = true;
     return Result<bool>::success(true);
 }
@@ -321,6 +361,16 @@ void CharacterController::set_position(WorldPosition position) {
     impl_->character->SetPosition(
         RVec3(static_cast<Real>(position.x), static_cast<Real>(position.y), static_cast<Real>(position.z)));
     impl_->character->RefreshContacts(g_bp_filter, g_object_filter, g_body_filter, g_shape_filter, temp_from(*world_));
+}
+
+bool CharacterController::swimming() const { return impl_ && impl_->swimming; }
+
+float CharacterController::swim_fatigue() const { return impl_ ? impl_->swim_fatigue : 0.0f; }
+
+float CharacterController::pending_swim_damage() const { return impl_ ? impl_->pending_swim_damage : 0.0f; }
+
+void CharacterController::clear_pending_swim_damage() {
+    if (impl_) impl_->pending_swim_damage = 0.0f;
 }
 
 } // namespace engine

@@ -5,11 +5,15 @@
 #include "engine/automation/editor_bridge.h"
 #include "engine/automation/scene_commands.h"
 #include "engine/automation/terrain_edit_commands.h"
+#include "engine/automation/water_edit_commands.h"
+#include "engine/world/water_store.h"
 #include "engine/world/foliage_density.h"
 #include "engine/world/foliage_layers.h"
 #include "engine/world/scene.h"
 #include "engine/world/terrain_edits.h"
 #include "engine/world/terrain_paint.h"
+
+#include <nlohmann/json.hpp>
 
 #include <filesystem>
 #include <functional>
@@ -54,6 +58,11 @@ struct EditorSessionContext {
     std::function<void(bool height_changed)> reload_terrain;
     /// Invoked after foliage density strokes or undo/redo so streamed instances rebuild.
     std::function<void()> reload_foliage;
+    WaterStore* water_store = nullptr;
+    WaterEditHistory* water_history = nullptr;
+    bool* water_dirty = nullptr;
+    /// Invoked after water strokes or undo/redo so streamed water meshes rebuild.
+    std::function<void()> reload_water;
     bool editor_running = false;
     bool live_automation_enabled = false;
     bool test_session_active = false;
@@ -72,6 +81,7 @@ struct ScenePlanResult {
 [[nodiscard]] ScenePlanResult classify_scene_plan(const std::string& change_description, const std::string& target_path = {});
 [[nodiscard]] EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, const std::string& operation,
     const std::string& params_json);
+[[nodiscard]] EditorBridgeResponse apply_water_operation(EditorSessionContext& context, const nlohmann::json& params);
 [[nodiscard]] CommandResponse validate_project_at(const std::filesystem::path& project_root);
 
 } // namespace engine

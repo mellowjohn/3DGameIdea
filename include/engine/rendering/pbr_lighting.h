@@ -25,9 +25,14 @@ struct PbrSurfaceParams {
     }
 };
 
-/// Masked/blended opacity require dedicated pipelines; only opaque materials use the PBR path.
+/// Masked opacity requires a dedicated pipeline; blended water uses the water pass.
 [[nodiscard]] inline bool material_supports_opaque_pbr_runtime(const MaterialAsset& material) noexcept {
     return material.opacity_mode == OpacityMode::Opaque;
+}
+
+[[nodiscard]] inline bool material_supports_water_runtime(const MaterialAsset& material) noexcept {
+    return material.opacity_mode == OpacityMode::Blended &&
+           material.physics.surface == "water";
 }
 
 /// GGX/Smith/Schlick Cook-Torrance radiance for one light (no 1/pi so existing light strengths stay usable).

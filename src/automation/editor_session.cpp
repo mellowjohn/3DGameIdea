@@ -26,16 +26,19 @@
 #include "engine/world/terrain.h"
 #include "engine/world/terrain_edits.h"
 #include "engine/world/terrain_paint.h"
+#include "engine/world/water_store.h"
 
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <fstream>
 #include <memory>
 #include <optional>
 #include <set>
+#include <vector>
 
 namespace engine {
 namespace {
@@ -483,6 +486,7 @@ EditorBridgeResponse apply_terrain_operation(EditorSessionContext& context, cons
             if (context.terrain_paint_dirty) *context.terrain_paint_dirty = true;
         }
         if (context.reload_terrain) context.reload_terrain(height_changed);
+        if (height_changed && context.reload_water) context.reload_water();
     };
     auto reload_foliage_now = [&]() {
         if (context.foliage_density_dirty) *context.foliage_density_dirty = true;
@@ -548,6 +552,7 @@ EditorBridgeResponse apply_terrain_operation(EditorSessionContext& context, cons
         if (!result) return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()});
         if (context.terrain_edits_dirty) *context.terrain_edits_dirty = true;
         if (do_reload && context.reload_terrain) context.reload_terrain(true);
+        if (do_reload && context.reload_water) context.reload_water();
         return make_response(ExitCode::Success, "Terrain height stroke applied", {}, {}, {});
     };
 
@@ -648,7 +653,69 @@ EditorBridgeResponse apply_terrain_operation(EditorSessionContext& context, cons
             const float target = op.contains("targetHeight") ? op["targetHeight"].get<float>() : sample_terrain_height(x, z);
             return context.terrain_edits->apply_flatten_brush(x, z, radius, strength, target);
         }
+        if (op_action == "set_height") {
+            if (!op.contains("targetHeight")) {
+                return Result<std::set<CellCoord>>::failure(session_error("TERRAIN-SET-HEIGHT-ARGS",
+                    "set_height requires targetHeight.", "Provide targetHeight world Y."));
+            }
+            const float target = op["targetHeight"].get<float>();
+            const float set_strength = op.value("strength", 1.0f);
+            return context.terrain_edits->apply_set_height_brush(x, z, radius, set_strength, target);
+        }
         return context.terrain_edits->apply_brush(x, z, radius, strength, op_action == "lower");
+    };
+
+    auto densify_polyline = [](const std::vector<std::array<float, 2>>& controls, float step) {
+        std::vector<std::array<float, 2>> pts;
+        if (controls.empty()) return pts;
+        if (controls.size() == 1) {
+            pts.push_back(controls.front());
+            return pts;
+        }
+        const float use_step = std::max(0.5f, step);
+        for (std::size_t i = 0; i + 1 < controls.size(); ++i) {
+            const float x0 = controls[i][0];
+            const float z0 = controls[i][1];
+            const float x1 = controls[i + 1][0];
+            const float z1 = controls[i + 1][1];
+            const float seg = std::hypot(x1 - x0, z1 - z0);
+            const int n = std::max(1, static_cast<int>(std::ceil(seg / use_step)));
+            for (int k = 0; k < n; ++k) {
+                const float t = static_cast<float>(k) / static_cast<float>(n);
+                pts.push_back({x0 + (x1 - x0) * t, z0 + (z1 - z0) * t});
+            }
+        }
+        pts.push_back(controls.back());
+        return pts;
+    };
+
+    auto parse_points = [&](const nlohmann::json& root) -> Result<std::vector<std::array<float, 2>>> {
+        if (!root.contains("points") || !root["points"].is_array() || root["points"].empty()) {
+            return Result<std::vector<std::array<float, 2>>>::failure(session_error("TERRAIN-POINTS-ARGS",
+                "points array is required.", "Provide points:[{x,z},...]"));
+        }
+        std::vector<std::array<float, 2>> controls;
+        for (const auto& point : root["points"]) {
+            if (!point.is_object() || !point.contains("x") || !point.contains("z")) {
+                return Result<std::vector<std::array<float, 2>>>::failure(session_error("TERRAIN-POINT-INVALID",
+                    "Each point requires x and z.", "Use {x,z} objects."));
+            }
+            const float px = point["x"].get<float>();
+            const float pz = point["z"].get<float>();
+            if (!std::isfinite(px) || !std::isfinite(pz)) {
+                return Result<std::vector<std::array<float, 2>>>::failure(session_error("TERRAIN-POINT-FINITE",
+                    "Point coordinates must be finite.", "Use finite world x/z."));
+            }
+            controls.push_back({px, pz});
+        }
+        return Result<std::vector<std::array<float, 2>>>::success(std::move(controls));
+    };
+
+    auto resolve_sea_level = [&]() -> float {
+        if (params.contains("seaLevel") && params["seaLevel"].is_number()) return params["seaLevel"].get<float>();
+        if (context.water_store) return context.water_store->sea_level();
+        if (const WaterStore* active = active_water_store()) return active->sea_level();
+        return -0.35f;
     };
 
     auto apply_paint_op = [&](const nlohmann::json& op) -> Result<std::set<CellCoord>> {
@@ -756,7 +823,7 @@ EditorBridgeResponse apply_terrain_operation(EditorSessionContext& context, cons
                         "Use {action,x,z,...} entries.")});
             }
             const auto op_action = op.value("action", std::string{});
-            if (op_action == "raise" || op_action == "lower" || op_action == "flatten") {
+            if (op_action == "raise" || op_action == "lower" || op_action == "flatten" || op_action == "set_height") {
                 needs_height = true;
                 if (!op.contains("x") || !op.contains("z")) {
                     return make_response(ExitCode::InvalidArguments, "batch height op requires x/z", {},
@@ -787,7 +854,7 @@ EditorBridgeResponse apply_terrain_operation(EditorSessionContext& context, cons
             } else {
                 return make_response(ExitCode::InvalidArguments, "Unsupported batch terrain action: " + op_action, {},
                     {session_error("TERRAIN-BATCH-ACTION", "Unsupported batch action: " + op_action,
-                        "Batch ops may be raise/lower/flatten/paint/paint_foliage/paint_foliage_mixed.")});
+                        "Batch ops may be raise/lower/flatten/set_height/paint/paint_foliage/paint_foliage_mixed.")});
             }
         }
         if (needs_height) {
@@ -811,7 +878,7 @@ EditorBridgeResponse apply_terrain_operation(EditorSessionContext& context, cons
             const auto op_action = op.value("action", std::string{});
             Result<std::set<CellCoord>> touched = Result<std::set<CellCoord>>::failure(
                 session_error("TERRAIN-BATCH-ACTION", "Unsupported batch action", "Check action name."));
-            if (op_action == "raise" || op_action == "lower" || op_action == "flatten")
+            if (op_action == "raise" || op_action == "lower" || op_action == "flatten" || op_action == "set_height")
                 touched = apply_height_op(op);
             else if (op_action == "paint")
                 touched = apply_paint_op(op);
@@ -848,6 +915,7 @@ EditorBridgeResponse apply_terrain_operation(EditorSessionContext& context, cons
         }
 
         if (context.reload_terrain && (needs_height || needs_paint)) context.reload_terrain(needs_height);
+        if (needs_height && context.reload_water) context.reload_water();
         if (needs_foliage && context.reload_foliage) context.reload_foliage();
 
         if (params.value("save", false)) {
@@ -860,17 +928,24 @@ EditorBridgeResponse apply_terrain_operation(EditorSessionContext& context, cons
                 {"foliageChanged", needs_foliage ? "true" : "false"}});
     }
 
-    if (action == "raise" || action == "lower" || action == "flatten") {
+    if (action == "raise" || action == "lower" || action == "flatten" || action == "set_height") {
         if (auto missing = require_edits()) return *missing;
         if (!params.contains("x") || !params.contains("z")) {
             return make_response(ExitCode::InvalidArguments, action + " requires x and z", {},
                 {session_error("TERRAIN-BRUSH-ARGS", "Terrain brush requires x and z.", "Provide world x/z.")});
         }
+        if (action == "set_height" && !params.contains("targetHeight")) {
+            return make_response(ExitCode::InvalidArguments, "set_height requires targetHeight", {},
+                {session_error("TERRAIN-SET-HEIGHT-ARGS", "set_height requires targetHeight.",
+                    "Provide targetHeight world Y.")});
+        }
         const float x = params["x"].get<float>();
         const float z = params["z"].get<float>();
         const float radius = params.value("radius", 4.0f);
         auto before = snapshot_height(probe_cells(x, z, radius, TerrainEditStore::k_cell_size));
-        const auto touched = apply_height_op(params);
+        nlohmann::json op = params;
+        op["action"] = action;
+        const auto touched = apply_height_op(op);
         if (!touched) return make_response(ExitCode::ValidationFailed, touched.error().message, {}, {touched.error()});
         auto response = commit_height(std::move(before), true);
         if (response.exit_code == ExitCode::Success) {
@@ -880,6 +955,94 @@ EditorBridgeResponse apply_terrain_operation(EditorSessionContext& context, cons
                 changed.push_back(std::to_string(cell.x) + "," + std::to_string(cell.z));
             response.changed_object_ids = std::move(changed);
             if (touched.value().empty()) response.summary = "Terrain brush touched no samples";
+            else if (action == "set_height") response.summary = "Terrain height set";
+        }
+        return response;
+    }
+
+    if (action == "carve_channel" || action == "raise_banks") {
+        if (auto missing = require_edits()) return *missing;
+        const auto controls = parse_points(params);
+        if (!controls) return make_response(ExitCode::InvalidArguments, controls.error().message, {}, {controls.error()});
+        const float step = params.value("step", 2.5f);
+        const auto pts = densify_polyline(controls.value(), step);
+        const float sea = resolve_sea_level();
+        const float half_width = params.value("halfWidth", action == "carve_channel" ? 3.5f : 0.0f);
+        const float bed_depth = params.value("bedDepth", 1.4f);
+        const float bed_height =
+            params.contains("bedHeight") ? params["bedHeight"].get<float>() : (sea - std::max(0.2f, bed_depth));
+        const float bank_width = params.value("bankWidth", 3.5f);
+        // Keep bank brushes outside the bed footprint so soft falloff cannot re-raise the channel.
+        const float min_bank_offset = half_width + bank_width;
+        const float bank_offset = std::max(params.value("bankOffset", min_bank_offset), min_bank_offset);
+        const float bank_clearance = params.value("bankClearance", 1.5f);
+        const float bank_height =
+            params.contains("bankHeight") ? params["bankHeight"].get<float>() : (sea + bank_clearance);
+        const float strength = params.value("strength", 1.0f);
+
+        float probe_radius = std::max(half_width, bank_width) + bank_offset + 1.0f;
+        std::set<CellCoord> probe;
+        for (const auto& p : pts) {
+            auto local = probe_cells(p[0], p[1], probe_radius, TerrainEditStore::k_cell_size);
+            probe.insert(local.begin(), local.end());
+        }
+        auto before = snapshot_height(probe);
+        std::set<CellCoord> touched_all;
+        for (std::size_t i = 0; i < pts.size(); ++i) {
+            const float x = pts[i][0];
+            const float z = pts[i][1];
+            float dx = 0.0f;
+            float dz = 1.0f;
+            if (i + 1 < pts.size()) {
+                dx = pts[i + 1][0] - x;
+                dz = pts[i + 1][1] - z;
+            } else if (i > 0) {
+                dx = x - pts[i - 1][0];
+                dz = z - pts[i - 1][1];
+            }
+            const float len = std::hypot(dx, dz);
+            if (len > 1.0e-4f) {
+                dx /= len;
+                dz /= len;
+            }
+            const float px = -dz;
+            const float pz = dx;
+
+            // Banks first, then bed: bed must win if footprints ever touch.
+            if (action == "carve_channel" || action == "raise_banks") {
+                for (float side : {-1.0f, 1.0f}) {
+                    const float bx = x + px * side * bank_offset;
+                    const float bz = z + pz * side * bank_offset;
+                    const auto bank =
+                        context.terrain_edits->apply_set_height_brush(bx, bz, bank_width, strength, bank_height);
+                    if (!bank) {
+                        restore_height(before);
+                        return make_response(ExitCode::ValidationFailed, bank.error().message, {}, {bank.error()});
+                    }
+                    touched_all.insert(bank.value().begin(), bank.value().end());
+                }
+            }
+            if (action == "carve_channel") {
+                const auto bed = context.terrain_edits->apply_set_height_brush(x, z, half_width, strength, bed_height);
+                if (!bed) {
+                    restore_height(before);
+                    return make_response(ExitCode::ValidationFailed, bed.error().message, {}, {bed.error()});
+                }
+                touched_all.insert(bed.value().begin(), bed.value().end());
+            }
+        }
+        auto response = commit_height(std::move(before), true);
+        if (response.exit_code == ExitCode::Success) {
+            response.summary = action == "carve_channel" ? "River channel carved" : "River banks raised";
+            response.metadata["touchedCells"] = std::to_string(touched_all.size());
+            response.metadata["pointCount"] = std::to_string(pts.size());
+            response.metadata["seaLevel"] = std::to_string(sea);
+            response.metadata["bedHeight"] = std::to_string(bed_height);
+            response.metadata["bankHeight"] = std::to_string(bank_height);
+            if (params.value("save", false)) {
+                const auto saved = save_terrain();
+                if (saved.exit_code != ExitCode::Success) return saved;
+            }
         }
         return response;
     }
@@ -1005,7 +1168,8 @@ EditorBridgeResponse apply_terrain_operation(EditorSessionContext& context, cons
 
     return make_response(ExitCode::InvalidArguments, "Unsupported terrain action: " + action, {},
         {session_error("TERRAIN-ACTION-UNKNOWN", "Unsupported terrain action: " + action,
-            "Use raise/lower/flatten/paint/paint_foliage/paint_foliage_mixed/sample/undo/redo/save/batch.")});
+            "Use raise/lower/flatten/set_height/carve_channel/raise_banks/paint/paint_foliage/"
+            "paint_foliage_mixed/sample/undo/redo/save/batch.")});
 }
 
 EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, const std::string& operation,
@@ -1052,6 +1216,9 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
         }
         if (operation == "terrain_apply") {
             return apply_terrain_operation(context, params);
+        }
+        if (operation == "water_apply") {
+            return apply_water_operation(context, params);
         }
         if (operation == "scene_apply" && params.value("action", std::string{}) == "sample_terrain") {
             nlohmann::json sample_params = params;

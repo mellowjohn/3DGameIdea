@@ -110,6 +110,22 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0042 | Post-process stack with ambient occlusion | done | P2 | SSAO v1 shipped (owner approved); [`tickets/TICKET-0042.md`](tickets/TICKET-0042.md) |
 | TICKET-0191 | glTF mesh UV + albedo texture import/render | needs-approval | P0 | Owner override; sample `baseColorTexture` for player mesh; [`tickets/TICKET-0191.md`](tickets/TICKET-0191.md) |
 
+## EPIC-0016: Water and hydrology
+
+- Status: proposed
+- Goal: Gameplay water (swim, deep-water danger, scripted floating vessels), authored surfaces with low-poly reflective/refractive wave motion, Sculpt placement, World Forge map hydrology and ferry routes.
+- Roadmap home: extends terrain + materials; enables SQ-10 ferry/dive beats and open-world hard barriers.
+- Priority guidance: **P2** — after blended material pass (EPIC-0005) and alongside character controller stamina hooks. Owner decision: [DEC-0039](../decisions/index.md#dec-0039-water-swim-and-hydrology-authoring).
+- Feature doc: [`../features/water-hydrology.md`](../features/water-hydrology.md)
+
+| ID | Title | Status | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| TICKET-0201 | Blended water material and render pass | needs-approval | P2 | Water PSO + wave/refraction shader; [`tickets/TICKET-0201.md`](tickets/TICKET-0201.md) |
+| TICKET-0202 | Water persistence + Sculpt water tool + MCP | needs-approval | P2 | `water-surfaces.json`, Sculpt Water tool, `engine_water_apply`; [`tickets/TICKET-0202.md`](tickets/TICKET-0202.md) |
+| TICKET-0203 | Swim mode + deep-water fatigue and damage | needs-approval | P2 | Character controller swim + nav/foliage hooks; [`tickets/TICKET-0203.md`](tickets/TICKET-0203.md) |
+| TICKET-0204 | World Forge hydrology + ferry route map authoring | needs-approval | P2 | Map schema `hydrologyRegions` / `ferryRoutes`; [`tickets/TICKET-0204.md`](tickets/TICKET-0204.md) |
+| TICKET-0200 | Scripted floating vessels + shore materials | needs-approval | P3 | Shore materials + `ferry_crossing.lua` sample; [`tickets/TICKET-0200.md`](tickets/TICKET-0200.md) |
+
 ## EPIC-0006: RPG systems — quests and dialogue
 
 - Status: proposed
@@ -325,7 +341,7 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 1. EPIC-0001 done — use Notion kanban + Priority for day-to-day flow.
 2. **P0 needs-approval (owner override):** TICKET-0191 glTF mesh UV + albedo; TICKET-0182 Design Docs. Prior P0 M5 clips done (0102).
 3. **P1/P2 needs-approval pile:** 0030–0032, 0105, World Forge / UI cards — owner review.
-4. **P2 when capacity:** M5 follow-ons (0106/0107/0110); numeric budgets TICKET-0139 later; **authoring sync** EPIC-0014 (0192 → 0193 → 0194/0195); **Rigidbody** EPIC-0015 (0196 → 0197 → 0198 → 0199).
+4. **P2 when capacity:** M5 follow-ons (0106/0107/0110); numeric budgets TICKET-0139 later; **authoring sync** EPIC-0014 (0192 → 0193 → 0194/0195); **Rigidbody** EPIC-0015 (0196 → 0197 → 0198 → 0199); **Water** EPIC-0016 (0201 → 0202 → 0203 → 0204 → 0200).
 5. Schema-first World Forge (0011–0014, P2) after faction canon (0021).
 6. Hold **P3** EPIC-0006/0007 and M6–M8 runtime tickets until M5 animation exit unless explicitly overridden.
 7. Mini-map (EPIC-0007) after region/POI IDs exist.

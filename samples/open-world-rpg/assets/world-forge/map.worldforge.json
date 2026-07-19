@@ -137,6 +137,44 @@
       "openQuestions": [
         "Exact placement relative to walls / battalions once set dressing exists"
       ]
+    },
+    {
+      "id": "old_noll_dock",
+      "kind": "gate",
+      "displayName": "Old Noll Dock",
+      "canonStatus": "draft",
+      "regionId": "tessera_overland",
+      "summary": "SQ-10 ferry embark point on the mainland shore (World Forge planning stub).",
+      "storyRef": "context/story/side-quest-catalog.md",
+      "sceneEntityId": "",
+      "prefabId": "",
+      "acts": ["act1"],
+      "tags": ["ferry", "sq10"],
+      "anchor": {
+        "x": 120.0,
+        "y": 0.0,
+        "z": 40.0
+      },
+      "openQuestions": []
+    },
+    {
+      "id": "islet_of_cinders",
+      "kind": "landmark",
+      "displayName": "Islet of Cinders",
+      "canonStatus": "draft",
+      "regionId": "tessera_overland",
+      "summary": "SQ-10 ferry destination islet (World Forge planning stub).",
+      "storyRef": "context/story/side-quest-catalog.md",
+      "sceneEntityId": "",
+      "prefabId": "",
+      "acts": ["act1"],
+      "tags": ["ferry", "sq10"],
+      "anchor": {
+        "x": 240.0,
+        "y": 0.0,
+        "z": 70.0
+      },
+      "openQuestions": []
     }
   ],
   "links": [
@@ -175,6 +213,51 @@
       "summary": "Drawbridge POI belongs to / opens onto the Calrenoth fortress region.",
       "storyRef": "context/story/campaign-beat-sheet.md",
       "openQuestions": []
+    }
+  ],
+  "hydrologyRegions": [
+    {
+      "id": "demo_pond",
+      "kind": "lake",
+      "displayName": "Demo Pond",
+      "canonStatus": "draft",
+      "summary": "Sample authored pond near origin for water sculpt/MCP verification.",
+      "minX": -20.0,
+      "maxX": 20.0,
+      "minZ": -20.0,
+      "maxZ": 20.0,
+      "acts": [],
+      "tags": ["sample", "pond"]
+    },
+    {
+      "id": "eastern_sea",
+      "kind": "sea",
+      "displayName": "Eastern Sea (bounded)",
+      "canonStatus": "draft",
+      "summary": "Bounded open-sea sample; terrain below sea level fills inside this box.",
+      "minX": 800.0,
+      "maxX": 1200.0,
+      "minZ": -200.0,
+      "maxZ": 200.0,
+      "acts": [],
+      "tags": ["sea", "bounded"]
+    }
+  ],
+  "ferryRoutes": [
+    {
+      "id": "sq10_ferry_route",
+      "displayName": "Island Ferry (SQ-10 stub)",
+      "canonStatus": "draft",
+      "fromPoiId": "old_noll_dock",
+      "toPoiId": "islet_of_cinders",
+      "summary": "Planned ferry crossing for SQ-10; hull motion scripted via ferry_crossing.lua.",
+      "points": [
+        { "x": 120.0, "z": 40.0 },
+        { "x": 180.0, "z": 55.0 },
+        { "x": 240.0, "z": 70.0 }
+      ],
+      "acts": ["act1"],
+      "tags": ["ferry", "sq10"]
     }
   ]
 }

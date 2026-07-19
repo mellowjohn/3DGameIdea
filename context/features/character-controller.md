@@ -41,3 +41,20 @@ Placement motion bodies are owned by the placement partition cell and unload wit
 
 - Stair stepping is weaker than CharacterVirtual `ExtendedUpdate` (deferred polish).
 - No coyote time / double jump yet.
+- Visual in-place root stripping for skinned meshes is not yet applied (capsule sync only).
+- No nav-grid snap yet.
+- Character-vs-character collision is not registered.
+- Navigation grid queries are not yet used for pathing or snap-to-walkable.
+- **Swim mode** transitional CharacterVirtual path includes swim hooks; Rigidbody swim remains follow-on — [DEC-0039](../decisions/index.md#dec-0039-water-swim-and-hydrology-authoring) / [`water-hydrology.md`](water-hydrology.md).
+
+## Swim mode (planned — DEC-0039)
+
+When the capsule enters authored water:
+
+- Switch from walk locomotion to **swim** (surface and submerged variants TBD).
+- **Shallow** water: wade or reduced swim cost (depth threshold TBD).
+- **Deep** water: fatigue drain while swimming; at exhaustion, **health damage over time**.
+- Jump/air rules TBD while partially submerged.
+- Ships use scripted paths; player aboard uses vehicle state rather than free swim unless overboard.
+
+Implementation tracks [`water-hydrology.md`](water-hydrology.md) and stamina/HUD when fatigue UI ships.

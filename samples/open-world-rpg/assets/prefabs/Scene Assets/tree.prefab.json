@@ -11,7 +11,7 @@
       "parent": null,
       "mesh": {
         "primitive": "cylinder",
-        "color": [0.28, 0.18, 0.12]
+        "color": [0.30, 0.20, 0.12]
       }
     },
     {
@@ -24,7 +24,7 @@
       "parent": null,
       "mesh": {
         "primitive": "sphere",
-        "color": [0.14, 0.22, 0.10]
+        "color": [0.20, 0.32, 0.14]
       }
     },
     {
@@ -37,7 +37,7 @@
       "parent": null,
       "mesh": {
         "primitive": "cylinder",
-        "color": [0.24, 0.16, 0.10]
+        "color": [0.26, 0.17, 0.10]
       }
     },
     {
@@ -45,12 +45,12 @@
       "transform": {
         "position": [-0.16, 1.05, 0.12],
         "rotation": [0.0, 0.924, 0.0, 0.383],
-        "scale": [0.10, 0.45, 0.10]
+        "scale": [0.10, 0.45, 0.12]
       },
       "parent": null,
       "mesh": {
         "primitive": "cylinder",
-        "color": [0.22, 0.15, 0.09]
+        "color": [0.24, 0.16, 0.10]
       }
     }
   ]

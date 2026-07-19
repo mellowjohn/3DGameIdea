@@ -39,13 +39,13 @@ TerrainSurface surface_at(float world_x, float world_z, float height, float slop
 
 std::array<float, 3> surface_color(TerrainSurface surface) {
     switch (surface) {
-    case TerrainSurface::Grass: return {0.11f, 0.17f, 0.10f};
-    case TerrainSurface::Dirt: return {0.14f, 0.12f, 0.09f};
-    case TerrainSurface::Rock: return {0.10f, 0.10f, 0.11f};
-    case TerrainSurface::Snow: return {0.20f, 0.21f, 0.22f};
-    case TerrainSurface::Corrupted: return {0.16f, 0.12f, 0.20f};
+    case TerrainSurface::Grass: return {0.22f, 0.32f, 0.16f};
+    case TerrainSurface::Dirt: return {0.26f, 0.20f, 0.14f};
+    case TerrainSurface::Rock: return {0.22f, 0.22f, 0.24f};
+    case TerrainSurface::Snow: return {0.55f, 0.57f, 0.60f};
+    case TerrainSurface::Corrupted: return {0.24f, 0.16f, 0.28f};
     }
-    return {0.12f, 0.14f, 0.11f};
+    return {0.22f, 0.28f, 0.18f};
 }
 
 float slope_at(const TerrainMesh& mesh, std::uint32_t x, std::uint32_t z, float step) {

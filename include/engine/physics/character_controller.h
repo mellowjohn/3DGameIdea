@@ -24,6 +24,9 @@ struct CharacterControllerConfig {
     float ground_friction = 55.0f;
     /** Horizontal accel while airborne (m/s²). */
     float air_acceleration = 12.0f;
+    float swim_max_speed = 3.0f;
+    float swim_fatigue_drain = 0.18f;
+    float swim_damage_per_second = 8.0f;
 };
 
 class CharacterController final {
@@ -52,6 +55,10 @@ public:
     [[nodiscard]] CollisionDebugBody debug_body() const;
     [[nodiscard]] CharacterControllerConfig config() const;
     [[nodiscard]] std::array<float, 3> linear_velocity() const;
+    [[nodiscard]] bool swimming() const;
+    [[nodiscard]] float swim_fatigue() const;
+    [[nodiscard]] float pending_swim_damage() const;
+    void clear_pending_swim_damage();
     void set_position(WorldPosition position);
 private:
     explicit CharacterController(CollisionWorld& world);
