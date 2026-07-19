@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "light": {
+    "color": [1.0, 0.96, 0.88],
+    "radius": 500.0,
+    "strength": 1.6,
+    "offset": [0.0, 0.0, 0.0]
+  },
+  "entities": [
+    {
+      "name": "Sun Marker",
+      "transform": {
+        "position": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [2.0, 2.0, 2.0]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "sphere",
+        "color": [1.0, 0.92, 0.55]
+      }
+    }
+  ]
+}

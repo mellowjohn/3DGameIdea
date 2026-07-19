@@ -39,6 +39,9 @@ public:
     /// Blend sample heights toward `target_height` (world Y). `strength` is max meters moved per sample (falloff applied).
     [[nodiscard]] Result<std::set<CellCoord>> apply_flatten_brush(float world_x, float world_z, float radius,
         float strength, float target_height);
+    /// Set sample heights toward `target_height` in one stroke. `strength` in [0,1] is blend amount (1 = hard set at center).
+    [[nodiscard]] Result<std::set<CellCoord>> apply_set_height_brush(float world_x, float world_z, float radius,
+        float strength, float target_height);
     void set_cell_deltas(CellCoord cell, std::vector<float> deltas);
     void remove_cell(CellCoord cell);
     [[nodiscard]] std::vector<float> cell_deltas_or_empty(CellCoord cell) const;

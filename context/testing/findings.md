@@ -2,6 +2,15 @@
 
 Record material defects or constraints that can prevent recurrence. Newest entries go first.
 
+## 2026-07-19 — Water refraction read the live lit RT (shoreline fuzz / highlight feedback)
+
+- Reproduction: Game/editor view with authored water; look at shorelines and bright specular areas (sun).
+- Impact: Grainy shimmering edges, ghosting around trunks, and blocky yellow/white blotches on the water surface.
+- Cause: `draw_water_pass` wrote into `lit_color_` while the water pixel shader sampled that same resource as `sceneColor` for refraction (read-while-write / RT+SRV hazard). Wave UV offsets made the feedback move every frame.
+- Resolution: Copy `lit_color_` into `water_scene_color_` before the water draw; bind that stable copy as `t0`. Remove unused depth SRV sampling so depth can stay `DEPTH_WRITE` for the water DSV test.
+- Verification: Rebuild `engine`, relaunch editor; water edges and specular areas should no longer feedback-smear.
+- Remaining risk: Soft depth-based shoreline foam still needs a separate depth copy (or reconstructed depth) before sampling depth in the water PS.
+
 ## 2026-07-16 — Dialogue New Node forced a full graph relayout
 
 - Reproduction: Dialogues → Graph, open a laid-out tree, click **New Node** (or Duplicate).

@@ -46,6 +46,8 @@ Prefabs may include a warm local light for landmarks and atmosphere tests:
 
 The debug renderer evaluates up to two nearest placed prefab lights each frame. Dependency sidecars must list external mesh paths referenced by the prefab.
 
+Sample: `assets/prefabs/Scene Assets/sun.prefab.json` — large-radius daylight fill light used by the open-world vertical slice.
+
 ## Schema v2 (active): compositional mesh parts
 
 Multi-part prefabs extend `entities` so each child can carry its own mesh source and local transform. Authors move, rotate, and scale parts inside the prefab to build props from primitives or imported meshes.

@@ -11,9 +11,10 @@ Gameplay water for rivers, ponds, lakes, bounded seas, swim traversal, and scrip
 | --- | --- |
 | Gameplay | Swim mode; deep water drains fatigue and causes damage over time; ships/ferries float via scripted motion |
 | Sea level | One world-wide `sea_level` Y; terrain sculpt adjusts land vs ocean |
+| Settling | Water is a flat level at `sea_level` — it only appears where terrain is below that line (fills basins / “falls” off high ground). Meshes clip to shoreline contours (marching squares) with bed skirts; paint ignores dry ground. No mid-air sheets. Not a particle fluid sim. |
 | Dry basins | Stay dry unless terrain + authored water placement justify fill |
 | Open sea | Bounded authored sea regions; map-edge fog-of-war hides beyond bounds |
-| Art | Low-poly stylized water with reflection, refraction, and scripted wave motion |
+| Art | Low-poly stylized water with reflection, refraction, scripted wave motion, depth-based absorption (deeper → more opaque / less bed visible), and sun specular / crest glints |
 | Shores | Transition to mud/sand materials; shore foam/waves when feasible |
 | Foliage | Suppressed underwater |
 | Future | Lava, magic pools — same material/system extension, not v1 |

@@ -6,11 +6,13 @@
 
 #include <nlohmann/json.hpp>
 
+#include <array>
 #include <cmath>
 #include <map>
 #include <memory>
 #include <optional>
 #include <set>
+#include <vector>
 
 namespace engine {
 namespace {
@@ -234,6 +236,71 @@ EditorBridgeResponse apply_water_operation(EditorSessionContext& context, const 
         return response;
     }
 
+    if (action == "place_along") {
+        if (auto missing = require_water()) return *missing;
+        if (!params.contains("points") || !params["points"].is_array() || params["points"].empty()) {
+            return make_response(ExitCode::InvalidArguments, "place_along requires points", {},
+                {session_error("WATER-POINTS-ARGS", "place_along requires points:[{x,z},...].",
+                    "Provide a polyline of world samples.")});
+        }
+        std::vector<std::array<float, 2>> controls;
+        for (const auto& point : params["points"]) {
+            if (!point.is_object() || !point.contains("x") || !point.contains("z")) {
+                return make_response(ExitCode::InvalidArguments, "Invalid water point", {},
+                    {session_error("WATER-POINT-INVALID", "Each point requires x and z.", "Use {x,z} objects.")});
+            }
+            const float px = point["x"].get<float>();
+            const float pz = point["z"].get<float>();
+            if (!std::isfinite(px) || !std::isfinite(pz)) {
+                return make_response(ExitCode::InvalidArguments, "Water point must be finite", {},
+                    {session_error("WATER-POINT-FINITE", "Point coordinates must be finite.", "Use finite x/z.")});
+            }
+            controls.push_back({px, pz});
+        }
+        const float step = std::max(0.5f, params.value("step", 2.5f));
+        const float radius = params.value("radius", 3.8f);
+        const float strength = params.value("strength", 1.0f);
+        std::vector<std::array<float, 2>> pts;
+        for (std::size_t i = 0; i + 1 < controls.size(); ++i) {
+            const float x0 = controls[i][0];
+            const float z0 = controls[i][1];
+            const float x1 = controls[i + 1][0];
+            const float z1 = controls[i + 1][1];
+            const float seg = std::hypot(x1 - x0, z1 - z0);
+            const int n = std::max(1, static_cast<int>(std::ceil(seg / step)));
+            for (int k = 0; k < n; ++k) {
+                const float t = static_cast<float>(k) / static_cast<float>(n);
+                pts.push_back({x0 + (x1 - x0) * t, z0 + (z1 - z0) * t});
+            }
+        }
+        pts.push_back(controls.back());
+
+        std::set<CellCoord> probe;
+        for (const auto& p : pts) {
+            auto local = probe_cells(p[0], p[1], radius, WaterStore::k_cell_size);
+            probe.insert(local.begin(), local.end());
+        }
+        auto before = snapshot_water(probe);
+        std::set<CellCoord> touched_all;
+        for (const auto& p : pts) {
+            const auto touched = context.water_store->apply_place_brush(p[0], p[1], radius, strength);
+            if (!touched)
+                return make_response(ExitCode::ValidationFailed, touched.error().message, {}, {touched.error()});
+            touched_all.insert(touched.value().begin(), touched.value().end());
+        }
+        auto response = commit_water(std::move(before), true);
+        if (response.exit_code == ExitCode::Success) {
+            response.summary = "Water placed along polyline";
+            response.metadata["touchedCells"] = std::to_string(touched_all.size());
+            response.metadata["pointCount"] = std::to_string(pts.size());
+            if (params.value("save", false)) {
+                const auto saved = save_water();
+                if (saved.exit_code != ExitCode::Success) return saved;
+            }
+        }
+        return response;
+    }
+
     if (action == "undo") {
         if (auto missing = require_water()) return *missing;
         if (context.water_history->undo_size() == 0) {
@@ -265,7 +332,7 @@ EditorBridgeResponse apply_water_operation(EditorSessionContext& context, const 
 
     return make_response(ExitCode::InvalidArguments, "Unknown water action: " + action, {},
         {session_error("WATER-ACTION-UNKNOWN", "Unsupported water action: " + action,
-            "Use place, erase, sample, undo, redo, save, or batch.")});
+            "Use place, erase, place_along, sample, undo, redo, save, or batch.")});
 }
 
 } // namespace engine

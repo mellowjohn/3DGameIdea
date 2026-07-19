@@ -42,6 +42,20 @@ Loaded cells refresh render and collision immediately after each stroke.
 
 `engine validate --project <project>` loads `assets/terrain/terrain-edits.json` when present and rejects malformed schema, mismatched sample counts, and out-of-range deltas.
 
+## MCP helpers
+
+`engine_terrain_apply` height tools beyond raise/lower/flatten:
+
+| Action | Purpose |
+| --- | --- |
+| `set_height` | One-stroke blend toward `targetHeight` (`strength` 0–1, falloff). Prefer this over repeated flatten. |
+| `carve_channel` | Polyline river bed + banks: `points`, `halfWidth`, `bedDepth` or `bedHeight`, `bankOffset`, `bankWidth`, `bankHeight` or `bankClearance`, `step`, `strength` |
+| `raise_banks` | Same polyline bank raise without digging the bed |
+
+`carve_channel` clamps `bankOffset` to at least `halfWidth + bankWidth`, paints banks first, then the bed so the channel floor wins any soft-falloff overlap.
+
+Sea level defaults from the bound water store (or `seaLevel` override). Height edits reload water meshes when connected.
+
 ## Limitations
 
 - Spherical brush with quadratic falloff only; no smoothing or erase-to-procedural brush yet.

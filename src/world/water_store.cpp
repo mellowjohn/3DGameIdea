@@ -28,6 +28,14 @@ EngineError water_error(std::string code, std::string message, std::string remed
     if (!store) return false;
     return store->sample_fill_world(world_x, world_z) >= WaterStore::k_fill_threshold;
 }
+
+// Water is a flat sea-level sheet; only emit it where terrain actually sits below that surface
+// so painted fill cannot hover over dry ground or leave a mid-air slab over a deep hole rim.
+[[nodiscard]] bool terrain_allows_water_surface(const WaterStore* store, float world_x, float world_z) {
+    if (!store) return false;
+    constexpr float k_min_depth = 0.12f;
+    return sample_terrain_height(world_x, world_z) < store->sea_level() - k_min_depth;
+}
 } // namespace
 
 void set_active_water_store(const WaterStore* store) noexcept { g_active_water = store; }
@@ -133,6 +141,8 @@ Result<std::set<CellCoord>> WaterStore::apply_fill_brush(float world_x, float wo
                     const float sample_z = origin_z + static_cast<float>(z) * step;
                     const float distance = std::hypot(sample_x - world_x, sample_z - world_z);
                     if (distance > radius) continue;
+                    // Place only settles into basins; paint on high ground would float at seaLevel.
+                    if (!erase && !terrain_allows_water_surface(this, sample_x, sample_z)) continue;
                     auto& entry = ensure_cell(cell);
                     const std::size_t index = static_cast<std::size_t>(z) * resolution_ + x;
                     const float amount = delta * brush_falloff(distance, radius);
@@ -190,9 +200,8 @@ void WaterStore::set_sea_regions(std::vector<WaterSeaRegion> regions) { regions_
 std::optional<float> sample_water_surface_y(float world_x, float world_z) {
     const WaterStore* store = active_water_store();
     if (!store) return std::nullopt;
-    if (has_authored_fill(store, world_x, world_z)) return store->sea_level();
-    if (store->in_sea_region(world_x, world_z) &&
-        sample_terrain_height(world_x, world_z) < store->sea_level())
+    if (!terrain_allows_water_surface(store, world_x, world_z)) return std::nullopt;
+    if (has_authored_fill(store, world_x, world_z) || store->in_sea_region(world_x, world_z))
         return store->sea_level();
     return std::nullopt;
 }

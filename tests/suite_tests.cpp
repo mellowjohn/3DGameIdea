@@ -1004,18 +1004,53 @@ int main(int argc,char**argv){
         context.water_history=&history;
         context.water_dirty=&dirty;
         engine::set_active_water_store(&apply_store);
-        r.check(!engine::sample_water_surface_y(4.0f,4.0f),"water sample empty before brush stroke");
+        // Brush inside the origin hollow where procedural terrain is below seaLevel (-0.35).
+        r.check(!engine::sample_water_surface_y(0.0f,0.0f),"water sample empty before brush stroke");
         const auto placed=engine::execute_editor_operation(context,"water_apply",
-            R"({"action":"place","x":4,"z":4,"radius":3,"strength":0.6})");
+            R"({"action":"place","x":0,"z":0,"radius":3,"strength":0.6})");
         r.check(placed.exit_code==engine::ExitCode::Success,"water_apply place succeeds");
         r.check(history.undo_size()>=1,"water_apply place commits undo entry");
-        r.check(engine::sample_water_surface_y(4.0f,4.0f).has_value(),"water_apply place writes surface sample");
+        r.check(engine::sample_water_surface_y(0.0f,0.0f).has_value(),"water_apply place writes surface sample");
         const auto undone=engine::execute_editor_operation(context,"water_apply",R"({"action":"undo"})");
         r.check(undone.exit_code==engine::ExitCode::Success,"water_apply undo succeeds");
-        r.check(!engine::sample_water_surface_y(4.0f,4.0f),"water_apply undo restores prior fill");
+        r.check(!engine::sample_water_surface_y(0.0f,0.0f),"water_apply undo restores prior fill");
+        apply_store.set_sea_level(-3.0f);
+        (void)apply_store.apply_place_brush(0.0f,0.0f,3.0f,1.0f);
+        r.check(!engine::sample_water_surface_y(0.0f,0.0f),
+            "authored fill above terrain (sea below bed) does not report a floating surface");
         engine::StreamedWaterField field;
         r.check(field.update({0.0f,5.0f,0.0f},2,&store).has_value(),"streamed water loads a neighborhood");
         r.check(field.loaded_cell_count()>0,"streamed water builds cell meshes");
+        const auto water_verts=field.build_render_vertices();
+        r.check(!water_verts.empty(),"streamed water mesh emits shoreline-aware vertices");
+        float min_depth=1.0e9f,max_depth=0.0f;
+        for(const auto& v:water_verts){min_depth=std::min(min_depth,v.depth);max_depth=std::max(max_depth,v.depth);}
+        r.check(max_depth>min_depth+0.05f,"water mesh encodes varying column depth for absorption");
+        r.check(max_depth>0.2f,"water mesh depth reaches deeper basin samples");
+        apply_store.set_sea_level(-0.35f);
+        engine::set_active_water_store(&apply_store);
+        const auto place_along=engine::execute_editor_operation(context,"water_apply",
+            R"({"action":"place_along","points":[{"x":0,"z":0},{"x":4,"z":-2}],"radius":2.5,"strength":1,"step":2})");
+        r.check(place_along.exit_code==engine::ExitCode::Success,"water_apply place_along succeeds");
+        engine::TerrainEditStore height_store;
+        engine::TerrainEditHistory height_history;
+        bool height_dirty=false;
+        engine::EditorSessionContext terrain_ctx;
+        terrain_ctx.project_root=std::filesystem::path("samples/open-world-rpg");
+        terrain_ctx.terrain_edits=&height_store;
+        terrain_ctx.terrain_history=&height_history;
+        terrain_ctx.terrain_edits_dirty=&height_dirty;
+        terrain_ctx.water_store=&apply_store;
+        engine::set_active_terrain_edits(&height_store);
+        const auto set_h=engine::execute_editor_operation(terrain_ctx,"terrain_apply",
+            R"({"action":"set_height","x":0,"z":0,"radius":3,"strength":1,"targetHeight":1.25})");
+        r.check(set_h.exit_code==engine::ExitCode::Success,"terrain_apply set_height succeeds");
+        r.check(std::abs(engine::sample_terrain_height(0.0f,0.0f)-1.25f)<0.15f,
+            "set_height reaches target near brush center");
+        const auto carved=engine::execute_editor_operation(terrain_ctx,"terrain_apply",
+            R"({"action":"carve_channel","points":[{"x":-4,"z":2},{"x":0,"z":0},{"x":4,"z":-2}],"halfWidth":2.5,"bedDepth":1.2,"bankClearance":1.0,"step":2,"strength":1})");
+        r.check(carved.exit_code==engine::ExitCode::Success,"terrain_apply carve_channel succeeds");
+        engine::set_active_terrain_edits(nullptr);
         engine::set_active_water_store(nullptr);
     }else if(suite=="world_influence"){
         engine::WorldInfluenceBus bus;

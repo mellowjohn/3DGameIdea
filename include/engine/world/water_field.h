@@ -17,6 +17,8 @@ struct WaterRenderVertex {
     float r = 0.08f;
     float g = 0.22f;
     float b = 0.35f;
+    /// Vertical column depth (seaLevel - terrain) in meters; drives absorption in the water pass.
+    float depth = 0.0f;
 };
 
 class StreamedWaterField final {

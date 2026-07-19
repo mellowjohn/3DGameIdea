@@ -203,6 +203,60 @@ Result<std::set<CellCoord>> TerrainEditStore::apply_flatten_brush(float world_x,
     return Result<std::set<CellCoord>>::success(std::move(touched));
 }
 
+Result<std::set<CellCoord>> TerrainEditStore::apply_set_height_brush(float world_x, float world_z, float radius,
+    float strength, float target_height) {
+    if (!std::isfinite(world_x) || !std::isfinite(world_z) || !std::isfinite(radius) || radius <= 0.0f ||
+        !std::isfinite(strength) || strength <= 0.0f || !std::isfinite(target_height))
+        return Result<std::set<CellCoord>>::failure(terrain_edit_error("TERRAIN-SET-HEIGHT-INVALID",
+            "Terrain set_height parameters must be finite and positive",
+            "Use a positive radius/strength and a finite targetHeight."));
+    const float blend = std::clamp(strength, 0.0f, 1.0f);
+    std::set<CellCoord> touched;
+    const int cell_extent = static_cast<int>(std::ceil(radius / cell_size_)) + 1;
+    const auto center_cell = terrain_cell_for_position(world_x, world_z, cell_size_);
+    for (int dz = -cell_extent; dz <= cell_extent; ++dz) {
+        for (int dx = -cell_extent; dx <= cell_extent; ++dx) {
+            const CellCoord cell{center_cell.x + dx, center_cell.z + dz};
+            const float origin_x = static_cast<float>(cell.x) * cell_size_ - cell_size_ * 0.5f;
+            const float origin_z = static_cast<float>(cell.z) * cell_size_ - cell_size_ * 0.5f;
+            const float step = cell_size_ / static_cast<float>(resolution_ - 1);
+            bool changed = false;
+            for (std::uint32_t z = 0; z < resolution_; ++z) {
+                for (std::uint32_t x = 0; x < resolution_; ++x) {
+                    const float sample_x = origin_x + static_cast<float>(x) * step;
+                    const float sample_z = origin_z + static_cast<float>(z) * step;
+                    const float distance = std::hypot(sample_x - world_x, sample_z - world_z);
+                    if (distance > radius) continue;
+                    auto& entry = ensure_cell(cell);
+                    const std::size_t index = static_cast<std::size_t>(z) * resolution_ + x;
+                    const float procedural = procedural_terrain_height(sample_x, sample_z);
+                    const float desired_delta = std::clamp(target_height - procedural, -k_max_delta, k_max_delta);
+                    const float t = blend * brush_falloff(distance, radius);
+                    const float next =
+                        std::clamp(entry.deltas[index] + (desired_delta - entry.deltas[index]) * t, -k_max_delta,
+                            k_max_delta);
+                    if (std::abs(next - entry.deltas[index]) > 0.00001f) {
+                        entry.deltas[index] = next;
+                        changed = true;
+                    }
+                }
+            }
+            if (changed) {
+                touched.insert(cell);
+                bool all_zero = true;
+                for (float value : cells_[cell].deltas) {
+                    if (std::abs(value) > 0.00001f) {
+                        all_zero = false;
+                        break;
+                    }
+                }
+                if (all_zero) cells_.erase(cell);
+            }
+        }
+    }
+    return Result<std::set<CellCoord>>::success(std::move(touched));
+}
+
 void TerrainEditStore::set_cell_deltas(CellCoord cell, std::vector<float> deltas) {
     if (deltas.empty()) {
         cells_.erase(cell);

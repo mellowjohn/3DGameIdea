@@ -15,12 +15,15 @@ Persisted authored water for Sculpt and MCP (`assets/terrain/water-surfaces.json
 
 ## Runtime queries
 
-- `sample_water_surface_y(x,z)` — returns `seaLevel` when authored fill ≥ threshold or inside `seaRegions` with terrain below `seaLevel`
+- `sample_water_surface_y(x,z)` — returns `seaLevel` when authored fill ≥ threshold or inside `seaRegions`, and terrain is at least ~12 cm below `seaLevel` (no mid-air sheet over dry ground)
+- Rendered meshes clip wet cells to the terrain waterline (marching-squares shorelines) plus skirts down to the bed so basins follow contours instead of square pads
+- Mesh vertices carry vertical column depth (`seaLevel - terrain`); the water pass uses Beer–Lambert absorption so deeper water is more opaque and hides the bed
 - `is_underwater`, `water_depth`, `is_deep_water` — swim/navigation/foliage hooks
 
 ## Tools
 
 - Sculpt **Water** tool: place / Shift+erase brush, undo/redo, Ctrl+S save
-- MCP `engine_water_apply`: `place`, `erase`, `sample`, `undo`, `redo`, `save`, `batch`
+- MCP `engine_water_apply`: `place`, `erase`, `place_along`, `sample`, `undo`, `redo`, `save`, `batch`
+  - `place_along`: `{points:[{x,z},...], radius?, strength?, step?, save?}` paints fill along a polyline
 
 World Forge `hydrologyRegions` / `ferryRoutes` on `map.worldforge.json` plan geography; meshes stay in Sculpt.

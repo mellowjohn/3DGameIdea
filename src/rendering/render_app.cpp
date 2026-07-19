@@ -173,6 +173,7 @@ const char* k_pbr_hlsl_helpers = R"(
                 return NdotX / max(NdotX * (1.0 - k) + k, 0.0001);
             }
             float3 shadePbr(float3 albedo, float roughness, float metallic, float3 N, float3 V, float3 L, float3 lightRadiance) {
+                if (!all(isfinite(N)) || !all(isfinite(V)) || !all(isfinite(L))) return 0.0;
                 float NdotL = saturate(dot(N, L));
                 if (NdotL <= 0.0) return 0.0;
                 float3 H = normalize(L + V);
@@ -455,8 +456,8 @@ public:
         if(FAILED(hr)) return Result<void>::failure(graphics_error("GFX-DSV-HEAP","Could not create depth heap",hr));
         srv_stride_=device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         if(editor){D3D12_DESCRIPTOR_HEAP_DESC imgui_desc{};imgui_desc.NumDescriptors=10;imgui_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;imgui_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;hr=device_->CreateDescriptorHeap(&imgui_desc,IID_PPV_ARGS(&imgui_heap_));if(FAILED(hr))return Result<void>::failure(graphics_error("EDITOR-DESCRIPTOR-HEAP","Could not create editor descriptor heap",hr));}
-        // Post-process descriptor heap (depth, lit color, AO) is shader-visible and created even outside the editor.
-        D3D12_DESCRIPTOR_HEAP_DESC post_desc{};post_desc.NumDescriptors=3;post_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;post_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        // Post-process descriptor heap: depth, lit, AO, water scene-color copy.
+        D3D12_DESCRIPTOR_HEAP_DESC post_desc{};post_desc.NumDescriptors=4;post_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;post_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
         hr=device_->CreateDescriptorHeap(&post_desc,IID_PPV_ARGS(&post_srv_heap_));
         if(FAILED(hr)) return Result<void>::failure(graphics_error("GFX-POST-DESCRIPTOR-HEAP","Could not create post-process descriptor heap",hr));
 
@@ -519,6 +520,7 @@ public:
         viewport_target_.Reset();
         game_viewport_target_.Reset();
         lit_color_.Reset();
+        water_scene_color_.Reset();
         ao_target_.Reset();
         const HRESULT hr = swap_chain_->ResizeBuffers(frame_count, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
         if (FAILED(hr)) return Result<void>::failure(device_error("GFX-RESIZE", "Could not resize swap-chain buffers", hr));
@@ -530,7 +532,9 @@ public:
 
     Result<void> create_frame_constant_buffer() {
         frame_cb_.Reset();
+        water_frame_cb_.Reset();
         frame_cb_mapped_ = nullptr;
+        water_frame_cb_mapped_ = nullptr;
         D3D12_HEAP_PROPERTIES heap{};
         heap.Type = D3D12_HEAP_TYPE_UPLOAD;
         D3D12_RESOURCE_DESC desc{};
@@ -548,12 +552,27 @@ public:
         hr = frame_cb_->Map(0, nullptr, &frame_cb_mapped_);
         if (FAILED(hr) || !frame_cb_mapped_)
             return Result<void>::failure(graphics_error("GFX-FRAME-CB-MAP", "Could not map frame constant buffer", hr));
+        // Separate upload CB for water: overwriting the world frame CB before ExecuteCommandLists was
+        // zeroing fog/lighting for every mesh draw (black terrain/trees, blue sky only).
+        hr = device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&water_frame_cb_));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-WATER-FRAME-CB", "Could not create water frame constant buffer", hr));
+        hr = water_frame_cb_->Map(0, nullptr, &water_frame_cb_mapped_);
+        if (FAILED(hr) || !water_frame_cb_mapped_)
+            return Result<void>::failure(
+                graphics_error("GFX-WATER-FRAME-CB-MAP", "Could not map water frame constant buffer", hr));
         return Result<void>::success();
     }
 
     void bind_frame_constants(const std::array<float, 48>& frame_constants) {
         std::memcpy(frame_cb_mapped_, frame_constants.data(), sizeof(frame_constants));
         command_list_->SetGraphicsRootConstantBufferView(0, frame_cb_->GetGPUVirtualAddress());
+    }
+
+    void bind_water_frame_constants(const std::array<float, 48>& frame_constants) {
+        std::memcpy(water_frame_cb_mapped_, frame_constants.data(), sizeof(frame_constants));
+        command_list_->SetGraphicsRootConstantBufferView(0, water_frame_cb_->GetGPUVirtualAddress());
     }
 
     Result<void> upload_prop_vertices(const std::vector<Vertex>& vertices) {
@@ -808,7 +827,7 @@ public:
         const WorldInfluenceBus* influence = nullptr;
         float time_seconds = 0.0f;
         PbrSurfaceParams terrain_pbr = PbrSurfaceParams::dielectric_default();
-        std::array<float, 4> water_color{0.08f, 0.22f, 0.35f, 0.72f};
+        std::array<float, 4> water_color{0.06f, 0.18f, 0.30f, 0.96f};
         float water_roughness = 0.05f;
     };
 
@@ -818,7 +837,7 @@ public:
         auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
             D3D12_RESOURCE_STATE_RENDER_TARGET);
         command_list_->ResourceBarrier(1, &barrier);
-        const float clear[] = {0.11f, 0.16f, 0.24f, 1.0f};
+        const float clear[] = {0.32f, 0.48f, 0.68f, 1.0f};
         auto dsv = dsv_heap_->GetCPUDescriptorHandleForHeapStart();
         command_list_->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
         command_list_->ClearRenderTargetView(rtv, clear, 0, nullptr);
@@ -840,15 +859,16 @@ public:
         frame_constants[16] = params.camera_position[0];
         frame_constants[17] = params.camera_position[1];
         frame_constants[18] = params.camera_position[2];
-        frame_constants[19] = 90.0f;
-        frame_constants[20] = 0.10f;
-        frame_constants[21] = 0.14f;
-        frame_constants[22] = 0.20f;
-        frame_constants[23] = 560.0f;
-        frame_constants[24] = -0.35f;
+        frame_constants[19] = 100.0f;
+        frame_constants[20] = 0.28f;
+        frame_constants[21] = 0.36f;
+        frame_constants[22] = 0.48f;
+        frame_constants[23] = 640.0f;
+        // Daytime sun direction (world → light) and ambient fill.
+        frame_constants[24] = -0.40f;
         frame_constants[25] = -0.85f;
-        frame_constants[26] = -0.25f;
-        frame_constants[27] = 0.58f;
+        frame_constants[26] = -0.30f;
+        frame_constants[27] = 0.42f;
         pack_point_lights(frame_constants, point_lights, params.camera_position);
         frame_constants[44] = static_cast<float>(width_);
         frame_constants[45] = static_cast<float>(height_);
@@ -914,10 +934,26 @@ public:
     }
 
     void draw_water_pass(ID3D12Resource* color_target, D3D12_CPU_DESCRIPTOR_HANDLE rtv, const WorldPassParams& params) {
-        if (water_vertex_count_ == 0 || !water_pipeline_) return;
-        auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-            D3D12_RESOURCE_STATE_RENDER_TARGET);
-        command_list_->ResourceBarrier(1, &barrier);
+        if (water_vertex_count_ == 0 || !water_pipeline_ || !water_scene_color_) return;
+
+        // Snapshot the opaque lit scene before water writes it — sampling lit_color_ while blending
+        // into it caused shoreline fuzz / highlight feedback.
+        D3D12_RESOURCE_BARRIER pre_copy[2] = {
+            CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                D3D12_RESOURCE_STATE_COPY_SOURCE),
+            CD3DX12_RESOURCE_BARRIER_placeholder(water_scene_color_.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                D3D12_RESOURCE_STATE_COPY_DEST),
+        };
+        command_list_->ResourceBarrier(2, pre_copy);
+        command_list_->CopyResource(water_scene_color_.Get(), color_target);
+        D3D12_RESOURCE_BARRIER post_copy[2] = {
+            CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_COPY_SOURCE,
+                D3D12_RESOURCE_STATE_RENDER_TARGET),
+            CD3DX12_RESOURCE_BARRIER_placeholder(water_scene_color_.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE),
+        };
+        command_list_->ResourceBarrier(2, post_copy);
+
         auto dsv = dsv_heap_->GetCPUDescriptorHandleForHeapStart();
         command_list_->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
         D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(width_), static_cast<float>(height_), 0.0f, 1.0f};
@@ -933,24 +969,29 @@ public:
         frame_constants[16] = params.camera_position[0];
         frame_constants[17] = params.camera_position[1];
         frame_constants[18] = params.camera_position[2];
+        // Match opaque pass sun so water specular/glints share the same light direction.
+        frame_constants[24] = -0.40f;
+        frame_constants[25] = -0.85f;
+        frame_constants[26] = -0.30f;
+        frame_constants[27] = 0.42f;
         frame_constants[44] = static_cast<float>(width_);
         frame_constants[45] = static_cast<float>(height_);
-        bind_frame_constants(frame_constants);
+        bind_water_frame_constants(frame_constants);
         std::array<float, 8> water_constants{};
         water_constants[0] = params.time_seconds;
         water_constants[1] = params.water_roughness;
-        water_constants[2] = params.water_color[0];
-        water_constants[3] = params.water_color[1];
-        water_constants[4] = params.water_color[2];
-        water_constants[5] = params.water_color[3];
-        water_constants[6] = 0.35f;
-        water_constants[7] = 0.18f;
+        water_constants[2] = 0.06f; // waveAmplitude (keep small so the sheet doesn't read as floating)
+        water_constants[3] = 0.22f; // waveFrequency
+        water_constants[4] = params.water_color[0];
+        water_constants[5] = params.water_color[1];
+        water_constants[6] = params.water_color[2];
+        water_constants[7] = params.water_color[3];
         command_list_->SetGraphicsRoot32BitConstants(1, 8, water_constants.data(), 0);
-        command_list_->SetGraphicsRootDescriptorTable(2, post_depth_gpu_);
+        command_list_->SetGraphicsRootDescriptorTable(2, post_water_gpu_);
         command_list_->IASetVertexBuffers(0, 1, &water_vertex_view_);
         command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         command_list_->DrawInstanced(water_vertex_count_, 1, 0, 0);
-        barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_RENDER_TARGET,
+        auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_RENDER_TARGET,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         command_list_->ResourceBarrier(1, &barrier);
     }
@@ -1051,7 +1092,7 @@ public:
         command_list_->ResourceBarrier(1, &barrier);
         D3D12_CPU_DESCRIPTOR_HANDLE backbuffer_rtv = rtv_heap_->GetCPUDescriptorHandleForHeapStart();
         backbuffer_rtv.ptr += static_cast<SIZE_T>(frame_index_) * rtv_stride_;
-        const float clear[] = {0.11f, 0.16f, 0.24f, 1.0f};
+        const float clear[] = {0.32f, 0.48f, 0.68f, 1.0f};
         command_list_->OMSetRenderTargets(1, &backbuffer_rtv, FALSE, nullptr);
         command_list_->ClearRenderTargetView(backbuffer_rtv, clear, 0, nullptr);
         if (editor_initialized_) {
@@ -1089,10 +1130,17 @@ public:
         ComPtr<ID3D12Resource> readback;
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
         UINT64 readback_size = 0;
+        // Prefer the composited scene viewport (editor) or backbuffer (runtime) so captures are not an empty clear.
+        ID3D12Resource* capture_source = targets_[frame_index_].Get();
+        D3D12_RESOURCE_STATES capture_state = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        if (editor_initialized_ && viewport_target_) {
+            capture_source = viewport_target_.Get();
+            capture_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        }
         if (capture) {
-            auto copy_barrier = CD3DX12_RESOURCE_BARRIER_placeholder(targets_[frame_index_].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+            auto copy_barrier = CD3DX12_RESOURCE_BARRIER_placeholder(capture_source, capture_state, D3D12_RESOURCE_STATE_COPY_SOURCE);
             command_list_->ResourceBarrier(1, &copy_barrier);
-            const auto desc = targets_[frame_index_]->GetDesc();
+            const auto desc = capture_source->GetDesc();
             device_->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &readback_size);
             D3D12_HEAP_PROPERTIES heap{};
             heap.Type = D3D12_HEAP_TYPE_READBACK;
@@ -1111,11 +1159,20 @@ public:
             destination.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
             destination.PlacedFootprint = footprint;
             D3D12_TEXTURE_COPY_LOCATION source{};
-            source.pResource = targets_[frame_index_].Get();
+            source.pResource = capture_source;
             source.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
             source.SubresourceIndex = 0;
             command_list_->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
-            barrier = CD3DX12_RESOURCE_BARRIER_placeholder(targets_[frame_index_].Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_PRESENT);
+            if (capture_source == targets_[frame_index_].Get()) {
+                barrier = CD3DX12_RESOURCE_BARRIER_placeholder(capture_source, D3D12_RESOURCE_STATE_COPY_SOURCE,
+                    D3D12_RESOURCE_STATE_PRESENT);
+            } else {
+                auto restore = CD3DX12_RESOURCE_BARRIER_placeholder(capture_source, D3D12_RESOURCE_STATE_COPY_SOURCE,
+                    D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                command_list_->ResourceBarrier(1, &restore);
+                barrier = CD3DX12_RESOURCE_BARRIER_placeholder(targets_[frame_index_].Get(),
+                    D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+            }
         } else {
             barrier = CD3DX12_RESOURCE_BARRIER_placeholder(targets_[frame_index_].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
         }
@@ -1253,6 +1310,13 @@ private:
         HRESULT lit_hr=device_->CreateCommittedResource(&texture_heap,D3D12_HEAP_FLAG_NONE,&lit_desc,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,&lit_clear,IID_PPV_ARGS(&lit_color_));
         if(FAILED(lit_hr))return Result<void>::failure(graphics_error("GFX-LIT-TARGET","Could not create lit-color intermediate target",lit_hr));
         lit_rtv_=handle;device_->CreateRenderTargetView(lit_color_.Get(),nullptr,lit_rtv_);handle.ptr+=rtv_stride_;
+        // Stable scene-color copy for water refraction (water writes lit_color_ and must not sample it).
+        water_scene_color_.Reset();
+        HRESULT water_scene_hr=device_->CreateCommittedResource(&texture_heap,D3D12_HEAP_FLAG_NONE,&lit_desc,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,&lit_clear,IID_PPV_ARGS(&water_scene_color_));
+        if(FAILED(water_scene_hr))
+            return Result<void>::failure(graphics_error("GFX-WATER-SCENE-TARGET",
+                "Could not create water scene-color copy target", water_scene_hr));
         // Half-res AO target.
         ao_width_=std::max<UINT>(1,width_/2);ao_height_=std::max<UINT>(1,height_/2);
         D3D12_RESOURCE_DESC ao_desc{};ao_desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;ao_desc.Width=ao_width_;ao_desc.Height=ao_height_;ao_desc.DepthOrArraySize=1;ao_desc.MipLevels=1;ao_desc.Format=DXGI_FORMAT_R8_UNORM;ao_desc.SampleDesc.Count=1;ao_desc.Layout=D3D12_TEXTURE_LAYOUT_UNKNOWN;ao_desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
@@ -1270,7 +1334,7 @@ private:
         D3D12_DEPTH_STENCIL_VIEW_DESC dsv_view{};dsv_view.Format=DXGI_FORMAT_D32_FLOAT;dsv_view.ViewDimension=D3D12_DSV_DIMENSION_TEXTURE2D;
         device_->CreateDepthStencilView(depth_.Get(),&dsv_view,dsv_heap_->GetCPUDescriptorHandleForHeapStart());
 
-        // Post-process shader-visible descriptors: slot 0 = depth SRV, slot 1 = lit SRV, slot 2 = AO SRV.
+        // Post-process SRVs: 0 depth, 1 lit, 2 AO, 3 water_scene (refraction source).
         auto post_cpu=post_srv_heap_->GetCPUDescriptorHandleForHeapStart();
         auto post_gpu=post_srv_heap_->GetGPUDescriptorHandleForHeapStart();
         D3D12_SHADER_RESOURCE_VIEW_DESC depth_srv{};depth_srv.Format=DXGI_FORMAT_R32_FLOAT;depth_srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;depth_srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;depth_srv.Texture2D.MipLevels=1;
@@ -1283,6 +1347,9 @@ private:
         post_cpu.ptr+=srv_stride_;post_gpu.ptr+=srv_stride_;
         D3D12_SHADER_RESOURCE_VIEW_DESC ao_srv{};ao_srv.Format=ao_desc.Format;ao_srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;ao_srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;ao_srv.Texture2D.MipLevels=1;
         device_->CreateShaderResourceView(ao_target_.Get(),&ao_srv,post_cpu);
+        post_cpu.ptr+=srv_stride_;post_gpu.ptr+=srv_stride_;
+        device_->CreateShaderResourceView(water_scene_color_.Get(),&lit_srv,post_cpu);
+        post_water_gpu_=post_gpu;
         return Result<void>::success();
     }
 
@@ -1347,27 +1414,32 @@ private:
             float4 ps(Out input) : SV_TARGET {
                 if (input.color.r < -0.5) {
                     float t = 1.0 - (input.position.y / max(viewportSize.y, 1.0));
-                    float3 horizon = float3(0.10, 0.14, 0.20);
-                    float3 zenith = float3(0.20, 0.26, 0.36);
+                    float3 horizon = float3(0.38, 0.52, 0.70);
+                    float3 zenith = float3(0.18, 0.34, 0.58);
                     return float4(lerp(horizon, zenith, saturate(t)), 1.0);
                 }
                 float3 albedo = (materialParams.z > 0.5) ? albedoTex.Sample(albedoSampler, input.uv).rgb : input.color;
+                if (dot(albedo, albedo) < 1e-6) albedo = float3(0.35, 0.45, 0.28);
                 float dist = distance(input.worldPos, cameraAndFogStart.xyz);
                 float fogRange = max(fogColorAndEnd.w - cameraAndFogStart.w, 0.001);
                 float fogFactor = saturate((fogColorAndEnd.w - dist) / fogRange);
                 float3 dpdx = ddx(input.worldPos);
                 float3 dpdy = ddy(input.worldPos);
-                float3 normal = normalize(cross(dpdx, dpdy));
+                float3 nrm = cross(dpdx, dpdy);
+                float3 normal = (dot(nrm, nrm) > 1e-12) ? normalize(nrm) : float3(0, 1, 0);
                 float3 V = normalize(cameraAndFogStart.xyz - input.worldPos);
                 float3 L = normalize(-lightAndAmbient.xyz);
-                float3 lit = albedo * lightAndAmbient.w;
-                lit += shadePbr(albedo, materialParams.x, materialParams.y, normal, V, L, float3(1.0, 1.0, 1.0));
-                lit += applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
+                if (dot(normal, V) < 0.0) normal = -normal;
+                float3 lit = albedo * lightAndAmbient.w + emissive.rgb;
+                float3 direct = shadePbr(albedo, materialParams.x, materialParams.y, normal, V, L, float3(1.35, 1.25, 1.1));
+                if (all(isfinite(direct))) lit += direct;
+                float3 p0 = applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
                     pointLight0PosRadius, pointLight0ColorStrength);
-                lit += applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
+                float3 p1 = applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
                     pointLight1PosRadius, pointLight1ColorStrength);
-                lit += emissive.rgb;
-                return float4(lerp(fogColorAndEnd.rgb, lit, fogFactor), 1.0);
+                if (all(isfinite(p0))) lit += p0;
+                if (all(isfinite(p1))) lit += p1;
+                return float4(saturate(lerp(fogColorAndEnd.rgb, lit, fogFactor)), 1.0);
             }
         )";
         ComPtr<ID3DBlob> vs, ps, errors;
@@ -1474,12 +1546,11 @@ private:
             cbuffer WaterParams : register(b1) {
                 float timeSeconds;
                 float roughness;
-                float4 tint;
                 float waveAmplitude;
                 float waveFrequency;
+                float4 tint;
             };
             Texture2D sceneColor : register(t0);
-            Texture2D sceneDepth : register(t1);
             SamplerState linearClamp : register(s0);
             struct In { float3 position:POSITION; float3 color:COLOR; float2 uv:TEXCOORD; };
             struct Out { float4 position : SV_POSITION; float3 worldPos : TEXCOORD0; float2 uv : TEXCOORD1; float3 color : COLOR; };
@@ -1488,6 +1559,20 @@ private:
                 float w2 = cos(xz.y * waveFrequency * 0.85 + t * 1.3) * waveAmplitude * 0.65;
                 float w3 = sin((xz.x + xz.y) * waveFrequency * 0.45 + t * 2.1) * waveAmplitude * 0.35;
                 return w1 + w2 + w3;
+            }
+            float3 waveNormal(float2 xz, float t) {
+                float f = waveFrequency;
+                float a = waveAmplitude;
+                float dhdx = cos(xz.x * f + t * 1.7) * a * f
+                    + cos((xz.x + xz.y) * f * 0.45 + t * 2.1) * a * 0.35 * f * 0.45;
+                float dhdz = -sin(xz.y * f * 0.85 + t * 1.3) * a * 0.65 * f * 0.85
+                    + cos((xz.x + xz.y) * f * 0.45 + t * 2.1) * a * 0.35 * f * 0.45;
+                return normalize(float3(-dhdx, 1.0, -dhdz));
+            }
+            float hash21(float2 p) {
+                float3 p3 = frac(float3(p.xyx) * 0.1031);
+                p3 += dot(p3, p3.yzx + 33.33);
+                return frac((p3.x + p3.y) * p3.z);
             }
             Out vs(In input) {
                 Out o;
@@ -1502,18 +1587,42 @@ private:
             }
             float4 ps(Out input) : SV_TARGET {
                 float2 uv = input.position.xy / max(viewportSize.xy, float2(1.0, 1.0));
-                float depth = sceneDepth.Sample(linearClamp, uv).r;
+                // sceneColor is a pre-water copy of the lit buffer (never the live RT).
                 float2 refractOffset = float2(sin(input.worldPos.x * 0.15 + timeSeconds) * 0.0025,
                     cos(input.worldPos.z * 0.12 + timeSeconds * 0.9) * 0.0025);
                 float3 refracted = sceneColor.Sample(linearClamp, uv + refractOffset).rgb;
-                float3 reflectDir = normalize(cameraAndFogStart.xyz - input.worldPos);
-                float3 sky = lerp(float3(0.10, 0.14, 0.20), float3(0.20, 0.26, 0.36), saturate(reflectDir.y * 0.5 + 0.5));
-                float fresnel = pow(1.0 - saturate(dot(normalize(float3(0, 1, 0)), reflectDir)), 3.0);
+                float3 V = normalize(cameraAndFogStart.xyz - input.worldPos);
+                float3 N = waveNormal(input.worldPos.xz, timeSeconds);
+                float3 L = normalize(-lightAndAmbient.xyz);
+                float3 H = normalize(L + V);
+                float3 sky = lerp(float3(0.22, 0.30, 0.42), float3(0.16, 0.28, 0.46), saturate(V.y * 0.5 + 0.5));
+                float fresnel = pow(1.0 - saturate(dot(N, V)), 3.0);
                 float3 waterColor = lerp(tint.rgb, sky, fresnel * 0.55);
-                float3 color = lerp(refracted, waterColor, 0.55);
-                color = lerp(color, tint.rgb, 0.25);
-                float alpha = tint.a;
-                return float4(color, alpha);
+                // Vertex uv.x = column depth (m). Strong absorption so bed facets don't read through.
+                // Cover already mixes refraction; keep alpha high so RT alpha-blend doesn't double-expose the bed.
+                float depthM = max(input.uv.x, 0.0);
+                float optical = saturate(1.0 - exp(-depthM * 2.4));
+                float cover = lerp(0.55, 0.985, optical);
+                float3 color = lerp(refracted, waterColor, cover);
+                color = lerp(color, tint.rgb * 0.28, optical * 0.75);
+
+                // Soft tinted sheen + crest glints — same hue family as the water material, lit by sun/ambient.
+                float ndotl = saturate(dot(N, L));
+                float lighting = saturate(lightAndAmbient.w * 0.85 + ndotl * 0.95);
+                float specPower = lerp(48.0, 96.0, saturate(1.0 - roughness * 4.0));
+                float sheen = pow(saturate(dot(N, H)), specPower) * ndotl;
+                float crest = saturate(waveHeight(input.worldPos.xz, timeSeconds) / max(waveAmplitude, 1e-4) * 0.5 + 0.5);
+                float2 sparkleUv = input.worldPos.xz * 2.4 + float2(timeSeconds * 0.28, -timeSeconds * 0.18);
+                float sparkleCell = hash21(floor(sparkleUv));
+                float sparkle = smoothstep(0.88, 0.985, sparkleCell) * smoothstep(0.6, 0.95, crest);
+                float twinkle = 0.75 + 0.25 * sin(timeSeconds * 5.5 + sparkleCell * 28.0);
+                // Lift the material tint slightly toward sky/fresnel; never jump to hot white/yellow.
+                float3 glistenTint = saturate(lerp(tint.rgb * 1.35, waterColor * 1.15, 0.45));
+                float glistenAmt = (sheen * (0.14 + fresnel * 0.18) + sparkle * twinkle * 0.07) * lighting;
+                color += glistenTint * glistenAmt;
+
+                float alpha = lerp(0.78, max(tint.a, 0.97), optical);
+                return float4(saturate(color), alpha);
             }
         )";
         ComPtr<ID3DBlob> vs, ps, errors;
@@ -1541,15 +1650,14 @@ private:
         parameters[1].Constants.ShaderRegister = 1;
         parameters[1].Constants.Num32BitValues = 8;
         parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-        D3D12_DESCRIPTOR_RANGE ranges[2]{};
+        // Single SRV: pre-water lit scene copy (t0). Depth stays bound as DSV for testing only.
+        D3D12_DESCRIPTOR_RANGE ranges[1]{};
         ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         ranges[0].NumDescriptors = 1;
         ranges[0].BaseShaderRegister = 0;
-        ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        ranges[1].NumDescriptors = 1;
-        ranges[1].BaseShaderRegister = 1;
+        ranges[0].OffsetInDescriptorsFromTableStart = 0;
         parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        parameters[2].DescriptorTable.NumDescriptorRanges = 2;
+        parameters[2].DescriptorTable.NumDescriptorRanges = 1;
         parameters[2].DescriptorTable.pDescriptorRanges = ranges;
         parameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
         D3D12_STATIC_SAMPLER_DESC sampler{};
@@ -1941,18 +2049,25 @@ private:
                 float dist = distance(input.worldPos, cameraAndFogStart.xyz);
                 float fogRange = max(fogColorAndEnd.w - cameraAndFogStart.w, 0.001);
                 float fogFactor = saturate((fogColorAndEnd.w - dist) / fogRange);
+                float3 albedo = input.color;
+                if (dot(albedo, albedo) < 1e-6) albedo = float3(0.30, 0.48, 0.22);
                 float3 dpdx = ddx(input.worldPos);
                 float3 dpdy = ddy(input.worldPos);
-                float3 normal = normalize(cross(dpdx, dpdy));
+                float3 nrm = cross(dpdx, dpdy);
+                float3 normal = (dot(nrm, nrm) > 1e-12) ? normalize(nrm) : float3(0, 1, 0);
                 float3 V = normalize(cameraAndFogStart.xyz - input.worldPos);
                 float3 L = normalize(-lightAndAmbient.xyz);
-                float3 lit = input.color * lightAndAmbient.w;
-                lit += shadePbr(input.color, 1.0, 0.0, normal, V, L, float3(1.0, 1.0, 1.0));
-                lit += applyPointLightPbr(input.worldPos, input.color, 1.0, 0.0, normal, V, pointLight0PosRadius,
+                if (dot(normal, V) < 0.0) normal = -normal;
+                float3 lit = albedo * lightAndAmbient.w;
+                float3 direct = shadePbr(albedo, 1.0, 0.0, normal, V, L, float3(1.35, 1.25, 1.1));
+                if (all(isfinite(direct))) lit += direct;
+                float3 p0 = applyPointLightPbr(input.worldPos, albedo, 1.0, 0.0, normal, V, pointLight0PosRadius,
                     pointLight0ColorStrength);
-                lit += applyPointLightPbr(input.worldPos, input.color, 1.0, 0.0, normal, V, pointLight1PosRadius,
+                float3 p1 = applyPointLightPbr(input.worldPos, albedo, 1.0, 0.0, normal, V, pointLight1PosRadius,
                     pointLight1ColorStrength);
-                return float4(lerp(fogColorAndEnd.rgb, lit, fogFactor), 1.0);
+                if (all(isfinite(p0))) lit += p0;
+                if (all(isfinite(p1))) lit += p1;
+                return float4(saturate(lerp(fogColorAndEnd.rgb, lit, fogFactor)), 1.0);
             }
         )";
         ComPtr<ID3DBlob> vs, ps, errors;
@@ -2194,6 +2309,10 @@ private:
             frame_cb_->Unmap(0, nullptr);
             frame_cb_mapped_ = nullptr;
         }
+        if (water_frame_cb_ && water_frame_cb_mapped_) {
+            water_frame_cb_->Unmap(0, nullptr);
+            water_frame_cb_mapped_ = nullptr;
+        }
         if (ssao_cb_ && ssao_cb_mapped_) {
             ssao_cb_->Unmap(0, nullptr);
             ssao_cb_mapped_ = nullptr;
@@ -2232,11 +2351,12 @@ private:
     D3D12_GPU_DESCRIPTOR_HANDLE game_viewport_gpu_{};
     // SSAO v1 post-process resources: world always draws into lit_color_, then apply_ssao() reads depth_ + lit_color_
     // to produce ao_target_ (half-res) and composite the result into the editor viewport(s) or the swap chain.
-    ComPtr<ID3D12Resource> lit_color_, ao_target_;
+    // water_scene_color_ is a pre-water copy of lit_color_ so refraction can sample without feedback.
+    ComPtr<ID3D12Resource> lit_color_, water_scene_color_, ao_target_;
     D3D12_CPU_DESCRIPTOR_HANDLE lit_rtv_{}, ao_rtv_{};
     UINT ao_width_ = 1, ao_height_ = 1;
     ComPtr<ID3D12DescriptorHeap> post_srv_heap_;
-    D3D12_GPU_DESCRIPTOR_HANDLE post_depth_gpu_{}, post_lit_gpu_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE post_depth_gpu_{}, post_lit_gpu_{}, post_water_gpu_{};
     ComPtr<ID3D12RootSignature> ssao_root_signature_, composite_root_signature_;
     ComPtr<ID3D12PipelineState> ssao_pipeline_, composite_pipeline_;
     ComPtr<ID3D12Resource> ssao_cb_, composite_cb_;
@@ -2268,7 +2388,9 @@ private:
     ComPtr<ID3D12RootSignature> foliage_root_signature_;
     ComPtr<ID3D12PipelineState> foliage_pipeline_;
     ComPtr<ID3D12Resource> frame_cb_;
+    ComPtr<ID3D12Resource> water_frame_cb_;
     void* frame_cb_mapped_ = nullptr;
+    void* water_frame_cb_mapped_ = nullptr;
     ComPtr<ID3D12Resource> foliage_instance_buffer_;
     ComPtr<ID3D12DescriptorHeap> foliage_srv_heap_;
     D3D12_CPU_DESCRIPTOR_HANDLE foliage_instance_srv_cpu_{};
@@ -6979,7 +7101,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
     MaterialAsset terrain_material;
     TerrainEditStore runtime_terrain_edits;
     WaterStore runtime_water;
-    std::array<float, 4> water_color{0.08f, 0.22f, 0.35f, 0.72f};
+    std::array<float, 4> water_color{0.08f, 0.22f, 0.35f, 0.88f};
     float water_roughness = 0.05f;
     if(options.debug_world&&!options.project_root.empty()){
         const auto path=options.project_root/"assets/materials/terrain.material.json";
@@ -7137,6 +7259,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
     std::optional<StreamedTerrainField> streamed_terrain;
     std::optional<StreamedFoliageField> streamed_foliage;
     std::optional<StreamedWaterField> streamed_water;
+    std::uint64_t water_terrain_revision_seen = 0;
     std::optional<PlacementCollisionTracker> placement_collision;
     InteractionVolumeRegistry debug_interaction_registry;
     InteractionOverlapTracker debug_interaction_tracker;
@@ -7618,12 +7741,18 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 SDL_Quit();
                 return Result<RenderStats>::failure(updated.error());
             }
+            // Terrain sculpt changes bed height; rebuild water so sheets clip/skirt to the new basin.
+            if (editor && editor->terrain_height_revision != water_terrain_revision_seen) {
+                water_terrain_revision_seen = editor->terrain_height_revision;
+                reload_loaded_water_cells(*editor, &*streamed_water);
+            }
             if (streamed_water->render_data_dirty()) {
                 const auto water_vertices = streamed_water->build_render_vertices();
                 std::vector<Vertex> upload;
                 upload.reserve(water_vertices.size());
                 for (const auto& vertex : water_vertices)
-                    upload.push_back({vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b});
+                    upload.push_back(
+                        {vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b, vertex.depth, 0.0f});
                 const auto uploaded = renderer.upload_water_vertices(upload);
                 if (!uploaded) {
                     SDL_DestroyWindow(window);
@@ -7750,6 +7879,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                             static_cast<float>(body_position.x), static_cast<float>(body_position.z),
                             player_facing_yaw);
                     }
+                    transform->position = {static_cast<float>(body_position.x), static_cast<float>(body_position.y),
+                        static_cast<float>(body_position.z)};
                     constexpr float k_model_forward_yaw_offset = 3.14159265f;
                     const auto facing_q =
                         XMQuaternionRotationRollPitchYaw(0.0f, player_facing_yaw + k_model_forward_yaw_offset, 0.0f);
