@@ -1,154 +1,63 @@
 {
-
-  "designResolution": [
-
-    1920.0,
-
-    1080.0
-
-  ],
-
+  "designResolution": [1920.0, 1080.0],
   "id": "pause",
-
   "schemaVersion": 1,
-
   "widgets": [
-
     {
-
       "anchor": "center",
-
+      "id": "pause_dim",
+      "offset": [0.0, 0.0],
+      "size": [1920.0, 1080.0],
+      "type": "panel",
+      "opacity": 0.7,
+      "color": [21, 23, 25, 255]
+    },
+    {
+      "anchor": "center",
       "id": "pause_panel",
-
-      "offset": [
-
-        0.0,
-
-        0.0
-
-      ],
-
-      "size": [
-
-        560.0,
-
-        320.0
-
-      ],
-
-      "type": "panel"
-
+      "offset": [0.0, 0.0],
+      "size": [360.0, 280.0],
+      "type": "panel",
+      "color": [45, 41, 35, 250]
     },
-
     {
-
       "anchor": "center",
-
       "bind": "pause.title",
-
-      "fontSize": 48.0,
-
+      "fontSize": 40.0,
       "id": "pause_title",
-
-      "offset": [
-
-        -120.0,
-
-        -100.0
-
-      ],
-
-      "size": [
-
-        240.0,
-
-        56.0
-
-      ],
-
-      "text": "PAUSED",
-
+      "offset": [0.0, -90.0],
+      "size": [280.0, 48.0],
+      "text": "Paused",
       "textAlign": "center",
-
       "textVAlign": "middle",
-
-      "type": "text"
-
+      "type": "text",
+      "color": [241, 238, 232, 255]
     },
-
     {
-
       "anchor": "center",
-
       "bind": "pause.resume",
-
-      "fontSize": 32.0,
-
+      "fontSize": 28.0,
       "id": "pause_resume",
-
-      "offset": [
-
-        0.0,
-
-        -10.0
-
-      ],
-
-      "size": [
-
-        280.0,
-
-        52.0
-
-      ],
-
+      "offset": [0.0, -10.0],
+      "size": [280.0, 44.0],
       "text": "Resume",
-
       "textAlign": "center",
-
       "textVAlign": "middle",
-
-      "type": "button"
-
+      "type": "button",
+      "color": [213, 185, 120, 255]
     },
-
     {
-
       "anchor": "center",
-
       "bind": "pause.quit",
-
-      "fontSize": 32.0,
-
+      "fontSize": 28.0,
       "id": "pause_quit",
-
-      "offset": [
-
-        0.0,
-
-        60.0
-
-      ],
-
-      "size": [
-
-        280.0,
-
-        52.0
-
-      ],
-
+      "offset": [0.0, 50.0],
+      "size": [280.0, 44.0],
       "text": "Main Menu",
-
       "textAlign": "center",
-
       "textVAlign": "middle",
-
-      "type": "button"
-
+      "type": "button",
+      "color": [41, 45, 48, 255]
     }
-
   ]
-
 }
-

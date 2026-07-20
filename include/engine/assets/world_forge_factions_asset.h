@@ -2,6 +2,7 @@
 
 #include "engine/core/result.h"
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -49,6 +50,13 @@ struct WorldForgeFactionEntity {
     std::vector<std::string> open_questions;
     /// When set and tracks_player, StandingRuntime tracks a score for this faction.
     std::optional<WorldForgeFactionStandingConfig> standing;
+    /// Optional cartography presentation (Map Canvas / future player map).
+    std::string emblem_path;
+    /// Optional RGB 0..1 map tint; empty = editor default.
+    std::optional<std::array<float, 3>> map_color;
+    /// Cartography typeface id: `cinzel` | `forum` | `eb_garamond` | `uncial_antiqua` | `metamorphous` |
+    /// `medievalsharp`.
+    std::string map_typeface_id;
 };
 
 struct WorldForgeFactionsAsset {

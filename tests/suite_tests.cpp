@@ -36,6 +36,7 @@
 #include "engine/dialogue/twee_import.h"
 #include "engine/ui/world_forge_editor.h"
 #include "engine/ui/world_forge_graph_camera.h"
+#include "engine/ui/cartography_strokes.h"
 #include "engine/core/id_slug.h"
 #include "engine/automation/world_forge_commands.h"
 #include "engine/automation/project_git_commands.h"
@@ -68,6 +69,8 @@
 #include "engine/physics/character_controller.h"
 #include "engine/rendering/debug_camera.h"
 #include "engine/rendering/orbit_camera.h"
+#include "engine/diagnostics/crash_bundle.h"
+#include "engine/diagnostics/gpu_diagnostics.h"
 #include "engine/diagnostics/logger.h"
 #include <array>
 #include <cstdlib>
@@ -600,6 +603,46 @@ int main(int argc,char**argv){
                 r.check(std::fabs(back[0]-100.0f)<0.01f&&std::fabs(back[1]-50.0f)<0.01f,
                     "map canvas screen/world round trip via graph camera");
             }
+        }
+        {
+            using engine::CartographyStrokeStyle;
+            r.check(std::string(engine::cartography_stroke_style_id(CartographyStrokeStyle::PoliticalBorder))==
+                    "political_border","stroke style id political_border");
+            r.check(engine::cartography_stroke_style_from_id("highway")==CartographyStrokeStyle::Highway,
+                "stroke style from id highway");
+            r.check(engine::cartography_stroke_style_from_id("stroke-ferry")==CartographyStrokeStyle::Ferry,
+                "stroke style from texture-like id");
+            const auto& road=engine::cartography_stroke_style_info(CartographyStrokeStyle::Road);
+            r.check(std::string(road.texture_key)=="stroke-road"&&road.repeat_px==256.0f,"road stroke info");
+            // Empty / single-point paths produce no stamps.
+            r.check(engine::build_cartography_stroke_stamps({},4.0f,256.0f).empty(),"empty polyline no stamps");
+            r.check(engine::build_cartography_stroke_stamps({{0,0}},4.0f,256.0f).empty(),"single point no stamps");
+            // Degenerate zero-length segment skipped.
+            engine::CartographyStrokeBuildStats stats{};
+            auto skipped=engine::build_cartography_stroke_stamps({{0,0},{0,0},{10,0}},3.0f,256.0f,&stats);
+            r.check(skipped.size()==1&&stats.segment_count==1&&stats.stamp_count==1,
+                "zero-length segment skipped");
+            // Continuous UV along a two-segment path.
+            auto stamps=engine::build_cartography_stroke_stamps({{0,0},{100,0},{100,50}},4.0f,100.0f,&stats);
+            r.check(stamps.size()==2&&stats.total_length_px>149.0f&&stats.total_length_px<151.0f,
+                "two-segment stroke length");
+            r.check(stamps[0].u0==0.0f&&std::fabs(stamps[0].u1-1.0f)<0.01f,"first stamp UV spans one repeat");
+            r.check(std::fabs(stamps[1].u0-1.0f)<0.01f&&stamps[1].u1>stamps[1].u0,"second stamp continues UV");
+            // Hit-testing remains against the authored polyline (not the ribbon thickness).
+            const float on_line=engine::cartography_stroke_point_polyline_distance(50.0f,0.0f,{{0,0},{100,0}});
+            const float off_line=engine::cartography_stroke_point_polyline_distance(50.0f,20.0f,{{0,0},{100,0}});
+            r.check(on_line<0.5f&&off_line>19.0f,"polyline hit distance");
+            // Stroke tile files exist with alpha (runtime + context).
+            const auto stroke_runtime=project/"assets/ui/cartography/strokes/stroke-road.png";
+            const auto stroke_context=std::filesystem::path("context/art/cartography/strokes/stroke-road.png");
+#ifdef ENGINE_REPOSITORY_ROOT
+            const auto stroke_context_abs=std::filesystem::path(ENGINE_REPOSITORY_ROOT)/stroke_context;
+            r.check(std::filesystem::exists(stroke_runtime)||std::filesystem::exists(stroke_context)||
+                    std::filesystem::exists(stroke_context_abs),"stroke-road.png present");
+#else
+            r.check(std::filesystem::exists(stroke_runtime)||std::filesystem::exists(stroke_context),
+                "stroke-road.png present");
+#endif
         }
         const auto quest_path=engine::default_world_forge_quests_path(project);
         r.check(quest_path.filename()=="quests.worldforge.json","default quests path filename");
@@ -2383,6 +2426,13 @@ int main(int argc,char**argv){
         engine::EngineError error{"TEST-RUNTIME",engine::Severity::Error,engine::ErrorCategory::Validation,"diagnostics-test","visible error",std::nullopt,{},"fix","test-correlation",engine::ErrorPriority::P1High};engine::Logger::instance().write(error);
         r.check(engine::Logger::instance().error_count()==1,"error counter increments");r.check(engine::Logger::instance().recent_errors().size()==1,"recent error retained");
         std::ifstream input(path);std::string line;std::getline(input,line);r.check(line.find("\"code\":\"TEST-RUNTIME\"")!=std::string::npos,"JSONL error persisted");r.check(line.find("\"priority\":\"P1\"")!=std::string::npos,"priority label persisted");
+        r.check(line.find("\"gpuDiagnostics\":{\"available\":")!=std::string::npos,"JSONL includes GPU diagnostics");
+        r.check(line.find("\"adapterName\":")!=std::string::npos&&line.find("\"driverVersion\":")!=std::string::npos&&line.find("\"dedicatedVideoMemory\":")!=std::string::npos&&line.find("\"featureLevel\":")!=std::string::npos&&line.find("\"deviceRemovalHresult\":")!=std::string::npos,"JSONL includes GPU context fields");
+        const auto bundle_root=std::filesystem::temp_directory_path()/("engine-diagnostics-bundle-"+engine::make_correlation_id());
+        auto bundle=engine::CrashBundle::write_diagnostic_bundle(bundle_root,error);
+        r.check(bundle.has_value(),"crash bundle writes");
+        if(bundle){std::ifstream diagnostic(bundle.value()/"diagnostic.json");std::string contents((std::istreambuf_iterator<char>(diagnostic)),{});r.check(contents.find("\"gpuDiagnostics\":{\"available\":")!=std::string::npos,"crash bundle includes GPU diagnostics");r.check(contents.find("\"adapterName\":")!=std::string::npos&&contents.find("\"driverVersion\":")!=std::string::npos&&contents.find("\"dedicatedVideoMemory\":")!=std::string::npos&&contents.find("\"featureLevel\":")!=std::string::npos&&contents.find("\"deviceRemovalHresult\":")!=std::string::npos,"crash bundle includes GPU context fields");}
+        std::error_code cleanup;std::filesystem::remove(path,cleanup);std::filesystem::remove_all(bundle_root,cleanup);
     }else if(suite=="animator"){
         const auto root=std::filesystem::temp_directory_path()/("engine-animator-suite-"+engine::make_correlation_id());
         std::filesystem::create_directories(root/"assets/models");

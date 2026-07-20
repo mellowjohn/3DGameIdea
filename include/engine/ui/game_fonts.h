@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 struct ImFont;
 struct ImGuiIO;
 
@@ -15,5 +17,9 @@ namespace engine::GameFonts {
 
 /// Face for game canvas / HUD overlay text (always Cinzel when loaded).
 [[nodiscard]] ImFont* for_design_size(float design_px);
+
+/// World Forge cartography labels (`cinzel`, `forum`, `eb_garamond`, `uncial_antiqua`, `metamorphous`,
+/// `medievalsharp`).
+[[nodiscard]] ImFont* map_typeface(const std::string& id);
 
 } // namespace engine::GameFonts

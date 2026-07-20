@@ -1,6 +1,7 @@
 #include "engine/rendering/render_app.h"
 
 #include "engine/diagnostics/logger.h"
+#include "engine/diagnostics/gpu_diagnostics.h"
 #include "engine/assets/material_asset.h"
 #include "engine/assets/mesh_asset.h"
 #include "engine/assets/prefab_asset.h"
@@ -32,6 +33,8 @@
 #include "engine/automation/editor_bridge.h"
 #include "engine/automation/automation_trace.h"
 #include "engine/automation/editor_session.h"
+#include "engine/automation/editor_screenshot.h"
+#include "engine/automation/live_automation_control.h"
 #include "engine/automation/project_git_commands.h"
 #include "engine/automation/terrain_edit_commands.h"
 #include "engine/assets/script_bindings_asset.h"
@@ -46,6 +49,8 @@
 #include "engine/assets/hud_asset.h"
 #include "engine/ui/hud_runtime.h"
 #include "engine/ui/ui_canvas_editor.h"
+#include "engine/ui/editor_ui_hotspots.h"
+#include "engine/ui/editor_chrome.h"
 #include "engine/ui/world_forge_editor.h"
 #include "engine/assets/world_forge_acts.h"
 #include "engine/ui/imgui_png_texture.h"
@@ -83,6 +88,7 @@
 #include <cctype>
 #include <chrono>
 #include <cmath>
+#include <ctime>
 #include <cstring>
 #include <deque>
 #include <filesystem>
@@ -92,6 +98,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <cstdio>
 #include <cstdlib>
@@ -432,6 +439,7 @@ public:
                 return Result<void>::failure(graphics_error("GFX-DEVICE", "No Direct3D 12 device is available", hr));
             adapter_name_ = "Microsoft WARP";
         }
+        set_process_gpu_diagnostics(GpuDiagnostics::from_device(adapter.Get(), device_.Get()));
 
         D3D12_COMMAND_QUEUE_DESC queue_desc{};
         queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -455,7 +463,7 @@ public:
         hr=device_->CreateDescriptorHeap(&dsv_desc,IID_PPV_ARGS(&dsv_heap_));
         if(FAILED(hr)) return Result<void>::failure(graphics_error("GFX-DSV-HEAP","Could not create depth heap",hr));
         srv_stride_=device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        if(editor){D3D12_DESCRIPTOR_HEAP_DESC imgui_desc{};imgui_desc.NumDescriptors=10;imgui_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;imgui_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;hr=device_->CreateDescriptorHeap(&imgui_desc,IID_PPV_ARGS(&imgui_heap_));if(FAILED(hr))return Result<void>::failure(graphics_error("EDITOR-DESCRIPTOR-HEAP","Could not create editor descriptor heap",hr));}
+        if(editor){D3D12_DESCRIPTOR_HEAP_DESC imgui_desc{};imgui_desc.NumDescriptors=256;imgui_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;imgui_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;hr=device_->CreateDescriptorHeap(&imgui_desc,IID_PPV_ARGS(&imgui_heap_));if(FAILED(hr))return Result<void>::failure(graphics_error("EDITOR-DESCRIPTOR-HEAP","Could not create editor descriptor heap",hr));}
         // Post-process descriptor heap: depth, lit, AO, water scene-color copy.
         D3D12_DESCRIPTOR_HEAP_DESC post_desc{};post_desc.NumDescriptors=4;post_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;post_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
         hr=device_->CreateDescriptorHeap(&post_desc,IID_PPV_ARGS(&post_srv_heap_));
@@ -509,7 +517,7 @@ public:
         if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-FENCE", "Could not create GPU fence", hr));
         fence_event_ = CreateEventW(nullptr, FALSE, FALSE, nullptr);
         if (!fence_event_) return Result<void>::failure(graphics_error("GFX-FENCE-EVENT", "Could not create fence event", HRESULT_FROM_WIN32(GetLastError())));
-        if(editor){IMGUI_CHECKVERSION();ImGui::CreateContext();auto& io=ImGui::GetIO();io.ConfigFlags|=ImGuiConfigFlags_DockingEnable;if(hidden)io.IniFilename=nullptr;else{std::filesystem::create_directories("out/editor");io.IniFilename="out/editor/imgui.ini";}ImGui::StyleColorsDark();(void)EditorFonts::load(io);if(!ImGui_ImplSDL3_InitForD3D(window)||!ImGui_ImplDX12_Init(device_.Get(),frame_count,DXGI_FORMAT_R8G8B8A8_UNORM,imgui_heap_.Get(),imgui_heap_->GetCPUDescriptorHandleForHeapStart(),imgui_heap_->GetGPUDescriptorHandleForHeapStart()))return Result<void>::failure(graphics_error("EDITOR-IMGUI-INIT","Could not initialize Dear ImGui SDL3/D3D12 backends"));editor_initialized_=true;}
+        if(editor){IMGUI_CHECKVERSION();ImGui::CreateContext();auto& io=ImGui::GetIO();io.ConfigFlags|=ImGuiConfigFlags_DockingEnable;if(hidden)io.IniFilename=nullptr;else{std::filesystem::create_directories("out/editor");io.IniFilename="out/editor/imgui.ini";}ImGui::StyleColorsDark();EditorChrome::apply_style(ImGui::GetStyle());(void)EditorFonts::load(io);if(!ImGui_ImplSDL3_InitForD3D(window)||!ImGui_ImplDX12_Init(device_.Get(),frame_count,DXGI_FORMAT_R8G8B8A8_UNORM,imgui_heap_.Get(),imgui_heap_->GetCPUDescriptorHandleForHeapStart(),imgui_heap_->GetGPUDescriptorHandleForHeapStart()))return Result<void>::failure(graphics_error("EDITOR-IMGUI-INIT","Could not initialize Dear ImGui SDL3/D3D12 backends"));editor_initialized_=true;}
         return Result<void>::success();
     }
 
@@ -1223,33 +1231,303 @@ public:
     [[nodiscard]] ImTextureID game_viewport_texture() const { return static_cast<ImTextureID>(game_viewport_gpu_.ptr); }
 
     void ensure_world_forge_placeholder_textures(WorldForgeEditorSession& session) {
-        if (session.concept_placeholder_tex_ready || !editor_requested_ || !imgui_heap_ || !device_ || !queue_)
-            return;
-        session.concept_placeholder_tex_ready = true;
+        if (!editor_requested_ || !imgui_heap_ || !device_ || !queue_) return;
 
-        static constexpr const char* keys[] = {"person", "deity", "artifact", "organization", "faction", "region", "poi"};
-        static constexpr const char* files[] = {"wf_person.png", "wf_deity.png", "wf_artifact.png", "wf_organization.png",
-            "wf_faction.png", "wf_region.png", "wf_poi.png"};
-        world_forge_placeholder_textures_.resize(7);
-        for (int i = 0; i < 7; ++i) {
-            const std::filesystem::path relative =
-                std::filesystem::path("assets/world-forge/placeholders") / files[i];
-            std::filesystem::path path = relative;
+        if (!session.concept_placeholder_tex_ready) {
+            session.concept_placeholder_tex_ready = true;
+
+            static constexpr const char* keys[] = {"person", "deity", "artifact", "organization", "faction", "region",
+                "poi"};
+            static constexpr const char* files[] = {"wf_person.png", "wf_deity.png", "wf_artifact.png",
+                "wf_organization.png", "wf_faction.png", "wf_region.png", "wf_poi.png"};
+            world_forge_placeholder_textures_.resize(7);
+            for (int i = 0; i < 7; ++i) {
+                const std::filesystem::path relative =
+                    std::filesystem::path("assets/world-forge/placeholders") / files[i];
+                std::filesystem::path path = relative;
 #ifdef ENGINE_REPOSITORY_ROOT
-            if (!std::filesystem::exists(path))
-                path = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / relative;
+                if (!std::filesystem::exists(path))
+                    path = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / relative;
 #endif
-            ID3D12Resource* raw = nullptr;
-            const UINT srv_index = 3u + static_cast<UINT>(i);
-            auto loaded = load_png_imgui_srv(device_.Get(), queue_.Get(), imgui_heap_.Get(), srv_stride_, srv_index,
-                path, &raw, [this]() { wait_for_gpu(); });
-            if (!loaded || !raw) {
-                Logger::instance().write(Severity::Warning, "world-forge",
-                    std::string("Concept placeholder PNG failed: ") + files[i]);
-                continue;
+                ID3D12Resource* raw = nullptr;
+                const UINT srv_index = 3u + static_cast<UINT>(i);
+                auto loaded = load_png_imgui_srv(device_.Get(), queue_.Get(), imgui_heap_.Get(), srv_stride_,
+                    srv_index, path, &raw, [this]() { wait_for_gpu(); });
+                if (!loaded || !raw) {
+                    Logger::instance().write(Severity::Warning, "world-forge",
+                        std::string("Concept placeholder PNG failed: ") + files[i]);
+                    continue;
+                }
+                world_forge_placeholder_textures_[static_cast<std::size_t>(i)].Attach(raw);
+                session.concept_placeholder_tex[keys[i]] = loaded.value();
             }
-            world_forge_placeholder_textures_[static_cast<std::size_t>(i)].Attach(raw);
-            session.concept_placeholder_tex[keys[i]] = loaded.value();
+        }
+
+        if (!session.cartography_tex_ready) {
+            session.cartography_tex_ready = true;
+            static constexpr const char* carto_keys[] = {"icon-village", "icon-town", "icon-city", "icon-fortress",
+                "icon-ruin", "icon-gate", "icon-shrine", "icon-camp", "icon-landmark", "icon-dock",
+                "heraldry-kingdom_tessera", "heraldry-chaotic_imperium", "heraldry-cristallo", "heraldry-arrotrebae",
+                "heraldry-orc_warbands", "heraldry-thalassar", "heraldry-underflow"};
+            static constexpr const char* carto_files[] = {"icon-village.png", "icon-town.png", "icon-city.png",
+                "icon-fortress.png", "icon-ruin.png", "icon-gate.png", "icon-shrine.png", "icon-camp.png",
+                "icon-landmark.png", "icon-dock.png", "heraldry-kingdom_tessera.png", "heraldry-chaotic_imperium.png",
+                "heraldry-cristallo.png", "heraldry-arrotrebae.png", "heraldry-orc_warbands.png",
+                "heraldry-thalassar.png", "heraldry-underflow.png"};
+            constexpr int k_carto_count = 17;
+            cartography_textures_.resize(static_cast<std::size_t>(k_carto_count));
+            for (int i = 0; i < k_carto_count; ++i) {
+                const std::filesystem::path relative =
+                    std::filesystem::path("samples/open-world-rpg/assets/ui/cartography") / carto_files[i];
+                std::filesystem::path path = relative;
+#ifdef ENGINE_REPOSITORY_ROOT
+                if (!std::filesystem::exists(path))
+                    path = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / relative;
+                if (!std::filesystem::exists(path))
+                    path = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / "context/art/cartography" / carto_files[i];
+#endif
+                if (!std::filesystem::exists(path))
+                    path = std::filesystem::path("context/art/cartography") / carto_files[i];
+                ID3D12Resource* raw = nullptr;
+                const UINT srv_index = 10u + static_cast<UINT>(i);
+                auto loaded = load_png_imgui_srv(device_.Get(), queue_.Get(), imgui_heap_.Get(), srv_stride_,
+                    srv_index, path, &raw, [this]() { wait_for_gpu(); });
+                if (!loaded || !raw) {
+                    Logger::instance().write(Severity::Warning, "world-forge",
+                        std::string("Cartography icon PNG failed: ") + carto_files[i]);
+                    continue;
+                }
+                cartography_textures_[static_cast<std::size_t>(i)].Attach(raw);
+                session.cartography_tex[carto_keys[i]] = loaded.value();
+            }
+
+            // Discrete world-map zoom layers + frame/fog chrome (SRV 32+).
+            {
+                auto resolve_carto_dir = [](const char* relative_under_cartography) {
+                    std::filesystem::path root =
+                        std::filesystem::path("samples/open-world-rpg/assets/ui/cartography") /
+                        relative_under_cartography;
+#ifdef ENGINE_REPOSITORY_ROOT
+                    if (!std::filesystem::exists(root / "manifest.json") &&
+                        !std::filesystem::exists(root / "frame-full.png") &&
+                        !std::filesystem::exists(root / "fog-veil.png"))
+                        root = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / root;
+                    if (!std::filesystem::exists(root / "manifest.json") &&
+                        !std::filesystem::exists(root / "frame-full.png") &&
+                        !std::filesystem::exists(root / "fog-veil.png"))
+                        root = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / "context/art/cartography" /
+                               relative_under_cartography;
+#endif
+                    if (!std::filesystem::exists(root / "manifest.json") &&
+                        !std::filesystem::exists(root / "frame-full.png") &&
+                        !std::filesystem::exists(root / "fog-veil.png"))
+                        root = std::filesystem::path("context/art/cartography") / relative_under_cartography;
+                    return root;
+                };
+
+                UINT srv_index = 32u;
+                auto load_carto_png = [&](const std::filesystem::path& path, const char* key) -> bool {
+                    if (srv_index >= 256u || !std::filesystem::exists(path)) return false;
+                    ID3D12Resource* raw = nullptr;
+                    auto loaded = load_png_imgui_srv(device_.Get(), queue_.Get(), imgui_heap_.Get(), srv_stride_,
+                        srv_index, path, &raw, [this]() { wait_for_gpu(); });
+                    if (!loaded || !raw) {
+                        Logger::instance().write(Severity::Warning, "world-forge",
+                            "Cartography PNG failed: " + path.generic_string());
+                        return false;
+                    }
+                    cartography_textures_.push_back({});
+                    cartography_textures_.back().Attach(raw);
+                    session.cartography_tex[key] = loaded.value();
+                    ++srv_index;
+                    return true;
+                };
+
+                const auto layers_root = resolve_carto_dir("world-map-layers");
+                const auto layers_manifest = layers_root / "manifest.json";
+                if (std::filesystem::exists(layers_manifest)) {
+                    try {
+                        std::ifstream in(layers_manifest);
+                        nlohmann::json manifest;
+                        in >> manifest;
+                        session.map_layer_aspect = manifest.value("aspect", 1.5f);
+                        session.map_layer_native_width =
+                            manifest.value("nativeWidth", manifest.value("masterWidth", 0));
+                        session.map_layer_transition_seconds = manifest.value("transitionSeconds", 0.35f);
+                        session.map_layers.clear();
+                        session.map_layer_tex.clear();
+                        for (const auto& layer_json : manifest.value("layers", nlohmann::json::array())) {
+                            WorldForgeEditorSession::WorldMapLayer layer{};
+                            layer.id = layer_json.value("id", "");
+                            if (layer.id.empty()) continue;
+                            layer.u0 = layer_json.value("u0", 0.0f);
+                            layer.v0 = layer_json.value("v0", 0.0f);
+                            layer.u1 = layer_json.value("u1", 1.0f);
+                            layer.v1 = layer_json.value("v1", 1.0f);
+                            layer.min_zoom = layer_json.value("minZoom", 0.0f);
+                            layer.priority = layer_json.value("priority", 0);
+                            layer.width = layer_json.value("width", 0);
+                            layer.height = layer_json.value("height", 0);
+                            const auto path = layers_root / layer_json.value("file", layer.id + ".png");
+                            if (srv_index >= 256u) break;
+                            ID3D12Resource* raw = nullptr;
+                            auto loaded = load_png_imgui_srv(device_.Get(), queue_.Get(), imgui_heap_.Get(),
+                                srv_stride_, srv_index, path, &raw, [this]() { wait_for_gpu(); });
+                            if (!loaded || !raw) {
+                                Logger::instance().write(Severity::Warning, "world-forge",
+                                    "World-map layer failed: " + path.generic_string());
+                                continue;
+                            }
+                            cartography_textures_.push_back({});
+                            cartography_textures_.back().Attach(raw);
+                            session.map_layer_tex[layer.id] = loaded.value();
+                            session.cartography_tex["layer-" + layer.id] = loaded.value();
+                            if (layer.id == "continent")
+                                session.cartography_tex["official-world-map"] = loaded.value();
+                            session.map_layers.push_back(std::move(layer));
+                            ++srv_index;
+                        }
+                        session.map_layers_ready = !session.map_layer_tex.empty();
+                        if (session.map_layer_active_id.empty() && !session.map_layers.empty())
+                            session.map_layer_active_id = session.map_layers.front().id;
+                        Logger::instance().write(Severity::Info, "world-forge",
+                            "Loaded world-map layers: " + std::to_string(session.map_layer_tex.size()));
+                    } catch (const std::exception& ex) {
+                        Logger::instance().write(Severity::Warning, "world-forge",
+                            std::string("World-map layer manifest parse failed: ") + ex.what());
+                    }
+                }
+
+                const auto frame_root = resolve_carto_dir("frame");
+                load_carto_png(frame_root / "frame-full.png", "map-frame");
+                const auto fog_root = resolve_carto_dir("fog");
+                load_carto_png(fog_root / "fog-veil.png", "map-fog");
+                const auto panel_root = resolve_carto_dir("panel");
+                load_carto_png(panel_root / "panel-parchment.png", "panel-parchment");
+                load_carto_png(panel_root / "panel-border.png", "panel-border");
+                load_carto_png(panel_root / "panel-border-wide.png", "panel-border-wide");
+
+                // Transparent stroke tiles for borders / roads / ferry / river (image-stamp ribbons).
+                {
+                    auto resolve_strokes_dir = []() {
+                        const char* marker = "stroke-road.png";
+                        std::filesystem::path root =
+                            std::filesystem::path("samples/open-world-rpg/assets/ui/cartography/strokes");
+#ifdef ENGINE_REPOSITORY_ROOT
+                        if (!std::filesystem::exists(root / marker))
+                            root = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / root;
+                        if (!std::filesystem::exists(root / marker))
+                            root = std::filesystem::path(ENGINE_REPOSITORY_ROOT) /
+                                   "context/art/cartography/strokes";
+#endif
+                        if (!std::filesystem::exists(root / marker))
+                            root = std::filesystem::path("context/art/cartography/strokes");
+                        return root;
+                    };
+                    const auto strokes_root = resolve_strokes_dir();
+                    static constexpr const char* stroke_keys[] = {"stroke-political-border", "stroke-track",
+                        "stroke-road", "stroke-highway", "stroke-ferry", "stroke-river"};
+                    static constexpr const char* stroke_files[] = {"stroke-political-border.png", "stroke-track.png",
+                        "stroke-road.png", "stroke-highway.png", "stroke-ferry.png", "stroke-river.png"};
+                    for (int i = 0; i < 6; ++i) {
+                        if (!load_carto_png(strokes_root / stroke_files[i], stroke_keys[i])) {
+                            Logger::instance().write(Severity::Warning, "world-forge",
+                                std::string("Cartography stroke PNG missing: ") + stroke_files[i]);
+                        }
+                    }
+                }
+
+                // Legacy tiled LOD fallback when discrete layers are unavailable.
+                if (!session.map_layers_ready) {
+                    std::filesystem::path tiles_root =
+                        std::filesystem::path("samples/open-world-rpg/assets/ui/cartography/world-map-tiles");
+#ifdef ENGINE_REPOSITORY_ROOT
+                    if (!std::filesystem::exists(tiles_root / "manifest.json"))
+                        tiles_root = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / tiles_root;
+                    if (!std::filesystem::exists(tiles_root / "manifest.json"))
+                        tiles_root =
+                            std::filesystem::path(ENGINE_REPOSITORY_ROOT) / "context/art/cartography/world-map-tiles";
+#endif
+                    if (!std::filesystem::exists(tiles_root / "manifest.json"))
+                        tiles_root = std::filesystem::path("context/art/cartography/world-map-tiles");
+
+                    const auto manifest_path = tiles_root / "manifest.json";
+                    if (std::filesystem::exists(manifest_path)) {
+                        try {
+                            std::ifstream in(manifest_path);
+                            nlohmann::json manifest;
+                            in >> manifest;
+                            session.map_tile_size = manifest.value("tileSize", 512);
+                            session.map_tile_max_lod = manifest.value("maxLod", 0);
+                            session.map_tile_aspect = manifest.value("aspect", 1.5f);
+                            session.map_tile_native_width =
+                                manifest.value("nativeWidth", manifest.value("masterWidth", 0));
+                            session.map_tile_levels.clear();
+                            session.map_tile_tex.clear();
+                            for (const auto& level_json : manifest.value("levels", nlohmann::json::array())) {
+                                WorldForgeEditorSession::WorldMapTileLevel level{};
+                                level.lod = level_json.value("lod", 0);
+                                level.cols = level_json.value("cols", 1);
+                                level.rows = level_json.value("rows", 1);
+                                level.content_width = level_json.value("contentWidth", session.map_tile_size);
+                                level.content_height = level_json.value("contentHeight", session.map_tile_size);
+                                level.level_width = level_json.value("levelWidth", level.content_width);
+                                level.level_height = level_json.value("levelHeight", level.content_height);
+                                session.map_tile_levels.push_back(level);
+                                for (int ty = 0; ty < level.rows; ++ty) {
+                                    for (int tx = 0; tx < level.cols; ++tx) {
+                                        if (srv_index >= 256u) {
+                                            Logger::instance().write(Severity::Warning, "world-forge",
+                                                "World-map tile SRV heap exhausted");
+                                            break;
+                                        }
+                                        const auto path = tiles_root / ("z" + std::to_string(level.lod)) /
+                                                          (std::to_string(tx) + "_" + std::to_string(ty) + ".png");
+                                        ID3D12Resource* raw = nullptr;
+                                        auto loaded = load_png_imgui_srv(device_.Get(), queue_.Get(), imgui_heap_.Get(),
+                                            srv_stride_, srv_index, path, &raw, [this]() { wait_for_gpu(); });
+                                        if (!loaded || !raw) {
+                                            Logger::instance().write(Severity::Warning, "world-forge",
+                                                "World-map tile failed: " + path.generic_string());
+                                            continue;
+                                        }
+                                        cartography_textures_.push_back({});
+                                        cartography_textures_.back().Attach(raw);
+                                        const std::uint32_t key = (static_cast<std::uint32_t>(level.lod) << 24) |
+                                                                 (static_cast<std::uint32_t>(tx) << 12) |
+                                                                 static_cast<std::uint32_t>(ty);
+                                        session.map_tile_tex[key] = loaded.value();
+                                        ++srv_index;
+                                    }
+                                }
+                            }
+                            session.map_tiles_ready = !session.map_tile_tex.empty();
+                            const auto z0 = session.map_tile_tex.find(0u);
+                            if (z0 != session.map_tile_tex.end())
+                                session.cartography_tex["official-world-map"] = z0->second;
+                            Logger::instance().write(Severity::Info, "world-forge",
+                                "Loaded world-map tiles: " + std::to_string(session.map_tile_tex.size()) +
+                                    " (maxLod=" + std::to_string(session.map_tile_max_lod) + ")");
+                        } catch (const std::exception& ex) {
+                            Logger::instance().write(Severity::Warning, "world-forge",
+                                std::string("World-map tile manifest parse failed: ") + ex.what());
+                        }
+                    } else {
+                        std::filesystem::path path = std::filesystem::path("context/story/official-world-map.png");
+#ifdef ENGINE_REPOSITORY_ROOT
+                        if (!std::filesystem::exists(path))
+                            path =
+                                std::filesystem::path(ENGINE_REPOSITORY_ROOT) / "context/story/official-world-map.png";
+#endif
+                        if (load_carto_png(path, "official-world-map")) {
+                            // ok
+                        } else {
+                            Logger::instance().write(Severity::Warning, "world-forge",
+                                "Official world map PNG failed to load for Cartography backdrop");
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -2286,6 +2564,7 @@ private:
             const HRESULT removed = device_->GetDeviceRemovedReason();
             if (FAILED(removed)) {
                 error.category = ErrorCategory::DeviceRemoval;
+                set_process_gpu_device_removal_hresult(removed);
                 std::ostringstream value;
                 value << "Device removal HRESULT 0x" << std::hex << static_cast<unsigned long>(removed);
                 error.causes.push_back(value.str());
@@ -2341,6 +2620,7 @@ private:
     ComPtr<ID3D12DescriptorHeap> dsv_heap_;
     ComPtr<ID3D12DescriptorHeap> imgui_heap_;
     std::vector<ComPtr<ID3D12Resource>> world_forge_placeholder_textures_;
+    std::vector<ComPtr<ID3D12Resource>> cartography_textures_;
     bool editor_initialized_=false;
     bool editor_requested_=false;
     bool debug_world_=false;
@@ -2535,10 +2815,18 @@ struct EditorState {
     enum class ViewportTab : std::uint8_t { Scene, Sculpt, Game, UI, WorldForge, DesignDocs };
 
     struct DesignDocEntry {
-        std::string section;       // features | story | art
+        std::string section;       // features | story | art | design
         std::string relative_path; // context/...
         std::string title;
         std::string status; // from "Status:" line, lowercased token
+    };
+
+    struct DomOpenQuestion {
+        std::string id;
+        std::string priority; // P0 | P1 | P2
+        std::string question;
+        std::string context; // why / notes / draft columns combined for the form
+        std::string answer;
     };
 
     Scene scene;
@@ -2669,10 +2957,20 @@ struct EditorState {
     std::string design_docs_loaded_relative;
     std::string design_docs_error;
     std::uint32_t design_docs_scan_counter = 0;
+    bool design_docs_dom_form_mode = true; // Form vs markdown preview for Dom questionnaire
+    bool design_docs_markdown_selectable = true; // Selectable source (copy) vs rendered markdown
+    std::string design_docs_copy_status;
+    int design_docs_dom_priority_filter = 0; // 0=All, 1=P0, 2=P1, 3=P2
+    std::vector<DomOpenQuestion> design_docs_dom_questions;
+    std::string design_docs_dom_session_notes;
+    std::string design_docs_dom_form_status;
+    std::string design_docs_dom_form_source_path;
     ScriptFileMonitor script_monitor;
     std::uint32_t script_reload_counter = 0;
     std::uint32_t bridge_poll_counter = 0;
-    bool live_automation_enabled = false;
+    // The editor is automation-first: start the project-scoped MCP bridge with each editor session.
+    // Authors can still disable it from Diagnostics when they do not want live tooling connected.
+    bool live_automation_enabled = true;
     char project_sync_commit_message[256]{};
     std::string project_sync_branch;
     std::string project_sync_summary = "Click Status to refresh";
@@ -2689,6 +2987,25 @@ struct EditorState {
     [[nodiscard]] bool test_session_running() const { return test_session == TestSessionState::Running; }
     bool force_select_viewport_tab = false;
     bool lock_viewport_tab = false;
+
+    /// Queued MCP UI input (applied after ImGui NewFrame).
+    struct InputEvent {
+        enum class Kind : std::uint8_t { Move, Button, Wheel, Key, Wait };
+        Kind kind = Kind::Wait;
+        float x = 0.0f;
+        float y = 0.0f;
+        int button = 0; // 0=left,1=right,2=middle
+        bool down = false;
+        float wheel = 0.0f;
+        int key = 0; // ImGuiKey or SDL scancode-ish; we map a small set
+        int wait_frames = 1;
+    };
+    std::deque<InputEvent> mcp_input_queue;
+    float mcp_cursor_x = -1.0f;
+    float mcp_cursor_y = -1.0f;
+    bool mcp_draw_cursor = false;
+    EditorUiHotspotRegistry ui_hotspots;
+
     [[nodiscard]] bool game_viewport_active() const { return active_viewport_tab == ViewportTab::Game; }
     [[nodiscard]] bool sculpt_viewport_active() const { return active_viewport_tab == ViewportTab::Sculpt; }
     [[nodiscard]] bool ui_viewport_active() const { return active_viewport_tab == ViewportTab::UI; }
@@ -2701,6 +3018,122 @@ struct EditorState {
 };
 
 void commit_active_terrain_stroke(EditorState& state);
+
+void enqueue_mcp_click(EditorState& state, float x, float y, int button, int hold_frames = 1) {
+    EditorState::InputEvent move;
+    move.kind = EditorState::InputEvent::Kind::Move;
+    move.x = x;
+    move.y = y;
+    state.mcp_input_queue.push_back(move);
+    EditorState::InputEvent down;
+    down.kind = EditorState::InputEvent::Kind::Button;
+    down.button = button;
+    down.down = true;
+    state.mcp_input_queue.push_back(down);
+    EditorState::InputEvent wait;
+    wait.kind = EditorState::InputEvent::Kind::Wait;
+    wait.wait_frames = (std::max)(1, hold_frames);
+    state.mcp_input_queue.push_back(wait);
+    EditorState::InputEvent up;
+    up.kind = EditorState::InputEvent::Kind::Button;
+    up.button = button;
+    up.down = false;
+    state.mcp_input_queue.push_back(up);
+}
+
+bool resolve_mcp_client_xy(SDL_Window* window, const nlohmann::json& params, float& out_x, float& out_y,
+    std::string* error, const EditorUiHotspotRegistry* hotspots = nullptr) {
+    if (params.contains("targetId") && params["targetId"].is_string()) {
+        const auto target_id = params["targetId"].get<std::string>();
+        if (!hotspots) {
+            if (error) *error = "targetId requires live hotspot registry";
+            return false;
+        }
+        const auto* spot = hotspots->find_exact(target_id);
+        if (!spot) {
+            if (error) *error = "Unknown targetId: " + target_id;
+            return false;
+        }
+        out_x = spot->cx;
+        out_y = spot->cy;
+        return true;
+    }
+    int w = 1, h = 1;
+    SDL_GetWindowSize(window, &w, &h);
+    if (params.contains("nx") || params.contains("ny")) {
+        const float nx = params.value("nx", 0.5f);
+        const float ny = params.value("ny", 0.5f);
+        out_x = nx * static_cast<float>(w);
+        out_y = ny * static_cast<float>(h);
+        return true;
+    }
+    if (params.contains("x") || params.contains("y")) {
+        out_x = params.value("x", 0.0f);
+        out_y = params.value("y", 0.0f);
+        return true;
+    }
+    if (error) *error = "Provide x/y client pixels or nx/ny normalized [0,1]";
+    return false;
+}
+
+void drain_mcp_input_queue(EditorState& state, SDL_Window* window) {
+    if (state.mcp_input_queue.empty()) {
+        state.mcp_draw_cursor = state.mcp_cursor_x >= 0.0f && state.mcp_cursor_y >= 0.0f;
+        return;
+    }
+    auto& io = ImGui::GetIO();
+    while (!state.mcp_input_queue.empty()) {
+        auto& ev = state.mcp_input_queue.front();
+        if (ev.kind == EditorState::InputEvent::Kind::Wait) {
+            if (ev.wait_frames > 1) {
+                --ev.wait_frames;
+                break;
+            }
+            state.mcp_input_queue.pop_front();
+            continue;
+        }
+        if (ev.kind == EditorState::InputEvent::Kind::Move) {
+            state.mcp_cursor_x = ev.x;
+            state.mcp_cursor_y = ev.y;
+            state.mcp_draw_cursor = true;
+            SDL_WarpMouseInWindow(window, static_cast<float>(ev.x), static_cast<float>(ev.y));
+            io.AddMousePosEvent(ev.x, ev.y);
+        } else if (ev.kind == EditorState::InputEvent::Kind::Button) {
+            if (state.mcp_cursor_x >= 0.0f) io.AddMousePosEvent(state.mcp_cursor_x, state.mcp_cursor_y);
+            io.AddMouseButtonEvent(ev.button, ev.down);
+        } else if (ev.kind == EditorState::InputEvent::Kind::Wheel) {
+            io.AddMouseWheelEvent(0.0f, ev.wheel);
+        } else if (ev.kind == EditorState::InputEvent::Kind::Key) {
+            // Small named key set for UI navigation.
+            ImGuiKey key = ImGuiKey_None;
+            switch (ev.key) {
+            case 27: key = ImGuiKey_Escape; break;
+            case 13: key = ImGuiKey_Enter; break;
+            case 9: key = ImGuiKey_Tab; break;
+            case 32: key = ImGuiKey_Space; break;
+            case 37: key = ImGuiKey_LeftArrow; break;
+            case 38: key = ImGuiKey_UpArrow; break;
+            case 39: key = ImGuiKey_RightArrow; break;
+            case 40: key = ImGuiKey_DownArrow; break;
+            default: break;
+            }
+            if (key != ImGuiKey_None) io.AddKeyEvent(key, ev.down);
+        }
+        state.mcp_input_queue.pop_front();
+        // One non-wait event per frame keeps ImGui click/hover sequencing stable.
+        break;
+    }
+}
+
+void draw_mcp_cursor_overlay(const EditorState& state) {
+    if (!state.mcp_draw_cursor || state.mcp_cursor_x < 0.0f || state.mcp_cursor_y < 0.0f) return;
+    ImDrawList* draw = ImGui::GetForegroundDrawList();
+    const ImVec2 p{state.mcp_cursor_x, state.mcp_cursor_y};
+    draw->AddCircleFilled(p, 5.0f, IM_COL32(255, 200, 60, 220), 12);
+    draw->AddCircle(p, 8.0f, IM_COL32(20, 16, 8, 255), 12, 2.0f);
+    draw->AddLine(ImVec2(p.x - 14.0f, p.y), ImVec2(p.x + 14.0f, p.y), IM_COL32(255, 220, 100, 180), 1.5f);
+    draw->AddLine(ImVec2(p.x, p.y - 14.0f), ImVec2(p.x, p.y + 14.0f), IM_COL32(255, 220, 100, 180), 1.5f);
+}
 
 void mark_scene_dirty(EditorState& state) { state.scene_dirty = true; }
 
@@ -5480,6 +5913,7 @@ void refresh_design_docs_catalog(EditorState& state) {
     scan_design_docs_folder(repo, "features", state.design_docs);
     scan_design_docs_folder(repo, "story", state.design_docs);
     scan_design_docs_folder(repo, "art", state.design_docs);
+    scan_design_docs_folder(repo, "design", state.design_docs);
     std::sort(state.design_docs.begin(), state.design_docs.end(),
         [](const EditorState::DesignDocEntry& a, const EditorState::DesignDocEntry& b) {
             if (a.section != b.section) return a.section < b.section;
@@ -5507,6 +5941,293 @@ void load_design_doc_body(EditorState& state, const EditorState::DesignDocEntry&
         return;
     }
     state.design_docs_body.assign((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+}
+
+bool is_markdown_table_separator(const std::string& line);
+std::vector<std::string> split_markdown_table_row(const std::string& line);
+std::string cleanup_markdown_inline(std::string text);
+
+[[nodiscard]] bool is_dom_open_questions_doc(const EditorState::DesignDocEntry& doc) {
+    return doc.relative_path.find("dom-open-questions.md") != std::string::npos;
+}
+
+std::string markdown_cell_escape(std::string value) {
+    for (char& ch : value) {
+        if (ch == '|') ch = '/';
+        if (ch == '\n' || ch == '\r') ch = ' ';
+    }
+    while (!value.empty() && (value.front() == ' ' || value.front() == '\t')) value.erase(value.begin());
+    while (!value.empty() && (value.back() == ' ' || value.back() == '\t')) value.pop_back();
+    return value;
+}
+
+std::string local_date_yyyy_mm_dd() {
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t t = std::chrono::system_clock::to_time_t(now);
+    std::tm local{};
+#if defined(_WIN32)
+    localtime_s(&local, &t);
+#else
+    localtime_r(&t, &local);
+#endif
+    std::ostringstream out;
+    out << std::put_time(&local, "%Y-%m-%d");
+    return out.str();
+}
+
+void parse_dom_open_questions(const std::string& markdown, std::vector<EditorState::DomOpenQuestion>& out) {
+    out.clear();
+    std::istringstream stream(markdown);
+    std::string line;
+    std::string current_priority;
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.rfind("## P0", 0) == 0) current_priority = "P0";
+        else if (line.rfind("## P1", 0) == 0) current_priority = "P1";
+        else if (line.rfind("## P2", 0) == 0) current_priority = "P2";
+        else if (line.rfind("## ", 0) == 0) current_priority.clear();
+
+        if (current_priority.empty()) continue;
+        if (line.find('|') == std::string::npos) continue;
+        if (is_markdown_table_separator(line)) continue;
+        auto cells = split_markdown_table_row(line);
+        if (cells.empty()) continue;
+        const std::string& id = cells.front();
+        if (id.rfind("D-P", 0) != 0) continue;
+
+        EditorState::DomOpenQuestion q;
+        q.id = id;
+        q.priority = current_priority;
+        if (cells.size() >= 2) q.question = cleanup_markdown_inline(cells[1]);
+        if (current_priority == "P2") {
+            if (cells.size() >= 3) q.context = cleanup_markdown_inline(cells[2]);
+            if (cells.size() >= 4) q.answer = cells[3];
+        } else {
+            std::string why = cells.size() >= 3 ? cleanup_markdown_inline(cells[2]) : std::string{};
+            std::string draft = cells.size() >= 4 ? cleanup_markdown_inline(cells[3]) : std::string{};
+            if (!why.empty() && !draft.empty()) q.context = why + "\n\nDraft: " + draft;
+            else if (!why.empty()) q.context = why;
+            else q.context = draft;
+            if (cells.size() >= 5) q.answer = cells[4];
+        }
+        out.push_back(std::move(q));
+    }
+}
+
+bool write_text_file_atomic(const std::filesystem::path& absolute_path, const std::string& source,
+    std::string& error_out) {
+    error_out.clear();
+    const auto parent = absolute_path.parent_path();
+    if (!parent.empty()) {
+        std::error_code ec;
+        std::filesystem::create_directories(parent, ec);
+    }
+    const auto temp = absolute_path.string() + ".tmp";
+    {
+        std::ofstream out(temp, std::ios::binary | std::ios::trunc);
+        if (!out) {
+            error_out = "Failed to open temp file for write.";
+            return false;
+        }
+        out << source;
+        if (!source.empty() && source.back() != '\n') out << '\n';
+        if (!out) {
+            error_out = "Failed while writing temp file.";
+            return false;
+        }
+    }
+    std::error_code ec;
+    std::filesystem::rename(temp, absolute_path, ec);
+    if (ec) {
+        error_out = "Failed to replace document: " + ec.message();
+        std::filesystem::remove(temp);
+        return false;
+    }
+    return true;
+}
+
+bool apply_dom_answers_to_markdown(std::string& markdown,
+    const std::vector<EditorState::DomOpenQuestion>& questions, const std::string& session_notes,
+    std::string& error_out) {
+    error_out.clear();
+    std::map<std::string, std::string> answers;
+    std::vector<std::string> answered_ids;
+    for (const auto& q : questions) {
+        answers[q.id] = markdown_cell_escape(q.answer);
+        if (!q.answer.empty()) answered_ids.push_back(q.id);
+    }
+
+    std::istringstream stream(markdown);
+    std::ostringstream rebuilt;
+    std::string line;
+    std::string current_priority;
+    bool in_session_log = false;
+    bool inserted_session_row = false;
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+
+        if (line.rfind("## Session answer log", 0) == 0) {
+            in_session_log = true;
+            current_priority.clear();
+        } else if (line.rfind("## ", 0) == 0) {
+            in_session_log = false;
+            if (line.rfind("## P0", 0) == 0) current_priority = "P0";
+            else if (line.rfind("## P1", 0) == 0) current_priority = "P1";
+            else if (line.rfind("## P2", 0) == 0) current_priority = "P2";
+            else current_priority.clear();
+        }
+
+        if (!current_priority.empty() && line.find('|') != std::string::npos && !is_markdown_table_separator(line)) {
+            auto cells = split_markdown_table_row(line);
+            if (!cells.empty() && cells.front().rfind("D-P", 0) == 0) {
+                const auto it = answers.find(cells.front());
+                if (it != answers.end()) {
+                    const std::size_t answer_index = (current_priority == "P2") ? 3u : 4u;
+                    while (cells.size() <= answer_index) cells.emplace_back();
+                    cells[answer_index] = it->second;
+                    rebuilt << '|';
+                    for (const auto& cell : cells) rebuilt << ' ' << cell << " |";
+                    rebuilt << '\n';
+                    continue;
+                }
+            }
+        }
+
+        // After session-log header + separator, insert a new row for this submit.
+        if (in_session_log && !inserted_session_row && is_markdown_table_separator(line)) {
+            rebuilt << line << '\n';
+            if (!answered_ids.empty() || !session_notes.empty()) {
+                std::ostringstream ids;
+                for (std::size_t i = 0; i < answered_ids.size(); ++i) {
+                    if (i) ids << ", ";
+                    ids << answered_ids[i];
+                }
+                const std::string notes = markdown_cell_escape(
+                    session_notes.empty() ? std::string("In-editor Design Docs form submit") : session_notes);
+                const std::string ids_cell =
+                    markdown_cell_escape(ids.str().empty() ? std::string("(no filled answers)") : ids.str());
+                rebuilt << "| " << local_date_yyyy_mm_dd() << " | " << notes << " | " << ids_cell << " |\n";
+            }
+            inserted_session_row = true;
+            continue;
+        }
+
+        rebuilt << line << '\n';
+    }
+
+    markdown = rebuilt.str();
+    if (!answered_ids.empty() && !inserted_session_row) {
+        error_out = "Session answer log table not found; answers were still written to question rows.";
+    }
+    return true;
+}
+
+void ensure_dom_form_loaded(EditorState& state, const EditorState::DesignDocEntry& doc) {
+    if (!is_dom_open_questions_doc(doc)) return;
+    if (state.design_docs_dom_form_source_path == doc.relative_path && !state.design_docs_dom_questions.empty())
+        return;
+    parse_dom_open_questions(state.design_docs_body, state.design_docs_dom_questions);
+    state.design_docs_dom_form_source_path = doc.relative_path;
+    if (state.design_docs_dom_session_notes.empty())
+        state.design_docs_dom_session_notes = "In-editor Design Docs form submit";
+    state.design_docs_dom_form_status.clear();
+}
+
+bool draw_design_docs_string_multiline(const char* id, std::string& value, const ImVec2& size) {
+    std::vector<char> buffer((std::max)(static_cast<std::size_t>(1024), value.size() + 1024), '\0');
+    std::snprintf(buffer.data(), buffer.size(), "%s", value.c_str());
+    if (ImGui::InputTextMultiline(id, buffer.data(), buffer.size(), size, ImGuiInputTextFlags_AllowTabInput)) {
+        value = buffer.data();
+        return true;
+    }
+    return false;
+}
+
+void draw_dom_open_questions_form(EditorState& state, const EditorState::DesignDocEntry& doc) {
+    ensure_dom_form_loaded(state, doc);
+    ImGui::TextWrapped(
+        "Fill answers below, then Submit to write the Answer column (and session log) back to the repo markdown.");
+    ImGui::Spacing();
+
+    const char* pri_filters[] = {"All", "P0", "P1", "P2"};
+    ImGui::SetNextItemWidth(120.0f);
+    ImGui::Combo("Priority filter", &state.design_docs_dom_priority_filter, pri_filters, IM_ARRAYSIZE(pri_filters));
+    ImGui::SameLine();
+    ImGui::TextDisabled("%zu questions", state.design_docs_dom_questions.size());
+
+    ImGui::TextUnformatted("Session notes (logged on submit)");
+    draw_design_docs_string_multiline("##dom_session_notes", state.design_docs_dom_session_notes, ImVec2(-FLT_MIN, 54.0f));
+
+    if (ImGui::Button("Submit answers to doc")) {
+        std::string markdown = state.design_docs_body;
+        std::string apply_error;
+        if (!apply_dom_answers_to_markdown(markdown, state.design_docs_dom_questions, state.design_docs_dom_session_notes,
+                apply_error)) {
+            state.design_docs_dom_form_status = apply_error.empty() ? "Failed to apply answers." : apply_error;
+        } else {
+            const auto path = repository_root_path() / doc.relative_path;
+            std::string write_error;
+            if (!write_text_file_atomic(path, markdown, write_error)) {
+                state.design_docs_dom_form_status = write_error;
+            } else {
+                state.design_docs_body = std::move(markdown);
+                parse_dom_open_questions(state.design_docs_body, state.design_docs_dom_questions);
+                state.design_docs_dom_form_source_path = doc.relative_path;
+                state.design_docs_dom_form_status = apply_error.empty()
+                    ? ("Saved answers to " + doc.relative_path)
+                    : ("Saved with warning: " + apply_error);
+                state.status = "Dom open questions updated";
+            }
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Reload from disk")) {
+        load_design_doc_body(state, doc);
+        state.design_docs_dom_form_source_path.clear();
+        ensure_dom_form_loaded(state, doc);
+        state.design_docs_dom_form_status = "Reloaded from disk.";
+    }
+
+    if (!state.design_docs_dom_form_status.empty()) {
+        const bool err = state.design_docs_dom_form_status.find("Failed") != std::string::npos;
+        ImGui::TextColored(err ? ImVec4(1.0f, 0.45f, 0.35f, 1.0f) : ImVec4(0.55f, 0.85f, 0.55f, 1.0f), "%s",
+            state.design_docs_dom_form_status.c_str());
+    }
+
+    ImGui::Separator();
+    ImGui::BeginChild("DomOpenQuestionsFormList", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_HorizontalScrollbar);
+    const float form_width = (std::max)(ImGui::GetContentRegionAvail().x, 720.0f);
+    ImGui::PushItemWidth(form_width);
+
+    int shown = 0;
+    for (int i = 0; i < static_cast<int>(state.design_docs_dom_questions.size()); ++i) {
+        auto& q = state.design_docs_dom_questions[static_cast<std::size_t>(i)];
+        if (state.design_docs_dom_priority_filter == 1 && q.priority != "P0") continue;
+        if (state.design_docs_dom_priority_filter == 2 && q.priority != "P1") continue;
+        if (state.design_docs_dom_priority_filter == 3 && q.priority != "P2") continue;
+        ++shown;
+
+        ImGui::PushID(i);
+        ImGui::Spacing();
+        if (GameFonts::display()) ImGui::PushFont(GameFonts::display());
+        ImGui::TextColored(ImVec4(0.95f, 0.90f, 0.72f, 1.0f), "%s", q.id.c_str());
+        if (GameFonts::display()) ImGui::PopFont();
+        ImGui::SameLine();
+        ImGui::TextDisabled("[%s]", q.priority.c_str());
+        ImGui::TextWrapped("%s", q.question.c_str());
+        if (!q.context.empty()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.70f, 0.74f, 0.80f, 1.0f));
+            ImGui::TextWrapped("%s", q.context.c_str());
+            ImGui::PopStyleColor();
+        }
+        ImGui::TextUnformatted("Answer");
+        draw_design_docs_string_multiline("##answer", q.answer, ImVec2(form_width, 64.0f));
+        ImGui::Separator();
+        ImGui::PopID();
+    }
+    if (shown == 0) ImGui::TextDisabled("No questions match this priority filter.");
+    ImGui::PopItemWidth();
+    ImGui::EndChild();
 }
 
 std::string trim_markdown_whitespace(std::string value) {
@@ -5611,14 +6332,22 @@ void draw_markdown_table(const std::vector<std::vector<std::string>>& rows) {
     const int columns = static_cast<int>(rows.front().size());
     if (columns <= 0) return;
     ImGui::Spacing();
+    constexpr float kMinColWidth = 140.0f;
+    constexpr float kDefaultColWidth = 220.0f;
+    // Unique id per table instance so resize widths don't collide across docs/sections.
+    ImGui::PushID(static_cast<int>(rows.size() * 31 + columns));
     if (ImGui::BeginTable("##md_table", columns,
-            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp
+            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit
+                | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable
                 | ImGuiTableFlags_NoSavedSettings)) {
         std::vector<std::string> headers;
         headers.reserve(static_cast<std::size_t>(columns));
         for (int c = 0; c < columns; ++c)
             headers.push_back(cleanup_markdown_inline(rows.front()[static_cast<std::size_t>(c)]));
-        for (int c = 0; c < columns; ++c) ImGui::TableSetupColumn(headers[static_cast<std::size_t>(c)].c_str());
+        for (int c = 0; c < columns; ++c) {
+            ImGui::TableSetupColumn(headers[static_cast<std::size_t>(c)].c_str(),
+                ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoSort, kDefaultColWidth);
+        }
         ImGui::TableHeadersRow();
         for (std::size_t r = 1; r < rows.size(); ++r) {
             ImGui::TableNextRow();
@@ -5627,11 +6356,16 @@ void draw_markdown_table(const std::vector<std::vector<std::string>>& rows) {
                 const std::string cell =
                     c < static_cast<int>(rows[r].size()) ? cleanup_markdown_inline(rows[r][static_cast<std::size_t>(c)])
                                                          : std::string{};
-                ImGui::TextWrapped("%s", cell.c_str());
+                // Wrap within the current (user-resizable) column width.
+                const float wrap_width = (std::max)(kMinColWidth, ImGui::GetContentRegionAvail().x);
+                ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + wrap_width);
+                ImGui::TextUnformatted(cell.c_str());
+                ImGui::PopTextWrapPos();
             }
         }
         ImGui::EndTable();
     }
+    ImGui::PopID();
     ImGui::Spacing();
 }
 
@@ -5788,6 +6522,16 @@ void draw_markdown_readonly(const std::string& text) {
     }
 }
 
+void draw_markdown_selectable_source(const std::string& text) {
+    ImGui::TextDisabled("Select text and Ctrl+C, or use Copy all.");
+    std::vector<char> buffer(text.size() + 1, '\0');
+    if (!text.empty()) std::memcpy(buffer.data(), text.data(), text.size());
+    if (ImFont* mono = GameFonts::mono()) ImGui::PushFont(mono);
+    ImGui::InputTextMultiline("##design_docs_selectable_md", buffer.data(), buffer.size(), ImVec2(-FLT_MIN, -FLT_MIN),
+        ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AllowTabInput);
+    if (GameFonts::mono()) ImGui::PopFont();
+}
+
 void draw_design_docs_viewport(EditorState& state) {
     if (state.design_docs.empty() && state.design_docs_error.empty()) refresh_design_docs_catalog(state);
     if (++state.design_docs_scan_counter >= 120) {
@@ -5811,16 +6555,18 @@ void draw_design_docs_viewport(EditorState& state) {
 
     ImGui::TextUnformatted("Design Docs");
     ImGui::SameLine();
-    ImGui::TextDisabled("(read-only — repo context/ markdown)");
+    ImGui::TextDisabled("(repo context/ markdown)");
     ImGui::SameLine();
     if (ImGui::SmallButton("Refresh")) {
         refresh_design_docs_catalog(state);
         if (state.design_docs_selected >= 0
-            && state.design_docs_selected < static_cast<int>(state.design_docs.size()))
+            && state.design_docs_selected < static_cast<int>(state.design_docs.size())) {
             load_design_doc_body(state, state.design_docs[static_cast<std::size_t>(state.design_docs_selected)]);
+            state.design_docs_dom_form_source_path.clear();
+        }
     }
     ImGui::TextWrapped(
-        "Authoritative design notes for transparency. Edit in the repo / Notion backlog — not here.");
+        "Most docs are read-only. Dom Open Questions supports an in-editor answer form that writes back to the markdown.");
 
     const char* filters[] = {"All", "active", "planned", "complete", "other"};
     ImGui::SetNextItemWidth(140.0f);
@@ -5846,6 +6592,8 @@ void draw_design_docs_viewport(EditorState& state) {
         if (ImGui::Selectable(doc.title.c_str(), selected)) {
             state.design_docs_selected = i;
             load_design_doc_body(state, doc);
+            state.design_docs_dom_form_source_path.clear();
+            if (is_dom_open_questions_doc(doc)) state.design_docs_dom_form_mode = true;
         }
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\nstatus: %s", doc.relative_path.c_str(), doc.status.c_str());
         ImGui::SameLine();
@@ -5854,7 +6602,7 @@ void draw_design_docs_viewport(EditorState& state) {
     }
     ImGui::EndChild();
     ImGui::SameLine();
-    ImGui::BeginChild("DesignDocsBody", ImVec2(0.0f, 0.0f), true);
+    ImGui::BeginChild("DesignDocsBody", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_HorizontalScrollbar);
     if (state.design_docs_selected < 0 || state.design_docs_selected >= static_cast<int>(state.design_docs.size())) {
         ImGui::TextDisabled("Select a document from the list.");
     } else {
@@ -5867,12 +6615,49 @@ void draw_design_docs_viewport(EditorState& state) {
         ImGui::TextDisabled("·");
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.55f, 0.78f, 0.95f, 1.0f), "%s", doc.status.c_str());
+
+        const bool dom_doc = is_dom_open_questions_doc(doc);
+        if (dom_doc) {
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Form", state.design_docs_dom_form_mode)) state.design_docs_dom_form_mode = true;
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Markdown", !state.design_docs_dom_form_mode)) state.design_docs_dom_form_mode = false;
+        }
+
         ImGui::Separator();
         ImGui::Dummy(ImVec2(0.0f, 4.0f));
-        if (!state.design_docs_error.empty())
+        if (!state.design_docs_error.empty()) {
             ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.35f, 1.0f), "%s", state.design_docs_error.c_str());
-        else
-            draw_markdown_readonly(state.design_docs_body);
+        } else if (dom_doc && state.design_docs_dom_form_mode) {
+            draw_dom_open_questions_form(state, doc);
+        } else {
+            if (ImGui::SmallButton("Copy all")) {
+                ImGui::SetClipboardText(state.design_docs_body.c_str());
+                state.design_docs_copy_status = "Copied document to clipboard.";
+            }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Selectable", state.design_docs_markdown_selectable))
+                state.design_docs_markdown_selectable = true;
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Rendered", !state.design_docs_markdown_selectable))
+                state.design_docs_markdown_selectable = false;
+            if (!state.design_docs_copy_status.empty()) {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.55f, 0.85f, 0.55f, 1.0f), "%s", state.design_docs_copy_status.c_str());
+            }
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+
+            if (state.design_docs_markdown_selectable) {
+                draw_markdown_selectable_source(state.design_docs_body);
+            } else {
+                // Keep wide tables readable: inner pane can exceed viewport width; outer child scrolls X.
+                const float md_min_width = 1100.0f;
+                const float md_width = (std::max)(ImGui::GetContentRegionAvail().x, md_min_width);
+                ImGui::BeginChild("DesignDocsMarkdownPane", ImVec2(md_width, 0.0f), ImGuiChildFlags_AutoResizeY);
+                draw_markdown_readonly(state.design_docs_body);
+                ImGui::EndChild();
+            }
+        }
     }
     ImGui::EndChild();
 }
@@ -5884,14 +6669,11 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     StreamedWaterField* streamed_water = nullptr, MaterialAsset* terrain_material = nullptr,
     const CharacterController* character = nullptr, const InteractionVolumeRegistry* interactions = nullptr,
     const CombatVolumeRegistry* combat = nullptr) {
+    state.ui_hotspots.clear();
+    state.ui_hotspots.set_window_size(static_cast<int>(ImGui::GetIO().DisplaySize.x),
+        static_cast<int>(ImGui::GetIO().DisplaySize.y));
+
     const auto* main = ImGui::GetMainViewport();
-    const ImVec2 origin{main->WorkPos.x, main->WorkPos.y + 20.0f};
-    const ImVec2 extent{main->WorkSize.x, std::max(1.0f, main->WorkSize.y - 20.0f)};
-    const float left = std::min(extent.x * 0.20f, 310.0f);
-    const float right = std::min(extent.x * 0.25f, 390.0f);
-    const float center = std::max(1.0f, extent.x - left - right);
-    const float top = extent.y * 0.63f;
-    const float bottom = extent.y - top;
     constexpr ImGuiWindowFlags locked =
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking;
 
@@ -5966,6 +6748,77 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         }
         ImGui::EndMainMenuBar();
     }
+
+    const char* active_area = "Scene";
+    switch (state.active_viewport_tab) {
+    case EditorState::ViewportTab::Sculpt: active_area = "Sculpt"; break;
+    case EditorState::ViewportTab::Game: active_area = "Game"; break;
+    case EditorState::ViewportTab::UI: active_area = "UI Canvas"; break;
+    case EditorState::ViewportTab::WorldForge: active_area = "World Forge"; break;
+    case EditorState::ViewportTab::DesignDocs: active_area = "Design Docs"; break;
+    case EditorState::ViewportTab::Scene: default: active_area = "Scene"; break;
+    }
+    bool chrome_save = false;
+    const bool any_dirty = state.scene_dirty || state.terrain_edits_dirty || state.terrain_paint_dirty ||
+        state.foliage_density_dirty || state.water_dirty || state.world_forge_editor.dirty;
+    EditorChrome::draw_app_header(state.project_root, active_area, any_dirty, state.world_forge_editor.dirty,
+        state.status, &chrome_save, &state.ui_hotspots);
+    if (chrome_save) {
+        const auto saved = state.scene.save_atomic(state.world_path);
+        if (!saved) {
+            state.status = saved.error().message;
+            Logger::instance().write(saved.error());
+        } else {
+            const auto terrain_saved =
+                state.terrain_edits.save_atomic(default_terrain_edits_path(state.project_root));
+            const auto paint_saved =
+                state.terrain_paint.save_atomic(default_terrain_paint_path(state.project_root));
+            const auto foliage_saved =
+                state.foliage_density.save_atomic(default_foliage_density_path(state.project_root));
+            if (!terrain_saved) {
+                state.status = terrain_saved.error().message;
+                Logger::instance().write(terrain_saved.error());
+            } else if (!paint_saved) {
+                state.status = paint_saved.error().message;
+                Logger::instance().write(paint_saved.error());
+            } else if (!foliage_saved) {
+                state.status = foliage_saved.error().message;
+                Logger::instance().write(foliage_saved.error());
+            } else {
+                const auto water_saved =
+                    state.water_store.save_atomic(default_water_surfaces_path(state.project_root));
+                if (!water_saved) {
+                    state.status = water_saved.error().message;
+                    Logger::instance().write(water_saved.error());
+                } else {
+                    state.terrain_edits_dirty = false;
+                    state.terrain_paint_dirty = false;
+                    state.foliage_density_dirty = false;
+                    state.water_dirty = false;
+                    state.scene_dirty = false;
+                    if (state.world_forge_editor.dirty) {
+                        if (const auto wf = state.world_forge_editor.save(state.project_root); !wf) {
+                            state.status = "World Forge save failed: " + wf.error().message;
+                            Logger::instance().write(wf.error());
+                        } else {
+                            state.status = "Saved";
+                        }
+                    } else {
+                        state.status = "Saved";
+                    }
+                }
+            }
+        }
+    }
+
+    const ImVec2 origin{main->WorkPos.x, main->WorkPos.y + EditorChrome::kHeaderHeight};
+    const ImVec2 extent{main->WorkSize.x, std::max(1.0f, main->WorkSize.y - EditorChrome::kHeaderHeight)};
+    const float left = std::min(extent.x * 0.20f, 310.0f);
+    const float right = std::min(extent.x * 0.25f, 390.0f);
+    const float center = std::max(1.0f, extent.x - left - right);
+    const float top = extent.y * 0.63f;
+    const float bottom = extent.y - top;
+
     handle_editor_shortcuts(state, camera_capture, terrain_material, streamed_terrain, streamed_water, collision);
 
     const bool edit_mode = !state.test_session_active();
@@ -5979,36 +6832,52 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             if (!state.force_select_viewport_tab || state.active_viewport_tab != tab) return 0;
             return ImGuiTabItemFlags_SetSelected;
         };
-        if (ImGui::BeginTabItem(ICON_FA_CUBE " Scene##ViewportScene", nullptr, tab_flags(EditorState::ViewportTab::Scene))) {
+        const bool scene_open =
+            ImGui::BeginTabItem(ICON_FA_CUBE " Scene##ViewportScene", nullptr, tab_flags(EditorState::ViewportTab::Scene));
+        register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.Scene", "Scene");
+        if (scene_open) {
             if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::Scene;
             ImGui::EndTabItem();
         }
         ImGui::BeginDisabled(state.test_session_active());
-        if (ImGui::BeginTabItem(ICON_FA_MOUNTAIN " Sculpt##ViewportSculpt", nullptr, tab_flags(EditorState::ViewportTab::Sculpt))) {
+        const bool sculpt_open = ImGui::BeginTabItem(ICON_FA_MOUNTAIN " Sculpt##ViewportSculpt", nullptr,
+            tab_flags(EditorState::ViewportTab::Sculpt));
+        register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.Sculpt", "Sculpt");
+        if (sculpt_open) {
             if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::Sculpt;
             ImGui::EndTabItem();
         }
         ImGui::EndDisabled();
-        if (ImGui::BeginTabItem(ICON_FA_GAMEPAD " Game##ViewportGame", nullptr, tab_flags(EditorState::ViewportTab::Game))) {
+        const bool game_open =
+            ImGui::BeginTabItem(ICON_FA_GAMEPAD " Game##ViewportGame", nullptr, tab_flags(EditorState::ViewportTab::Game));
+        register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.Game", "Game");
+        if (game_open) {
             if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::Game;
             ImGui::EndTabItem();
         }
         ImGui::BeginDisabled(state.test_session_active());
-        if (ImGui::BeginTabItem(ICON_FA_DESKTOP " UI##ViewportUI", nullptr, tab_flags(EditorState::ViewportTab::UI))) {
+        const bool ui_open =
+            ImGui::BeginTabItem(ICON_FA_DESKTOP " UI##ViewportUI", nullptr, tab_flags(EditorState::ViewportTab::UI));
+        register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.UI", "UI");
+        if (ui_open) {
             if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::UI;
             ImGui::EndTabItem();
         }
         ImGui::EndDisabled();
         ImGui::BeginDisabled(state.test_session_active());
-        if (ImGui::BeginTabItem(ICON_FA_GLOBE " World Forge##ViewportWorldForge", nullptr,
-                tab_flags(EditorState::ViewportTab::WorldForge))) {
+        const bool world_forge_open = ImGui::BeginTabItem(ICON_FA_GLOBE " World Forge##ViewportWorldForge", nullptr,
+            tab_flags(EditorState::ViewportTab::WorldForge));
+        register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.WorldForge", "World Forge");
+        if (world_forge_open) {
             if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::WorldForge;
             ImGui::EndTabItem();
         }
         ImGui::EndDisabled();
         ImGui::BeginDisabled(state.test_session_active());
-        if (ImGui::BeginTabItem(ICON_FA_BOOK " Design Docs##ViewportDesignDocs", nullptr,
-                tab_flags(EditorState::ViewportTab::DesignDocs))) {
+        const bool design_docs_open = ImGui::BeginTabItem(ICON_FA_BOOK " Design Docs##ViewportDesignDocs", nullptr,
+            tab_flags(EditorState::ViewportTab::DesignDocs));
+        register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.DesignDocs", "Design Docs");
+        if (design_docs_open) {
             if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::DesignDocs;
             ImGui::EndTabItem();
         }
@@ -6108,6 +6977,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         WorldForgeViewportDrawContext wf_ctx;
         wf_ctx.terrain_edits = &state.terrain_edits;
         wf_ctx.terrain_revision = state.terrain_height_revision;
+        wf_ctx.hotspots = &state.ui_hotspots;
         draw_world_forge_viewport(state.world_forge_editor, state.project_root, wf_ctx);
     } else if (design_docs_tab) {
         draw_design_docs_viewport(state);
@@ -7026,7 +7896,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         }
         ImGui::TextDisabled("Connect Cursor MCP (engine mcp --project <dir>) after enabling this.");
     } else {
-        ImGui::TextDisabled("Off by default. Enable before Cursor MCP tools can edit this session.");
+        ImGui::TextDisabled("Disabled for this session. Agents: engine_editor_live enable — or check this box.");
     }
     draw_project_sync_panel(state);
     if (character) {
@@ -7333,6 +8203,15 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         previous_frame_time = frame_time;
         frame_delta_seconds = std::min(frame_delta_seconds, 0.25f);
         if (editor) {
+            if (const auto requested = consume_live_automation_request(editor->project_root)) {
+                if (*requested != editor->live_automation_enabled) {
+                    editor->live_automation_enabled = *requested;
+                    editor->status = *requested ? "Live automation enable requested by MCP"
+                                               : "Live automation disable requested by MCP";
+                    AutomationTrace::log(AutomationTraceChannel::EditorBridge, "live_request_applied",
+                        {{"enabled", *requested ? "true" : "false"}});
+                }
+            }
             if (editor_bridge && editor->live_automation_enabled) {
                 editor_bridge->poll_pending([&](const EditorBridgeRequest& request) {
                 auto context = make_editor_session_context(*editor, true);
@@ -7353,7 +8232,377 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 if (streamed_water) {
                     context.reload_water = [&]() { reload_loaded_water_cells(*editor, &*streamed_water); };
                 }
+
+                auto make_bridge_ok = [&](std::string summary, std::map<std::string, std::string> metadata = {}) {
+                    EditorBridgeResponse response;
+                    response.request_id = request.request_id;
+                    response.exit_code = ExitCode::Success;
+                    response.summary = std::move(summary);
+                    response.metadata = std::move(metadata);
+                    return response;
+                };
+                auto make_bridge_err = [&](ExitCode code, std::string summary, EngineError err) {
+                    EditorBridgeResponse response;
+                    response.request_id = request.request_id;
+                    response.exit_code = code;
+                    response.summary = std::move(summary);
+                    response.diagnostics.push_back(std::move(err));
+                    return response;
+                };
+
+                if (request.operation == "world_forge_map_view") {
+                    nlohmann::json params = nlohmann::json::object();
+                    try {
+                        if (!request.params_json.empty()) params = nlohmann::json::parse(request.params_json);
+                    } catch (...) {
+                        return make_bridge_err(ExitCode::InvalidArguments, "Invalid JSON params",
+                            EngineError{"WF-MAP-JSON", Severity::Error, ErrorCategory::Validation, "automation",
+                                "params_json parse failed", std::nullopt, {}, "Send valid JSON arguments."});
+                    }
+                    editor->active_viewport_tab = EditorState::ViewportTab::WorldForge;
+                    editor->force_select_viewport_tab = true;
+                    if (params.value("lockTab", true)) editor->lock_viewport_tab = true;
+                    auto& wf = editor->world_forge_editor;
+                    if (!wf.loaded) {
+                        const auto reloaded = wf.reload(editor->project_root);
+                        if (!reloaded) {
+                            return make_bridge_err(ExitCode::ValidationFailed, reloaded.error().message, reloaded.error());
+                        }
+                    }
+                    wf.pane = WorldForgeEditorPane::Map;
+                    wf.force_select_pane = true;
+                    if (params.value("lockTab", true)) wf.lock_pane_tab = true;
+                    wf.map_canvas_mode = true;
+                    wf.list_kind = WorldForgeEditorSession::ListKind::MapCanvas;
+                    if (params.contains("topDown") && params["topDown"].is_boolean() && params["topDown"].get<bool>()) {
+                        wf.map_cartography_mode = false;
+                    }
+                    if (params.contains("cartography") && params["cartography"].is_boolean()) {
+                        wf.map_cartography_mode = params["cartography"].get<bool>();
+                    }
+                    if (params.contains("worldMap") && params["worldMap"].is_boolean()) {
+                        wf.map_show_official_backdrop = params["worldMap"].get<bool>();
+                    }
+                    if (params.contains("frame") && params["frame"].is_boolean()) {
+                        wf.map_show_frame = params["frame"].get<bool>();
+                    }
+                    if (params.value("fit", false)) wf.map_camera_fit_requested = true;
+                    if (params.contains("zoom") && params["zoom"].is_number()) {
+                        wf.map_camera.zoom = params["zoom"].get<float>();
+                    }
+                    if (params.contains("panX") && params["panX"].is_number()) {
+                        wf.map_camera.pan[0] = params["panX"].get<float>();
+                    }
+                    if (params.contains("panZ") && params["panZ"].is_number()) {
+                        wf.map_camera.pan[1] = params["panZ"].get<float>();
+                    }
+                    if (params.contains("layerId") && params["layerId"].is_string()) {
+                        const auto layer_id = params["layerId"].get<std::string>();
+                        bool known = layer_id.empty();
+                        for (const auto& layer : wf.map_layers) {
+                            if (layer.id == layer_id) {
+                                known = true;
+                                break;
+                            }
+                        }
+                        if (!known && wf.map_layers_ready) {
+                            return make_bridge_err(ExitCode::InvalidArguments, "Unknown layerId",
+                                EngineError{"WF-MAP-LAYER", Severity::Error, ErrorCategory::Validation, "automation",
+                                    "layerId not in loaded world-map-layers manifest", std::nullopt, {},
+                                    "Use continent|theater_nw|theater_ne|theater_sw|theater_se|theater_interior_sea|local_calrenoth."});
+                        }
+                        if (params.value("forceTransition", true) && !layer_id.empty() &&
+                            layer_id != wf.map_layer_active_id) {
+                            wf.map_layer_pending_id = layer_id;
+                            wf.map_layer_transition_t = 1e-4f;
+                        } else {
+                            wf.map_layer_active_id = layer_id;
+                            wf.map_layer_pending_id.clear();
+                            wf.map_layer_transition_t = 0.0f;
+                        }
+                    }
+                    editor->status = "MCP: World Forge Map Canvas view applied";
+                    return make_bridge_ok("World Forge map view updated",
+                        {{"viewportTab", "world_forge"}, {"pane", "map"}, {"canvas", "true"},
+                            {"cartography", wf.map_cartography_mode ? "true" : "false"},
+                            {"frame", wf.map_show_frame ? "true" : "false"},
+                            {"worldMap", wf.map_show_official_backdrop ? "true" : "false"},
+                            {"layerId", wf.map_layer_active_id}, {"pendingLayerId", wf.map_layer_pending_id},
+                            {"zoom", std::to_string(wf.map_camera.zoom)}});
+                }
+
+                if (request.operation == "editor_ui_query") {
+                    nlohmann::json params = nlohmann::json::object();
+                    try {
+                        if (!request.params_json.empty()) params = nlohmann::json::parse(request.params_json);
+                    } catch (...) {
+                        return make_bridge_err(ExitCode::InvalidArguments, "Invalid JSON params",
+                            EngineError{"UIQ-JSON", Severity::Error, ErrorCategory::Validation, "automation",
+                                "params_json parse failed", std::nullopt, {}, "Send valid JSON arguments."});
+                    }
+                    const auto id_prefix = params.value("idPrefix", std::string{});
+                    const auto contains = params.value("contains", std::string{});
+                    const auto exact_id = params.value("id", std::string{});
+                    const int ww = editor->ui_hotspots.window_w;
+                    const int wh = editor->ui_hotspots.window_h;
+                    auto hotspot_json = [&](const EditorUiHotspot& spot) {
+                        nlohmann::json j;
+                        j["id"] = spot.id;
+                        j["label"] = spot.label;
+                        j["minX"] = spot.min_x;
+                        j["minY"] = spot.min_y;
+                        j["maxX"] = spot.max_x;
+                        j["maxY"] = spot.max_y;
+                        j["cx"] = spot.cx;
+                        j["cy"] = spot.cy;
+                        j["nx"] = spot.cx / static_cast<float>((std::max)(1, ww));
+                        j["ny"] = spot.cy / static_cast<float>((std::max)(1, wh));
+                        j["width"] = spot.max_x - spot.min_x;
+                        j["height"] = spot.max_y - spot.min_y;
+                        return j;
+                    };
+                    nlohmann::json matches = nlohmann::json::array();
+                    if (!exact_id.empty()) {
+                        if (const auto* spot = editor->ui_hotspots.find_exact(exact_id)) {
+                            matches.push_back(hotspot_json(*spot));
+                        }
+                    } else {
+                        for (const auto* spot : editor->ui_hotspots.find_filter(id_prefix, contains)) {
+                            matches.push_back(hotspot_json(*spot));
+                        }
+                    }
+                    std::map<std::string, std::string> meta{
+                        {"count", std::to_string(matches.size())},
+                        {"windowW", std::to_string(ww)},
+                        {"windowH", std::to_string(wh)},
+                        {"hotspotsJson", matches.dump()},
+                    };
+                    if (!exact_id.empty()) meta["id"] = exact_id;
+                    if (!id_prefix.empty()) meta["idPrefix"] = id_prefix;
+                    if (!contains.empty()) meta["contains"] = contains;
+                    editor->status = "MCP ui_query: " + std::to_string(matches.size()) + " hotspot(s)";
+                    return make_bridge_ok("UI hotspots queried", std::move(meta));
+                }
+
+                if (request.operation == "editor_screenshot") {
+                    nlohmann::json params = nlohmann::json::object();
+                    try {
+                        if (!request.params_json.empty()) params = nlohmann::json::parse(request.params_json);
+                    } catch (...) {
+                        return make_bridge_err(ExitCode::InvalidArguments, "Invalid JSON params",
+                            EngineError{"SHOT-JSON", Severity::Error, ErrorCategory::Validation, "automation",
+                                "params_json parse failed", std::nullopt, {}, "Send valid JSON arguments."});
+                    }
+                    const auto properties = SDL_GetWindowProperties(window);
+                    void* hwnd = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+                    const auto filename = params.value("filename", std::string{"editor-screenshot"});
+                    const bool client_only = params.value("clientAreaOnly", true);
+                    const auto captured =
+                        capture_window_png(hwnd, editor->project_root, filename, client_only);
+                    if (!captured) {
+                        return make_bridge_err(ExitCode::InternalError, captured.error().message, captured.error());
+                    }
+                    editor->status = "MCP screenshot: " + captured.value().filename().string();
+                    return make_bridge_ok("Screenshot saved",
+                        {{"path", captured.value().generic_string()},
+                            {"relativePath",
+                                std::filesystem::relative(captured.value(), editor->project_root).generic_string()}});
+                }
+
+                if (request.operation == "editor_input") {
+                    nlohmann::json params = nlohmann::json::object();
+                    try {
+                        if (!request.params_json.empty()) params = nlohmann::json::parse(request.params_json);
+                    } catch (...) {
+                        return make_bridge_err(ExitCode::InvalidArguments, "Invalid JSON params",
+                            EngineError{"INPUT-JSON", Severity::Error, ErrorCategory::Validation, "automation",
+                                "params_json parse failed", std::nullopt, {}, "Send valid JSON arguments."});
+                    }
+                    const auto action = params.value("action", std::string{"click"});
+                    auto button_index = [&](const nlohmann::json& p) {
+                        const auto name = p.value("button", std::string{"left"});
+                        if (name == "right") return 1;
+                        if (name == "middle") return 2;
+                        return 0;
+                    };
+                    auto enqueue_one = [&](const nlohmann::json& step) -> std::optional<std::string> {
+                        const auto step_action = step.value("action", action);
+                        if (step_action == "wait") {
+                            EditorState::InputEvent wait;
+                            wait.kind = EditorState::InputEvent::Kind::Wait;
+                            wait.wait_frames = (std::max)(1, step.value("frames", 1));
+                            editor->mcp_input_queue.push_back(wait);
+                            return std::nullopt;
+                        }
+                        if (step_action == "move" || step_action == "click" || step_action == "drag") {
+                            float x = 0.0f, y = 0.0f;
+                            std::string err;
+                            if (!resolve_mcp_client_xy(window, step, x, y, &err, &editor->ui_hotspots)) return err;
+                            if (step_action == "move") {
+                                EditorState::InputEvent move;
+                                move.kind = EditorState::InputEvent::Kind::Move;
+                                move.x = x;
+                                move.y = y;
+                                editor->mcp_input_queue.push_back(move);
+                                return std::nullopt;
+                            }
+                            if (step_action == "click") {
+                                enqueue_mcp_click(*editor, x, y, button_index(step), step.value("holdFrames", 1));
+                                return std::nullopt;
+                            }
+                            // drag: move to start, down, move to end, up
+                            float x2 = x, y2 = y;
+                            nlohmann::json end = step.contains("to") ? step["to"] : step;
+                            if (step.contains("toX") || step.contains("toY") || step.contains("toNx") ||
+                                step.contains("toNy") || step.contains("toTargetId")) {
+                                end = nlohmann::json::object();
+                                if (step.contains("toX")) end["x"] = step["toX"];
+                                if (step.contains("toY")) end["y"] = step["toY"];
+                                if (step.contains("toNx")) end["nx"] = step["toNx"];
+                                if (step.contains("toNy")) end["ny"] = step["toNy"];
+                                if (step.contains("toTargetId")) end["targetId"] = step["toTargetId"];
+                            }
+                            if (!resolve_mcp_client_xy(window, end, x2, y2, &err, &editor->ui_hotspots)) return err;
+                            EditorState::InputEvent move1;
+                            move1.kind = EditorState::InputEvent::Kind::Move;
+                            move1.x = x;
+                            move1.y = y;
+                            editor->mcp_input_queue.push_back(move1);
+                            EditorState::InputEvent down;
+                            down.kind = EditorState::InputEvent::Kind::Button;
+                            down.button = button_index(step);
+                            down.down = true;
+                            editor->mcp_input_queue.push_back(down);
+                            EditorState::InputEvent wait;
+                            wait.kind = EditorState::InputEvent::Kind::Wait;
+                            wait.wait_frames = (std::max)(1, step.value("holdFrames", 1));
+                            editor->mcp_input_queue.push_back(wait);
+                            EditorState::InputEvent move2;
+                            move2.kind = EditorState::InputEvent::Kind::Move;
+                            move2.x = x2;
+                            move2.y = y2;
+                            editor->mcp_input_queue.push_back(move2);
+                            EditorState::InputEvent wait2;
+                            wait2.kind = EditorState::InputEvent::Kind::Wait;
+                            wait2.wait_frames = (std::max)(1, step.value("dragFrames", 2));
+                            editor->mcp_input_queue.push_back(wait2);
+                            EditorState::InputEvent up;
+                            up.kind = EditorState::InputEvent::Kind::Button;
+                            up.button = button_index(step);
+                            up.down = false;
+                            editor->mcp_input_queue.push_back(up);
+                            return std::nullopt;
+                        }
+                        if (step_action == "scroll") {
+                            float x = 0.0f, y = 0.0f;
+                            std::string err;
+                            if (step.contains("targetId") || step.contains("nx") || step.contains("ny") ||
+                                step.contains("x") || step.contains("y")) {
+                                if (!resolve_mcp_client_xy(window, step, x, y, &err, &editor->ui_hotspots))
+                                    return err;
+                                EditorState::InputEvent move;
+                                move.kind = EditorState::InputEvent::Kind::Move;
+                                move.x = x;
+                                move.y = y;
+                                editor->mcp_input_queue.push_back(move);
+                            }
+                            EditorState::InputEvent wheel;
+                            wheel.kind = EditorState::InputEvent::Kind::Wheel;
+                            wheel.wheel = step.value("delta", step.value("wheel", 1.0f));
+                            editor->mcp_input_queue.push_back(wheel);
+                            return std::nullopt;
+                        }
+                        if (step_action == "key") {
+                            EditorState::InputEvent down;
+                            down.kind = EditorState::InputEvent::Kind::Key;
+                            down.key = step.value("keyCode", 0);
+                            if (down.key == 0) {
+                                const auto name = step.value("key", std::string{});
+                                if (name == "escape") down.key = 27;
+                                else if (name == "enter") down.key = 13;
+                                else if (name == "tab") down.key = 9;
+                                else if (name == "space") down.key = 32;
+                                else if (name == "left") down.key = 37;
+                                else if (name == "up") down.key = 38;
+                                else if (name == "right") down.key = 39;
+                                else if (name == "down") down.key = 40;
+                            }
+                            if (down.key == 0) return std::string{"key/keyCode required"};
+                            down.down = true;
+                            editor->mcp_input_queue.push_back(down);
+                            EditorState::InputEvent wait;
+                            wait.kind = EditorState::InputEvent::Kind::Wait;
+                            wait.wait_frames = (std::max)(1, step.value("holdFrames", 1));
+                            editor->mcp_input_queue.push_back(wait);
+                            EditorState::InputEvent up = down;
+                            up.down = false;
+                            editor->mcp_input_queue.push_back(up);
+                            return std::nullopt;
+                        }
+                        if (step_action == "clear") {
+                            editor->mcp_input_queue.clear();
+                            editor->mcp_draw_cursor = false;
+                            return std::nullopt;
+                        }
+                        if (step_action == "unlock_tab") {
+                            editor->lock_viewport_tab = false;
+                            editor->force_select_viewport_tab = false;
+                            editor->world_forge_editor.lock_pane_tab = false;
+                            editor->world_forge_editor.force_select_pane = false;
+                            return std::nullopt;
+                        }
+                        return std::string{"Unknown action (move|click|drag|scroll|key|wait|clear|unlock_tab)"};
+                    };
+
+                    std::size_t queued = 0;
+                    if (params.contains("steps") && params["steps"].is_array()) {
+                        for (const auto& step : params["steps"]) {
+                            if (const auto err = enqueue_one(step)) {
+                                return make_bridge_err(ExitCode::InvalidArguments, *err,
+                                    EngineError{"INPUT-STEP", Severity::Error, ErrorCategory::Validation, "automation",
+                                        *err, std::nullopt, {}, "Fix the step and retry."});
+                            }
+                        }
+                        queued = editor->mcp_input_queue.size();
+                    } else {
+                        if (const auto err = enqueue_one(params)) {
+                            return make_bridge_err(ExitCode::InvalidArguments, *err,
+                                EngineError{"INPUT-ACTION", Severity::Error, ErrorCategory::Validation, "automation",
+                                    *err, std::nullopt, {}, "Fix action params and retry."});
+                        }
+                        queued = editor->mcp_input_queue.size();
+                    }
+                    editor->status = "MCP input queued (" + std::to_string(queued) + " events)";
+                    return make_bridge_ok("Editor input queued",
+                        {{"queuedEvents", std::to_string(queued)},
+                            {"cursorX", std::to_string(editor->mcp_cursor_x)},
+                            {"cursorY", std::to_string(editor->mcp_cursor_y)}});
+                }
+
                 auto response = execute_editor_operation(context, request.operation, request.params_json);
+                if (request.operation == "editor_status" && response.exit_code == ExitCode::Success) {
+                    const char* tab = "scene";
+                    switch (editor->active_viewport_tab) {
+                    case EditorState::ViewportTab::Sculpt: tab = "sculpt"; break;
+                    case EditorState::ViewportTab::Game: tab = "game"; break;
+                    case EditorState::ViewportTab::UI: tab = "ui"; break;
+                    case EditorState::ViewportTab::WorldForge: tab = "world_forge"; break;
+                    case EditorState::ViewportTab::DesignDocs: tab = "design_docs"; break;
+                    default: break;
+                    }
+                    response.metadata["viewportTab"] = tab;
+                    const auto& wf = editor->world_forge_editor;
+                    response.metadata["worldForgePane"] = std::to_string(static_cast<int>(wf.pane));
+                    response.metadata["mapCanvasMode"] = wf.map_canvas_mode ? "true" : "false";
+                    response.metadata["mapCartography"] = wf.map_cartography_mode ? "true" : "false";
+                    response.metadata["mapShowFrame"] = wf.map_show_frame ? "true" : "false";
+                    response.metadata["mapShowWorldMap"] = wf.map_show_official_backdrop ? "true" : "false";
+                    response.metadata["mapLayerId"] = wf.map_layer_draw_id.empty() ? wf.map_layer_active_id : wf.map_layer_draw_id;
+                    response.metadata["mapLayerPendingId"] = wf.map_layer_pending_id;
+                    response.metadata["mapLayerTransition"] = std::to_string(wf.map_layer_transition_t);
+                    response.metadata["mapZoom"] = std::to_string(wf.map_camera.zoom);
+                    response.metadata["mapLayersReady"] = wf.map_layers_ready ? "true" : "false";
+                }
                 if (response.exit_code == ExitCode::Success && request.operation == "lua_apply") {
                     try {
                         const auto params = nlohmann::json::parse(request.params_json);
@@ -7546,6 +8795,10 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             ImGui_ImplDX12_NewFrame();
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
+            if (editor) {
+                drain_mcp_input_queue(*editor, window);
+                draw_mcp_cursor_overlay(*editor);
+            }
         }
         const auto capture = (!options.capture_path.empty() &&
                               (options.frame_limit == 0 ? frames == 0 : (frames + 1 == options.frame_limit)))

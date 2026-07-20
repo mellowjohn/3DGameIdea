@@ -1,57 +1,30 @@
 {
-  "schemaVersion": 2,
   "entities": [
     {
-      "name": "Trunk",
-      "transform": {
-        "position": [0.0, 0.0, 0.0],
-        "rotation": [0.0, 0.0, 0.0, 1.0],
-        "scale": [0.32, 2.0, 0.32]
-      },
-      "parent": null,
       "mesh": {
-        "primitive": "cylinder",
-        "color": [0.30, 0.20, 0.12]
-      }
-    },
-    {
-      "name": "Canopy",
-      "transform": {
-        "position": [0.0, 1.65, 0.0],
-        "rotation": [0.0, 0.0, 0.0, 1.0],
-        "scale": [1.35, 0.95, 1.35]
+        "asset": "assets/models/tree.gltf"
       },
+      "name": "Tree",
       "parent": null,
-      "mesh": {
-        "primitive": "sphere",
-        "color": [0.20, 0.32, 0.14]
-      }
-    },
-    {
-      "name": "Branch A",
       "transform": {
-        "position": [0.18, 1.15, 0.0],
-        "rotation": [0.0, 0.0, 0.383, 0.924],
-        "scale": [0.12, 0.55, 0.12]
-      },
-      "parent": null,
-      "mesh": {
-        "primitive": "cylinder",
-        "color": [0.26, 0.17, 0.10]
-      }
-    },
-    {
-      "name": "Branch B",
-      "transform": {
-        "position": [-0.16, 1.05, 0.12],
-        "rotation": [0.0, 0.924, 0.0, 0.383],
-        "scale": [0.10, 0.45, 0.12]
-      },
-      "parent": null,
-      "mesh": {
-        "primitive": "cylinder",
-        "color": [0.24, 0.16, 0.10]
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
       }
     }
-  ]
+  ],
+  "schemaVersion": 2
 }

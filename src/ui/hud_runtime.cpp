@@ -208,15 +208,17 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
 
     draw_list->PushClipRect(image_min, image_max, true);
 
-    constexpr ImU32 panel_col_default = IM_COL32(12, 14, 20, 210);
-    constexpr ImU32 button_col_default = IM_COL32(36, 44, 58, 240);
-    constexpr ImU32 button_border_default = IM_COL32(90, 110, 140, 255);
-    constexpr ImU32 focus_ring_col = IM_COL32(255, 210, 80, 255);
-    constexpr ImU32 bar_bg = IM_COL32(28, 34, 44, 235);
-    constexpr ImU32 bar_fill_default = IM_COL32(170, 52, 52, 245);
-    constexpr ImU32 bar_border = IM_COL32(110, 85, 85, 255);
-    constexpr ImU32 text_col_default = IM_COL32(250, 252, 255, 255);
-    constexpr ImU32 label_col_default = IM_COL32(235, 238, 245, 255);
+    // Defaults align with `context/design/rpg-engine-ui.pen` (parchment / bronze / gold).
+    constexpr ImU32 panel_col_default = IM_COL32(201, 184, 150, 235); // $canvas
+    constexpr ImU32 button_col_default = IM_COL32(213, 185, 120, 245); // $gold
+    constexpr ImU32 button_border_default = IM_COL32(102, 86, 60, 255); // #66563C
+    constexpr ImU32 focus_ring_col = IM_COL32(213, 185, 120, 255);
+    constexpr ImU32 bar_bg = IM_COL32(138, 122, 92, 235);
+    constexpr ImU32 bar_fill_default = IM_COL32(139, 58, 58, 245);
+    constexpr ImU32 bar_border = IM_COL32(102, 86, 60, 255);
+    constexpr ImU32 text_col_default = IM_COL32(42, 36, 32, 255); // $ink on parchment panels
+    constexpr ImU32 label_col_default = IM_COL32(42, 36, 32, 255);
+    constexpr ImU32 chrome_text_col = IM_COL32(241, 238, 232, 255); // $text on dark chrome / gold buttons
     constexpr ImU32 text_outline = IM_COL32(0, 0, 0, 220);
     constexpr ImU32 toggle_box = IM_COL32(40, 48, 62, 255);
     constexpr ImU32 toggle_check = IM_COL32(90, 200, 120, 255);
@@ -390,7 +392,13 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
                 const float screen_font = readable_font_size(design_px);
                 const ImVec2 text_pos = aligned_text_pos(origin, max, screen_font, design_px, widget.text_align,
                     widget.text_v_align, label.c_str());
-                draw_text(text_pos, screen_font, with_opacity(text_col_default, opacity), label.c_str(), design_px);
+                // Gold primary buttons read better with dark ink; dark chrome buttons use cream.
+                const ImU32 fill = to_col(widget.color, button_col_default);
+                const int lum = static_cast<int>((fill >> IM_COL32_R_SHIFT) & 0xFF) +
+                    static_cast<int>((fill >> IM_COL32_G_SHIFT) & 0xFF) +
+                    static_cast<int>((fill >> IM_COL32_B_SHIFT) & 0xFF);
+                const ImU32 btn_text = lum > 420 ? text_col_default : chrome_text_col;
+                draw_text(text_pos, screen_font, with_opacity(btn_text, opacity), label.c_str(), design_px);
             }
             continue;
         }
@@ -419,7 +427,8 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
                 const ImVec2 text_pos =
                     aligned_text_pos(label_min, max, screen_font, design_px, HudTextAlign::Left, HudTextVAlign::Middle,
                         label.c_str());
-                draw_text(text_pos, screen_font, with_opacity(text_col_default, opacity), label.c_str(), design_px);
+                draw_text(text_pos, screen_font,
+                    with_opacity(to_col(widget.color, chrome_text_col), opacity), label.c_str(), design_px);
             }
             continue;
         }

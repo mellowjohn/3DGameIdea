@@ -68,6 +68,10 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0188 | Map canvas terrain height underlay | needs-approval | P2 | Greyscale height underlay from `sample_terrain_height`; [`tickets/TICKET-0188.md`](tickets/TICKET-0188.md) |
 | TICKET-0189 | World Forge Act lens (organize by acts) | needs-approval | P2 | Global Act filter + `acts[]`; DEC-0036; world_forge 163/163; [`tickets/TICKET-0189.md`](tickets/TICKET-0189.md) |
 | TICKET-0190 | Scene overlay for World Forge map markers | needs-approval | P2 | Scene/Sculpt poles+labels + focus; [`tickets/TICKET-0190.md`](tickets/TICKET-0190.md) |
+| TICKET-0205 | Cartography design language + art kit + culture typography | needs-approval | P2 | Fantasy map language, icons, heraldry, OFL culture fonts; [`tickets/TICKET-0205.md`](tickets/TICKET-0205.md); [`../art/cartography-design.md`](../art/cartography-design.md) |
+| TICKET-0206 | Official world map detail regenerate (five-act reference) | needs-approval | P2 | Richer unlabeled Tessera reference with road hierarchy; [`tickets/TICKET-0206.md`](tickets/TICKET-0206.md) |
+| TICKET-0207 | Map Canvas dual view + borders + travel routes | needs-approval | P2 | Cartography\|Top-down, region.border, travelRoutes; [`tickets/TICKET-0207.md`](tickets/TICKET-0207.md) |
+| TICKET-0208 | World Forge Pencil Map Canvas chrome revamp | needs-approval | P2 | Header + left nav + map tools/inspector/overlays from `.pen`; [`tickets/TICKET-0208.md`](tickets/TICKET-0208.md); [`../design/world-forge-map-canvas.pen`](../design/world-forge-map-canvas.pen) |
 
 ## EPIC-0003: Narrative content (storyline, factions, side quests)
 
@@ -169,7 +173,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
 | TICKET-0060 | UI/UX accessibility requirements | proposed | P3 | Scale, contrast, input remapping baselines |
-| TICKET-0061 | Mini-map (data, rendering, fog-of-war policy) | proposed | P3 | Depends on map/region IDs from World Forge |
+| TICKET-0061 | Mini-map (data, rendering, fog-of-war policy) | proposed | P3 | Depends on map/region IDs; consumes cartography kit / culture labels / road layers (TICKET-0205–0207) |
 | TICKET-0062 | HUD information architecture for open-world RPG | proposed | P3 | Quest markers, faction cues; builds on canvas/HUD runtime |
 | TICKET-0153 | MCP HUD toolkit v1 + player health bar | needs-approval | P2 | Stepping stone; migrate under DEC-0025; [`tickets/TICKET-0153.md`](tickets/TICKET-0153.md) |
 | TICKET-0154 | MCP engine_lua_call script event dispatch | done | P2 | Agent-friendly fire interaction/combatHurt/handler without overlap |
@@ -227,6 +231,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0149 | Inspector: edit component props + open script | needs-approval | P2 | Implemented; awaiting owner approval; [`tickets/TICKET-0149.md`](tickets/TICKET-0149.md) |
 | TICKET-0150 | Viewport green collider overlays (box/sphere) | needs-approval | P2 | Implemented; awaiting owner approval; [`tickets/TICKET-0150.md`](tickets/TICKET-0150.md) |
 | TICKET-0151 | Expose existing prefab colliders as entity components | needs-approval | P2 | Implemented; awaiting owner approval; [`tickets/TICKET-0151.md`](tickets/TICKET-0151.md) |
+| TICKET-0209 | Editor + player UI Pencil chrome from rpg-engine-ui.pen | needs-approval | P2 | Shared ImGui chrome + header; parchment HUD/modals; [`tickets/TICKET-0209.md`](tickets/TICKET-0209.md); [`../design/rpg-engine-ui.pen`](../design/rpg-engine-ui.pen) |
 
 ## EPIC-0010: Particles and visual effects
 
@@ -280,7 +285,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0143 | PBR + transparency rendering slice | done | P2 | With 0040; masked/blended deferred fail-closed; [`tickets/TICKET-0143.md`](tickets/TICKET-0143.md) |
 | TICKET-0144 | Typography/font roles + fallback + licenses | needs-approval | P2 | Roboto engine + Cinzel scene; [`tickets/TICKET-0144.md`](tickets/TICKET-0144.md) |
 | TICKET-0145 | Dark-fantasy visual regression screenshot tests | proposed | P2 | |
-| TICKET-0146 | GPU context in structured diagnostics/crash bundles | proposed | P2 | |
+| TICKET-0146 | GPU context in structured diagnostics/crash bundles | needs-approval | P2 | Adapter/driver/VRAM/feature-level/device-removal context in JSONL + crash bundles; diagnostics 9/9; [`tickets/TICKET-0146.md`](tickets/TICKET-0146.md) |
 
 ## M6 engineering (under EPIC-0006 hold)
 

@@ -37,6 +37,7 @@ Related: [story index](index.md) · [faction gap review](factions.md#gaps-blocki
 
 - Leave unresolved items in the document’s Open Questions (or equivalent) section.
 - Also add blocking or cross-cutting items to [`context/interviews/open-questions.md`](../interviews/open-questions.md) when they affect World Forge, mid-campaign beats, or multiple docs.
+- Dom-facing naming / geography / lore answers: update [`context/design/dom-open-questions.md`](../design/dom-open-questions.md) (P0 before P1 before P2); move finished rows to [`context/design/dom-answered-questions.md`](../design/dom-answered-questions.md).
 - Never resolve an open question by assumption in the same change that introduces it.
 
 ## Smoke example (TICKET-0023)

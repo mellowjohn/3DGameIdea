@@ -8,6 +8,7 @@ Player-character proportions, starter kits, and turnaround presentation are defi
 
 ## Palette and atmosphere
 
+- Concrete swatches for the open-world slice live in [theme-palette.md](theme-palette.md) (anchored to the Blockbench tree).
 - Use muted earth colors: charcoal rock, desaturated forest green, cold gray soil, worn brown timber, and subdued iron.
 - Keep broad daylight readable but overcast, cool, and slightly desaturated rather than uniformly black.
 - Use warm fire, lanterns, windows, and settlements as navigation landmarks and signs of safety.
@@ -38,6 +39,7 @@ Typography should reinforce dark fantasy without reducing usability. Ornamental 
 
 - **Engine / editor chrome:** Roboto (SIL OFL 1.1) — `assets/ui/fonts/roboto/`. Transparent tooling UI.
 - **In-scene game UI (HUD, menus, inventory, dialogue, titles):** Cinzel (SIL OFL 1.1) — `assets/ui/fonts/cinzel/`. Player-facing game asset typography.
+- **Cartography / culture map labels:** Cinzel default (Kingdom of Tessera); additional SIL OFL display faces for Imperium, Cristallo, Arrotrebae, and orc warbands — see [cartography-design.md](cartography-design.md). Ornamental faces for short map labels only; never culture-by-typeface-alone.
 - **Developer console, diagnostics, IDs, and profiling:** JetBrains Mono (SIL OFL 1.1) — `assets/ui/fonts/jetbrains-mono/`.
 - **In-world inscriptions:** may still use a separate stylized face or authored glyph set, but must provide a readable translation where gameplay meaning matters.
 

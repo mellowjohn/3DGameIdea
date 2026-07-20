@@ -65,3 +65,9 @@ The sample `dead-tree.gltf` was authored for this project, has no external sourc
 `campfire.gltf` is a registry path for the project-owned procedural campfire mesh (stone ring, crossed logs, and flame) generated at import time.
 
 `player.gltf` is the open-world RPG starting player visual (Blockbench v1 bake). Source export: `tools/art/player/player.blockbench.gltf`. Rebake with `tools/bake_player_gltf.py`, which flattens node transforms, emits `TEXCOORD_0`, writes the atlas to `player.png` next to the glTF (referenced via a `baseColorTexture` material), also bakes a `COLOR_0` fallback, and normalizes feet at y=0 / height ≈ 1.8 m. The GPU now samples `player.png` (point/clamp) so eyes/clothing atlas detail shows in Scene/playtest. No locomotion clips yet — static mesh only until animation authoring.
+
+`tree.gltf` is the open-world RPG scene tree visual (Blockbench free-mesh bake). Source: `tools/art/tree/Tree.bbmodel`. Rebake with `tools/bake_tree_bbmodel.py`, which triangulates mesh elements, emits `TEXCOORD_0`, writes the atlas to `tree.png`, bakes a `COLOR_0` fallback, and normalizes feet at y=0 / height ≈ 3.0 m. The `tree.prefab.json` Scene Asset references this mesh.
+
+Oak silhouette variants derived from the same Blockbench oak (shared `tree.png` atlas): `oak_wide.gltf`, `oak_tall.gltf`, `oak_lean.gltf`, `oak_asymmetric.gltf`, `oak_young.gltf`. Sources under `tools/art/tree/variants/`. Regenerate with `python tools/generate_oak_variants.py`. Matching Scene Asset prefabs: `oak_wide`, `oak_tall`, `oak_lean`, `oak_asymmetric`, `oak_young`.
+
+`stones.gltf` is a small Blockbench rock cluster bake. Source: `tools/art/stones/Stones.gltf`. Rebake with `tools/bake_stones_gltf.py` (feet at y=0, height ≈ 0.45 m, atlas `stones.png`). Prefab: `assets/prefabs/Scene Assets/stones.prefab.json`.

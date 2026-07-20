@@ -5,6 +5,7 @@
 #include <imgui.h>
 
 #include <filesystem>
+#include <string>
 #include <vector>
 
 namespace engine::GameFonts {
@@ -14,6 +15,12 @@ ImFont* g_ui = nullptr;
 ImFont* g_display = nullptr;
 ImFont* g_mono = nullptr;
 ImFont* g_icons = nullptr;
+ImFont* g_map_forum = nullptr;
+ImFont* g_map_eb_garamond = nullptr;
+ImFont* g_map_uncial = nullptr;
+ImFont* g_map_metamorphous = nullptr;
+ImFont* g_map_medievalsharp = nullptr;
+constexpr float k_map_culture_font_px = 18.0f;
 
 std::filesystem::path first_existing(const std::vector<std::filesystem::path>& candidates) {
     for (const auto& candidate : candidates) {
@@ -49,6 +56,7 @@ ImFont* add_font(ImGuiIO& io, const std::filesystem::path& path, float size_px, 
 
 bool load(ImGuiIO& io) {
     g_ui = g_display = g_mono = g_icons = nullptr;
+    g_map_forum = g_map_eb_garamond = g_map_uncial = g_map_metamorphous = g_map_medievalsharp = nullptr;
 
     // Roboto = engine/editor chrome. Cinzel = in-scene game canvases (HUD, menus, dialogue).
     const auto ui_path = resolve_under_assets("assets/ui/fonts/roboto/Roboto-Regular.ttf");
@@ -86,6 +94,22 @@ bool load(ImGuiIO& io) {
     g_display = add_font(io, display_path, 22.0f, "scene/game (Cinzel)");
     g_mono = add_font(io, mono_path, 16.0f, "mono (JetBrains Mono)");
 
+    const auto forum_path = resolve_under_assets("assets/ui/fonts/forum/Forum-Regular.ttf");
+    const auto eb_path = resolve_under_assets("assets/ui/fonts/eb-garamond/EBGaramond-Variable.ttf");
+    const auto uncial_path = resolve_under_assets("assets/ui/fonts/uncial-antiqua/UncialAntiqua-Regular.ttf");
+    const auto morph_path = resolve_under_assets("assets/ui/fonts/metamorphous/Metamorphous-Regular.ttf");
+    const auto medievalsharp_path = resolve_under_assets("assets/ui/fonts/medievalsharp/MedievalSharp.ttf");
+    g_map_forum = add_font(io, forum_path, k_map_culture_font_px, "map culture (Forum)");
+    g_map_eb_garamond = add_font(io, eb_path, k_map_culture_font_px, "map culture (EB Garamond)");
+    if (!g_map_eb_garamond) {
+        const auto cormorant_path =
+            resolve_under_assets("assets/ui/fonts/cormorant-garamond/CormorantGaramond-Variable.ttf");
+        g_map_eb_garamond = add_font(io, cormorant_path, k_map_culture_font_px, "map culture (Cormorant Garamond)");
+    }
+    g_map_uncial = add_font(io, uncial_path, k_map_culture_font_px, "map culture (Uncial Antiqua)");
+    g_map_metamorphous = add_font(io, morph_path, k_map_culture_font_px, "map culture (Metamorphous)");
+    g_map_medievalsharp = add_font(io, medievalsharp_path, k_map_culture_font_px, "map culture (MedievalSharp)");
+
     if (g_ui) io.FontDefault = g_ui;
     return g_ui != nullptr;
 }
@@ -97,6 +121,24 @@ ImFont* icons() { return g_icons; }
 
 ImFont* for_design_size(float /*design_px*/) {
     // All in-scene canvas text uses Cinzel; call sites for engine chrome use ui() / FontDefault.
+    if (g_display) return g_display;
+    if (g_ui) return g_ui;
+    return ImGui::GetFont();
+}
+
+ImFont* map_typeface(const std::string& id) {
+    std::string key = id;
+    for (char& ch : key) {
+        if (ch >= 'A' && ch <= 'Z') ch = static_cast<char>(ch - 'A' + 'a');
+    }
+    for (char& ch : key) {
+        if (ch == '-') ch = '_';
+    }
+    if (key == "forum" && g_map_forum) return g_map_forum;
+    if ((key == "eb_garamond" || key == "ebgaramond") && g_map_eb_garamond) return g_map_eb_garamond;
+    if (key == "uncial_antiqua" && g_map_uncial) return g_map_uncial;
+    if (key == "metamorphous" && g_map_metamorphous) return g_map_metamorphous;
+    if (key == "medievalsharp" && g_map_medievalsharp) return g_map_medievalsharp;
     if (g_display) return g_display;
     if (g_ui) return g_ui;
     return ImGui::GetFont();

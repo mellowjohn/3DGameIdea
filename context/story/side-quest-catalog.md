@@ -47,7 +47,7 @@ Local-color quests (`consequential: no`) do not move allegiance tracks.
 | --- | --- |
 | Status | draft |
 | Consequential | no |
-| Starts | After Act 1 hub unlock; farmland road east of first hub (name TBD). Arkand in party **or** available at camp. |
+| Starts | After Ledgeport unlock; farmland road east of Ledgeport. Arkand in party **or** available at camp. |
 | Objectives | 1) Find Guard **Pellin** pinned under an overturned supply cart. 2) Clear 2–3 Imperium scavengers. 3) Lift cart (strength check **or** lever props). 4) Escort Pellin to hub gate. |
 | Fork | **Help gladly** → `sq01.arkand_pride`; **Mock him / make Arkand do it** → `sq01.arkand_embarrassed` (dialogue only). |
 | Mainline impact | None. Optional Arkand banter in later camp scenes. |
@@ -253,7 +253,7 @@ Tone: isolated comedy pocket — must not rewrite Frangitur/Shroud lore. **Lion 
 
 - Numeric standing / morality thresholds (blocked on story-vision rules).
 - Lock final warband / Cristallo NPC names when 0021 resolves (Brannoc, Kerra, Vesperine are placeholders).
-- First hub / islet / mountain path final geographic names.
+- ~~First hub name~~ — **Ledgeport**; islet / mountain path final geographic names still open.
 - Whether SQ-12 gets any serious-world callback.
 
 Also: [`context/interviews/open-questions.md`](../interviews/open-questions.md).

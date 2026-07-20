@@ -7,13 +7,15 @@
 
 **Frangitur** means “to break,” “to shatter,” or “shattered.”
 
-## Creo and the Fall of Frangitur
+## Creotar / Creo and the Fall of Frangitur
 
-Frangitur was once known as **Creo**, the god of thought and creation, and was worshipped as a god under the Cristallo. Creo was a powerful figure who believed he could shape the world in his own image.
+**Creotar** is the full name of the god of thought and creation; **Creo** is the short form of the same being (Dom + owner, 2026-07-20). He was worshipped as a god under the Cristallo and believed he could shape the world in his own image.
 
-While other gods created nature and other parts of the land, Creo developed free thought and gave it to the peoples of Tessera. He believed they would use this gift to create marvelous inventions, increase productivity, and help the supposed utopia flourish.
+While other gods created nature and other parts of the land, Creotar developed free thought and gave it to the peoples of Tessera. He believed they would use this gift to create marvelous inventions, increase productivity, and help the supposed utopia flourish.
 
-Instead, Creo witnessed atrocities and betrayals committed by the free peoples throughout the realm. His desire to correct their actions gradually corrupted him into the very kind of being he sought to destroy. His corrupted nature eventually consumed his creative nature, leaving him broken and distorted as Frangitur, a god of chaos who seeks the destruction of Tessera.
+Instead, he witnessed atrocities and betrayals committed by the free peoples throughout the realm. His desire to correct their actions gradually corrupted him into the very kind of being he sought to destroy. His corrupted nature eventually consumed his creative nature, leaving him broken and distorted as **Frangitur** — the perverted / fallen form of Creotar, a god of chaos who seeks the destruction of Tessera. (Tragic-fall tone; not a separate original deity.)
+
+In the current draft cosmology, Creotar and Frangitur are the two true deity poles of this conflict. Lesser “gods” in local cults are often demi-god figures or **planted false patrons** — Frangitur spreads misinformation by rewriting god-names and installing contradictions (e.g. a sea wayfarer twisted into torment of the sea). See [The Sea of Whispers](factions.md#the-sea-of-whispers).
 
 Once a believer in free and powerful thought who tried to establish order, Frangitur came to believe that thought doomed the world to chaos. Free thought could not be controlled and therefore stood in the way of his vision of a perfect utopia. His solution became the destruction of all thinking beings, whom he views as a plague that prevents perfect peace.
 
@@ -40,3 +42,4 @@ This fall transformed him into **Luceran the Hollow**, the Usurper.
 - The name of the great orc warband leader is work in progress.
 - The nature of the Cristallo and what it means to be a god “under” it remain to be defined.
 - The exact meaning and narrative mechanics of stronger morality causing greater Nefarium exposure remain to be defined.
+- Whether Creotar’s Act 0 vision guidance (“destroy the Shroud”) is honest or dramatic irony against Frangitur’s prologue remains open — identity of Creotar/Creo/Frangitur is no longer the blocker.

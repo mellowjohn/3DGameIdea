@@ -250,6 +250,16 @@ Result<WorldForgeFactionsAsset> WorldForgeFactionsAsset::parse(const std::string
             }
             entity.parent_id = node.value("parentId", std::string{});
             entity.open_questions = read_string_array(node.value("openQuestions", nlohmann::json::array()));
+            entity.emblem_path = node.value("emblemPath", std::string{});
+            entity.map_typeface_id = node.value("mapTypefaceId", std::string{});
+            if (node.contains("mapColor") && node["mapColor"].is_array() && node["mapColor"].size() >= 3) {
+                std::array<float, 3> color{
+                    node["mapColor"][0].get<float>(),
+                    node["mapColor"][1].get<float>(),
+                    node["mapColor"][2].get<float>(),
+                };
+                entity.map_color = color;
+            }
             if (node.contains("standing") && node["standing"].is_object()) {
                 const auto& standing_node = node["standing"];
                 WorldForgeFactionStandingConfig standing;
@@ -327,6 +337,12 @@ std::string WorldForgeFactionsAsset::to_json() const {
         if (entity.political_role) node["politicalRole"] = to_string(*entity.political_role);
         node["parentId"] = entity.parent_id;
         node["openQuestions"] = write_string_array(entity.open_questions);
+        if (!entity.emblem_path.empty()) node["emblemPath"] = entity.emblem_path;
+        if (entity.map_color) {
+            node["mapColor"] = nlohmann::ordered_json::array(
+                {(*entity.map_color)[0], (*entity.map_color)[1], (*entity.map_color)[2]});
+        }
+        if (!entity.map_typeface_id.empty()) node["mapTypefaceId"] = entity.map_typeface_id;
         if (entity.standing) {
             nlohmann::ordered_json standing_json;
             standing_json["tracksPlayer"] = entity.standing->tracks_player;

@@ -55,6 +55,23 @@ int main() {
               response.diagnostics.front().code == "PROJECT-MANIFEST-INVALID",
           "Invalid manifest returns stable validation error");
 
+    std::ofstream(project / "project.engine.json", std::ios::trunc) << "{\"schemaVersion\":1,\"projectId\":\"test\",\"name\":\"Test\"}";
+    CommandRequest missing_suite{"test", project, true, false, {}, "test-correlation"};
+    response = execute_command(missing_suite);
+    check(response.exit_code == ExitCode::InvalidArguments &&
+              response.diagnostics.front().code == "CLI-TEST-SUITE-REQUIRED",
+          "Test command requires a suite");
+    CommandRequest unknown_suite{"test", project, true, false, {"--suite", "unknown"}, "test-correlation"};
+    response = execute_command(unknown_suite);
+    check(response.exit_code == ExitCode::InvalidArguments &&
+              response.diagnostics.front().code == "CLI-TEST-SUITE-UNKNOWN",
+          "Test command rejects an unknown suite");
+    CommandRequest dry_run_suite{"test", project, true, true, {"--suite", "core"}, "test-correlation"};
+    response = execute_command(dry_run_suite);
+    check(response.exit_code == ExitCode::Success && response.metadata.at("suite") == "core" &&
+              response.metrics.at("testCount") == 1.0,
+          "Test command dry run reports the selected suite");
+
     auto invalid_id = EntityId::parse("not-a-uuid");
     check(!invalid_id && invalid_id.error().code == "WORLD-INVALID-UUID", "Malformed UUID is rejected");
     auto root_id = EntityId::parse("00000000-0000-4000-8000-000000000001");

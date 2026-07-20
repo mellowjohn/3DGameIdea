@@ -1,15 +1,24 @@
 {
   "schemaVersion": 1,
-  "baseColor": [0.18, 0.30, 0.14, 1.0],
-  "roughness": 0.92,
+  "baseColor": [
+    0.23899999260902405,
+    0.2709999978542328,
+    0.18799999356269836,
+    1.0
+  ],
+  "roughness": 0.9200000166893005,
   "metallic": 0.0,
   "opacityMode": "opaque",
   "opacityCutoff": 0.5,
-  "emissive": [0.0, 0.0, 0.0],
+  "emissive": [
+    0.0,
+    0.0,
+    0.0
+  ],
   "doubleSided": false,
   "physics": {
-    "friction": 0.82,
-    "restitution": 0.03,
+    "friction": 0.8199999928474426,
+    "restitution": 0.029999999329447746,
     "density": 1450.0,
     "surface": "dark_grass"
   }

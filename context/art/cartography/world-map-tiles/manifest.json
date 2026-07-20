@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "official_world_map_tiles",
+  "tileSize": 512,
+  "maxLod": 3,
+  "masterWidth": 4096,
+  "masterHeight": 2730,
+  "nativeWidth": 4096,
+  "nativeHeight": 2730,
+  "aspect": 1.5003663003663004,
+  "pathPattern": "z{lod}/{x}_{y}.png",
+  "levels": [
+    {
+      "lod": 0,
+      "cols": 1,
+      "rows": 1,
+      "contentWidth": 512,
+      "contentHeight": 341,
+      "levelWidth": 512,
+      "levelHeight": 512
+    },
+    {
+      "lod": 1,
+      "cols": 2,
+      "rows": 2,
+      "contentWidth": 1024,
+      "contentHeight": 682,
+      "levelWidth": 1024,
+      "levelHeight": 1024
+    },
+    {
+      "lod": 2,
+      "cols": 4,
+      "rows": 3,
+      "contentWidth": 2048,
+      "contentHeight": 1365,
+      "levelWidth": 2048,
+      "levelHeight": 1536
+    },
+    {
+      "lod": 3,
+      "cols": 8,
+      "rows": 6,
+      "contentWidth": 4096,
+      "contentHeight": 2730,
+      "levelWidth": 4096,
+      "levelHeight": 3072
+    }
+  ],
+  "notes": "4096-wide continuous master from hires overview (detail-plate inject off by default). Zoom cap uses nativeWidth (~1.35x allowed in editor)."
+}

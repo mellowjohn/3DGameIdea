@@ -35,7 +35,7 @@ WorldForgeGraphBounds compute_graph_bounds(const std::unordered_map<std::string,
 }
 
 void fit_graph_camera_to_bounds(WorldForgeGraphCamera& camera, float canvas_w, float canvas_h,
-    const WorldForgeGraphBounds& bounds, float pad) {
+    const WorldForgeGraphBounds& bounds, float pad, bool cover) {
     if (!bounds.valid || canvas_w < 1.0f || canvas_h < 1.0f) {
         camera.zoom = 1.0f;
         camera.pan = {0.0f, 0.0f};
@@ -45,7 +45,8 @@ void fit_graph_camera_to_bounds(WorldForgeGraphCamera& camera, float canvas_w, f
     const float content_h = (std::max)(bounds.max_y - bounds.min_y, 80.0f);
     const float zoom_x = (canvas_w - 2.0f * pad) / content_w;
     const float zoom_y = (canvas_h - 2.0f * pad) / content_h;
-    camera.zoom = (std::clamp)((std::min)(zoom_x, zoom_y), camera.min_zoom, camera.max_zoom);
+    const float chosen = cover ? (std::max)(zoom_x, zoom_y) : (std::min)(zoom_x, zoom_y);
+    camera.zoom = (std::clamp)(chosen, camera.min_zoom, camera.max_zoom);
     const float cx = (bounds.min_x + bounds.max_x) * 0.5f;
     const float cy = (bounds.min_y + bounds.max_y) * 0.5f;
     camera.pan[0] = canvas_w * 0.5f - cx * camera.zoom;

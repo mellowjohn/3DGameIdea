@@ -22,6 +22,17 @@
         "enabled": false,
         "notes": "Surrounding regions may soft-open after Act 0; late/high-chaos zones may stay gated."
       },
+      "anchor": {
+        "x": 34.40538787841797,
+        "y": 1.1920931339263916,
+        "z": -90.00863647460938
+      },
+      "border": [
+        {
+          "x": 295.79058837890625,
+          "z": -73.90414428710938
+        }
+      ],
       "openQuestions": [
         "Whether Tessera is kingdom name vs broader setting/map name",
         "Named cities, castles, and biomes beyond Act 0 Calrenoth spine"
@@ -32,8 +43,8 @@
       "kind": "fortress",
       "displayName": "Calrenoth",
       "canonStatus": "draft",
-      "summary": "Supposedly impenetrable fortress breached by the Imperium; Act 0 siege tutorial / soft-gated corridor.",
-      "storyRef": "context/story/campaign-beat-sheet.md#act-0--fall-of-calrenoth-working-opening",
+      "summary": "Western peninsula tip fortress (Landfall / Act 0). Tessera frontier landing breached by the Imperium; landlocked player approach + moat-scale drawbridge. Prefer open-world soft-gated siege corridor.",
+      "storyRef": "context/story/campaign-beat-sheet.md#act-0--landfall-fall-of-calrenoth",
       "parentRegionId": "tessera_overland",
       "factionIds": [
         "kingdom_tessera"
@@ -44,19 +55,20 @@
       "tags": [
         "act0",
         "siege",
-        "tutorial"
+        "tutorial",
+        "landfall"
       ],
       "softGate": {
         "enabled": true,
-        "notes": "Prefer contiguous Calrenoth experience with soft gates; optional short instance only if density demands."
+        "notes": "Prefer contiguous open-world Calrenoth with soft gates; optional short instance only if density demands."
       },
       "anchor": {
-        "x": -43.69316482543945,
-        "y": 0.723411500453949,
-        "z": -0.29936978220939636
+        "x": 96.09681701660156,
+        "y": 0.49349790811538696,
+        "z": 72.34330749511719
       },
       "openQuestions": [
-        "Whether Calrenoth stays permanently ruined on the seamless map after Act 0"
+        "Exact Map Canvas lock for landlocked approach vs moat drawbridge spur"
       ]
     },
     {
@@ -81,7 +93,81 @@
       },
       "openQuestions": [
         "Named tribes, groves, and travel approaches",
-        "Soft-gate policy vs Cristallo settlements"
+        "Soft-gate policy vs Cristallo settlements",
+        "Relationship to southwest coastal Thalassar territory (Act 1)"
+      ]
+    },
+    {
+      "id": "southwest_coastal_wilds",
+      "kind": "wilderness",
+      "displayName": "Southwest Coastal Wilds (The Thalassar)",
+      "canonStatus": "draft",
+      "summary": "Coastal Arrotrebae territory for The Thalassar (thalassar) in the Act 1 southwest theater and Act 0 south-of-peninsula presence. Uses Thalassar clan affiliation under Arrotrebae umbrella.",
+      "storyRef": "context/story/factions.md#the-thalassar",
+      "parentRegionId": "tessera_overland",
+      "factionIds": [
+        "thalassar",
+        "arrotrebae"
+      ],
+      "acts": [
+        "act0",
+        "act1"
+      ],
+      "tags": [
+        "act0",
+        "act1",
+        "coastal",
+        "arrotrebae",
+        "thalassar",
+        "pirate"
+      ],
+      "softGate": {
+        "enabled": false,
+        "notes": "Act 1 southwest theater contact; do not invent tribe borders."
+      },
+      "anchor": {
+        "x": 128.1815185546875,
+        "y": -2.139845132827759,
+        "z": 239.34811401367188
+      },
+      "openQuestions": [
+        "Exact map anchors relative to Calrenoth peninsula and Ledgeport",
+        "Water-deity shrine / rite site POI (Muirthalia public rite; Sea of Whispers false patron; lieutenant boss leads A1-05)"
+      ]
+    },
+    {
+      "id": "ledgeport",
+      "kind": "settlement",
+      "displayName": "Ledgeport",
+      "canonStatus": "draft",
+      "summary": "Coastal market free-town near the Calrenoth / Landfall retreat path — not owned by Arrotrebae or Cristallo. Primary Act 1 hub: mayor possible, market-led politics, merchant guild + undermarket; ferry toward Cristallo; traders from Thalassar and Cristallo visit.",
+      "storyRef": "context/story/official-world-map.md#draft-faction-theaters-2026-07-20",
+      "parentRegionId": "tessera_overland",
+      "factionIds": [],
+      "acts": [
+        "act1"
+      ],
+      "tags": [
+        "act1",
+        "neutral",
+        "trade",
+        "hub",
+        "ferry",
+        "market"
+      ],
+      "softGate": {
+        "enabled": false,
+        "notes": "Neutral hub — no faction ownership chip on Cartography."
+      },
+      "anchor": {
+        "x": 123.99295806884766,
+        "y": -0.9681106805801392,
+        "z": 64.3792953491211
+      },
+      "openQuestions": [
+        "Locked world-space coordinates vs Calrenoth",
+        "Ferry dock wiring to Cristallo (Dom D-P0-09)",
+        "DEC-0032 evergreen wake/camp reconcile with Ledgeport-first Act 1 (Dom D-P0-10)"
       ]
     }
   ],
@@ -104,9 +190,9 @@
         "gate"
       ],
       "anchor": {
-        "x": -19.705955505371094,
-        "y": -1.3211249113082886,
-        "z": -0.21857452392578125
+        "x": 84.338134765625,
+        "y": 0.5793300271034241,
+        "z": 91.45116424560547
       },
       "openQuestions": [
         "World-space anchor and scene entity UUID once placed in Scene"
@@ -130,9 +216,9 @@
         "companion-intro"
       ],
       "anchor": {
-        "x": -35.705955505371094,
-        "y": -0.3524162471294403,
-        "z": 8.031425476074219
+        "x": 113.7348403930664,
+        "y": 2.9728660583496094,
+        "z": 95.1257553100586
       },
       "openQuestions": [
         "Exact placement relative to walls / battalions once set dressing exists"
@@ -148,8 +234,13 @@
       "storyRef": "context/story/side-quest-catalog.md",
       "sceneEntityId": "",
       "prefabId": "",
-      "acts": ["act1"],
-      "tags": ["ferry", "sq10"],
+      "acts": [
+        "act1"
+      ],
+      "tags": [
+        "ferry",
+        "sq10"
+      ],
       "anchor": {
         "x": 120.0,
         "y": 0.0,
@@ -167,14 +258,80 @@
       "storyRef": "context/story/side-quest-catalog.md",
       "sceneEntityId": "",
       "prefabId": "",
-      "acts": ["act1"],
-      "tags": ["ferry", "sq10"],
+      "acts": [
+        "act1"
+      ],
+      "tags": [
+        "ferry",
+        "sq10"
+      ],
       "anchor": {
         "x": 240.0,
         "y": 0.0,
         "z": 70.0
       },
       "openQuestions": []
+    },
+    {
+      "id": "ledgeport_dock",
+      "kind": "other",
+      "displayName": "Ledgeport Dock",
+      "canonStatus": "draft",
+      "regionId": "ledgeport",
+      "summary": "Ferry/dock POI for Ledgeport — embark toward Cristallo and coastal Act 1 contacts.",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "sceneEntityId": "",
+      "prefabId": "",
+      "acts": [
+        "act1"
+      ],
+      "tags": [
+        "ferry",
+        "dock",
+        "act1",
+        "neutral",
+        "ledgeport"
+      ],
+      "anchor": {
+        "x": 146.80926513671875,
+        "y": -2.321183204650879,
+        "z": 66.03866577148438
+      },
+      "openQuestions": [
+        "World-space anchor once peninsula geography is locked",
+        "Ferry route endpoint toward Cristallo island once Cristallo dock POI exists"
+      ]
+    },
+    {
+      "id": "coastal_tribe_rite_site",
+      "kind": "shrine",
+      "displayName": "Thalassar Rite Site (Muirthalia)",
+      "canonStatus": "draft",
+      "regionId": "southwest_coastal_wilds",
+      "summary": "Planning stub for The Thalassar succession / Anál Muir (anal_muir) attunement site (A1-05). Public rite title Muirthalia; false patron The Sea of Whispers (sea_of_whispers).",
+      "storyRef": "context/story/factions.md#calrenoth-corridor-liturgy-names",
+      "sceneEntityId": "",
+      "prefabId": "",
+      "acts": [
+        "act1"
+      ],
+      "tags": [
+        "act1",
+        "arrotrebae",
+        "thalassar",
+        "rite",
+        "muirthalia",
+        "sea_of_whispers"
+      ],
+      "anchor": {
+        "x": 46.540164947509766,
+        "y": 1.5951457023620605,
+        "z": 201.46214294433594
+      },
+      "openQuestions": [
+        "Wire Anál Muir (anal_muir) artifact node / scene props once rite staging exists",
+        "Exact placement relative to coast / market hub"
+      ]
     }
   ],
   "links": [
@@ -213,51 +370,126 @@
       "summary": "Drawbridge POI belongs to / opens onto the Calrenoth fortress region.",
       "storyRef": "context/story/campaign-beat-sheet.md",
       "openQuestions": []
+    },
+    {
+      "id": "calrenoth_travel_to_ledgeport",
+      "kind": "travel",
+      "fromKind": "region",
+      "fromId": "calrenoth",
+      "toKind": "region",
+      "toId": "ledgeport",
+      "canonStatus": "draft",
+      "bidirectional": true,
+      "softGate": {
+        "enabled": false,
+        "notes": ""
+      },
+      "summary": "Draft Act 0/1 retreat / travel adjacency from Calrenoth toward Ledgeport.",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "openQuestions": [
+        "World-space path once Ledgeport coords lock"
+      ]
+    },
+    {
+      "id": "ledgeport_travel_to_coastal_wilds",
+      "kind": "travel",
+      "fromKind": "region",
+      "fromId": "ledgeport",
+      "toKind": "region",
+      "toId": "southwest_coastal_wilds",
+      "canonStatus": "draft",
+      "bidirectional": true,
+      "softGate": {
+        "enabled": false,
+        "notes": ""
+      },
+      "summary": "Act 1 contact path between Ledgeport and coastal Arrotrebae pirate territory (succession / A1-05).",
+      "storyRef": "context/story/factions.md#design-session-2026-07-20-coastal-arrotrebae--relics--act-1-draft",
+      "openQuestions": [
+        "Exact road/coast approach once tribe territory is named"
+      ]
+    },
+    {
+      "id": "rite_site_in_coastal_wilds",
+      "kind": "adjacency",
+      "fromKind": "poi",
+      "fromId": "coastal_tribe_rite_site",
+      "toKind": "region",
+      "toId": "southwest_coastal_wilds",
+      "canonStatus": "draft",
+      "bidirectional": true,
+      "softGate": {
+        "enabled": false,
+        "notes": ""
+      },
+      "summary": "Succession rite site belongs to the coastal Arrotrebae wilds planning region.",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "openQuestions": []
+    },
+    {
+      "id": "dock_in_ledgeport",
+      "kind": "adjacency",
+      "fromKind": "poi",
+      "fromId": "ledgeport_dock",
+      "toKind": "region",
+      "toId": "ledgeport",
+      "canonStatus": "draft",
+      "bidirectional": true,
+      "softGate": {
+        "enabled": false,
+        "notes": ""
+      },
+      "summary": "Dock POI belongs to Ledgeport.",
+      "storyRef": "context/story/official-world-map.md#draft-faction-theaters-2026-07-20",
+      "openQuestions": []
     }
   ],
   "hydrologyRegions": [
     {
       "id": "demo_pond",
       "kind": "lake",
-      "displayName": "Demo Pond",
-      "canonStatus": "draft",
-      "summary": "Sample authored pond near origin for water sculpt/MCP verification.",
       "minX": -20.0,
       "maxX": 20.0,
       "minZ": -20.0,
       "maxZ": 20.0,
       "acts": [],
-      "tags": ["sample", "pond"]
+      "summary": "Sample authored pond near origin for water sculpt/MCP verification."
     },
     {
       "id": "eastern_sea",
       "kind": "sea",
-      "displayName": "Eastern Sea (bounded)",
-      "canonStatus": "draft",
-      "summary": "Bounded open-sea sample; terrain below sea level fills inside this box.",
       "minX": 800.0,
       "maxX": 1200.0,
       "minZ": -200.0,
       "maxZ": 200.0,
       "acts": [],
-      "tags": ["sea", "bounded"]
+      "summary": "Bounded open-sea sample; terrain below sea level fills inside this box."
     }
   ],
   "ferryRoutes": [
     {
       "id": "sq10_ferry_route",
-      "displayName": "Island Ferry (SQ-10 stub)",
-      "canonStatus": "draft",
       "fromPoiId": "old_noll_dock",
       "toPoiId": "islet_of_cinders",
       "summary": "Planned ferry crossing for SQ-10; hull motion scripted via ferry_crossing.lua.",
-      "points": [
-        { "x": 120.0, "z": 40.0 },
-        { "x": 180.0, "z": 55.0 },
-        { "x": 240.0, "z": 70.0 }
+      "acts": [
+        "act1"
       ],
-      "acts": ["act1"],
-      "tags": ["ferry", "sq10"]
+      "points": [
+        {
+          "x": 120.0,
+          "z": 40.0
+        },
+        {
+          "x": 180.0,
+          "z": 55.0
+        },
+        {
+          "x": 240.0,
+          "z": 70.0
+        }
+      ]
     }
-  ]
+  ],
+  "travelRoutes": []
 }

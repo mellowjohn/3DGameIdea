@@ -152,16 +152,17 @@
       "kind": "deity",
       "displayName": "Creotar",
       "canonStatus": "draft",
-      "summary": "Vision-space being who warns the protagonist about Luceran and the Nefarium Shroud (Twine-backed draft).",
-      "storyRef": "context/story/campaign-beat-sheet.md",
+      "summary": "God of knowledge and creation (Creo = short form). Act 0 vision guide. Frangitur is the fallen/perverted form of this same being (locked 2026-07-20).",
+      "storyRef": "context/story/frangitur-the-great-evil.md",
       "acts": [],
       "tags": [
         "vision",
-        "knowledge"
+        "knowledge",
+        "creation"
       ],
       "parentId": "",
       "openQuestions": [
-        "Canon status vs Creo; whether Creotar is established god identity or draft alias"
+        "Whether Act 0 destroy-the-Shroud guidance is honest or dramatic irony"
       ]
     },
     {
@@ -179,6 +180,29 @@
       "parentId": "",
       "openQuestions": [
         "Prison-vs-control interpretations of the Shroud remain unresolved draft tensions"
+      ]
+    },
+    {
+      "id": "anal_muir",
+      "kind": "artifact",
+      "displayName": "Anál Muir",
+      "canonStatus": "draft",
+      "summary": "Thalassar minor leadership relic (anáil + muir — sea-breath). Rite-gated attunement for the coastal clan leader; deliberately weaker than the Nefarium Shroud. Public liturgy under Muirthalia; false patron The Sea of Whispers.",
+      "storyRef": "context/story/factions.md#the-thalassar",
+      "acts": [
+        "act1"
+      ],
+      "tags": [
+        "relic",
+        "minor",
+        "thalassar",
+        "arrotrebae",
+        "muirthalia"
+      ],
+      "parentId": "",
+      "openQuestions": [
+        "Literal vs abstracted water-walking / enhanced breath (D-P1-04)",
+        "Whether attunement channels The Sea of Whispers directly"
       ]
     }
   ],
@@ -308,9 +332,13 @@
       "kind": "rival",
       "canonStatus": "draft",
       "bidirectional": true,
-      "summary": "Cristallo and Arrotrebae are openly adversarial.",
+      "summary": "Cristallo and Arrotrebae are openly adversarial. Act 1 coastal tribe succession may introduce Arrotrebae politics before Act 2 allegiance lock-in; do not invent named tribal leaders here.",
       "storyRef": "context/story/factions.md#the-cristallo",
-      "openQuestions": [],
+      "openQuestions": [
+        "Coastal pirate tribe leader / successor / assassin person nodes once owner names them",
+        "Water deity pantheon + relationship node once named (Anál Muir artifact node seeded)",
+        "StandingTransfer magnitude when numeric thresholds land"
+      ],
       "standingTransfer": 0.0
     },
     {
@@ -348,6 +376,24 @@
       "bidirectional": false,
       "summary": "Luceran wears / is corrupted by the Nefarium Shroud.",
       "storyRef": "context/story/nefarium-and-the-shroud.md",
+      "openQuestions": [],
+      "standingTransfer": 0.0
+    },
+    {
+      "id": "anal_muir_related_to_thalassar",
+      "from": {
+        "target": "node",
+        "id": "anal_muir"
+      },
+      "to": {
+        "target": "faction",
+        "id": "thalassar"
+      },
+      "kind": "related",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "summary": "Anál Muir is the Thalassar clan's rite-gated minor leadership relic (weaker than the Nefarium Shroud).",
+      "storyRef": "context/story/factions.md#the-thalassar",
       "openQuestions": [],
       "standingTransfer": 0.0
     }

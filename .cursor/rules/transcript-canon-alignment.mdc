@@ -1,0 +1,30 @@
+---
+description: Reconcile transcript spelling errors with established story/World Forge canon
+alwaysApply: true
+---
+
+# Transcript Canon Alignment
+
+When ingesting voice transcripts, design recordings, or similar noisy sources into `context/story/`, World Forge seeds, or planning docs, **reconcile apparent spelling errors with established canon** instead of creating lookalike entities.
+
+## Rules
+
+1. Prefer established display names and IDs already in story docs and World Forge assets (`arrotrebae`, `cristallo`, `calrenoth`, `creotar`, `frangitur`, etc.).
+2. Treat near-miss transcript spellings as transcription errors when context clearly matches an existing faction, place, person, or relic (e.g. “Aerotropy” / “Atrobia” / “Itro B” → **Arrotrebae**; “Karanoth” → **Calrenoth**; “Fairy Iron / Farium / Nefarian Shroud” → **Nefarium Shroud**).
+3. Do **not** invent a new lore entity, faction id, or map region solely because a transcript used a different spelling.
+4. If the transcript might intentionally introduce a **new** name (not a mishearing), leave it **open** / draft and ask the owner — do not silently fork canon.
+5. When quoting the raw transcript for provenance, keep the original misspelling in quotes and map it to the canonical term in the same sentence.
+6. After documentation passes, scan for accidental alternate spellings except where explicitly marked as transcript errors.
+
+## Examples
+
+```text
+❌ BAD: Seed a new faction id `aerotropy` because the transcript said “Aerotropy”
+✅ GOOD: Document as coastal Arrotrebae tribe draft; note transcript said “Aerotropy” / “Atrobia”
+
+❌ BAD: Create place `Karanoth` beside existing Calrenoth
+✅ GOOD: Align to Calrenoth; quote “Karanoth” only as a transcript mishearing
+
+❌ BAD: Assume “Fairy Iron Shroud” is a second major relic
+✅ GOOD: Map to Nefarium Shroud unless the owner confirms a distinct artifact
+```

@@ -25,6 +25,7 @@ enum class WorldForgePoiKind : std::uint8_t { Landmark, Settlement, Gate, Shrine
 enum class WorldForgeMapLinkKind : std::uint8_t { Travel, SoftGate, StoryGate, Adjacency };
 enum class WorldForgeMapEndpointKind : std::uint8_t { Region, Poi };
 enum class WorldForgeHydrologyKind : std::uint8_t { Lake, River, Sea };
+enum class WorldForgeTravelRouteKind : std::uint8_t { Track, Road, Highway };
 
 struct WorldForgeMapSoftGate {
     bool enabled = false;
@@ -34,6 +35,11 @@ struct WorldForgeMapSoftGate {
 struct WorldForgeWorldAnchor {
     float x = 0.0f;
     float y = 0.0f;
+    float z = 0.0f;
+};
+
+struct WorldForgeMapPoint2 {
+    float x = 0.0f;
     float z = 0.0f;
 };
 
@@ -51,6 +57,8 @@ struct WorldForgeRegion {
     std::vector<std::string> tags;
     WorldForgeMapSoftGate soft_gate;
     std::optional<WorldForgeWorldAnchor> anchor;
+    /// Optional political / region outline in world XZ (open or closed polyline).
+    std::vector<WorldForgeMapPoint2> border;
     std::vector<std::string> open_questions;
 };
 
@@ -82,16 +90,23 @@ struct WorldForgeHydrologyRegion {
     std::string summary;
 };
 
-struct WorldForgeFerryRoutePoint {
-    float x = 0.0f;
-    float z = 0.0f;
-};
-
 struct WorldForgeFerryRoute {
     std::string id;
     std::string from_poi_id;
     std::string to_poi_id;
-    std::vector<WorldForgeFerryRoutePoint> points;
+    std::vector<WorldForgeMapPoint2> points;
+    /// Campaign act membership (`act0`..`act4`). Empty = campaign-wide. See DEC-0036.
+    std::vector<std::string> acts;
+    std::string summary;
+};
+
+/// Authored land travel geometry (track / road / highway). Narrative adjacency stays in `links[]`.
+struct WorldForgeTravelRoute {
+    std::string id;
+    WorldForgeTravelRouteKind kind = WorldForgeTravelRouteKind::Road;
+    std::string from_poi_id;
+    std::string to_poi_id;
+    std::vector<WorldForgeMapPoint2> points;
     /// Campaign act membership (`act0`..`act4`). Empty = campaign-wide. See DEC-0036.
     std::vector<std::string> acts;
     std::string summary;
@@ -120,6 +135,7 @@ struct WorldForgeMapAsset {
     std::vector<WorldForgeMapLink> links;
     std::vector<WorldForgeHydrologyRegion> hydrology_regions;
     std::vector<WorldForgeFerryRoute> ferry_routes;
+    std::vector<WorldForgeTravelRoute> travel_routes;
 
     [[nodiscard]] Result<void> validate() const;
     [[nodiscard]] Result<void> validate_faction_refs(const std::unordered_set<std::string>& known_faction_ids) const;
@@ -139,6 +155,7 @@ struct WorldForgeMapAsset {
 [[nodiscard]] const char* to_string(WorldForgeMapLinkKind value) noexcept;
 [[nodiscard]] const char* to_string(WorldForgeMapEndpointKind value) noexcept;
 [[nodiscard]] const char* to_string(WorldForgeHydrologyKind value) noexcept;
+[[nodiscard]] const char* to_string(WorldForgeTravelRouteKind value) noexcept;
 
 [[nodiscard]] std::filesystem::path default_world_forge_map_path(const std::filesystem::path& project_root);
 

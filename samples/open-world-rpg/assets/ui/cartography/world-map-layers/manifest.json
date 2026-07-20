@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "id": "official_world_map_layers",
+  "masterWidth": 4096,
+  "masterHeight": 2730,
+  "aspect": 1.5003663003663004,
+  "nativeWidth": 4096,
+  "transitionSeconds": 0.35,
+  "notes": "Discrete Cartography zoom plates cropped from continuous master. Fog transition between plates; ornate frame is separate chrome.",
+  "layers": [
+    {
+      "id": "continent",
+      "file": "continent.png",
+      "u0": 0.0,
+      "v0": 0.0,
+      "u1": 1.0,
+      "v1": 1.0,
+      "minZoom": 0.0,
+      "priority": 0,
+      "width": 2048,
+      "height": 1365,
+      "role": "Full Tessera geography"
+    },
+    {
+      "id": "theater_nw",
+      "file": "theater_nw.png",
+      "u0": 0.0,
+      "v0": 0.0,
+      "u1": 0.55,
+      "v1": 0.55,
+      "minZoom": 1.15,
+      "priority": 1,
+      "width": 2048,
+      "height": 1365,
+      "role": "NW continent / western spine"
+    },
+    {
+      "id": "theater_ne",
+      "file": "theater_ne.png",
+      "u0": 0.45,
+      "v0": 0.0,
+      "u1": 1.0,
+      "v1": 0.55,
+      "minZoom": 1.15,
+      "priority": 1,
+      "width": 2048,
+      "height": 1365,
+      "role": "NE land + northeastern island"
+    },
+    {
+      "id": "theater_sw",
+      "file": "theater_sw.png",
+      "u0": 0.0,
+      "v0": 0.45,
+      "u1": 0.55,
+      "v1": 1.0,
+      "minZoom": 1.15,
+      "priority": 1,
+      "width": 2048,
+      "height": 1365,
+      "role": "SW coasts / Act 0 approaches"
+    },
+    {
+      "id": "theater_se",
+      "file": "theater_se.png",
+      "u0": 0.45,
+      "v0": 0.45,
+      "u1": 1.0,
+      "v1": 1.0,
+      "minZoom": 1.15,
+      "priority": 1,
+      "width": 2048,
+      "height": 1365,
+      "role": "SE / scorched coast"
+    },
+    {
+      "id": "theater_interior_sea",
+      "file": "theater_interior_sea.png",
+      "u0": 0.25,
+      "v0": 0.25,
+      "u1": 0.75,
+      "v1": 0.75,
+      "minZoom": 1.35,
+      "priority": 2,
+      "width": 2048,
+      "height": 1366,
+      "role": "Interior sea + central island"
+    },
+    {
+      "id": "local_calrenoth",
+      "file": "local_calrenoth.png",
+      "u0": 0.05,
+      "v0": 0.55,
+      "u1": 0.42,
+      "v1": 0.92,
+      "minZoom": 2.0,
+      "priority": 3,
+      "width": 2048,
+      "height": 1365,
+      "role": "Opening theater (SW cluster; refine when slice footprint locks)"
+    }
+  ]
+}

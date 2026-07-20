@@ -19,7 +19,7 @@ Add a Viewports **Design Docs** tab so designers can read authoritative repo mar
 ## Acceptance criteria
 
 - [x] Viewports tab **Design Docs** (disabled during play test, like World Forge).
-- [x] Lists markdown under `context/features/`, `context/story/`, `context/art/` from `ENGINE_REPOSITORY_ROOT`.
+- [x] Lists markdown under `context/features/`, `context/story/`, `context/art/`, and `context/design/` from `ENGINE_REPOSITORY_ROOT`.
 - [x] Filter by doc `Status:` line (All / active / planned / complete / other).
 - [x] Selecting a file shows read-only body from disk (lightweight markdown display).
 - [x] Refresh button + periodic rescan.
@@ -38,7 +38,7 @@ None. Owner P0 override.
 ## Verification
 
 - Rebuilt `engine` (MSVC Debug) after kill.
-- Manual: open editor → **Design Docs** → filter/status → open `open-world-navigation.md` / `streaming-lod-budgets.md`.
+- Manual: open editor → **Design Docs** → filter/status → open `open-world-navigation.md` / `streaming-lod-budgets.md` / `dom-open-questions.md` (under `design`).
 
 ## What changed
 

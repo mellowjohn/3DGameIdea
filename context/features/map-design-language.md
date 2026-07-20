@@ -107,5 +107,6 @@ Do not invent new schema enums here. If a biome needs a tag (`biome:woods`), use
 
 - Navigation: [open-world-navigation.md](open-world-navigation.md)
 - Visual direction: [visual-direction.md](../art/visual-direction.md)
+- Fantasy cartography (Map Canvas + overworld reference): [cartography-design.md](../art/cartography-design.md)
 - Map format: [world-forge-map.md](../formats/world-forge-map.md)
 - Ticket: [TICKET-0031](../planning/tickets/TICKET-0031.md)

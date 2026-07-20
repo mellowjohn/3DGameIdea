@@ -4,7 +4,10 @@
 #include "engine/automation/world_forge_commands.h"
 #include "engine/core/error.h"
 #include "engine/core/id_slug.h"
+#include "engine/ui/cartography_strokes.h"
+#include "engine/ui/editor_ui_hotspots.h"
 #include "engine/ui/world_forge_graph_camera.h"
+#include "engine/ui/game_fonts.h"
 #include "engine/world/terrain.h"
 #include "engine/world/terrain_edits.h"
 
@@ -28,6 +31,14 @@ namespace engine {
 namespace {
 
 using ListKind = WorldForgeEditorSession::ListKind;
+
+void clear_map_draw_modes(WorldForgeEditorSession& session);
+void apply_map_tool(WorldForgeEditorSession& session, WorldForgeMapTool tool);
+void select_world_forge_pane(WorldForgeEditorSession& session, WorldForgeEditorPane pane);
+void draw_overview_pane(WorldForgeEditorSession& session);
+void draw_map_canvas_detail(WorldForgeEditorSession& session);
+bool entity_matches_act_lens(const WorldForgeEditorSession& session, const std::vector<std::string>& acts,
+    const std::vector<std::string>& tags);
 
 EngineError editor_error(std::string code, std::string message, std::string remedy) {
     return EngineError{std::move(code), Severity::Error, ErrorCategory::Validation, "world_forge_editor",
@@ -890,6 +901,20 @@ const WorldForgeFerryRoute* find_ferry_route(const WorldForgeMapAsset& asset, co
     return nullptr;
 }
 
+WorldForgeTravelRoute* find_travel_route(WorldForgeMapAsset& asset, const std::string& id) {
+    for (auto& route : asset.travel_routes) {
+        if (route.id == id) return &route;
+    }
+    return nullptr;
+}
+
+const WorldForgeTravelRoute* find_travel_route(const WorldForgeMapAsset& asset, const std::string& id) {
+    for (const auto& route : asset.travel_routes) {
+        if (route.id == id) return &route;
+    }
+    return nullptr;
+}
+
 WorldForgeQuest* find_quest(WorldForgeQuestsAsset& asset, const std::string& id) {
     for (auto& quest : asset.quests) {
         if (quest.id == id) return &quest;
@@ -1271,6 +1296,43 @@ bool remove_ferry_route(WorldForgeEditorSession& session, const std::string& id)
     if (session.map_ferry_draw_id == id) session.map_ferry_draw_id.clear();
     session.dirty = true;
     session.status = "Removed ferry route " + id;
+    return true;
+}
+
+std::string unique_travel_route_id(const WorldForgeMapAsset& asset, const std::string& preferred) {
+    return unique_slugify_id(
+        preferred, [&](const std::string& candidate) { return find_travel_route(asset, candidate) != nullptr; },
+        "route");
+}
+
+bool add_travel_route(WorldForgeEditorSession& session, std::string id, WorldForgeTravelRouteKind kind,
+    std::string from_poi_id, std::string to_poi_id) {
+    id = sanitize_id_token(std::move(id));
+    if (!is_valid_id_token(id) || find_travel_route(session.map, id)) return false;
+    if (from_poi_id.empty() || to_poi_id.empty() || from_poi_id == to_poi_id) return false;
+    if (!find_poi(session.map, from_poi_id) || !find_poi(session.map, to_poi_id)) return false;
+    WorldForgeTravelRoute route;
+    route.id = id;
+    route.kind = kind;
+    route.from_poi_id = std::move(from_poi_id);
+    route.to_poi_id = std::move(to_poi_id);
+    session.map.travel_routes.push_back(std::move(route));
+    session.selected_id = id;
+    session.list_kind = WorldForgeEditorSession::ListKind::TravelRoutes;
+    session.dirty = true;
+    session.status = "Added travel route " + id;
+    return true;
+}
+
+bool remove_travel_route(WorldForgeEditorSession& session, const std::string& id) {
+    auto& routes = session.map.travel_routes;
+    const auto it = std::find_if(routes.begin(), routes.end(), [&](const auto& r) { return r.id == id; });
+    if (it == routes.end()) return false;
+    routes.erase(it);
+    if (session.selected_id == id) session.selected_id.clear();
+    if (session.map_travel_draw_id == id) session.map_travel_draw_id.clear();
+    session.dirty = true;
+    session.status = "Removed travel route " + id;
     return true;
 }
 
@@ -1804,6 +1866,53 @@ void draw_add_ferry_route_controls(WorldForgeEditorSession& session) {
                 session.create_ferry_to_poi_id.fill('\0');
             } else {
                 session.status = "Could not create ferry route (invalid POIs or duplicate id).";
+            }
+        }
+        ImGui::Unindent();
+    }
+}
+
+void draw_add_travel_route_controls(WorldForgeEditorSession& session) {
+    if (ImGui::CollapsingHeader("Create travel route##WorldForgeAddTravel", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        const auto name = trim(session.create_travel_route_name.data());
+        const auto preview_id = name.empty() ? std::string{} : unique_travel_route_id(session.map, name);
+        draw_create_name_row("Display name", session.create_travel_route_name.data(),
+            session.create_travel_route_name.size(), preview_id);
+        if (draw_enum_combo("Kind##CreateTravelKind", session.create_travel_kind,
+                {WorldForgeTravelRouteKind::Track, WorldForgeTravelRouteKind::Road,
+                    WorldForgeTravelRouteKind::Highway}))
+            session.dirty = true;
+        {
+            std::string from_id = trim(session.create_travel_from_poi_id.data());
+            if (draw_id_combo("From POI##CreateTravelFrom", from_id, collect_poi_ids(session.map), false,
+                    "(select)")) {
+                std::snprintf(session.create_travel_from_poi_id.data(), session.create_travel_from_poi_id.size(), "%s",
+                    from_id.c_str());
+            }
+        }
+        {
+            std::string to_id = trim(session.create_travel_to_poi_id.data());
+            if (draw_id_combo("To POI##CreateTravelTo", to_id, collect_poi_ids(session.map), false, "(select)")) {
+                std::snprintf(session.create_travel_to_poi_id.data(), session.create_travel_to_poi_id.size(), "%s",
+                    to_id.c_str());
+            }
+        }
+        ImGui::TextDisabled("Add route points on the Map canvas after creating.");
+        ImGui::Spacing();
+        if (ImGui::Button("Create travel route##WorldForgeCreateTravel")) {
+            const auto from_id = trim(session.create_travel_from_poi_id.data());
+            const auto to_id = trim(session.create_travel_to_poi_id.data());
+            if (name.empty()) {
+                session.status = "Enter a display name for the travel route.";
+            } else if (from_id.empty() || to_id.empty()) {
+                session.status = "Select both endpoint POIs for the travel route.";
+            } else if (add_travel_route(session, preview_id, session.create_travel_kind, from_id, to_id)) {
+                session.create_travel_route_name.fill('\0');
+                session.create_travel_from_poi_id.fill('\0');
+                session.create_travel_to_poi_id.fill('\0');
+            } else {
+                session.status = "Could not create travel route (invalid POIs or duplicate id).";
             }
         }
         ImGui::Unindent();
@@ -2582,8 +2691,293 @@ bool point_in_hydrology_rect(float x, float z, const WorldForgeHydrologyRegion& 
     return x >= region.min_x && x <= region.max_x && z >= region.min_z && z <= region.max_z;
 }
 
+const WorldForgeFactionEntity* primary_faction_for_region(const WorldForgeEditorSession& session,
+    const WorldForgeRegion& region) {
+    for (const auto& faction_id : region.faction_ids) {
+        if (const auto* faction = find_faction(session.factions, faction_id)) return faction;
+    }
+    return nullptr;
+}
+
+const WorldForgeFactionEntity* primary_faction_for_poi(const WorldForgeEditorSession& session, const WorldForgePoi& poi) {
+    if (const auto* region = find_region(session.map, poi.region_id))
+        return primary_faction_for_region(session, *region);
+    return nullptr;
+}
+
+ImU32 faction_tint_u32(const WorldForgeFactionEntity* faction, ImU32 fallback) {
+    if (!faction || !faction->map_color) return fallback;
+    const auto& c = *faction->map_color;
+    return IM_COL32(static_cast<int>(c[0] * 255.0f), static_cast<int>(c[1] * 255.0f),
+        static_cast<int>(c[2] * 255.0f), 255);
+}
+
+std::string default_typeface_for_faction_id(const std::string& faction_id) {
+    if (faction_id == "kingdom_tessera") return "cinzel";
+    if (faction_id == "chaotic_imperium") return "forum";
+    if (faction_id == "cristallo") return "eb_garamond";
+    if (faction_id == "arrotrebae") return "uncial_antiqua";
+    if (faction_id == "orc_warbands") return "metamorphous";
+    return "cinzel";
+}
+
+std::string map_label_typeface_id(const WorldForgeEditorSession& session, const WorldForgeFactionEntity* faction,
+    const std::string& fallback_faction_id) {
+    if (faction && !faction->map_typeface_id.empty()) return faction->map_typeface_id;
+    if (!fallback_faction_id.empty()) return default_typeface_for_faction_id(fallback_faction_id);
+    return "cinzel";
+}
+
+void draw_dashed_line(ImDrawList* draw, const ImVec2& a, const ImVec2& b, ImU32 color, float thickness,
+    float dash_len = 6.0f, float gap_len = 4.0f) {
+    const float dx = b.x - a.x;
+    const float dy = b.y - a.y;
+    const float len = std::sqrt(dx * dx + dy * dy);
+    if (len < 0.5f) return;
+    const float ux = dx / len;
+    const float uy = dy / len;
+    float t = 0.0f;
+    bool on = true;
+    while (t < len) {
+        const float seg = on ? dash_len : gap_len;
+        const float t_end = (std::min)(t + seg, len);
+        if (on) {
+            draw->AddLine(ImVec2(a.x + ux * t, a.y + uy * t), ImVec2(a.x + ux * t_end, a.y + uy * t_end), color,
+                thickness);
+        }
+        t = t_end;
+        on = !on;
+    }
+}
+
+void draw_travel_route_segment(ImDrawList* draw, const ImVec2& a, const ImVec2& b, WorldForgeTravelRouteKind kind,
+    ImU32 color, bool selected) {
+    const float shadow = selected ? 4.0f : 3.0f;
+    const float main = selected ? 2.8f : 2.0f;
+    switch (kind) {
+    case WorldForgeTravelRouteKind::Track:
+        draw_dashed_line(draw, a, b, IM_COL32(0, 0, 0, 90), shadow + 0.5f);
+        draw_dashed_line(draw, a, b, color, main, 5.0f, 5.0f);
+        break;
+    case WorldForgeTravelRouteKind::Road:
+        draw->AddLine(a, b, IM_COL32(0, 0, 0, 100), shadow);
+        draw->AddLine(a, b, color, main);
+        break;
+    case WorldForgeTravelRouteKind::Highway: {
+        const float dx = b.x - a.x;
+        const float dy = b.y - a.y;
+        const float len = std::sqrt(dx * dx + dy * dy);
+        const float off = 2.5f;
+        ImVec2 nx{0.0f, 0.0f};
+        if (len > 0.5f) {
+            nx = ImVec2(-dy / len * off, dx / len * off);
+        }
+        const ImVec2 a0{a.x + nx.x, a.y + nx.y};
+        const ImVec2 b0{b.x + nx.x, b.y + nx.y};
+        const ImVec2 a1{a.x - nx.x, a.y - nx.y};
+        const ImVec2 b1{b.x - nx.x, b.y - nx.y};
+        draw->AddLine(a0, b0, IM_COL32(0, 0, 0, 100), shadow);
+        draw->AddLine(a1, b1, IM_COL32(0, 0, 0, 100), shadow);
+        draw->AddLine(a0, b0, color, main + 0.5f);
+        draw->AddLine(a1, b1, color, main + 0.5f);
+        const int dots = static_cast<int>(len / 14.0f);
+        for (int i = 0; i <= dots; ++i) {
+            const float t = dots > 0 ? static_cast<float>(i) / static_cast<float>(dots) : 0.5f;
+            const ImVec2 p{a.x + dx * t, a.y + dy * t};
+            draw->AddCircleFilled(p, selected ? 3.0f : 2.0f, color);
+        }
+        break;
+    }
+    }
+}
+
+CartographyStrokeStyle travel_route_stroke_style(WorldForgeTravelRouteKind kind) {
+    switch (kind) {
+    case WorldForgeTravelRouteKind::Track: return CartographyStrokeStyle::Track;
+    case WorldForgeTravelRouteKind::Highway: return CartographyStrokeStyle::Highway;
+    case WorldForgeTravelRouteKind::Road: return CartographyStrokeStyle::Road;
+    }
+    return CartographyStrokeStyle::Road;
+}
+
+std::uint64_t cartography_tex_bits(const WorldForgeEditorSession& session, const char* key);
+
+/// Draw an authored polyline as a textured ribbon stamp. Returns false when the style texture is
+/// missing so callers can fall back to immediate-mode lines.
+bool draw_cartography_stroke_polyline(ImDrawList* draw, const WorldForgeEditorSession& session,
+    CartographyStrokeStyle style, const std::vector<ImVec2>& screen_points, ImU32 tint, bool selected,
+    float zoom) {
+    if (!draw || screen_points.size() < 2) return false;
+    const auto& info = cartography_stroke_style_info(style);
+    const std::uint64_t bits = cartography_tex_bits(session, info.texture_key);
+    if (bits == 0) return false;
+
+    std::vector<CartographyStrokePoint> pts;
+    pts.reserve(screen_points.size());
+    for (const ImVec2& p : screen_points) pts.push_back({p.x, p.y});
+
+    const float half_w = info.half_width_px * (std::clamp)(0.75f + 0.55f * zoom, 0.85f, 2.4f) *
+                         (selected ? 1.25f : 1.0f);
+    const auto stamps = build_cartography_stroke_stamps(pts, half_w, info.repeat_px);
+    if (stamps.empty()) return false;
+
+    const ImU32 col = info.accepts_tint ? tint : IM_COL32_WHITE;
+    for (const auto& stamp : stamps) {
+        const float ox = 1.0f;
+        const float oy = 1.5f;
+        draw->AddQuadFilled(ImVec2(stamp.p0.x + ox, stamp.p0.y + oy), ImVec2(stamp.p1.x + ox, stamp.p1.y + oy),
+            ImVec2(stamp.p2.x + ox, stamp.p2.y + oy), ImVec2(stamp.p3.x + ox, stamp.p3.y + oy),
+            IM_COL32(0, 0, 0, selected ? 110 : 70));
+    }
+    for (const auto& stamp : stamps) {
+        draw->AddImageQuad(static_cast<ImTextureID>(bits), ImVec2(stamp.p0.x, stamp.p0.y),
+            ImVec2(stamp.p1.x, stamp.p1.y), ImVec2(stamp.p2.x, stamp.p2.y), ImVec2(stamp.p3.x, stamp.p3.y),
+            ImVec2(stamp.u0, 0.0f), ImVec2(stamp.u1, 0.0f), ImVec2(stamp.u1, 1.0f), ImVec2(stamp.u0, 1.0f),
+            col);
+    }
+    if (selected) {
+        for (std::size_t i = 1; i < screen_points.size(); ++i) {
+            draw->AddLine(screen_points[i - 1], screen_points[i], IM_COL32(245, 185, 55, 180), 1.5f);
+        }
+    }
+    return true;
+}
+
+std::uint64_t cartography_tex_bits(const WorldForgeEditorSession& session, const char* key) {
+    if (!key) return 0;
+    const auto found = session.cartography_tex.find(key);
+    return found == session.cartography_tex.end() ? 0 : found->second;
+}
+
+bool draw_cartography_icon(ImDrawList* draw, const WorldForgeEditorSession& session, const char* key,
+    const ImVec2& center, float radius, bool selected) {
+    const std::uint64_t bits = cartography_tex_bits(session, key);
+    if (bits == 0) return false;
+    const float half = radius * 1.35f;
+    const ImVec2 min{center.x - half, center.y - half};
+    const ImVec2 max{center.x + half, center.y + half};
+    draw->AddImage(static_cast<ImTextureID>(bits), min, max, ImVec2(0, 0), ImVec2(1, 1), IM_COL32_WHITE);
+    if (selected) draw->AddRect(min, max, IM_COL32(245, 185, 55, 255), 3.0f, 0, 2.0f);
+    return true;
+}
+
+void draw_faction_heraldry_chip(ImDrawList* draw, const WorldForgeEditorSession& session,
+    const WorldForgeFactionEntity* faction, const ImVec2& center, ImU32 tint, float size) {
+    std::string key;
+    if (faction) {
+        if (!faction->id.empty()) key = "heraldry-" + faction->id;
+        if (!key.empty() && draw_cartography_icon(draw, session, key.c_str(), center, size * 1.1f, false)) return;
+    }
+    const ImVec2 pts[4] = {ImVec2(center.x, center.y - size), ImVec2(center.x + size, center.y),
+        ImVec2(center.x, center.y + size), ImVec2(center.x - size, center.y)};
+    draw->AddConvexPolyFilled(pts, 4, tint);
+    draw->AddPolyline(pts, 4, IM_COL32(40, 30, 20, 200), ImDrawFlags_Closed, 1.2f);
+}
+
+const char* region_cartography_icon_key(WorldForgeRegionKind kind) {
+    switch (kind) {
+    case WorldForgeRegionKind::Fortress: return "icon-fortress";
+    case WorldForgeRegionKind::City: return "icon-city";
+    case WorldForgeRegionKind::Settlement: return "icon-town";
+    case WorldForgeRegionKind::Chaotic: return "icon-ruin";
+    case WorldForgeRegionKind::Wilderness: return "icon-landmark";
+    default: return "icon-village";
+    }
+}
+
+const char* poi_cartography_icon_key(WorldForgePoiKind kind) {
+    switch (kind) {
+    case WorldForgePoiKind::Gate: return "icon-gate";
+    case WorldForgePoiKind::Shrine: return "icon-shrine";
+    case WorldForgePoiKind::Camp: return "icon-camp";
+    case WorldForgePoiKind::Settlement: return "icon-village";
+    case WorldForgePoiKind::Landmark: return "icon-landmark";
+    default: return "icon-dock";
+    }
+}
+
+void draw_cartography_region_marker(ImDrawList* draw, const WorldForgeEditorSession& session, const ImVec2& center,
+    WorldForgeRegionKind kind, float radius, ImU32 fill, bool selected) {
+    if (draw_cartography_icon(draw, session, region_cartography_icon_key(kind), center, radius, selected)) return;
+    const ImU32 outline = IM_COL32(255, 255, 255, selected ? 240 : 210);
+    draw->AddCircleFilled(ImVec2(center.x + 1.0f, center.y + 2.0f), radius + 1.0f, IM_COL32(0, 0, 0, 90));
+    switch (kind) {
+    case WorldForgeRegionKind::Fortress: {
+        const ImVec2 pts[3] = {ImVec2(center.x, center.y - radius), ImVec2(center.x + radius, center.y + radius * 0.8f),
+            ImVec2(center.x - radius, center.y + radius * 0.8f)};
+        draw->AddConvexPolyFilled(pts, 3, fill);
+        draw->AddPolyline(pts, 3, outline, ImDrawFlags_Closed, 2.0f);
+        break;
+    }
+    case WorldForgeRegionKind::City:
+        draw->AddRectFilled(ImVec2(center.x - radius * 1.1f, center.y - radius * 1.1f),
+            ImVec2(center.x + radius * 1.1f, center.y + radius * 1.1f), fill, 2.0f);
+        draw->AddRect(ImVec2(center.x - radius * 1.1f, center.y - radius * 1.1f),
+            ImVec2(center.x + radius * 1.1f, center.y + radius * 1.1f), outline, 2.0f, 0, 2.0f);
+        break;
+    case WorldForgeRegionKind::Settlement:
+        draw->AddRectFilled(ImVec2(center.x - radius * 0.85f, center.y - radius * 0.5f),
+            ImVec2(center.x + radius * 0.85f, center.y + radius * 0.85f), fill, 2.0f);
+        draw->AddRect(ImVec2(center.x - radius * 0.85f, center.y - radius * 0.5f),
+            ImVec2(center.x + radius * 0.85f, center.y + radius * 0.85f), outline, 2.0f, 0, 1.8f);
+        break;
+    default:
+        draw->AddCircleFilled(center, radius, fill);
+        draw->AddCircle(center, radius, outline, 0, 2.0f);
+        break;
+    }
+}
+
+void draw_cartography_poi_marker(ImDrawList* draw, const WorldForgeEditorSession& session, const ImVec2& center,
+    WorldForgePoiKind kind, float radius, ImU32 fill, bool selected) {
+    if (draw_cartography_icon(draw, session, poi_cartography_icon_key(kind), center, radius, selected)) return;
+    const ImU32 outline = IM_COL32(255, 255, 255, selected ? 240 : 210);
+    draw->AddCircleFilled(ImVec2(center.x + 1.0f, center.y + 2.0f), radius + 1.0f, IM_COL32(0, 0, 0, 90));
+    switch (kind) {
+    case WorldForgePoiKind::Gate: {
+        draw->AddRectFilled(ImVec2(center.x - radius, center.y - radius * 0.2f),
+            ImVec2(center.x + radius, center.y + radius), fill, 2.0f);
+        draw->AddLine(ImVec2(center.x - radius, center.y - radius * 0.2f),
+            ImVec2(center.x + radius, center.y - radius * 0.2f), outline, 2.0f);
+        break;
+    }
+    case WorldForgePoiKind::Shrine: {
+        const ImVec2 pts[3] = {ImVec2(center.x, center.y - radius), ImVec2(center.x + radius, center.y + radius * 0.7f),
+            ImVec2(center.x - radius, center.y + radius * 0.7f)};
+        draw->AddConvexPolyFilled(pts, 3, fill);
+        draw->AddPolyline(pts, 3, outline, ImDrawFlags_Closed, 2.0f);
+        break;
+    }
+    case WorldForgePoiKind::Camp: {
+        const ImVec2 pts[3] = {ImVec2(center.x, center.y - radius * 0.9f),
+            ImVec2(center.x + radius, center.y + radius * 0.6f), ImVec2(center.x - radius, center.y + radius * 0.6f)};
+        draw->AddConvexPolyFilled(pts, 3, fill);
+        draw->AddPolyline(pts, 3, outline, ImDrawFlags_Closed, 2.0f);
+        break;
+    }
+    case WorldForgePoiKind::Settlement:
+        draw->AddRectFilled(ImVec2(center.x - radius * 0.9f, center.y - radius * 0.9f),
+            ImVec2(center.x + radius * 0.9f, center.y + radius * 0.9f), fill, 2.0f);
+        draw->AddRect(ImVec2(center.x - radius * 0.9f, center.y - radius * 0.9f),
+            ImVec2(center.x + radius * 0.9f, center.y + radius * 0.9f), outline, 2.0f, 0, 2.0f);
+        break;
+    case WorldForgePoiKind::Landmark: {
+        const ImVec2 pts[4] = {ImVec2(center.x, center.y - radius), ImVec2(center.x + radius, center.y),
+            ImVec2(center.x, center.y + radius), ImVec2(center.x - radius, center.y)};
+        draw->AddConvexPolyFilled(pts, 4, fill);
+        draw->AddPolyline(pts, 4, outline, ImDrawFlags_Closed, 2.0f);
+        break;
+    }
+    default:
+        draw->AddCircleFilled(center, radius, fill);
+        draw->AddCircle(center, radius, outline, 0, 2.0f);
+        break;
+    }
+}
+
 WorldForgeGraphBounds compute_map_canvas_fit_bounds(const WorldForgeMapAsset& asset, bool include_regions, bool include_pois,
-    bool include_hydrology, bool include_ferry, const std::string& act_filter) {
+    bool include_hydrology, bool include_ferry, bool include_travel, bool include_borders,
+    const std::string& act_filter) {
     WorldForgeGraphBounds bounds{};
     auto expand = [&](float x, float z) {
         if (!bounds.valid) {
@@ -2628,36 +3022,515 @@ WorldForgeGraphBounds compute_map_canvas_fit_bounds(const WorldForgeMapAsset& as
                 expand(to->anchor->x, to->anchor->z);
         }
     }
+    if (include_travel) {
+        for (const auto& route : asset.travel_routes) {
+            if (!matches_world_forge_act_filter(route.acts, {}, act_filter)) continue;
+            for (const auto& point : route.points) expand(point.x, point.z);
+            if (const auto* from = find_poi(asset, route.from_poi_id); from && from->anchor)
+                expand(from->anchor->x, from->anchor->z);
+            if (const auto* to = find_poi(asset, route.to_poi_id); to && to->anchor)
+                expand(to->anchor->x, to->anchor->z);
+        }
+    }
+    if (include_borders) {
+        for (const auto& region : asset.regions) {
+            if (!matches_world_forge_act_filter(region.acts, region.tags, act_filter)) continue;
+            for (const auto& point : region.border) expand(point.x, point.z);
+        }
+    }
     return bounds;
 }
 
-void draw_map_legend(ImDrawList* draw, const ImVec2& canvas_pos, const ImVec2& canvas_size) {
-    const float box_w = 150.0f;
-    const float box_h = 114.0f;
-    const ImVec2 origin{canvas_pos.x + 10.0f, canvas_pos.y + canvas_size.y - box_h - 10.0f};
-    draw->AddRectFilled(origin, ImVec2(origin.x + box_w, origin.y + box_h), IM_COL32(12, 14, 18, 200), 4.0f);
-    draw->AddRect(origin, ImVec2(origin.x + box_w, origin.y + box_h), IM_COL32(80, 85, 95, 220), 4.0f);
-    float y = origin.y + 8.0f;
-    draw->AddRectFilled(ImVec2(origin.x + 10.0f, y), ImVec2(origin.x + 22.0f, y + 12.0f), IM_COL32(70, 150, 110, 255),
-        2.0f);
-    draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), "Region");
-    y += 18.0f;
-    draw->AddCircleFilled(ImVec2(origin.x + 16.0f, y + 6.0f), 6.0f, IM_COL32(200, 150, 80, 255));
-    draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), "POI");
-    y += 18.0f;
-    draw->AddLine(ImVec2(origin.x + 8.0f, y + 6.0f), ImVec2(origin.x + 24.0f, y + 6.0f), IM_COL32(100, 180, 220, 255),
-        2.0f);
-    draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), "Link");
-    y += 18.0f;
-    draw->AddRectFilled(ImVec2(origin.x + 8.0f, y), ImVec2(origin.x + 24.0f, y + 12.0f), IM_COL32(40, 120, 210, 160),
-        2.0f);
-    draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), "Hydrology");
-    y += 18.0f;
-    draw->AddLine(ImVec2(origin.x + 8.0f, y + 6.0f), ImVec2(origin.x + 24.0f, y + 6.0f), IM_COL32(240, 120, 60, 255),
-        2.0f);
-    draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), IM_COL32(230, 230, 235, 255), "Ferry");
-    y += 18.0f;
-    draw->AddText(ImVec2(origin.x + 8.0f, y - 1.0f), IM_COL32(180, 185, 195, 220), "orange=+Z  blue=+X");
+void resolve_official_map_world_rect(WorldForgeEditorSession& session, float& out_min_x, float& out_max_x,
+    float& out_min_z, float& out_max_z, float aspect_override = 0.0f) {
+    auto bounds = compute_map_canvas_fit_bounds(session.map, session.map_filter_regions, session.map_filter_pois,
+        session.map_filter_hydrology, session.map_filter_ferry_routes, session.map_filter_travel_routes,
+        session.map_show_borders, session.act_filter);
+    if (!bounds.valid) {
+        bounds.min_x = -50.0f;
+        bounds.max_x = 50.0f;
+        bounds.min_y = -50.0f;
+        bounds.max_y = 50.0f;
+        bounds.valid = true;
+    }
+
+    float map_aspect = aspect_override > 1e-3f ? aspect_override
+                      : session.map_layers_ready ? session.map_layer_aspect
+                      : session.map_tiles_ready  ? session.map_tile_aspect
+                                                 : (1536.0f / 1024.0f);
+    if (map_aspect < 1e-3f) map_aspect = 16.0f / 9.0f;
+    const float cx = 0.5f * (bounds.min_x + bounds.max_x);
+    const float cz = 0.5f * (bounds.min_y + bounds.max_y);
+    float half_w = 0.5f * (bounds.max_x - bounds.min_x);
+    float half_h = 0.5f * (bounds.max_y - bounds.min_y);
+    half_w = (std::max)(half_w, 25.0f);
+    half_h = (std::max)(half_h, 25.0f);
+    constexpr float k_pad = 1.35f;
+    half_w *= k_pad;
+    half_h *= k_pad;
+    if (half_w / half_h > map_aspect) {
+        half_h = half_w / map_aspect;
+    } else {
+        half_w = half_h * map_aspect;
+    }
+    out_min_x = cx - half_w;
+    out_max_x = cx + half_w;
+    out_min_z = cz - half_h;
+    out_max_z = cz + half_h;
+}
+
+void draw_map_layer_plate(ImDrawList* draw, WorldForgeEditorSession& session, const WorldForgeGraphCamera& cam,
+    const ImVec2& canvas_pos, const WorldForgeEditorSession::WorldMapLayer& layer, float min_x, float max_x,
+    float min_z, float max_z, ImU32 tint) {
+    const auto found = session.map_layer_tex.find(layer.id);
+    if (found == session.map_layer_tex.end()) return;
+    const float world_w = max_x - min_x;
+    const float world_h = max_z - min_z;
+    const float wx0 = min_x + layer.u0 * world_w;
+    const float wx1 = min_x + layer.u1 * world_w;
+    const float wz0 = min_z + layer.v0 * world_h;
+    const float wz1 = min_z + layer.v1 * world_h;
+    const auto s0 = graph_world_to_screen_local(cam, wx0, wz0);
+    const auto s1 = graph_world_to_screen_local(cam, wx1, wz1);
+    const ImVec2 p_min{canvas_pos.x + (std::min)(s0[0], s1[0]), canvas_pos.y + (std::min)(s0[1], s1[1])};
+    const ImVec2 p_max{canvas_pos.x + (std::max)(s0[0], s1[0]), canvas_pos.y + (std::max)(s0[1], s1[1])};
+    draw->AddImage(static_cast<ImTextureID>(found->second), p_min, p_max, ImVec2(0, 0), ImVec2(1, 1), tint);
+}
+
+const WorldForgeEditorSession::WorldMapLayer* find_map_layer(const WorldForgeEditorSession& session,
+    const std::string& id) {
+    for (const auto& layer : session.map_layers) {
+        if (layer.id == id) return &layer;
+    }
+    return nullptr;
+}
+
+std::string select_map_layer_id(const WorldForgeEditorSession& session, float zoom, float view_u, float view_v) {
+    const WorldForgeEditorSession::WorldMapLayer* best = nullptr;
+    for (const auto& layer : session.map_layers) {
+        if (zoom + 1e-4f < layer.min_zoom) continue;
+        if (view_u < layer.u0 || view_u > layer.u1 || view_v < layer.v0 || view_v > layer.v1) continue;
+        if (!best || layer.priority > best->priority ||
+            (layer.priority == best->priority && (layer.u1 - layer.u0) * (layer.v1 - layer.v0) <
+                                                     (best->u1 - best->u0) * (best->v1 - best->v0))) {
+            best = &layer;
+        }
+    }
+    if (best) return best->id;
+    if (!session.map_layers.empty()) return session.map_layers.front().id;
+    return {};
+}
+
+void draw_map_fog_overlay(ImDrawList* draw, WorldForgeEditorSession& session, const ImVec2& canvas_pos,
+    const ImVec2& canvas_size, float strength) {
+    if (strength <= 0.01f) return;
+    const std::uint64_t bits = cartography_tex_bits(session, "map-fog");
+    const int alpha = static_cast<int>(std::clamp(strength, 0.0f, 1.0f) * 220.0f);
+    const ImU32 tint = IM_COL32(255, 255, 255, alpha);
+    const ImVec2 p_max{canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y};
+    if (bits != 0) {
+        draw->AddImage(static_cast<ImTextureID>(bits), canvas_pos, p_max, ImVec2(0, 0), ImVec2(1, 1), tint);
+    } else {
+        draw->AddRectFilled(canvas_pos, p_max, IM_COL32(201, 184, 150, alpha));
+    }
+}
+
+void draw_map_frame_overlay(ImDrawList* draw, WorldForgeEditorSession& session, const ImVec2& canvas_pos,
+    const ImVec2& canvas_size) {
+    const std::uint64_t bits = cartography_tex_bits(session, "map-frame");
+    if (bits == 0) return;
+    const ImVec2 p_max{canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y};
+    // Fully opaque tint so map pixels never show through the carved border.
+    draw->AddImage(static_cast<ImTextureID>(bits), canvas_pos, p_max, ImVec2(0, 0), ImVec2(1, 1),
+        IM_COL32(255, 255, 255, 255));
+}
+
+float official_map_stage_aspect(const WorldForgeEditorSession& session) {
+    // Framed cartography stage is fixed 16:9 — stretch the plate world-rect to match so Fit
+    // fills edge-to-edge under the chrome (no pillarbox gaps beside the parchment).
+    if (session.map_cartography_mode && session.map_show_frame) return 16.0f / 9.0f;
+    return 0.0f;
+}
+
+void draw_map_official_backdrop(ImDrawList* draw, WorldForgeEditorSession& session, const WorldForgeGraphCamera& cam,
+    const ImVec2& canvas_pos, const ImVec2& canvas_size) {
+    session.map_tile_draw_lod = -1;
+    session.map_layer_draw_id.clear();
+    float min_x = 0.0f, max_x = 0.0f, min_z = 0.0f, max_z = 0.0f;
+    resolve_official_map_world_rect(session, min_x, max_x, min_z, max_z, official_map_stage_aspect(session));
+    const float world_w = max_x - min_x;
+    const float world_h = max_z - min_z;
+    if (world_w <= 1e-3f || world_h <= 1e-3f) return;
+
+    constexpr ImU32 k_tint = IM_COL32(255, 255, 255, 230);
+
+    // Prefer discrete zoom layers (fog-swapped plates).
+    if (session.map_layers_ready && !session.map_layers.empty()) {
+        const auto w_center = graph_screen_to_world(cam, canvas_size.x * 0.5f, canvas_size.y * 0.5f);
+        const float view_u = std::clamp((w_center[0] - min_x) / world_w, 0.0f, 1.0f);
+        const float view_v = std::clamp((w_center[1] - min_z) / world_h, 0.0f, 1.0f);
+        const std::string desired = select_map_layer_id(session, cam.zoom, view_u, view_v);
+
+        if (session.map_layer_active_id.empty()) session.map_layer_active_id = desired;
+        if (session.map_layer_transition_t <= 0.0f && !desired.empty() && desired != session.map_layer_active_id) {
+            session.map_layer_pending_id = desired;
+            session.map_layer_transition_t = 1e-4f;
+        }
+
+        const float duration = (std::max)(session.map_layer_transition_seconds, 0.05f);
+        float fog_strength = 0.0f;
+        if (session.map_layer_transition_t > 0.0f) {
+            session.map_layer_transition_t += ImGui::GetIO().DeltaTime / duration;
+            if (session.map_layer_transition_t < 0.5f) {
+                fog_strength = session.map_layer_transition_t / 0.5f;
+            } else if (session.map_layer_transition_t < 1.0f) {
+                if (!session.map_layer_pending_id.empty() &&
+                    session.map_layer_pending_id != session.map_layer_active_id) {
+                    session.map_layer_active_id = session.map_layer_pending_id;
+                }
+                fog_strength = 1.0f - (session.map_layer_transition_t - 0.5f) / 0.5f;
+            } else {
+                if (!session.map_layer_pending_id.empty())
+                    session.map_layer_active_id = session.map_layer_pending_id;
+                session.map_layer_pending_id.clear();
+                session.map_layer_transition_t = 0.0f;
+                fog_strength = 0.0f;
+            }
+        }
+
+        // Continent base, then active theater/local plate on top.
+        if (const auto* continent = find_map_layer(session, "continent")) {
+            draw_map_layer_plate(draw, session, cam, canvas_pos, *continent, min_x, max_x, min_z, max_z, k_tint);
+        }
+        if (const auto* active = find_map_layer(session, session.map_layer_active_id)) {
+            if (active->id != "continent") {
+                draw_map_layer_plate(draw, session, cam, canvas_pos, *active, min_x, max_x, min_z, max_z, k_tint);
+            }
+            session.map_layer_draw_id = active->id;
+        }
+        draw_map_fog_overlay(draw, session, canvas_pos, canvas_size, fog_strength);
+        return;
+    }
+
+    if (!session.map_tiles_ready || session.map_tile_levels.empty()) {
+        const std::uint64_t bits = cartography_tex_bits(session, "official-world-map");
+        if (bits == 0) return;
+        const auto tl = graph_world_to_screen_local(cam, min_x, min_z);
+        const auto br = graph_world_to_screen_local(cam, max_x, max_z);
+        const ImVec2 p_min{canvas_pos.x + (std::min)(tl[0], br[0]), canvas_pos.y + (std::min)(tl[1], br[1])};
+        const ImVec2 p_max{canvas_pos.x + (std::max)(tl[0], br[0]), canvas_pos.y + (std::max)(tl[1], br[1])};
+        draw->AddImage(static_cast<ImTextureID>(bits), p_min, p_max, ImVec2(0, 0), ImVec2(1, 1), k_tint);
+        return;
+    }
+
+    // Visible world AABB from canvas corners.
+    const auto w0 = graph_screen_to_world(cam, 0.0f, 0.0f);
+    const auto w1 = graph_screen_to_world(cam, canvas_size.x, 0.0f);
+    const auto w2 = graph_screen_to_world(cam, 0.0f, canvas_size.y);
+    const auto w3 = graph_screen_to_world(cam, canvas_size.x, canvas_size.y);
+    const float view_min_x = (std::min)((std::min)(w0[0], w1[0]), (std::min)(w2[0], w3[0]));
+    const float view_max_x = (std::max)((std::max)(w0[0], w1[0]), (std::max)(w2[0], w3[0]));
+    const float view_min_z = (std::min)((std::min)(w0[1], w1[1]), (std::min)(w2[1], w3[1]));
+    const float view_max_z = (std::max)((std::max)(w0[1], w1[1]), (std::max)(w2[1], w3[1]));
+    const float view_world_w = (std::max)(view_max_x - view_min_x, 1e-3f);
+
+    // Texels needed across the full map so the *visible* slice is ~1:1 with the canvas.
+    // Zooming in shrinks view_world_w → need_texels rises → higher LOD.
+    const float need_texels = canvas_size.x * (world_w / view_world_w);
+    int lod = session.map_tile_levels.front().lod;
+    const WorldForgeEditorSession::WorldMapTileLevel* level = &session.map_tile_levels.front();
+    for (const auto& candidate : session.map_tile_levels) {
+        lod = candidate.lod;
+        level = &candidate;
+        // Step up early (0.55) so zoom feels sharper before 1:1.
+        if (static_cast<float>(candidate.content_width) >= need_texels * 0.55f) break;
+    }
+    session.map_tile_draw_lod = lod;
+
+    const float tile_px = static_cast<float>((std::max)(1, session.map_tile_size));
+    const float content_w = static_cast<float>((std::max)(1, level->content_width));
+    const float content_h = static_cast<float>((std::max)(1, level->content_height));
+    const float cull_pad_x = world_w * 0.02f;
+    const float cull_pad_z = world_h * 0.02f;
+
+    auto world_to_content_x = [&](float wx) { return ((wx - min_x) / world_w) * content_w; };
+    auto world_to_content_z = [&](float wz) { return ((wz - min_z) / world_h) * content_h; };
+
+    const int tx0 =
+        (std::max)(0, static_cast<int>(std::floor(world_to_content_x(view_min_x - cull_pad_x) / tile_px)) - 1);
+    const int tx1 = (std::min)(level->cols - 1,
+        static_cast<int>(std::floor(world_to_content_x(view_max_x + cull_pad_x) / tile_px)) + 1);
+    const int ty0 =
+        (std::max)(0, static_cast<int>(std::floor(world_to_content_z(view_min_z - cull_pad_z) / tile_px)) - 1);
+    const int ty1 = (std::min)(level->rows - 1,
+        static_cast<int>(std::floor(world_to_content_z(view_max_z + cull_pad_z) / tile_px)) + 1);
+
+    for (int ty = ty0; ty <= ty1; ++ty) {
+        for (int tx = tx0; tx <= tx1; ++tx) {
+            const std::uint32_t key = (static_cast<std::uint32_t>(lod) << 24) | (static_cast<std::uint32_t>(tx) << 12) |
+                                     static_cast<std::uint32_t>(ty);
+            const auto found = session.map_tile_tex.find(key);
+            if (found == session.map_tile_tex.end()) continue;
+
+            const float px0 = static_cast<float>(tx) * tile_px;
+            const float px1 = px0 + tile_px;
+            const float py0 = static_cast<float>(ty) * tile_px;
+            const float py1 = py0 + tile_px;
+            const float ix0 = (std::max)(px0, 0.0f);
+            const float ix1 = (std::min)(px1, content_w);
+            const float iy0 = (std::max)(py0, 0.0f);
+            const float iy1 = (std::min)(py1, content_h);
+            if (ix1 <= ix0 || iy1 <= iy0) continue;
+
+            const float u0 = (ix0 - px0) / tile_px;
+            const float u1 = (ix1 - px0) / tile_px;
+            const float v0 = (iy0 - py0) / tile_px;
+            const float v1 = (iy1 - py0) / tile_px;
+            // Slight world overlap hides sub-pixel hairline gaps between adjacent tiles.
+            constexpr float k_overlap = 0.35f;
+            const float wx0 = min_x + (ix0 / content_w) * world_w - k_overlap;
+            const float wx1 = min_x + (ix1 / content_w) * world_w + k_overlap;
+            const float wz0 = min_z + (iy0 / content_h) * world_h - k_overlap;
+            const float wz1 = min_z + (iy1 / content_h) * world_h + k_overlap;
+
+            const auto s0 = graph_world_to_screen_local(cam, wx0, wz0);
+            const auto s1 = graph_world_to_screen_local(cam, wx1, wz1);
+            const ImVec2 p_min{canvas_pos.x + (std::min)(s0[0], s1[0]), canvas_pos.y + (std::min)(s0[1], s1[1])};
+            const ImVec2 p_max{canvas_pos.x + (std::max)(s0[0], s1[0]), canvas_pos.y + (std::max)(s0[1], s1[1])};
+            draw->AddImage(static_cast<ImTextureID>(found->second), p_min, p_max, ImVec2(u0, v0), ImVec2(u1, v1),
+                k_tint);
+        }
+    }
+}
+
+void draw_parchment_panel_bg(ImDrawList* draw, const WorldForgeEditorSession& session, const ImVec2& min,
+    const ImVec2& max) {
+    const std::uint64_t parchment = cartography_tex_bits(session, "panel-parchment");
+    const std::uint64_t border = cartography_tex_bits(session, "panel-border");
+    if (parchment != 0) {
+        draw->AddImage(static_cast<ImTextureID>(parchment), min, max);
+    } else {
+        draw->AddRectFilled(min, max, IM_COL32(232, 220, 190, 235), 3.0f);
+    }
+    if (border != 0) {
+        draw->AddImage(static_cast<ImTextureID>(border), min, max, ImVec2(0, 0), ImVec2(1, 1),
+            IM_COL32(255, 255, 255, 242));
+    } else {
+        draw->AddRect(min, max, IM_COL32(42, 36, 32, 255), 3.0f);
+    }
+}
+
+void draw_map_scale_bar(ImDrawList* draw, const WorldForgeGraphCamera& cam, const ImVec2& origin) {
+    const float world_per_px = 1.0f / (std::max)(cam.zoom, 0.0001f);
+    float nice = 1000.0f;
+    const float candidates[] = {100.0f, 250.0f, 500.0f, 1000.0f, 2000.0f, 5000.0f};
+    float best_err = 1e9f;
+    for (float c : candidates) {
+        const float px = c / world_per_px;
+        const float err = std::abs(px - 110.0f);
+        if (err < best_err) {
+            best_err = err;
+            nice = c;
+        }
+    }
+    const float bar_w = nice / world_per_px;
+    // Light ink — scale sits in the dark letterbox gutter, not on parchment.
+    draw->AddRectFilled(origin, ImVec2(origin.x + bar_w, origin.y + 3.0f), IM_COL32(210, 205, 195, 220));
+    char label[32];
+    if (nice >= 1000.0f)
+        std::snprintf(label, sizeof(label), "%.0f km", nice / 1000.0f);
+    else
+        std::snprintf(label, sizeof(label), "%.0f m", nice);
+    draw->AddText(ImVec2(origin.x + bar_w + 8.0f, origin.y - 6.0f), IM_COL32(210, 205, 195, 255), label);
+}
+
+template <typename SwatchFn>
+void draw_map_legend_swatch_row(ImDrawList* draw, const char* label, SwatchFn draw_swatch) {
+    const ImVec2 row_min = ImGui::GetCursorScreenPos();
+    const float swatch_w = 18.0f;
+    const float text_w = (std::max)(40.0f, ImGui::GetContentRegionAvail().x - swatch_w - 12.0f);
+    draw_swatch(draw, ImVec2(row_min.x + 2.0f, row_min.y + 4.0f));
+    ImGui::SetCursorScreenPos(ImVec2(row_min.x + swatch_w + 10.0f, row_min.y));
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + text_w);
+    ImGui::TextWrapped("%s", label);
+    ImGui::PopTextWrapPos();
+    ImGui::SetCursorScreenPos(ImVec2(row_min.x, (std::max)(row_min.y + 22.0f, ImGui::GetItemRectMax().y + 6.0f)));
+}
+
+/// Scrollable left gutter for cartography legends (outside the 16:9 stage).
+void draw_map_legend_gutter(WorldForgeEditorSession& session, const WorldForgeGraphCamera& cam, float width,
+    float height) {
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.086f, 0.094f, 0.102f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.353f, 0.306f, 0.227f, 0.85f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
+    ImGui::BeginChild("WorldForgeMapLegendGutter", ImVec2(width, height), true,
+        ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const ImVec4 ink(0.824f, 0.804f, 0.765f, 1.0f);
+    const ImVec4 gold(0.835f, 0.725f, 0.471f, 1.0f);
+    const ImVec4 muted(0.608f, 0.580f, 0.541f, 1.0f);
+
+    auto section_title = [&](const char* title) {
+        ImFont* map_font = GameFonts::map_typeface("cinzel");
+        if (map_font) ImGui::PushFont(map_font);
+        ImGui::TextColored(gold, "%s", title);
+        if (map_font) ImGui::PopFont();
+    };
+
+    if (session.map_show_legend) {
+        section_title("MAP LAYERS");
+        ImGui::Spacing();
+        draw_map_legend_swatch_row(draw, "Region anchor", [](ImDrawList* d, const ImVec2& p) {
+            d->AddRectFilled(p, ImVec2(p.x + 12.0f, p.y + 12.0f), IM_COL32(70, 150, 110, 255), 2.0f);
+        });
+        draw_map_legend_swatch_row(draw, "Location icon", [](ImDrawList* d, const ImVec2& p) {
+            d->AddCircleFilled(ImVec2(p.x + 6.0f, p.y + 6.0f), 6.0f, IM_COL32(200, 150, 80, 255));
+        });
+        draw_map_legend_swatch_row(draw, "Soft gate / link", [](ImDrawList* d, const ImVec2& p) {
+            d->AddLine(ImVec2(p.x, p.y + 6.0f), ImVec2(p.x + 14.0f, p.y + 6.0f), IM_COL32(100, 180, 220, 255), 2.0f);
+        });
+        draw_map_legend_swatch_row(draw, "Hydrology", [](ImDrawList* d, const ImVec2& p) {
+            d->AddRectFilled(p, ImVec2(p.x + 14.0f, p.y + 12.0f), IM_COL32(40, 120, 210, 160), 2.0f);
+        });
+        draw_map_legend_swatch_row(draw, "Highway / road", [](ImDrawList* d, const ImVec2& p) {
+            d->AddLine(ImVec2(p.x, p.y + 6.0f), ImVec2(p.x + 14.0f, p.y + 6.0f), IM_COL32(180, 150, 100, 255), 2.5f);
+        });
+        ImGui::PushStyleColor(ImGuiCol_Text, muted);
+        ImGui::TextWrapped("Titles on hover. Esc clears selection.");
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+    }
+
+    if (session.map_show_heraldry_legend) {
+        section_title("FACTION THEATERS");
+        ImGui::PushStyleColor(ImGuiCol_Text, muted);
+        ImGui::TextWrapped("Draft spheres of influence — not hard borders.");
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+
+        constexpr float k_heraldry = 18.0f;
+        if (session.factions.entities.empty()) {
+            ImGui::TextDisabled("(no factions)");
+        }
+        for (const auto& faction : session.factions.entities) {
+            const ImVec2 row_min = ImGui::GetCursorScreenPos();
+            const float text_x = row_min.x + k_heraldry * 2.0f + 12.0f;
+            const float text_w = (std::max)(40.0f, ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x - text_x);
+            draw_faction_heraldry_chip(draw, session, &faction,
+                ImVec2(row_min.x + k_heraldry + 2.0f, row_min.y + k_heraldry + 4.0f),
+                faction_tint_u32(&faction, IM_COL32(120, 90, 60, 255)), k_heraldry);
+
+            ImGui::SetCursorScreenPos(ImVec2(text_x, row_min.y + 4.0f));
+            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + text_w);
+            ImGui::PushStyleColor(ImGuiCol_Text, ink);
+            const std::string& name = faction.display_name.empty() ? faction.id : faction.display_name;
+            ImGui::TextWrapped("%s", name.c_str());
+            ImGui::PopStyleColor();
+            ImGui::PopTextWrapPos();
+            const float row_bottom = (std::max)(row_min.y + k_heraldry * 2.0f + 12.0f, ImGui::GetItemRectMax().y + 10.0f);
+            ImGui::SetCursorScreenPos(ImVec2(row_min.x, row_bottom));
+        }
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+    }
+
+    if (session.map_show_draft_badge) {
+        ImGui::PushStyleColor(ImGuiCol_Text, muted);
+        ImGui::TextWrapped("Draft geography. Empty click deselects.");
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+    }
+
+    const ImVec2 scale_pos = ImGui::GetCursorScreenPos();
+    ImGui::Dummy(ImVec2(0.0f, 22.0f));
+    draw_map_scale_bar(draw, cam, ImVec2(scale_pos.x + 2.0f, scale_pos.y + 6.0f));
+
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(2);
+}
+
+/// Non-cartography corner legend + detail-plate badge (map stage overlays).
+void draw_map_cartography_overlays(ImDrawList* draw, const WorldForgeEditorSession& session,
+    const WorldForgeGraphCamera& cam, const ImVec2& panel_pos, const ImVec2& panel_size, bool cartography_mode) {
+    constexpr float k_pad = 10.0f;
+    (void)cam;
+
+    if (!cartography_mode) {
+        if (!session.map_show_legend) return;
+        const float box_w = 150.0f;
+        const float box_h = 114.0f;
+        const ImVec2 origin{panel_pos.x + 10.0f, panel_pos.y + panel_size.y - box_h - 10.0f};
+        const ImVec2 max{origin.x + box_w, origin.y + box_h};
+        draw->AddRectFilled(origin, max, IM_COL32(12, 14, 18, 200), 4.0f);
+        draw->AddRect(origin, max, IM_COL32(80, 85, 95, 220), 4.0f);
+        const ImU32 text = IM_COL32(230, 230, 235, 255);
+        float y = origin.y + 8.0f;
+        draw->AddRectFilled(ImVec2(origin.x + 10.0f, y), ImVec2(origin.x + 22.0f, y + 12.0f), IM_COL32(70, 150, 110, 255),
+            2.0f);
+        draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), text, "Region");
+        y += 18.0f;
+        draw->AddCircleFilled(ImVec2(origin.x + 16.0f, y + 6.0f), 6.0f, IM_COL32(200, 150, 80, 255));
+        draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), text, "POI");
+        y += 18.0f;
+        draw->AddLine(ImVec2(origin.x + 8.0f, y + 6.0f), ImVec2(origin.x + 24.0f, y + 6.0f), IM_COL32(100, 180, 220, 255),
+            2.0f);
+        draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), text, "Link");
+        y += 18.0f;
+        draw->AddRectFilled(ImVec2(origin.x + 8.0f, y), ImVec2(origin.x + 24.0f, y + 12.0f), IM_COL32(40, 120, 210, 160),
+            2.0f);
+        draw->AddText(ImVec2(origin.x + 28.0f, y - 1.0f), text, "Hydrology");
+        y += 18.0f;
+        draw->AddText(ImVec2(origin.x + 8.0f, y - 1.0f), IM_COL32(180, 185, 195, 220), "orange=+Z  blue=+X");
+        return;
+    }
+
+    // Detail plate badge — top-right of the map panel.
+    if (!session.map_layer_active_id.empty() && session.map_layer_active_id != "continent") {
+        const float badge_w = (std::min)(220.0f, panel_size.x * 0.28f);
+        const float right_x = panel_pos.x + panel_size.x - badge_w - k_pad;
+        const ImVec2 origin{right_x, panel_pos.y + k_pad};
+        const ImVec2 max{origin.x + badge_w, origin.y + 52.0f};
+        draw->AddRectFilled(origin, max, IM_COL32(32, 36, 40, 245), 4.0f);
+        draw->AddRect(origin, max, IM_COL32(90, 78, 58, 220), 4.0f);
+        ImFont* map_font = GameFonts::map_typeface("cinzel");
+        if (map_font) ImGui::PushFont(map_font);
+        draw->AddText(ImVec2(origin.x + 12.0f, origin.y + 10.0f), IM_COL32(213, 185, 120, 255), "DETAIL PLATE");
+        if (map_font) ImGui::PopFont();
+        draw->AddText(ImVec2(origin.x + 12.0f, origin.y + 30.0f), IM_COL32(155, 148, 138, 255),
+            session.map_layer_active_id.c_str());
+    }
+}
+
+void draw_map_hover_title_chip(ImDrawList* draw, const WorldForgeEditorSession& session, const ImVec2& anchor,
+    const std::string& title, const std::string& subtitle) {
+    ImFont* map_font = GameFonts::map_typeface("cinzel");
+    if (map_font) ImGui::PushFont(map_font);
+    const ImVec2 title_sz = ImGui::CalcTextSize(title.c_str());
+    if (map_font) ImGui::PopFont();
+    const ImVec2 sub_sz = subtitle.empty() ? ImVec2{0, 0} : ImGui::CalcTextSize(subtitle.c_str());
+    const float w = (std::max)(title_sz.x, sub_sz.x) + 28.0f;
+    const float h = 20.0f + title_sz.y + (subtitle.empty() ? 0.0f : sub_sz.y + 4.0f);
+    const ImVec2 min{anchor.x + 12.0f, anchor.y - h * 0.35f};
+    const ImVec2 max{min.x + w, min.y + h};
+    const std::uint64_t parchment = cartography_tex_bits(session, "panel-parchment");
+    const std::uint64_t border = cartography_tex_bits(session, "panel-border-wide");
+    if (parchment != 0) draw->AddImage(static_cast<ImTextureID>(parchment), min, max);
+    else draw->AddRectFilled(min, max, IM_COL32(232, 220, 190, 245), 3.0f);
+    if (border != 0)
+        draw->AddImage(static_cast<ImTextureID>(border), min, max, ImVec2(0, 0), ImVec2(1, 1),
+            IM_COL32(255, 255, 255, 247));
+    else
+        draw->AddRect(min, max, IM_COL32(42, 36, 32, 255), 3.0f);
+    if (map_font) ImGui::PushFont(map_font);
+    draw->AddText(ImVec2(min.x + 14.0f, min.y + 10.0f), IM_COL32(42, 36, 32, 255), title.c_str());
+    if (map_font) ImGui::PopFont();
+    if (!subtitle.empty())
+        draw->AddText(ImVec2(min.x + 14.0f, min.y + 14.0f + title_sz.y), IM_COL32(85, 75, 64, 255), subtitle.c_str());
 }
 
 void set_map_marker_world_xz(WorldForgeEditorSession& session, const std::string& marker_key, float world_x,
@@ -2713,8 +3586,41 @@ void draw_map_canvas_detail(WorldForgeEditorSession& session) {
         const bool bounds_active = session.map_hydrology_bounds_id == hydro->id;
         if (ImGui::Button(bounds_active ? "Stop draw bounds##MapHydroBounds" : "Draw bounds on map##MapHydroBounds")) {
             session.map_hydrology_bounds_id = bounds_active ? std::string{} : hydro->id;
-            session.map_ferry_draw_id.clear();
+            if (!bounds_active) {
+                session.map_ferry_draw_id.clear();
+                session.map_travel_draw_id.clear();
+                session.map_border_region_id.clear();
+            }
             session.status = bounds_active ? "Hydrology bounds draw off" : "Click-drag on map to set hydrology bounds";
+        }
+        return;
+    }
+    if (auto* route = find_travel_route(session.map, session.selected_id)) {
+        ImGui::TextDisabled("Travel route");
+        ImGui::Text("id: %s", route->id.c_str());
+        if (draw_enum_combo("Kind", route->kind,
+                {WorldForgeTravelRouteKind::Track, WorldForgeTravelRouteKind::Road,
+                    WorldForgeTravelRouteKind::Highway}))
+            session.dirty = true;
+        if (draw_id_combo("From POI", route->from_poi_id, collect_poi_ids(session.map), false)) session.dirty = true;
+        if (draw_id_combo("To POI", route->to_poi_id, collect_poi_ids(session.map), false)) session.dirty = true;
+        if (draw_acts_field(route->acts)) session.dirty = true;
+        if (draw_text_area("Summary", route->summary, 72.0f)) session.dirty = true;
+        ImGui::Text("Points: %zu", route->points.size());
+        if (ImGui::Button("Clear points##MapTravelClear")) {
+            route->points.clear();
+            session.dirty = true;
+        }
+        ImGui::SameLine();
+        const bool draw_active = session.map_travel_draw_id == route->id;
+        if (ImGui::Button(draw_active ? "Stop add points##MapTravelDraw" : "Add points on map##MapTravelDraw")) {
+            session.map_travel_draw_id = draw_active ? std::string{} : route->id;
+            if (!draw_active) {
+                session.map_ferry_draw_id.clear();
+                session.map_hydrology_bounds_id.clear();
+                session.map_border_region_id.clear();
+            }
+            session.status = draw_active ? "Travel point draw off" : "Click map to append travel route points";
         }
         return;
     }
@@ -2734,7 +3640,11 @@ void draw_map_canvas_detail(WorldForgeEditorSession& session) {
         const bool draw_active = session.map_ferry_draw_id == route->id;
         if (ImGui::Button(draw_active ? "Stop add points##MapFerryDraw" : "Add points on map##MapFerryDraw")) {
             session.map_ferry_draw_id = draw_active ? std::string{} : route->id;
-            session.map_hydrology_bounds_id.clear();
+            if (!draw_active) {
+                session.map_hydrology_bounds_id.clear();
+                session.map_travel_draw_id.clear();
+                session.map_border_region_id.clear();
+            }
             session.status = draw_active ? "Ferry point draw off" : "Click map to append ferry route points";
         }
         return;
@@ -2751,6 +3661,23 @@ void draw_map_canvas_detail(WorldForgeEditorSession& session) {
         if (draw_world_anchor_fields(region->anchor)) {
             session.dirty = true;
             session.map_underlay_ready = false;
+        }
+        ImGui::Text("Border points: %zu", region->border.size());
+        if (ImGui::Button("Clear border##MapRegionBorderClear")) {
+            region->border.clear();
+            session.dirty = true;
+        }
+        ImGui::SameLine();
+        const bool border_draw = session.map_border_region_id == region->id;
+        if (ImGui::Button(border_draw ? "Stop border edit##MapRegionBorderDraw" : "Edit border on map##MapRegionBorderDraw")) {
+            session.map_border_region_id = border_draw ? std::string{} : region->id;
+            if (!border_draw) {
+                session.map_ferry_draw_id.clear();
+                session.map_travel_draw_id.clear();
+                session.map_hydrology_bounds_id.clear();
+            }
+            session.status =
+                border_draw ? "Region border draw off" : "Click map to append region border points";
         }
         if (draw_text_area("Summary", region->summary, 72.0f)) session.dirty = true;
         return;
@@ -2787,46 +3714,111 @@ void draw_map_canvas_detail(WorldForgeEditorSession& session) {
 }
 
 void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& size,
-    const WorldForgeViewportDrawContext& ctx) {
+    const WorldForgeViewportDrawContext& ctx, const std::filesystem::path& project_root) {
+    (void)project_root;
     ImGui::BeginChild("WorldForgeMapSpatialCanvas", size, true, ImGuiWindowFlags_NoScrollbar);
 
-    ImGui::Checkbox("Regions##MapCanvasFilterR", &session.map_filter_regions);
-    ImGui::SameLine();
-    ImGui::Checkbox("POIs##MapCanvasFilterP", &session.map_filter_pois);
-    ImGui::SameLine();
-    ImGui::Checkbox("Links##MapCanvasFilterL", &session.map_filter_links);
-    ImGui::SameLine();
-    ImGui::Checkbox("Hydrology##MapCanvasFilterH", &session.map_filter_hydrology);
-    ImGui::SameLine();
-    ImGui::Checkbox("Ferry##MapCanvasFilterF", &session.map_filter_ferry_routes);
-    ImGui::SameLine();
-    ImGui::Checkbox("Terrain##MapCanvasTerrain", &session.map_show_terrain);
-    ImGui::SameLine();
-    ImGui::Checkbox("Contours##MapCanvasContours", &session.map_show_contours);
-    ImGui::SameLine();
-    ImGui::Checkbox("Grid##MapCanvasGrid", &session.map_show_grid);
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Fit##WorldForgeMapFit")) session.map_camera_fit_requested = true;
-    ImGui::Separator();
+    // View mode, tools, and layer filters live in the Map title bar / toolbar (TICKET-0208).
 
-    const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
-    const ImVec2 canvas_size = ImGui::GetContentRegionAvail();
-    if (canvas_size.x < 32.0f || canvas_size.y < 64.0f) {
+    const ImVec2 host_size = ImGui::GetContentRegionAvail();
+    if (host_size.x < 32.0f || host_size.y < 64.0f) {
         ImGui::EndChild();
         return;
     }
 
+    // Cartography: scrollable left legend gutter (outside the letterboxed stage).
+    constexpr float k_legend_gutter = 248.0f;
+    const bool show_legend_gutter =
+        session.map_cartography_mode && host_size.x > k_legend_gutter + 320.0f &&
+        (session.map_show_legend || session.map_show_heraldry_legend || session.map_show_draft_badge);
+
+    auto& cam = session.map_camera;
+    if (show_legend_gutter) {
+        draw_map_legend_gutter(session, cam, k_legend_gutter, host_size.y);
+        ImGui::SameLine(0.0f, 0.0f);
+    }
+
+    ImGui::BeginChild("WorldForgeMapStageHost", ImVec2(0.0f, host_size.y), false, ImGuiWindowFlags_NoScrollbar);
+
+    const ImVec2 panel_pos = ImGui::GetCursorScreenPos();
+    const ImVec2 panel_size = ImGui::GetContentRegionAvail();
+    ImVec2 map_viewport_pos = panel_pos;
+    ImVec2 map_viewport_size = panel_size;
+
+    ImVec2 stage_pos = map_viewport_pos;
+    ImVec2 stage_size = map_viewport_size;
+    if (session.map_cartography_mode) {
+        constexpr float k_stage_aspect = 16.0f / 9.0f;
+        if (map_viewport_size.x / map_viewport_size.y > k_stage_aspect) {
+            stage_size.y = map_viewport_size.y;
+            stage_size.x = map_viewport_size.y * k_stage_aspect;
+        } else {
+            stage_size.x = map_viewport_size.x;
+            stage_size.y = map_viewport_size.x / k_stage_aspect;
+        }
+        stage_pos.x = map_viewport_pos.x + (map_viewport_size.x - stage_size.x) * 0.5f;
+        stage_pos.y = map_viewport_pos.y + (map_viewport_size.y - stage_size.y) * 0.5f;
+    }
+
+    // Camera + map draw fill the whole stage (extends under the border overlay).
+    const ImVec2 canvas_pos = stage_pos;
+    const ImVec2 canvas_size = stage_size;
+    // Inner hole = clickable/visible aperture through the frame (matches punched alpha).
+    ImVec2 inner_pos = stage_pos;
+    ImVec2 inner_size = stage_size;
+    if (session.map_cartography_mode && session.map_show_frame) {
+        const float frame_border_x = 0.12f * stage_size.x;
+        const float frame_border_y = 0.12f * stage_size.y;
+        inner_pos = ImVec2(stage_pos.x + frame_border_x, stage_pos.y + frame_border_y);
+        inner_size = ImVec2((std::max)(1.0f, stage_size.x - 2.0f * frame_border_x),
+            (std::max)(1.0f, stage_size.y - 2.0f * frame_border_y));
+    }
+
+    if (ctx.hotspots) {
+        ctx.hotspots->add_rect("WorldForge.Map.Canvas", inner_pos.x, inner_pos.y, inner_pos.x + inner_size.x,
+            inner_pos.y + inner_size.y, "Map aperture (inside frame)");
+        if (session.map_cartography_mode) {
+            ctx.hotspots->add_rect("WorldForge.Map.Stage", stage_pos.x, stage_pos.y, stage_pos.x + stage_size.x,
+                stage_pos.y + stage_size.y, "16:9 map stage");
+        }
+    }
+
     ensure_map_terrain_underlay(session, ctx);
 
-    ImGui::InvisibleButton("WorldForgeMapCanvasHit", canvas_size);
+    ImGui::InvisibleButton("WorldForgeMapCanvasHit", panel_size);
     const bool hovered = ImGui::IsItemHovered();
     const bool active = ImGui::IsItemActive();
     const ImVec2 mouse = ImGui::GetIO().MousePos;
     const ImVec2 local{mouse.x - canvas_pos.x, mouse.y - canvas_pos.y};
+    const bool over_map = mouse.x >= inner_pos.x && mouse.x <= inner_pos.x + inner_size.x &&
+        mouse.y >= inner_pos.y && mouse.y <= inner_pos.y + inner_size.y;
 
-    auto& cam = session.map_camera;
-    cam.min_zoom = 0.05f;
-    cam.max_zoom = 8.0f;
+    // Framed official plate: min zoom = exact stage fill so you cannot zoom out into pillarbox gaps.
+    float fill_min_x = 0.0f, fill_max_x = 0.0f, fill_min_z = 0.0f, fill_max_z = 0.0f;
+    bool have_official_fill = false;
+    if (session.map_cartography_mode && session.map_show_official_backdrop) {
+        resolve_official_map_world_rect(session, fill_min_x, fill_max_x, fill_min_z, fill_max_z,
+            official_map_stage_aspect(session));
+        have_official_fill = true;
+        const float content_w = (std::max)(fill_max_x - fill_min_x, 1.0f);
+        const float content_h = (std::max)(fill_max_z - fill_min_z, 1.0f);
+        const float fill_zoom =
+            (std::max)(canvas_size.x / content_w, canvas_size.y / content_h);
+        cam.min_zoom = fill_zoom;
+        cam.max_zoom = (std::max)(2.5f, fill_zoom * 8.0f);
+    } else {
+        cam.min_zoom = 0.15f;
+        cam.max_zoom = 4.0f;
+    }
+    if (cam.zoom < cam.min_zoom) cam.zoom = cam.min_zoom;
+    if (cam.zoom > cam.max_zoom) cam.zoom = cam.max_zoom;
+    // At overview, pin pan so the stretched plate stays flush with the frame lip.
+    if (have_official_fill && session.map_show_frame && cam.zoom <= cam.min_zoom + 1e-3f) {
+        const float cx = 0.5f * (fill_min_x + fill_max_x);
+        const float cz = 0.5f * (fill_min_z + fill_max_z);
+        cam.pan[0] = canvas_size.x * 0.5f - cx * cam.zoom;
+        cam.pan[1] = canvas_size.y * 0.5f - cz * cam.zoom;
+    }
 
     std::unordered_map<std::string, std::array<float, 2>> positions;
     collect_map_marker_positions(session.map, session.map_filter_regions, session.map_filter_pois, session.act_filter,
@@ -2836,8 +3828,22 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
     keys.reserve(positions.size());
     for (const auto& entry : positions) keys.push_back(entry.first);
     if (session.map_camera_fit_requested) {
-        auto bounds = compute_map_canvas_fit_bounds(session.map, session.map_filter_regions, session.map_filter_pois,
-            session.map_filter_hydrology, session.map_filter_ferry_routes, session.act_filter);
+        WorldForgeGraphBounds bounds{};
+        if (session.map_cartography_mode && session.map_show_official_backdrop) {
+            // Frame the official plate, not just the vertical-slice marker cluster.
+            float map_min_x = 0.0f, map_max_x = 0.0f, map_min_z = 0.0f, map_max_z = 0.0f;
+            resolve_official_map_world_rect(session, map_min_x, map_max_x, map_min_z, map_max_z,
+                official_map_stage_aspect(session));
+            bounds.min_x = map_min_x;
+            bounds.max_x = map_max_x;
+            bounds.min_y = map_min_z;
+            bounds.max_y = map_max_z;
+            bounds.valid = true;
+        } else {
+            bounds = compute_map_canvas_fit_bounds(session.map, session.map_filter_regions, session.map_filter_pois,
+                session.map_filter_hydrology, session.map_filter_ferry_routes, session.map_filter_travel_routes,
+                session.map_show_borders, session.act_filter);
+        }
         if (!bounds.valid) {
             bounds.min_x = -50.0f;
             bounds.max_x = 50.0f;
@@ -2845,25 +3851,31 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
             bounds.max_y = 50.0f;
             bounds.valid = true;
         }
-        fit_graph_camera_to_bounds(cam, canvas_size.x, canvas_size.y, bounds, 48.0f);
+        // Cover-fit so the plate fills the stage; frame chrome then masks the edges.
+        const bool cover_frame = session.map_cartography_mode && session.map_show_official_backdrop;
+        fit_graph_camera_to_bounds(cam, canvas_size.x, canvas_size.y, bounds, cover_frame ? 0.0f : 48.0f,
+            cover_frame);
         session.map_camera_fit_requested = false;
     }
 
-    if (hovered) {
+    if (hovered && over_map) {
         const float wheel = ImGui::GetIO().MouseWheel;
         if (wheel != 0.0f) apply_graph_zoom_at_local(cam, local.x, local.y, wheel);
     }
 
-    const bool want_pan = hovered && (ImGui::IsMouseDown(ImGuiMouseButton_Middle) ||
-                                         (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::GetIO().KeyAlt));
-    if (want_pan && !session.map_camera_panning) {
+    const bool pan_button_down = ImGui::IsMouseDown(ImGuiMouseButton_Middle) ||
+        (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::GetIO().KeyAlt);
+    // Capture an established pan until its button is released. Restricting every drag frame to
+    // the aperture made panning stop as soon as the cursor crossed the ornamental border.
+    const bool begin_pan = !session.map_camera_panning && hovered && over_map && pan_button_down;
+    if (begin_pan) {
         session.map_camera_panning = true;
         session.map_camera_pan_start_mouse = {mouse.x, mouse.y};
         session.map_camera_pan_start_pan = cam.pan;
         session.map_drag_key.clear();
     }
     if (session.map_camera_panning) {
-        if (want_pan) {
+        if (pan_button_down) {
             cam.pan[0] = session.map_camera_pan_start_pan[0] + (mouse.x - session.map_camera_pan_start_mouse[0]);
             cam.pan[1] = session.map_camera_pan_start_pan[1] + (mouse.y - session.map_camera_pan_start_mouse[1]);
         } else {
@@ -2879,20 +3891,68 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
         return graph_screen_to_world(cam, screen_local.x, screen_local.y);
     };
 
-    auto* draw = ImGui::GetWindowDrawList();
-    draw->AddRectFilled(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y),
-        IM_COL32(18, 22, 26, 255));
-    draw->AddRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y),
-        IM_COL32(70, 74, 82, 255));
-    draw->PushClipRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), true);
+    session.map_cursor_valid = hovered && over_map;
+    if (session.map_cursor_valid) {
+        const auto world_xz = to_world(local);
+        session.map_cursor_world_x = world_xz[0];
+        session.map_cursor_world_z = world_xz[1];
+    }
 
-    if (session.map_show_terrain) draw_map_terrain_underlay(draw, session, cam, canvas_pos);
-    if (session.map_show_grid) draw_map_grid(draw, cam, canvas_pos, canvas_size, session.map_show_terrain);
+    auto* draw = ImGui::GetWindowDrawList();
+    const ImU32 panel_bg = session.map_cartography_mode ? IM_COL32(28, 24, 20, 255) : IM_COL32(18, 22, 26, 255);
+    const ImU32 canvas_bg =
+        session.map_cartography_mode ? IM_COL32(201, 184, 150, 255) : IM_COL32(18, 22, 26, 255);
+    draw->AddRectFilled(panel_pos, ImVec2(panel_pos.x + panel_size.x, panel_pos.y + panel_size.y), panel_bg);
+    draw->AddRectFilled(stage_pos, ImVec2(stage_pos.x + stage_size.x, stage_pos.y + stage_size.y), canvas_bg);
+    draw->AddRect(stage_pos, ImVec2(stage_pos.x + stage_size.x, stage_pos.y + stage_size.y),
+        IM_COL32(70, 74, 82, 255));
+    // Keep all panned map content and canvas affordances inside the carved frame aperture.
+    // The frame itself is drawn after this clip, but clipping here also handles transparent
+    // pixels in source art and prevents overlays from bleeding into the ornamental border.
+    draw->PushClipRect(inner_pos, ImVec2(inner_pos.x + inner_size.x, inner_pos.y + inner_size.y), true);
+
+    if (session.map_cartography_mode && session.map_show_official_backdrop)
+        draw_map_official_backdrop(draw, session, cam, canvas_pos, canvas_size);
+    // Terrain underlay is the vertical-slice heightfield. Never composite it over the official
+    // cartography plate — that paints a mismatched topo patch and reads as a hard seam.
+    if (session.map_show_terrain && !(session.map_cartography_mode && session.map_show_official_backdrop))
+        draw_map_terrain_underlay(draw, session, cam, canvas_pos);
+    if (!session.map_cartography_mode && session.map_show_grid)
+        draw_map_grid(draw, cam, canvas_pos, canvas_size, session.map_show_terrain);
+
+    if (session.map_cartography_mode && session.map_show_borders) {
+        for (const auto& region : session.map.regions) {
+            if (!entity_matches_act_lens(session, region.acts, region.tags)) continue;
+            if (region.border.size() < 2) continue;
+            const auto* faction = primary_faction_for_region(session, region);
+            const ImU32 tint = faction_tint_u32(faction, IM_COL32(120, 90, 60, 255));
+            const bool selected = session.selected_id == region.id;
+            std::vector<ImVec2> screen_pts;
+            screen_pts.reserve(region.border.size());
+            for (const auto& point : region.border) screen_pts.push_back(to_screen({point.x, point.z}));
+            if (!draw_cartography_stroke_polyline(draw, session, CartographyStrokeStyle::PoliticalBorder, screen_pts,
+                    tint, selected, cam.zoom)) {
+                ImVec2 prev{};
+                bool has_prev = false;
+                for (const ImVec2& cur : screen_pts) {
+                    if (has_prev) {
+                        draw->AddLine(prev, cur, IM_COL32(0, 0, 0, 80), selected ? 3.5f : 2.5f);
+                        draw->AddLine(prev, cur, tint, selected ? 2.5f : 1.8f);
+                    }
+                    prev = cur;
+                    has_prev = true;
+                }
+            }
+        }
+    }
 
     const float marker_radius = (std::clamp)(12.0f + 4.0f * cam.zoom, 10.0f, 20.0f);
+    std::vector<ImVec4> occupied_labels;
     std::string hovered_hydrology;
     std::string hovered_ferry;
+    std::string hovered_travel;
     float best_ferry_dist = 10.0f;
+    float best_travel_dist = 10.0f;
     if (session.map_filter_hydrology) {
         for (const auto& hydro : session.map.hydrology_regions) {
             if (!entity_matches_act_lens(session, hydro.acts, {})) continue;
@@ -2904,12 +3964,22 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
             draw->AddRectFilled(tl, br, hydrology_kind_fill_color(hydro.kind, selected), 4.0f);
             draw->AddRect(tl, br, hydrology_kind_border_color(hydro.kind, selected), 4.0f, 0,
                 selected ? 2.5f : 1.5f);
-            const char* kind_label = to_string(hydro.kind);
-            const ImVec2 ts = ImGui::CalcTextSize(kind_label);
-            const ImVec2 mid{(tl.x + br.x) * 0.5f, (tl.y + br.y) * 0.5f};
-            draw->AddRectFilled(ImVec2(mid.x - ts.x * 0.5f - 4.0f, mid.y - ts.y - 2.0f),
-                ImVec2(mid.x + ts.x * 0.5f + 4.0f, mid.y + 2.0f), IM_COL32(10, 12, 16, 180), 3.0f);
-            draw->AddText(ImVec2(mid.x - ts.x * 0.5f, mid.y - ts.y), IM_COL32(210, 235, 250, 255), kind_label);
+            // River planning boxes get a centerline stroke stamp when the river tile is loaded.
+            if (hydro.kind == WorldForgeHydrologyKind::River && session.map_cartography_mode) {
+                const std::vector<ImVec2> river_pts{ImVec2(tl.x, (tl.y + br.y) * 0.5f),
+                    ImVec2(br.x, (tl.y + br.y) * 0.5f)};
+                draw_cartography_stroke_polyline(draw, session, CartographyStrokeStyle::River, river_pts,
+                    IM_COL32_WHITE, selected, cam.zoom);
+            }
+            // Kind chips ("sea"/"lake") clutter Cartography; keep them for top-down authoring only.
+            if (!session.map_cartography_mode || selected) {
+                const char* kind_label = to_string(hydro.kind);
+                const ImVec2 ts = ImGui::CalcTextSize(kind_label);
+                const ImVec2 mid{(tl.x + br.x) * 0.5f, (tl.y + br.y) * 0.5f};
+                draw->AddRectFilled(ImVec2(mid.x - ts.x * 0.5f - 4.0f, mid.y - ts.y - 2.0f),
+                    ImVec2(mid.x + ts.x * 0.5f + 4.0f, mid.y + 2.0f), IM_COL32(10, 12, 16, 180), 3.0f);
+                draw->AddText(ImVec2(mid.x - ts.x * 0.5f, mid.y - ts.y), IM_COL32(210, 235, 250, 255), kind_label);
+            }
             if (hovered && !session.map_camera_panning && mouse.x >= tl.x && mouse.x <= br.x && mouse.y >= tl.y &&
                 mouse.y <= br.y)
                 hovered_hydrology = hydro.id;
@@ -2920,13 +3990,19 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
             if (!entity_matches_act_lens(session, route.acts, {})) continue;
             const bool selected = session.selected_id == route.id;
             const ImU32 color = selected ? IM_COL32(255, 210, 90, 255) : IM_COL32(240, 120, 60, 255);
+            std::vector<ImVec2> screen_pts;
+            screen_pts.reserve(route.points.size());
+            for (const auto& point : route.points) screen_pts.push_back(to_screen({point.x, point.z}));
+            const bool stamped = draw_cartography_stroke_polyline(draw, session, CartographyStrokeStyle::Ferry,
+                screen_pts, color, selected, cam.zoom);
             ImVec2 prev{};
             bool has_prev = false;
-            for (const auto& point : route.points) {
-                const ImVec2 cur = to_screen({point.x, point.z});
+            for (const ImVec2& cur : screen_pts) {
                 if (has_prev) {
-                    draw->AddLine(prev, cur, IM_COL32(0, 0, 0, 120), selected ? 4.0f : 3.0f);
-                    draw->AddLine(prev, cur, color, selected ? 2.5f : 2.0f);
+                    if (!stamped) {
+                        draw->AddLine(prev, cur, IM_COL32(0, 0, 0, 120), selected ? 4.0f : 3.0f);
+                        draw->AddLine(prev, cur, color, selected ? 2.5f : 2.0f);
+                    }
                     if (hovered && !session.map_camera_panning) {
                         const float dist =
                             graph_point_segment_distance(mouse.x, mouse.y, prev.x, prev.y, cur.x, cur.y);
@@ -2951,6 +4027,57 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
                 const ImVec2 dock = to_screen({to->anchor->x, to->anchor->z});
                 const ImVec2 last = to_screen({route.points.back().x, route.points.back().z});
                 draw->AddLine(last, dock, IM_COL32(240, 120, 60, 120), 1.5f);
+            }
+        }
+    }
+    if (session.map_filter_travel_routes) {
+        for (const auto& route : session.map.travel_routes) {
+            if (!entity_matches_act_lens(session, route.acts, {})) continue;
+            const bool selected = session.selected_id == route.id;
+            ImU32 color = selected ? IM_COL32(255, 210, 90, 255) : IM_COL32(70, 55, 40, 255);
+            if (session.map_cartography_mode) {
+                switch (route.kind) {
+                case WorldForgeTravelRouteKind::Track: color = selected ? IM_COL32(255, 210, 90, 255) : IM_COL32(100, 80, 55, 255); break;
+                case WorldForgeTravelRouteKind::Road: color = selected ? IM_COL32(255, 210, 90, 255) : IM_COL32(75, 58, 38, 255); break;
+                case WorldForgeTravelRouteKind::Highway:
+                    color = selected ? IM_COL32(255, 210, 90, 255) : IM_COL32(55, 42, 28, 255);
+                    break;
+                }
+            }
+            std::vector<ImVec2> screen_pts;
+            screen_pts.reserve(route.points.size());
+            for (const auto& point : route.points) screen_pts.push_back(to_screen({point.x, point.z}));
+            const bool stamped = draw_cartography_stroke_polyline(draw, session,
+                travel_route_stroke_style(route.kind), screen_pts, color, selected, cam.zoom);
+            ImVec2 prev{};
+            bool has_prev = false;
+            for (const ImVec2& cur : screen_pts) {
+                if (has_prev) {
+                    if (!stamped) draw_travel_route_segment(draw, prev, cur, route.kind, color, selected);
+                    if (hovered && !session.map_camera_panning) {
+                        const float dist =
+                            graph_point_segment_distance(mouse.x, mouse.y, prev.x, prev.y, cur.x, cur.y);
+                        if (dist < best_travel_dist) {
+                            best_travel_dist = dist;
+                            hovered_travel = route.id;
+                        }
+                    }
+                }
+                draw->AddCircleFilled(cur, selected ? 4.0f : 3.0f, color);
+                prev = cur;
+                has_prev = true;
+            }
+            const auto* from = find_poi(session.map, route.from_poi_id);
+            const auto* to = find_poi(session.map, route.to_poi_id);
+            if (from && from->anchor && !route.points.empty()) {
+                const ImVec2 dock = to_screen({from->anchor->x, from->anchor->z});
+                const ImVec2 first = to_screen({route.points.front().x, route.points.front().z});
+                draw->AddLine(dock, first, IM_COL32(70, 55, 40, 120), 1.5f);
+            }
+            if (to && to->anchor && !route.points.empty()) {
+                const ImVec2 dock = to_screen({to->anchor->x, to->anchor->z});
+                const ImVec2 last = to_screen({route.points.back().x, route.points.back().z});
+                draw->AddLine(last, dock, IM_COL32(70, 55, 40, 120), 1.5f);
             }
         }
     }
@@ -2979,12 +4106,15 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
             draw->AddLine(a, b, color, selected ? 3.0f : 2.0f);
             if (link.bidirectional)
                 draw->AddCircleFilled(ImVec2((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f), 3.5f, color);
-            const ImVec2 mid{(a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f};
-            const char* kind_label = to_string(link.kind);
-            const ImVec2 ts = ImGui::CalcTextSize(kind_label);
-            draw->AddRectFilled(ImVec2(mid.x - 2.0f, mid.y - ts.y - 2.0f),
-                ImVec2(mid.x + ts.x + 6.0f, mid.y + 2.0f), IM_COL32(10, 12, 16, 180), 3.0f);
-            draw->AddText(ImVec2(mid.x + 2.0f, mid.y - ts.y), IM_COL32(210, 235, 250, 255), kind_label);
+            // Link kind chips ("adjacency"/"travel") fight place labels in Cartography.
+            if (!session.map_cartography_mode || selected) {
+                const ImVec2 mid{(a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f};
+                const char* kind_label = to_string(link.kind);
+                const ImVec2 ts = ImGui::CalcTextSize(kind_label);
+                draw->AddRectFilled(ImVec2(mid.x - 2.0f, mid.y - ts.y - 2.0f),
+                    ImVec2(mid.x + ts.x + 6.0f, mid.y + 2.0f), IM_COL32(10, 12, 16, 180), 3.0f);
+                draw->AddText(ImVec2(mid.x + 2.0f, mid.y - ts.y), IM_COL32(210, 235, 250, 255), kind_label);
+            }
             if (hovered && !session.map_camera_panning) {
                 const float dist = graph_point_segment_distance(mouse.x, mouse.y, a.x, a.y, b.x, b.y);
                 if (dist < best_link_dist) {
@@ -3001,49 +4131,177 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
         const bool is_poi = entry.first.rfind("poi:", 0) == 0;
         const std::string id = is_poi ? entry.first.substr(4) : entry.first.substr(7);
         std::string label = id;
+        const WorldForgePoi* poi_ptr = nullptr;
+        const WorldForgeRegion* region_ptr = nullptr;
         if (is_poi) {
-            if (const auto* poi = find_poi(session.map, id); poi && !poi->display_name.empty())
-                label = poi->display_name;
-        } else if (const auto* region = find_region(session.map, id); region && !region->display_name.empty()) {
-            label = region->display_name;
+            poi_ptr = find_poi(session.map, id);
+            if (poi_ptr && !poi_ptr->display_name.empty()) label = poi_ptr->display_name;
+        } else {
+            region_ptr = find_region(session.map, id);
+            if (region_ptr && !region_ptr->display_name.empty()) label = region_ptr->display_name;
         }
         const bool selected = session.selected_id == id;
         ImU32 fill = is_poi ? IM_COL32(210, 150, 70, 255) : IM_COL32(60, 160, 115, 255);
-        if (selected) fill = IM_COL32(245, 185, 55, 255);
-        draw->AddCircleFilled(ImVec2(center.x + 1.0f, center.y + 2.0f), marker_radius + 1.0f, IM_COL32(0, 0, 0, 110));
-        if (is_poi) {
-            draw->AddCircleFilled(center, marker_radius, fill);
-            draw->AddCircle(center, marker_radius, IM_COL32(255, 255, 255, 230), 0, 2.0f);
-        } else {
-            draw->AddRectFilled(ImVec2(center.x - marker_radius, center.y - marker_radius),
-                ImVec2(center.x + marker_radius, center.y + marker_radius), fill, 3.0f);
-            draw->AddRect(ImVec2(center.x - marker_radius, center.y - marker_radius),
-                ImVec2(center.x + marker_radius, center.y + marker_radius), IM_COL32(255, 255, 255, 230), 3.0f, 0,
-                2.0f);
+        if (session.map_cartography_mode) {
+            const WorldForgeFactionEntity* faction =
+                is_poi && poi_ptr ? primary_faction_for_poi(session, *poi_ptr) :
+                                    (region_ptr ? primary_faction_for_region(session, *region_ptr) : nullptr);
+            fill = faction_tint_u32(faction, fill);
         }
-        const ImVec2 text_size = ImGui::CalcTextSize(label.c_str());
-        const ImVec2 text_pos{center.x - text_size.x * 0.5f, center.y + marker_radius + 4.0f};
-        draw->AddRectFilled(ImVec2(text_pos.x - 4.0f, text_pos.y - 1.0f),
-            ImVec2(text_pos.x + text_size.x + 4.0f, text_pos.y + text_size.y + 1.0f), IM_COL32(8, 10, 14, 200), 3.0f);
-        draw->AddText(text_pos, IM_COL32(245, 245, 248, 255), label.c_str());
+        if (selected) fill = IM_COL32(245, 185, 55, 255);
+
+        if (session.map_cartography_mode) {
+            if (is_poi && poi_ptr) {
+                draw_cartography_poi_marker(draw, session, center, poi_ptr->kind, marker_radius * 0.85f, fill, selected);
+            } else if (region_ptr) {
+                draw_cartography_region_marker(draw, session, center, region_ptr->kind, marker_radius * 0.85f, fill,
+                    selected);
+            } else {
+                draw->AddCircleFilled(center, marker_radius, fill);
+            }
+        } else {
+            draw->AddCircleFilled(ImVec2(center.x + 1.0f, center.y + 2.0f), marker_radius + 1.0f, IM_COL32(0, 0, 0, 110));
+            if (is_poi) {
+                draw->AddCircleFilled(center, marker_radius, fill);
+                draw->AddCircle(center, marker_radius, IM_COL32(255, 255, 255, 230), 0, 2.0f);
+            } else {
+                draw->AddRectFilled(ImVec2(center.x - marker_radius, center.y - marker_radius),
+                    ImVec2(center.x + marker_radius, center.y + marker_radius), fill, 3.0f);
+                draw->AddRect(ImVec2(center.x - marker_radius, center.y - marker_radius),
+                    ImVec2(center.x + marker_radius, center.y + marker_radius), IM_COL32(255, 255, 255, 230), 3.0f,
+                    0, 2.0f);
+            }
+        }
+
         const float dx = mouse.x - center.x;
         const float dy = mouse.y - center.y;
-        if (hovered && !session.map_camera_panning && (dx * dx + dy * dy) <= (marker_radius * marker_radius))
-            hovered_marker = entry.first;
+        const bool marker_hovered =
+            hovered && !session.map_camera_panning && (dx * dx + dy * dy) <= (marker_radius * marker_radius);
+        if (marker_hovered) hovered_marker = entry.first;
+
+        const bool show_label = !session.map_cartography_mode || !session.map_labels_on_hover || selected ||
+            marker_hovered;
+        if (!show_label) continue;
+
+        const WorldForgeFactionEntity* label_faction =
+            is_poi && poi_ptr ? primary_faction_for_poi(session, *poi_ptr) :
+                                (region_ptr ? primary_faction_for_region(session, *region_ptr) : nullptr);
+        std::string subtitle;
+        if (label_faction)
+            subtitle = label_faction->display_name.empty() ? label_faction->id : label_faction->display_name;
+        else if (is_poi)
+            subtitle = "POI";
+        else
+            subtitle = "Region";
+
+        if (session.map_cartography_mode && session.map_labels_on_hover && (selected || marker_hovered)) {
+            draw_map_hover_title_chip(draw, session, center, label, subtitle);
+            continue;
+        }
+
+        const std::string fallback_fid =
+            region_ptr && !region_ptr->faction_ids.empty() ? region_ptr->faction_ids.front() : std::string{};
+        const std::string typeface_id =
+            map_label_typeface_id(session, label_faction, fallback_fid);
+        ImFont* label_font = session.map_cartography_mode ? GameFonts::map_typeface(typeface_id) : ImGui::GetFont();
+        if (label_font) ImGui::PushFont(label_font);
+        const ImVec2 text_size = ImGui::CalcTextSize(label.c_str());
+        const float chip = session.map_cartography_mode ? 7.0f : 0.0f;
+        ImVec2 text_pos{center.x - text_size.x * 0.5f + chip, center.y + marker_radius + 4.0f};
+        if (session.map_cartography_mode) {
+            const float pad = session.map_show_frame ? 28.0f : 6.0f;
+            const float min_x = canvas_pos.x + pad;
+            const float max_x = canvas_pos.x + canvas_size.x - pad;
+            const float min_y = canvas_pos.y + pad;
+            const float max_y = canvas_pos.y + canvas_size.y - pad;
+            static constexpr float k_dx[] = {0.0f, 0.0f, 18.0f, -18.0f, 28.0f, -28.0f, 12.0f, -12.0f};
+            static constexpr float k_dy[] = {0.0f, 14.0f, 0.0f, 0.0f, 10.0f, 10.0f, -16.0f, -16.0f};
+            bool placed = false;
+            for (int nudge = 0; nudge < 8; ++nudge) {
+                ImVec2 candidate_pos{center.x - text_size.x * 0.5f + chip + k_dx[nudge],
+                    center.y + marker_radius + 4.0f + k_dy[nudge]};
+                candidate_pos.x = std::clamp(candidate_pos.x, min_x + chip, max_x - text_size.x);
+                candidate_pos.y = std::clamp(candidate_pos.y, min_y, max_y - text_size.y);
+                const ImVec4 candidate{candidate_pos.x - 4.0f - chip, candidate_pos.y - 1.0f,
+                    candidate_pos.x + text_size.x + 4.0f, candidate_pos.y + text_size.y + 1.0f};
+                bool overlaps = false;
+                for (const auto& box : occupied_labels) {
+                    if (candidate.x < box.z && candidate.z > box.x && candidate.y < box.w && candidate.w > box.y) {
+                        overlaps = true;
+                        break;
+                    }
+                }
+                text_pos = candidate_pos;
+                if (!overlaps) {
+                    placed = true;
+                    break;
+                }
+            }
+            (void)placed;
+            occupied_labels.push_back(ImVec4{text_pos.x - 4.0f - chip, text_pos.y - 1.0f,
+                text_pos.x + text_size.x + 4.0f, text_pos.y + text_size.y + 1.0f});
+        }
+        const ImU32 label_bg =
+            session.map_cartography_mode ? IM_COL32(245, 235, 210, 210) : IM_COL32(8, 10, 14, 200);
+        const ImU32 label_fg =
+            session.map_cartography_mode ? IM_COL32(45, 35, 25, 255) : IM_COL32(245, 245, 248, 255);
+        draw->AddRectFilled(ImVec2(text_pos.x - 4.0f - chip, text_pos.y - 1.0f),
+            ImVec2(text_pos.x + text_size.x + 4.0f, text_pos.y + text_size.y + 1.0f), label_bg, 3.0f);
+        if (session.map_cartography_mode && label_faction) {
+            draw_faction_heraldry_chip(draw, session, label_faction,
+                ImVec2(text_pos.x - chip - 2.0f, text_pos.y + text_size.y * 0.5f),
+                faction_tint_u32(label_faction, IM_COL32(120, 90, 60, 255)), 5.0f);
+        }
+        draw->AddText(text_pos, label_fg, label.c_str());
+        if (label_font) ImGui::PopFont();
     }
 
-    draw_map_legend(draw, canvas_pos, canvas_size);
-
     const auto bounds = compute_map_canvas_fit_bounds(session.map, session.map_filter_regions, session.map_filter_pois,
-        session.map_filter_hydrology, session.map_filter_ferry_routes, session.act_filter);
+        session.map_filter_hydrology, session.map_filter_ferry_routes, session.map_filter_travel_routes,
+        session.map_show_borders, session.act_filter);
     const bool minimap_clicked = draw_world_forge_graph_minimap(draw, canvas_pos.x, canvas_pos.y, canvas_size.x,
         canvas_size.y, cam, bounds, positions, mouse.x, mouse.y,
-        hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt);
+        hovered && over_map && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt);
     draw->PopClipRect();
 
-    if (!minimap_clicked && !session.map_camera_panning && active &&
+    // Detail-plate / non-cartography corner legend (scrollable legend is a sibling ImGui child).
+    draw_map_cartography_overlays(draw, session, cam, panel_pos, panel_size, session.map_cartography_mode);
+
+    if (session.map_cartography_mode && session.map_show_frame) {
+        // Last in the pass so chrome always sits above map/minimap/labels (ImGui is painter's order, not z-index).
+        draw_map_frame_overlay(ImGui::GetWindowDrawList(), session, stage_pos, stage_size);
+    }
+
+    // Esc clears selection and cancels draw / place modes (Select tool intuition).
+    if (hovered && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+        session.selected_id.clear();
+        session.map_drag_key.clear();
+        clear_map_draw_modes(session);
+        session.map_tool = WorldForgeMapTool::Select;
+        session.status = "Selection cleared";
+    }
+
+    if (!minimap_clicked && !session.map_camera_panning && active && over_map &&
         ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt) {
-        if (!session.map_ferry_draw_id.empty()) {
+        if (!session.map_border_region_id.empty()) {
+            if (auto* region = find_region(session.map, session.map_border_region_id)) {
+                const auto world = to_world(local);
+                region->border.push_back({world[0], world[1]});
+                session.selected_id = region->id;
+                session.list_kind = ListKind::Regions;
+                session.dirty = true;
+                session.status = "Added region border point";
+            }
+        } else if (!session.map_travel_draw_id.empty()) {
+            if (auto* route = find_travel_route(session.map, session.map_travel_draw_id)) {
+                const auto world = to_world(local);
+                route->points.push_back({world[0], world[1]});
+                session.selected_id = route->id;
+                session.list_kind = ListKind::TravelRoutes;
+                session.dirty = true;
+                session.status = "Added travel route point";
+            }
+        } else if (!session.map_ferry_draw_id.empty()) {
             if (auto* route = find_ferry_route(session.map, session.map_ferry_draw_id)) {
                 const auto world = to_world(local);
                 route->points.push_back({world[0], world[1]});
@@ -3070,49 +4328,61 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
             session.selected_id = hovered_hydrology;
             session.list_kind = ListKind::Hydrology;
             session.map_place_id.clear();
+            session.status = "Selected hydrology";
         } else if (!hovered_ferry.empty()) {
             session.map_drag_key.clear();
             session.selected_id = hovered_ferry;
             session.list_kind = ListKind::FerryRoutes;
             session.map_place_id.clear();
+            session.status = "Selected ferry route";
+        } else if (!hovered_travel.empty()) {
+            session.map_drag_key.clear();
+            session.selected_id = hovered_travel;
+            session.list_kind = ListKind::TravelRoutes;
+            session.map_place_id.clear();
+            session.status = "Selected travel route";
         } else if (!hovered_marker.empty()) {
+            // Click marker: select and begin drag. Click same selected marker again without drag → keep selected.
             session.map_drag_key = hovered_marker;
             session.selected_id = hovered_marker.rfind("poi:", 0) == 0 ? hovered_marker.substr(4) :
                                                                         hovered_marker.substr(7);
             session.map_place_id.clear();
             session.list_kind = hovered_marker.rfind("poi:", 0) == 0 ? ListKind::Pois : ListKind::Regions;
+            session.map_tool = WorldForgeMapTool::Select;
+            session.status = "Selected — drag to move, click empty or Esc to deselect";
         } else if (!hovered_link.empty()) {
             session.map_drag_key.clear();
             session.selected_id = hovered_link;
             session.list_kind = ListKind::Links;
             session.map_place_id.clear();
-        } else if (!session.map_place_id.empty()) {
+            session.status = "Selected link";
+        } else if (!session.map_place_id.empty() && session.map_tool == WorldForgeMapTool::Anchor) {
             const auto world = to_world(local);
             const std::string key = session.map_place_is_poi ? map_poi_marker_key(session.map_place_id) :
                                                               map_region_marker_key(session.map_place_id);
             set_map_marker_world_xz(session, key, world[0], world[1], ctx);
             session.selected_id = session.map_place_id;
             session.list_kind = session.map_place_is_poi ? ListKind::Pois : ListKind::Regions;
-            session.map_drag_key = key;
-            session.map_place_id.clear();
-            session.status = "Placed map anchor";
-        } else if (auto* anchor_ptr = mutable_selected_map_anchor(session); anchor_ptr) {
-            const auto world = to_world(local);
-            if (!*anchor_ptr) *anchor_ptr = WorldForgeWorldAnchor{};
-            const std::string key = find_poi(session.map, session.selected_id) ?
-                map_poi_marker_key(session.selected_id) :
-                map_region_marker_key(session.selected_id);
-            set_map_marker_world_xz(session, key, world[0], world[1], ctx);
-            session.map_drag_key = key;
-            session.status = "Moved map anchor";
-        } else {
             session.map_drag_key.clear();
+            session.map_place_id.clear();
+            session.map_tool = WorldForgeMapTool::Select;
+            session.status = "Placed map anchor";
+        } else {
+            // Empty canvas click: deselect (do NOT teleport the selected marker).
+            session.map_drag_key.clear();
+            session.selected_id.clear();
+            if (session.map_tool == WorldForgeMapTool::Anchor) {
+                session.map_place_id.clear();
+                session.map_tool = WorldForgeMapTool::Select;
+            }
+            session.status = "Deselected";
         }
     }
     if (!session.map_camera_panning && active && !session.map_drag_key.empty() &&
-        ImGui::IsMouseDragging(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyAlt) {
+        ImGui::IsMouseDragging(ImGuiMouseButton_Left, 3.0f) && !ImGui::GetIO().KeyAlt) {
         const auto world = to_world(local);
         set_map_marker_world_xz(session, session.map_drag_key, world[0], world[1], ctx);
+        session.status = "Moving map anchor";
     }
     if (session.map_hydrology_bounds_dragging && ImGui::IsMouseDragging(ImGuiMouseButton_Left) &&
         !ImGui::GetIO().KeyAlt) {
@@ -3131,56 +4401,183 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
         session.map_hydrology_bounds_dragging = false;
     }
 
-    ImGui::TextDisabled(
-        "zoom %.2f · wheel zoom · Alt/middle pan · draw hydrology/ferry from side panel when active", cam.zoom);
+    if (session.map_cartography_mode) {
+        if (session.map_show_official_backdrop && !session.map_layer_draw_id.empty()) {
+            ImGui::TextDisabled(
+                "Cartography · zoom %.2f · layer %s%s · fog-swap on zoom · Frame toggles border", cam.zoom,
+                session.map_layer_draw_id.c_str(),
+                session.map_layer_transition_t > 0.0f ? " (transitioning)" : "");
+        } else if (session.map_show_official_backdrop && session.map_tile_draw_lod >= 0) {
+            const bool at_max = session.map_tile_draw_lod >= session.map_tile_max_lod;
+            ImGui::TextDisabled(
+                at_max ? "Cartography · zoom %.2f · world-map LOD %d/%d · max art resolution (zoom capped)"
+                       : "Cartography · zoom %.2f · world-map LOD %d/%d · wheel zoom for sharper tiles",
+                cam.zoom, session.map_tile_draw_lod, session.map_tile_max_lod);
+        } else {
+            ImGui::TextDisabled(
+                "Cartography · zoom %.2f · draw travel/border/ferry/hydro from side panel when active", cam.zoom);
+        }
+    } else {
+        ImGui::TextDisabled(
+            "Top-down · zoom %.2f · wheel zoom · Alt/middle pan · draw hydrology/ferry from side panel when active",
+            cam.zoom);
+    }
+
+    if (session.map_reference_popup) ImGui::OpenPopup("Official world map##MapRefPopup");
+    if (ImGui::BeginPopupModal("Official world map##MapRefPopup", &session.map_reference_popup,
+            ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped(
+            "Canonical Tessera five-act geography reference (not the Map Canvas slice underlay):");
+        ImGui::TextUnformatted("context/story/official-world-map.png");
+        ImGui::TextDisabled("Open that path from the repo root in your image viewer.");
+        if (ImGui::Button("Copy path to status##MapRefOpen")) {
+            session.status = "Reference: context/story/official-world-map.png";
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Close##MapRefClose")) session.map_reference_popup = false;
+        ImGui::EndPopup();
+    }
+    ImGui::EndChild(); // WorldForgeMapStageHost
+    ImGui::EndChild(); // WorldForgeMapSpatialCanvas
+}
+
+void draw_map_tool_button(WorldForgeEditorSession& session, WorldForgeMapTool tool, const char* label,
+    const char* hotspot_id, EditorUiHotspotRegistry* hotspots) {
+    const bool active = session.map_tool == tool;
+    if (active) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.294f, 0.259f, 0.208f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.945f, 0.933f, 0.910f, 1.0f));
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.145f, 0.161f, 0.169f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.608f, 0.639f, 0.655f, 1.0f));
+    }
+    if (ImGui::Button(label)) apply_map_tool(session, tool);
+    register_ui_hotspot_last_item(hotspots, hotspot_id, label);
+    ImGui::PopStyleColor(2);
+}
+
+void draw_map_title_bar(WorldForgeEditorSession& session, EditorUiHotspotRegistry* hotspots) {
+    ImGui::BeginChild("WorldForgeMapTitleBar", ImVec2(0.0f, 72.0f), false);
+    ImGui::TextUnformatted("Tessera — Campaign Map");
+    ImGui::TextDisabled("Icon markers · titles on hover · soft theaters");
+    ImGui::SameLine(ImGui::GetWindowWidth() - 280.0f);
+    ImGui::BeginGroup();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 12.0f);
+    if (ImGui::RadioButton("Cartography##MapCanvasViewCart", session.map_cartography_mode)) {
+        session.map_cartography_mode = true;
+        session.map_show_terrain = false;
+    }
+    register_ui_hotspot_last_item(hotspots, "WorldForge.Map.Cartography", "Cartography");
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Top-down##MapCanvasViewTopo", !session.map_cartography_mode)) {
+        session.map_cartography_mode = false;
+    }
+    register_ui_hotspot_last_item(hotspots, "WorldForge.Map.TopDown", "Top-down");
+    ImGui::EndGroup();
     ImGui::EndChild();
 }
 
-void draw_map_canvas_pane(WorldForgeEditorSession& session, const WorldForgeViewportDrawContext& ctx) {
-    session.list_kind = ListKind::MapCanvas;
-    const ImVec2 avail = ImGui::GetContentRegionAvail();
-    float side_w = (std::clamp)(avail.x * 0.28f, 200.0f, 320.0f);
-    const float canvas_w = avail.x - side_w - 8.0f;
-
-    ImGui::BeginChild("WorldForgeMapCanvasMain", ImVec2(canvas_w, avail.y), false);
-    draw_map_spatial_canvas(session, ImVec2(0.0f, avail.y), ctx);
-    ImGui::EndChild();
-
+void draw_map_canvas_toolbar(WorldForgeEditorSession& session, EditorUiHotspotRegistry* hotspots) {
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.145f, 0.161f, 0.169f, 1.0f));
+    ImGui::BeginChild("WorldForgeMapCanvasToolbar", ImVec2(0.0f, 46.0f), true, ImGuiWindowFlags_NoScrollbar);
+    draw_map_tool_button(session, WorldForgeMapTool::Select, "Select · 1##MapToolSelect",
+        "WorldForge.Map.Tool.Select", hotspots);
     ImGui::SameLine();
-    ImGui::BeginChild("WorldForgeMapCanvasSide", ImVec2(0.0f, avail.y), true);
-    ImGui::TextUnformatted("Place on map");
-    ImGui::Separator();
-    bool any_unanchored = false;
-    for (const auto& region : session.map.regions) {
-        if (region.anchor) continue;
-        if (!entity_matches_act_lens(session, region.acts, region.tags)) continue;
-        any_unanchored = true;
-        const bool selected = session.map_place_id == region.id && !session.map_place_is_poi;
-        std::string label = region.id + "  [region]";
-        if (ImGui::Selectable(label.c_str(), selected)) {
-            session.map_place_id = region.id;
-            session.map_place_is_poi = false;
-            session.selected_id = region.id;
-            session.status = "Click the map to place region anchor";
-        }
+    draw_map_tool_button(session, WorldForgeMapTool::Anchor, "Anchor##MapToolAnchor", "WorldForge.Map.Tool.Anchor",
+        hotspots);
+    ImGui::SameLine();
+    draw_map_tool_button(session, WorldForgeMapTool::Route, "Route##MapToolRoute", "WorldForge.Map.Tool.Route",
+        hotspots);
+    ImGui::SameLine();
+    draw_map_tool_button(session, WorldForgeMapTool::Border, "Border##MapToolBorder", "WorldForge.Map.Tool.Border",
+        hotspots);
+    ImGui::SameLine();
+    draw_map_tool_button(session, WorldForgeMapTool::Water, "Water##MapToolWater", "WorldForge.Map.Tool.Water",
+        hotspots);
+
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) || ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) {
+        if (ImGui::IsKeyPressed(ImGuiKey_1, false)) apply_map_tool(session, WorldForgeMapTool::Select);
+        if (ImGui::IsKeyPressed(ImGuiKey_2, false)) apply_map_tool(session, WorldForgeMapTool::Anchor);
+        if (ImGui::IsKeyPressed(ImGuiKey_3, false)) apply_map_tool(session, WorldForgeMapTool::Route);
+        if (ImGui::IsKeyPressed(ImGuiKey_4, false)) apply_map_tool(session, WorldForgeMapTool::Border);
+        if (ImGui::IsKeyPressed(ImGuiKey_5, false)) apply_map_tool(session, WorldForgeMapTool::Water);
     }
-    for (const auto& poi : session.map.pois) {
-        if (poi.anchor) continue;
-        if (!entity_matches_act_lens(session, poi.acts, poi.tags)) continue;
-        any_unanchored = true;
-        const bool selected = session.map_place_id == poi.id && session.map_place_is_poi;
-        std::string label = poi.id + "  [poi]";
-        if (ImGui::Selectable(label.c_str(), selected)) {
-            session.map_place_id = poi.id;
-            session.map_place_is_poi = true;
-            session.selected_id = poi.id;
-            session.status = "Click the map to place POI anchor";
-        }
+
+    ImGui::SameLine(0.0f, 24.0f);
+    if (session.map_cursor_valid) {
+        ImGui::TextDisabled("XZ  %.0f  /  %.0f", session.map_cursor_world_x, session.map_cursor_world_z);
+    } else {
+        ImGui::TextDisabled("XZ  —  /  —");
     }
-    if (!any_unanchored) ImGui::TextDisabled("(all regions/POIs have anchors)");
-    ImGui::Separator();
-    draw_map_canvas_detail(session);
+    ImGui::SameLine();
+    const float zoom_pct = session.map_camera.zoom * 100.0f;
+    if (ImGui::SmallButton("-##MapZoomOut")) {
+        session.map_camera.zoom = (std::max)(session.map_camera.min_zoom, session.map_camera.zoom * 0.9f);
+    }
+    register_ui_hotspot_last_item(hotspots, "WorldForge.Map.ZoomOut", "Zoom out");
+    ImGui::SameLine();
+    ImGui::Text("%.0f%%", zoom_pct);
+    ImGui::SameLine();
+    if (ImGui::SmallButton("+##MapZoomIn")) {
+        session.map_camera.zoom = (std::min)(session.map_camera.max_zoom, session.map_camera.zoom * 1.1f);
+    }
+    register_ui_hotspot_last_item(hotspots, "WorldForge.Map.ZoomIn", "Zoom in");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Fit##WorldForgeMapFit")) session.map_camera_fit_requested = true;
+    register_ui_hotspot_last_item(hotspots, "WorldForge.Map.Fit", "Fit");
+    ImGui::SameLine();
+    if (session.map_cartography_mode) {
+        ImGui::Checkbox("World map##MapCanvasOfficial", &session.map_show_official_backdrop);
+        register_ui_hotspot_last_item(hotspots, "WorldForge.Map.WorldMap", "World map");
+        ImGui::SameLine();
+        if (!session.map_layer_active_id.empty() && session.map_layer_active_id != "continent") {
+            if (ImGui::SmallButton("Continent##MapReturnContinent")) {
+                session.map_layer_pending_id = "continent";
+                if (session.map_layer_transition_t <= 0.0f) session.map_layer_transition_t = 0.001f;
+                session.map_camera_fit_requested = true;
+                session.status = "Returning to continent plate";
+            }
+            register_ui_hotspot_last_item(hotspots, "WorldForge.Map.ReturnContinent", "Return to continent");
+            ImGui::SameLine();
+            ImGui::TextDisabled("%s", session.map_layer_active_id.c_str());
+        }
+    } else {
+        ImGui::Checkbox("Terrain##MapCanvasTerrain", &session.map_show_terrain);
+        register_ui_hotspot_last_item(hotspots, "WorldForge.Map.Terrain", "Terrain");
+        ImGui::SameLine();
+        ImGui::Checkbox("Grid##MapCanvasGrid", &session.map_show_grid);
+        ImGui::SameLine();
+        ImGui::Checkbox("Contours##MapCanvasContours", &session.map_show_contours);
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Layers##MapFilters")) ImGui::OpenPopup("WorldForgeMapLayerFilters");
+    if (ImGui::BeginPopup("WorldForgeMapLayerFilters")) {
+        ImGui::Checkbox("Regions", &session.map_filter_regions);
+        ImGui::Checkbox("POIs", &session.map_filter_pois);
+        ImGui::Checkbox("Links", &session.map_filter_links);
+        ImGui::Checkbox("Hydrology", &session.map_filter_hydrology);
+        ImGui::Checkbox("Ferry", &session.map_filter_ferry_routes);
+        ImGui::Checkbox("Travel", &session.map_filter_travel_routes);
+        if (session.map_cartography_mode) ImGui::Checkbox("Borders", &session.map_show_borders);
+        ImGui::Checkbox("Legend", &session.map_show_legend);
+        ImGui::Checkbox("Heraldry legend", &session.map_show_heraldry_legend);
+        ImGui::Checkbox("Draft badge", &session.map_show_draft_badge);
+        ImGui::Checkbox("Titles on hover", &session.map_labels_on_hover);
+        ImGui::EndPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Reference##WorldForgeMapRef")) session.map_reference_popup = true;
     ImGui::EndChild();
+    ImGui::PopStyleColor();
+}
+
+void draw_map_canvas_pane(WorldForgeEditorSession& session, const WorldForgeViewportDrawContext& ctx,
+    const std::filesystem::path& project_root) {
+    session.list_kind = ListKind::MapCanvas;
+    draw_map_title_bar(session, ctx.hotspots);
+    draw_map_canvas_toolbar(session, ctx.hotspots);
+    const ImVec2 avail = ImGui::GetContentRegionAvail();
+    draw_map_spatial_canvas(session, ImVec2(0.0f, avail.y), ctx, project_root);
 }
 
 std::string endpoint_graph_key(const WorldForgeRelationshipEndpoint& endpoint) {
@@ -4863,27 +6260,30 @@ void draw_relationships_pane(WorldForgeEditorSession& session) {
     }
 }
 
-void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDrawContext& ctx) {
+void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDrawContext& ctx,
+    const std::filesystem::path& project_root) {
     if (ImGui::RadioButton("List##WorldForgeMapView", !session.map_canvas_mode)) {
         session.map_canvas_mode = false;
         if (session.list_kind == ListKind::MapCanvas) session.list_kind = ListKind::Regions;
     }
+    register_ui_hotspot_last_item(ctx.hotspots, "WorldForge.Map.List", "List");
     ImGui::SameLine();
     if (ImGui::RadioButton("Canvas##WorldForgeMapView", session.map_canvas_mode)) {
         session.map_canvas_mode = true;
         session.list_kind = ListKind::MapCanvas;
         session.map_camera_fit_requested = true;
     }
+    register_ui_hotspot_last_item(ctx.hotspots, "WorldForge.Map.CanvasMode", "Canvas");
     ImGui::Separator();
 
     if (session.map_canvas_mode) {
-        draw_map_canvas_pane(session, ctx);
+        draw_map_canvas_pane(session, ctx, project_root);
         return;
     }
 
     if (session.list_kind != ListKind::Regions && session.list_kind != ListKind::Pois &&
         session.list_kind != ListKind::Links && session.list_kind != ListKind::Hydrology &&
-        session.list_kind != ListKind::FerryRoutes)
+        session.list_kind != ListKind::FerryRoutes && session.list_kind != ListKind::TravelRoutes)
         session.list_kind = ListKind::Regions;
 
     if (ImGui::RadioButton("Regions##WorldForgeMapKind", session.list_kind == ListKind::Regions)) {
@@ -4910,12 +6310,18 @@ void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDra
         session.list_kind = ListKind::FerryRoutes;
         session.selected_id.clear();
     }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Travel##WorldForgeMapKind", session.list_kind == ListKind::TravelRoutes)) {
+        session.list_kind = ListKind::TravelRoutes;
+        session.selected_id.clear();
+    }
     ImGui::Separator();
     if (session.list_kind == ListKind::Regions) draw_add_region_controls(session);
     else if (session.list_kind == ListKind::Pois) draw_add_poi_controls(session);
     else if (session.list_kind == ListKind::Links) draw_add_map_link_controls(session);
     else if (session.list_kind == ListKind::Hydrology) draw_add_hydrology_controls(session);
-    else draw_add_ferry_route_controls(session);
+    else if (session.list_kind == ListKind::FerryRoutes) draw_add_ferry_route_controls(session);
+    else draw_add_travel_route_controls(session);
     ImGui::Separator();
 
     const ImVec2 avail = ImGui::GetContentRegionAvail();
@@ -4964,6 +6370,30 @@ void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDra
             if (draw_world_anchor_fields(region->anchor)) {
                 session.dirty = true;
                 session.map_underlay_ready = false;
+            }
+            ImGui::Text("Border points: %zu", region->border.size());
+            if (ImGui::Button("Clear border##ListRegionBorderClear")) {
+                region->border.clear();
+                session.dirty = true;
+            }
+            ImGui::SameLine();
+            const bool border_draw = session.map_border_region_id == region->id;
+            if (ImGui::Button(border_draw ? "Stop border edit##ListRegionBorderDraw" :
+                                            "Edit border on map##ListRegionBorderDraw")) {
+                session.map_border_region_id = border_draw ? std::string{} : region->id;
+                if (!border_draw) {
+                    session.map_ferry_draw_id.clear();
+                    session.map_travel_draw_id.clear();
+                    session.map_hydrology_bounds_id.clear();
+                }
+                if (session.map_canvas_mode) {
+                    session.status = border_draw ? "Region border draw off" : "Canvas — click to append border points";
+                } else {
+                    session.map_canvas_mode = true;
+                    session.list_kind = ListKind::MapCanvas;
+                    session.map_camera_fit_requested = true;
+                    session.status = "Canvas mode — click to append region border points";
+                }
             }
             if (ImGui::Checkbox("softGate.enabled", &region->soft_gate.enabled)) session.dirty = true;
             if (draw_text_area("softGate.notes", region->soft_gate.notes, 72.0f, 2048)) session.dirty = true;
@@ -5103,7 +6533,11 @@ void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDra
             const bool bounds_active = session.map_hydrology_bounds_id == hydro->id;
             if (ImGui::Button(bounds_active ? "Stop draw bounds##ListHydroBounds" : "Draw bounds on map##ListHydroBounds")) {
                 session.map_hydrology_bounds_id = bounds_active ? std::string{} : hydro->id;
-                session.map_ferry_draw_id.clear();
+                if (!bounds_active) {
+                    session.map_ferry_draw_id.clear();
+                    session.map_travel_draw_id.clear();
+                    session.map_border_region_id.clear();
+                }
                 if (session.map_canvas_mode) {
                     session.status =
                         bounds_active ? "Hydrology bounds draw off" : "Switch to Canvas and click-drag bounds";
@@ -5113,6 +6547,71 @@ void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDra
                     session.map_camera_fit_requested = true;
                     session.status = "Canvas mode — click-drag to set hydrology bounds";
                 }
+            }
+        }
+        ImGui::EndChild();
+    } else if (session.list_kind == ListKind::TravelRoutes) {
+        ImGui::BeginChild("WorldForgeTravelList", ImVec2(list_w, avail.y), true);
+        if (session.map.travel_routes.empty()) ImGui::TextDisabled("(no travel routes — use Add travel above)");
+        for (const auto& route : session.map.travel_routes) {
+            if (!entity_matches_act_lens(session, route.acts, {})) continue;
+            std::string label = route.id + "  [" + to_string(route.kind) + "] " + route.from_poi_id + " -> " +
+                                route.to_poi_id;
+            const bool selected = session.selected_id == route.id;
+            if (ImGui::Selectable(label.c_str(), selected)) session.selected_id = route.id;
+        }
+        ImGui::EndChild();
+
+        ImGui::SameLine();
+        ImGui::BeginChild("WorldForgeTravelDetail", ImVec2(0.0f, avail.y), true);
+        auto* route = find_travel_route(session.map, session.selected_id);
+        if (!route) {
+            ImGui::TextDisabled("Select a travel route, or create one above");
+        } else {
+            ImGui::Text("id: %s", route->id.c_str());
+            if (ImGui::Button("Delete travel route##WorldForgeDeleteTravel")) {
+                const auto id = route->id;
+                if (remove_travel_route(session, id)) {
+                    ImGui::EndChild();
+                    return;
+                }
+                session.status = "Could not remove travel route";
+            }
+            ImGui::Separator();
+            if (draw_enum_combo("Kind", route->kind,
+                    {WorldForgeTravelRouteKind::Track, WorldForgeTravelRouteKind::Road,
+                        WorldForgeTravelRouteKind::Highway}))
+                session.dirty = true;
+            if (draw_id_combo("From POI", route->from_poi_id, collect_poi_ids(session.map), false)) session.dirty = true;
+            if (draw_id_combo("To POI", route->to_poi_id, collect_poi_ids(session.map), false)) session.dirty = true;
+            if (draw_acts_field(route->acts)) session.dirty = true;
+            if (draw_text_area("Summary", route->summary, 96.0f)) session.dirty = true;
+            ImGui::Text("Points: %zu", route->points.size());
+            if (ImGui::Button("Clear points##ListTravelClear")) {
+                route->points.clear();
+                session.dirty = true;
+            }
+            ImGui::SameLine();
+            const bool draw_active = session.map_travel_draw_id == route->id;
+            if (ImGui::Button(draw_active ? "Stop add points##ListTravelDraw" : "Add points on map##ListTravelDraw")) {
+                session.map_travel_draw_id = draw_active ? std::string{} : route->id;
+                if (!draw_active) {
+                    session.map_ferry_draw_id.clear();
+                    session.map_hydrology_bounds_id.clear();
+                    session.map_border_region_id.clear();
+                }
+                if (session.map_canvas_mode) {
+                    session.status = draw_active ? "Travel point draw off" : "Canvas mode — click to append points";
+                } else {
+                    session.map_canvas_mode = true;
+                    session.list_kind = ListKind::MapCanvas;
+                    session.map_camera_fit_requested = true;
+                    session.status = "Canvas mode — click to append travel route points";
+                }
+            }
+            ImGui::Separator();
+            for (std::size_t i = 0; i < route->points.size(); ++i) {
+                ImGui::Text("point %zu: (%.1f, %.1f)", i, route->points[i].x, route->points[i].z);
             }
         }
         ImGui::EndChild();
@@ -5156,7 +6655,11 @@ void draw_map_pane(WorldForgeEditorSession& session, const WorldForgeViewportDra
             const bool draw_active = session.map_ferry_draw_id == route->id;
             if (ImGui::Button(draw_active ? "Stop add points##ListFerryDraw" : "Add points on map##ListFerryDraw")) {
                 session.map_ferry_draw_id = draw_active ? std::string{} : route->id;
-                session.map_hydrology_bounds_id.clear();
+                if (!draw_active) {
+                    session.map_hydrology_bounds_id.clear();
+                    session.map_travel_draw_id.clear();
+                    session.map_border_region_id.clear();
+                }
                 if (session.map_canvas_mode) {
                     session.status = draw_active ? "Ferry point draw off" : "Canvas mode — click to append points";
                 } else {
@@ -6200,11 +7703,129 @@ void draw_archetypes_pane(WorldForgeEditorSession& session, const std::filesyste
     ImGui::EndChild();
 }
 
-void draw_world_forge_toolbar(WorldForgeEditorSession& session, const std::filesystem::path& project_root) {
+void clear_map_draw_modes(WorldForgeEditorSession& session) {
+    session.map_place_id.clear();
+    session.map_travel_draw_id.clear();
+    session.map_border_region_id.clear();
+    session.map_hydrology_bounds_id.clear();
+    session.map_ferry_draw_id.clear();
+    session.map_hydrology_bounds_dragging = false;
+}
+
+void apply_map_tool(WorldForgeEditorSession& session, WorldForgeMapTool tool) {
+    session.map_tool = tool;
+    clear_map_draw_modes(session);
+    switch (tool) {
+    case WorldForgeMapTool::Select:
+        session.status = "Select tool";
+        break;
+    case WorldForgeMapTool::Anchor:
+        session.status = "Anchor tool — pick an unanchored item, then click the map";
+        break;
+    case WorldForgeMapTool::Route:
+        if (find_travel_route(session.map, session.selected_id)) {
+            session.map_travel_draw_id = session.selected_id;
+            session.status = "Route tool — click map to append travel points";
+        } else if (find_ferry_route(session.map, session.selected_id)) {
+            session.map_ferry_draw_id = session.selected_id;
+            session.status = "Route tool — click map to append ferry points";
+        } else {
+            session.status = "Route tool — select a travel or ferry route first";
+        }
+        break;
+    case WorldForgeMapTool::Border:
+        if (find_region(session.map, session.selected_id)) {
+            session.map_border_region_id = session.selected_id;
+            session.status = "Border tool — click map to append region border points";
+        } else {
+            session.status = "Border tool — select a region first";
+        }
+        break;
+    case WorldForgeMapTool::Water:
+        if (find_hydrology(session.map, session.selected_id)) {
+            session.map_hydrology_bounds_id = session.selected_id;
+            session.status = "Water tool — click-drag on map to set hydrology bounds";
+        } else {
+            session.status = "Water tool — select a hydrology region first";
+        }
+        break;
+    }
+}
+
+const char* world_forge_pane_label(WorldForgeEditorPane pane) {
+    switch (pane) {
+    case WorldForgeEditorPane::Overview: return "Overview";
+    case WorldForgeEditorPane::Hierarchy: return "Hierarchy";
+    case WorldForgeEditorPane::Relationships: return "Relationships";
+    case WorldForgeEditorPane::Map: return "Map";
+    case WorldForgeEditorPane::Quests: return "Quests";
+    case WorldForgeEditorPane::Dialogues: return "Dialogues";
+    case WorldForgeEditorPane::Archetypes: return "Archetypes";
+    case WorldForgeEditorPane::Resources: return "Resources";
+    }
+    return "World Forge";
+}
+
+void select_world_forge_pane(WorldForgeEditorSession& session, WorldForgeEditorPane pane) {
+    if (session.lock_pane_tab) return;
+    if (session.pane == pane) return;
+    session.pane = pane;
+    session.selected_id.clear();
+    switch (pane) {
+    case WorldForgeEditorPane::Overview: session.list_kind = ListKind::MapCanvas; break;
+    case WorldForgeEditorPane::Hierarchy:
+        session.list_kind = ListKind::Pantheon;
+        session.hierarchy_page = WorldForgeHierarchyPage::Religion;
+        break;
+    case WorldForgeEditorPane::Archetypes: session.list_kind = ListKind::Archetypes; break;
+    case WorldForgeEditorPane::Relationships: session.list_kind = ListKind::Nodes; break;
+    case WorldForgeEditorPane::Map:
+        session.list_kind = session.map_canvas_mode ? ListKind::MapCanvas : ListKind::Regions;
+        if (session.map_canvas_mode) session.map_camera_fit_requested = true;
+        break;
+    case WorldForgeEditorPane::Quests: session.list_kind = ListKind::Quests; break;
+    case WorldForgeEditorPane::Dialogues:
+        session.list_kind = ListKind::Dialogues;
+        session.dialogue_selected_node_id.clear();
+        session.dialogue_link_from.clear();
+        session.dialogue_graph_full_relayout = true;
+        break;
+    case WorldForgeEditorPane::Resources: session.list_kind = ListKind::Resources; break;
+    }
+}
+
+void push_world_forge_chrome_colors() {
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.082f, 0.090f, 0.098f, 1.0f)); // #151719
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.227f, 0.251f, 0.267f, 1.0f));   // #3A4044
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.161f, 0.176f, 0.188f, 1.0f));   // #292D30
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.231f, 0.212f, 0.188f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.294f, 0.259f, 0.208f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.231f, 0.212f, 0.188f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.294f, 0.259f, 0.208f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.294f, 0.259f, 0.208f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.161f, 0.176f, 0.188f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.945f, 0.933f, 0.910f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImVec4(0.608f, 0.639f, 0.655f, 1.0f));
+}
+
+void pop_world_forge_chrome_colors() { ImGui::PopStyleColor(11); }
+
+void draw_world_forge_header(WorldForgeEditorSession& session, const std::filesystem::path& project_root,
+    EditorUiHotspotRegistry* hotspots) {
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.149f, 0.141f, 0.122f, 1.0f)); // #26241F
+    ImGui::BeginChild("WorldForgeHeader", ImVec2(0.0f, 56.0f), true, ImGuiWindowFlags_NoScrollbar);
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 12.0f);
+    ImGui::TextColored(ImVec4(0.835f, 0.725f, 0.471f, 1.0f), "WORLD FORGE");
+    ImGui::SameLine();
+    ImGui::TextDisabled("  Tessera /");
+    ImGui::SameLine();
+    ImGui::TextUnformatted(world_forge_pane_label(session.pane));
+    ImGui::SameLine(0.0f, 24.0f);
     if (ImGui::Button("Reload##WorldForge")) {
         if (const auto result = session.reload(project_root); !result)
             session.status = "Reload failed: " + result.error().message;
     }
+    register_ui_hotspot_last_item(hotspots, "WorldForge.Header.Reload", "Reload");
     ImGui::SameLine();
     ImGui::BeginDisabled(!session.dirty);
     if (ImGui::Button("Save##WorldForge")) {
@@ -6212,74 +7833,272 @@ void draw_world_forge_toolbar(WorldForgeEditorSession& session, const std::files
             session.status = "Save failed: " + result.error().message;
     }
     ImGui::EndDisabled();
+    register_ui_hotspot_last_item(hotspots, "WorldForge.Header.Save", "Save");
     ImGui::SameLine();
-    ImGui::TextUnformatted("Act");
-    ImGui::SameLine();
-    draw_act_filter_combo(session);
-    ImGui::SameLine();
-    ImGui::TextUnformatted(session.status.c_str());
     if (session.dirty) {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.35f, 1.0f), "unsaved");
+        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.35f, 1.0f), "Unsaved");
+    } else {
+        ImGui::TextColored(ImVec4(0.561f, 0.714f, 0.557f, 1.0f), "Saved");
     }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Map guide##WorldForgeHelp")) {
+        session.map_reference_popup = true;
+        if (session.pane != WorldForgeEditorPane::Map) select_world_forge_pane(session, WorldForgeEditorPane::Map);
+        session.map_canvas_mode = true;
+        session.list_kind = ListKind::MapCanvas;
+    }
+    register_ui_hotspot_last_item(hotspots, "WorldForge.Header.MapGuide", "Map guide");
+    if (!session.status.empty()) {
+        ImGui::SameLine(0.0f, 16.0f);
+        ImGui::TextDisabled("%s", session.status.c_str());
+    }
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
 }
 
-void draw_world_forge_pane_tabs(WorldForgeEditorSession& session) {
-    if (ImGui::BeginTabBar("WorldForgePaneTabs")) {
-        if (ImGui::BeginTabItem("Hierarchy##WorldForgePaneHierarchy")) {
-            if (session.pane != WorldForgeEditorPane::Hierarchy) {
-                session.pane = WorldForgeEditorPane::Hierarchy;
-                session.list_kind = ListKind::Pantheon;
-                session.hierarchy_page = WorldForgeHierarchyPage::Religion;
-                session.selected_id.clear();
-            }
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Archetypes##WorldForgePaneArchetypes")) {
-            if (session.pane != WorldForgeEditorPane::Archetypes) {
-                session.pane = WorldForgeEditorPane::Archetypes;
-                session.list_kind = ListKind::Archetypes;
-                session.selected_id.clear();
-            }
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Relationships##WorldForgePaneRelationships")) {
-            if (session.pane != WorldForgeEditorPane::Relationships) {
-                session.pane = WorldForgeEditorPane::Relationships;
-                session.list_kind = ListKind::Nodes;
-                session.selected_id.clear();
-            }
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Map##WorldForgePaneMap")) {
-            if (session.pane != WorldForgeEditorPane::Map) {
-                session.pane = WorldForgeEditorPane::Map;
-                session.list_kind = session.map_canvas_mode ? ListKind::MapCanvas : ListKind::Regions;
-                session.selected_id.clear();
-            }
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Quests##WorldForgePaneQuests")) {
-            if (session.pane != WorldForgeEditorPane::Quests) {
-                session.pane = WorldForgeEditorPane::Quests;
-                session.list_kind = ListKind::Quests;
-                session.selected_id.clear();
-            }
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Dialogues##WorldForgePaneDialogues")) {
-            if (session.pane != WorldForgeEditorPane::Dialogues) {
-                session.pane = WorldForgeEditorPane::Dialogues;
-                session.list_kind = ListKind::Dialogues;
-                session.selected_id.clear();
-                session.dialogue_selected_node_id.clear();
-                session.dialogue_link_from.clear();
-                session.dialogue_graph_full_relayout = true;
-            }
-            ImGui::EndTabItem();
-        }
-        ImGui::EndTabBar();
+bool draw_world_forge_nav_item(WorldForgeEditorSession& session, WorldForgeEditorPane pane, const char* label,
+    const char* hotspot_id, EditorUiHotspotRegistry* hotspots) {
+    const bool active = session.pane == pane;
+    if (active) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.231f, 0.212f, 0.188f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.945f, 0.933f, 0.910f, 1.0f));
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.106f, 0.118f, 0.125f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.608f, 0.639f, 0.655f, 1.0f));
     }
+    const bool clicked = ImGui::Button(label, ImVec2(-1.0f, 34.0f));
+    register_ui_hotspot_last_item(hotspots, hotspot_id, label);
+    ImGui::PopStyleColor(2);
+    if (clicked && !session.lock_pane_tab) {
+        select_world_forge_pane(session, pane);
+        return true;
+    }
+    if (session.force_select_pane && session.pane == pane) {
+        // Keep MCP sticky selection without forcing ImGui tab APIs.
+    }
+    return false;
+}
+
+void draw_world_forge_navigation(WorldForgeEditorSession& session, EditorUiHotspotRegistry* hotspots) {
+    ImGui::BeginChild("WorldForgeNavigation", ImVec2(224.0f, 0.0f), true);
+    ImGui::Dummy(ImVec2(0.0f, 6.0f));
+    draw_world_forge_nav_item(session, WorldForgeEditorPane::Overview, "Overview##WorldForgeNav",
+        "WorldForge.Pane.Overview", hotspots);
+    draw_world_forge_nav_item(session, WorldForgeEditorPane::Hierarchy, "Hierarchy##WorldForgeNav",
+        "WorldForge.Pane.Hierarchy", hotspots);
+    draw_world_forge_nav_item(session, WorldForgeEditorPane::Relationships, "Relationships##WorldForgeNav",
+        "WorldForge.Pane.Relationships", hotspots);
+    draw_world_forge_nav_item(session, WorldForgeEditorPane::Map, "Map##WorldForgeNav", "WorldForge.Pane.Map",
+        hotspots);
+    draw_world_forge_nav_item(session, WorldForgeEditorPane::Quests, "Quests##WorldForgeNav",
+        "WorldForge.Pane.Quests", hotspots);
+    draw_world_forge_nav_item(session, WorldForgeEditorPane::Dialogues, "Dialogues##WorldForgeNav",
+        "WorldForge.Pane.Dialogues", hotspots);
+    draw_world_forge_nav_item(session, WorldForgeEditorPane::Archetypes, "Archetypes##WorldForgeNav",
+        "WorldForge.Pane.Archetypes", hotspots);
+    ImGui::Dummy(ImVec2(0.0f, 12.0f));
+    ImGui::TextDisabled("CAMPAIGN LENS");
+    draw_act_filter_combo(session);
+    register_ui_hotspot_last_item(hotspots, "WorldForge.Nav.ActLens", "Act lens");
+    ImGui::Spacing();
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 190.0f);
+    ImGui::TextDisabled("Structured story geography. Scene placement and terrain sculpting remain separate workflows.");
+    ImGui::PopTextWrapPos();
+    if (!session.lock_pane_tab) session.force_select_pane = false;
+    ImGui::EndChild();
+}
+
+struct WorldForgeProgressBucket {
+    const char* label = "";
+    int done = 0;
+    int total = 0;
+};
+
+struct WorldForgeWorldProgress {
+    std::vector<WorldForgeProgressBucket> buckets;
+    int done = 0;
+    int total = 0;
+    float fraction = 0.0f;
+};
+
+WorldForgeWorldProgress compute_world_forge_progress(const WorldForgeEditorSession& session) {
+    WorldForgeWorldProgress progress;
+    auto add = [&](const char* label, int done, int total) {
+        if (total <= 0) return;
+        progress.buckets.push_back({label, done, total});
+        progress.done += done;
+        progress.total += total;
+    };
+
+    int region_anchored = 0;
+    int region_summaries = 0;
+    int region_borders = 0;
+    for (const auto& region : session.map.regions) {
+        if (region.anchor) ++region_anchored;
+        if (!region.summary.empty()) ++region_summaries;
+        if (region.border.size() >= 3) ++region_borders;
+    }
+    add("Region anchors", region_anchored, static_cast<int>(session.map.regions.size()));
+    add("Region summaries", region_summaries, static_cast<int>(session.map.regions.size()));
+    add("Region borders", region_borders, static_cast<int>(session.map.regions.size()));
+
+    int poi_anchored = 0;
+    int poi_summaries = 0;
+    for (const auto& poi : session.map.pois) {
+        if (poi.anchor) ++poi_anchored;
+        if (!poi.summary.empty()) ++poi_summaries;
+    }
+    add("POI anchors", poi_anchored, static_cast<int>(session.map.pois.size()));
+    add("POI summaries", poi_summaries, static_cast<int>(session.map.pois.size()));
+
+    int travel_geom = 0;
+    for (const auto& route : session.map.travel_routes)
+        if (route.points.size() >= 2) ++travel_geom;
+    add("Travel route geometry", travel_geom, static_cast<int>(session.map.travel_routes.size()));
+
+    int ferry_geom = 0;
+    for (const auto& route : session.map.ferry_routes)
+        if (route.points.size() >= 2) ++ferry_geom;
+    add("Ferry route geometry", ferry_geom, static_cast<int>(session.map.ferry_routes.size()));
+
+    int hydro_bounds = 0;
+    for (const auto& hydro : session.map.hydrology_regions) {
+        if (std::abs(hydro.max_x - hydro.min_x) > 1.0f && std::abs(hydro.max_z - hydro.min_z) > 1.0f)
+            ++hydro_bounds;
+    }
+    add("Hydrology bounds", hydro_bounds, static_cast<int>(session.map.hydrology_regions.size()));
+
+    int faction_summaries = 0;
+    for (const auto& faction : session.factions.entities)
+        if (!faction.summary.empty()) ++faction_summaries;
+    add("Faction summaries", faction_summaries, static_cast<int>(session.factions.entities.size()));
+
+    int pantheon_summaries = 0;
+    for (const auto& entity : session.pantheon.entities)
+        if (!entity.summary.empty()) ++pantheon_summaries;
+    add("Pantheon summaries", pantheon_summaries, static_cast<int>(session.pantheon.entities.size()));
+
+    int node_summaries = 0;
+    for (const auto& node : session.relationships.nodes)
+        if (!node.summary.empty()) ++node_summaries;
+    add("Relationship node summaries", node_summaries, static_cast<int>(session.relationships.nodes.size()));
+
+    int quest_ready = 0;
+    for (const auto& quest : session.quests.quests)
+        if (!quest.summary.empty() && !quest.objectives.empty()) ++quest_ready;
+    add("Quests (summary + objectives)", quest_ready, static_cast<int>(session.quests.quests.size()));
+
+    int dialogue_ready = 0;
+    for (const auto& tree : session.dialogues.trees)
+        if (!tree.nodes.empty()) ++dialogue_ready;
+    add("Dialogue trees with nodes", dialogue_ready, static_cast<int>(session.dialogues.trees.size()));
+
+    int archetype_summaries = 0;
+    for (const auto& entity : session.archetypes.entities)
+        if (!entity.summary.empty()) ++archetype_summaries;
+    add("Archetype summaries", archetype_summaries, static_cast<int>(session.archetypes.entities.size()));
+
+    if (progress.total > 0)
+        progress.fraction = static_cast<float>(progress.done) / static_cast<float>(progress.total);
+    return progress;
+}
+
+void draw_overview_stat_card(const char* label, std::size_t value, float width) {
+    ImGui::BeginChild(label, ImVec2(width, 64.0f), true);
+    ImGui::TextDisabled("%s", label);
+    ImGui::SetWindowFontScale(1.35f);
+    ImGui::Text("%zu", value);
+    ImGui::SetWindowFontScale(1.0f);
+    ImGui::EndChild();
+}
+
+void draw_overview_pane(WorldForgeEditorSession& session) {
+    ImGui::BeginChild("WorldForgeOverview", ImVec2(0.0f, 0.0f), true);
+    ImGui::TextColored(ImVec4(0.835f, 0.725f, 0.471f, 1.0f), "Tessera — World Forge");
+    ImGui::TextDisabled("Narrative tooling home. Scene placement and terrain sculpting stay in Scene / Sculpt.");
+    ImGui::Spacing();
+
+    const WorldForgeWorldProgress progress = compute_world_forge_progress(session);
+    ImGui::TextUnformatted("WORLD AUTHORING PROGRESS");
+    ImGui::TextDisabled("Done work vs remaining checklist across map, lore, quests, and dialogue.");
+    ImGui::Spacing();
+
+    char pct_label[64];
+    std::snprintf(pct_label, sizeof(pct_label), "%d / %d checklist items  (%.0f%%)", progress.done, progress.total,
+        progress.fraction * 100.0f);
+
+    // Gold fill over dark track.
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.710f, 0.545f, 0.267f, 1.0f)); // #B58B44
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.106f, 0.118f, 0.125f, 1.0f));
+    ImGui::ProgressBar(progress.fraction, ImVec2(-1.0f, 28.0f), pct_label);
+    ImGui::PopStyleColor(2);
+
+    const int remaining = (std::max)(0, progress.total - progress.done);
+    ImGui::TextColored(ImVec4(0.608f, 0.639f, 0.655f, 1.0f), "%d remaining to finish the authored world checklist",
+        remaining);
+
+    if (ImGui::TreeNodeEx("Breakdown by category##WorldProgressBreakdown", ImGuiTreeNodeFlags_DefaultOpen)) {
+        for (const auto& bucket : progress.buckets) {
+            const float frac = bucket.total > 0 ? static_cast<float>(bucket.done) / static_cast<float>(bucket.total) :
+                                                 0.0f;
+            ImGui::PushID(bucket.label);
+            ImGui::Text("%s", bucket.label);
+            ImGui::SameLine(260.0f);
+            ImGui::TextDisabled("%d / %d", bucket.done, bucket.total);
+            char row_label[32];
+            std::snprintf(row_label, sizeof(row_label), "%.0f%%", frac * 100.0f);
+            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.545f, 0.455f, 0.290f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.125f, 0.141f, 0.149f, 1.0f));
+            ImGui::ProgressBar(frac, ImVec2(-1.0f, 14.0f), row_label);
+            ImGui::PopStyleColor(2);
+            ImGui::PopID();
+        }
+        ImGui::TreePop();
+    }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("CATALOG COUNTS");
+    const float avail_w = ImGui::GetContentRegionAvail().x;
+    const float card_w = (std::max)(120.0f, (avail_w - 24.0f) / 4.0f);
+    draw_overview_stat_card("Factions", session.factions.entities.size(), card_w);
+    ImGui::SameLine();
+    draw_overview_stat_card("Pantheon", session.pantheon.entities.size(), card_w);
+    ImGui::SameLine();
+    draw_overview_stat_card("Regions", session.map.regions.size(), card_w);
+    ImGui::SameLine();
+    draw_overview_stat_card("POIs", session.map.pois.size(), card_w);
+
+    draw_overview_stat_card("Quests", session.quests.quests.size(), card_w);
+    ImGui::SameLine();
+    draw_overview_stat_card("Dialogues", session.dialogues.trees.size(), card_w);
+    ImGui::SameLine();
+    draw_overview_stat_card("Travel", session.map.travel_routes.size(), card_w);
+    ImGui::SameLine();
+    draw_overview_stat_card("Rel nodes", session.relationships.nodes.size(), card_w);
+
+    ImGui::Separator();
+    ImGui::Text("Act lens: %s", session.act_filter.empty() ? "All acts" : session.act_filter.c_str());
+    ImGui::TextColored(session.dirty ? ImVec4(1.0f, 0.75f, 0.35f, 1.0f) : ImVec4(0.56f, 0.71f, 0.56f, 1.0f), "%s",
+        session.dirty ? "Unsaved changes" : "All saved");
+    ImGui::Spacing();
+    if (ImGui::Button("Open Map Canvas##OverviewOpenMap", ImVec2(200.0f, 36.0f))) {
+        select_world_forge_pane(session, WorldForgeEditorPane::Map);
+        session.map_canvas_mode = true;
+        session.list_kind = ListKind::MapCanvas;
+        session.map_camera_fit_requested = true;
+    }
+    ImGui::EndChild();
+}
+
+void draw_world_forge_toolbar(WorldForgeEditorSession& session, const std::filesystem::path& project_root) {
+    // Legacy entry point — chrome lives in draw_world_forge_header (TICKET-0208).
+    (void)session;
+    (void)project_root;
+}
+
+void draw_world_forge_pane_tabs(WorldForgeEditorSession& session, EditorUiHotspotRegistry* hotspots) {
+    // Legacy tab bar replaced by left navigation (TICKET-0208).
+    draw_world_forge_navigation(session, hotspots);
 }
 
 } // namespace
@@ -6333,11 +8152,13 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
         case ListKind::Links: selection_found = find_link(map, selected_id) != nullptr; break;
         case ListKind::Hydrology: selection_found = find_hydrology(map, selected_id) != nullptr; break;
         case ListKind::FerryRoutes: selection_found = find_ferry_route(map, selected_id) != nullptr; break;
+        case ListKind::TravelRoutes: selection_found = find_travel_route(map, selected_id) != nullptr; break;
         case ListKind::MapCanvas:
             selection_found = find_region(map, selected_id) != nullptr || find_poi(map, selected_id) != nullptr ||
                               find_link(map, selected_id) != nullptr ||
                               find_hydrology(map, selected_id) != nullptr ||
-                              find_ferry_route(map, selected_id) != nullptr;
+                              find_ferry_route(map, selected_id) != nullptr ||
+                              find_travel_route(map, selected_id) != nullptr;
             break;
         case ListKind::Quests: selection_found = find_quest(quests, selected_id) != nullptr; break;
         case ListKind::Dialogues:
@@ -6363,8 +8184,8 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
     hierarchy_graph_panning = false;
     hierarchy_graph_fit_requested = false;
     map_camera = {};
-    map_camera.min_zoom = 0.05f;
-    map_camera.max_zoom = 8.0f;
+    map_camera.min_zoom = 0.1f;
+    map_camera.max_zoom = 2.5f;
     map_camera_panning = false;
     map_camera_fit_requested = true;
     map_drag_key.clear();
@@ -6440,18 +8261,88 @@ void draw_world_forge_viewport(WorldForgeEditorSession& session, const std::file
             session.status = "Reload failed: " + result.error().message;
     }
 
-    draw_world_forge_toolbar(session, project_root);
-    ImGui::Separator();
-    draw_world_forge_pane_tabs(session);
+    push_world_forge_chrome_colors();
+    draw_world_forge_header(session, project_root, draw_context.hotspots);
 
+    const ImVec2 avail = ImGui::GetContentRegionAvail();
+    ImGui::BeginChild("WorldForgeWorkspace", avail, false);
+
+    draw_world_forge_navigation(session, draw_context.hotspots);
+    ImGui::SameLine();
+
+    const bool map_canvas_shell =
+        session.pane == WorldForgeEditorPane::Map && session.map_canvas_mode;
+    const float inspector_w = map_canvas_shell ? 320.0f : 0.0f;
+    const float center_w = avail.x - 224.0f - inspector_w - (map_canvas_shell ? 16.0f : 8.0f);
+
+    ImGui::BeginChild("WorldForgeCenter", ImVec2((std::max)(120.0f, center_w), 0.0f), false);
     switch (session.pane) {
+    case WorldForgeEditorPane::Overview: draw_overview_pane(session); break;
     case WorldForgeEditorPane::Hierarchy: draw_hierarchy_pane(session); break;
     case WorldForgeEditorPane::Archetypes: draw_archetypes_pane(session, project_root); break;
     case WorldForgeEditorPane::Relationships: draw_relationships_pane(session); break;
-    case WorldForgeEditorPane::Map: draw_map_pane(session, draw_context); break;
+    case WorldForgeEditorPane::Map: draw_map_pane(session, draw_context, project_root); break;
     case WorldForgeEditorPane::Quests: draw_quests_pane(session); break;
     case WorldForgeEditorPane::Dialogues: draw_dialogues_pane(session, project_root); break;
+    case WorldForgeEditorPane::Resources:
+        ImGui::TextDisabled("Resources pane is not wired in this shell (see Archetypes / Map).");
+        break;
     }
+    ImGui::EndChild();
+
+    if (map_canvas_shell) {
+        ImGui::SameLine();
+        ImGui::BeginChild("WorldForgeSelectionInspector", ImVec2(inspector_w, 0.0f), true);
+        ImGui::TextUnformatted("INSPECTOR");
+        ImGui::SameLine(inspector_w - 88.0f);
+        ImGui::BeginDisabled(session.selected_id.empty() && session.map_place_id.empty());
+        if (ImGui::SmallButton("Deselect##MapInspectorDeselect")) {
+            session.selected_id.clear();
+            session.map_drag_key.clear();
+            clear_map_draw_modes(session);
+            session.map_tool = WorldForgeMapTool::Select;
+            session.status = "Deselected";
+        }
+        ImGui::EndDisabled();
+        ImGui::Separator();
+        ImGui::TextDisabled("Place on map");
+        bool any_unanchored = false;
+        for (const auto& region : session.map.regions) {
+            if (region.anchor) continue;
+            if (!entity_matches_act_lens(session, region.acts, region.tags)) continue;
+            any_unanchored = true;
+            const bool selected = session.map_place_id == region.id && !session.map_place_is_poi;
+            std::string label = region.id + "  [region]";
+            if (ImGui::Selectable(label.c_str(), selected)) {
+                apply_map_tool(session, WorldForgeMapTool::Anchor);
+                session.map_place_id = region.id;
+                session.map_place_is_poi = false;
+                session.selected_id = region.id;
+                session.status = "Click the map to place region anchor";
+            }
+        }
+        for (const auto& poi : session.map.pois) {
+            if (poi.anchor) continue;
+            if (!entity_matches_act_lens(session, poi.acts, poi.tags)) continue;
+            any_unanchored = true;
+            const bool selected = session.map_place_id == poi.id && session.map_place_is_poi;
+            std::string label = poi.id + "  [poi]";
+            if (ImGui::Selectable(label.c_str(), selected)) {
+                apply_map_tool(session, WorldForgeMapTool::Anchor);
+                session.map_place_id = poi.id;
+                session.map_place_is_poi = true;
+                session.selected_id = poi.id;
+                session.status = "Click the map to place POI anchor";
+            }
+        }
+        if (!any_unanchored) ImGui::TextDisabled("(all regions/POIs have anchors)");
+        ImGui::Separator();
+        draw_map_canvas_detail(session);
+        ImGui::EndChild();
+    }
+
+    ImGui::EndChild();
+    pop_world_forge_chrome_colors();
 }
 
 const WorldForgeWorldAnchor* resolve_map_endpoint_anchor(const WorldForgeMapAsset& asset,

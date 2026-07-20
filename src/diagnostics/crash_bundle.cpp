@@ -1,4 +1,5 @@
 #include "engine/diagnostics/crash_bundle.h"
+#include "engine/diagnostics/gpu_diagnostics.h"
 #include "engine/diagnostics/logger.h"
 
 #include <chrono>
@@ -53,7 +54,8 @@ Result<std::filesystem::path> CrashBundle::write_diagnostic_bundle(
         std::ofstream diagnostic(folder / "diagnostic.json", std::ios::trunc);
         diagnostic << "{\"formatVersion\":1,\"build\":\"0.2.0-dev\",\"reason\":" << reason.to_json()
                    << ",\"logPath\":\"" << Logger::instance().log_path().generic_string()
-                   << "\",\"loadedWorldCells\":[],\"recentCommands\":[],\"gpuDiagnostics\":null}";
+                   << "\",\"loadedWorldCells\":[],\"recentCommands\":[],\"gpuDiagnostics\":"
+                   << process_gpu_diagnostics().to_json() << '}';
         diagnostic.close();
         return Result<std::filesystem::path>::success(folder);
     } catch (const std::exception& exception) {

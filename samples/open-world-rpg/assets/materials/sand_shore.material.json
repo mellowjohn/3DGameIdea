@@ -1,11 +1,20 @@
 {
   "schemaVersion": 1,
-  "baseColor": [0.72, 0.64, 0.42, 1.0],
-  "roughness": 0.92,
+  "baseColor": [
+    0.45899999141693115,
+    0.40799999237060547,
+    0.28200000524520874,
+    1.0
+  ],
+  "roughness": 0.9200000166893005,
   "metallic": 0.0,
   "opacityMode": "opaque",
   "opacityCutoff": 0.5,
-  "emissive": [0.0, 0.0, 0.0],
+  "emissive": [
+    0.0,
+    0.0,
+    0.0
+  ],
   "doubleSided": false,
   "physics": {
     "friction": 0.75,

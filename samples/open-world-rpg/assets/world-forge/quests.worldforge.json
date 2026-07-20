@@ -61,9 +61,9 @@
         "twine"
       ],
       "openQuestions": [
-        "Creotar vs Creo identity",
+        "Whether Creotar destroy-Shroud guidance is honest or Frangitur irony",
         "Crystal location stubs empty in Twine",
-        "Wake-up hub after Tutorial Completion"
+        "Ledgeport world coords + ferry to Cristallo; DEC-0032 wake reconcile (Dom D-P0-09/10)"
       ]
     },
     {
@@ -71,11 +71,11 @@
       "kind": "side",
       "displayName": "Cart Again",
       "canonStatus": "draft",
-      "summary": "Help Guard Pellin pinned under an overturned supply cart near the first hub farmland road.",
+      "summary": "Help Guard Pellin pinned under an overturned supply cart near the Ledgeport farmland road.",
       "storyRef": "context/story/side-quest-catalog.md#sq-01--cart-again",
       "consequential": false,
       "regionId": "tessera_overland",
-      "starts": "After Act 1 hub unlock; farmland road east of first hub. Arkand in party or available at camp.",
+      "starts": "After Ledgeport unlock; farmland road east of Ledgeport. Arkand in party or available at camp.",
       "dialogue": {
         "abandonId": "",
         "completeId": "",

@@ -9,7 +9,7 @@
       "anchor": "bottom_left",
       "offset": [160, 80],
       "size": [1600, 280],
-      "color": [18, 22, 34, 240]
+      "color": [201, 184, 150, 245]
     },
     {
       "id": "dialogue_speaker",
@@ -22,7 +22,7 @@
       "textAlign": "left",
       "textVAlign": "middle",
       "fontSize": 36,
-      "color": [255, 210, 120, 255]
+      "color": [42, 36, 32, 255]
     },
     {
       "id": "dialogue_body",
@@ -35,7 +35,7 @@
       "textAlign": "left",
       "textVAlign": "top",
       "fontSize": 28,
-      "color": [230, 235, 245, 255]
+      "color": [42, 36, 32, 255]
     },
     {
       "id": "dialogue_continue",
@@ -48,7 +48,7 @@
       "textAlign": "center",
       "textVAlign": "middle",
       "fontSize": 28,
-      "color": [48, 58, 78, 255]
+      "color": [60, 52, 38, 255]
     }
   ]
 }

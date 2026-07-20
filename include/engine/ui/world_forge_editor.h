@@ -10,6 +10,7 @@
 #include "engine/assets/world_forge_resources_asset.h"
 #include "engine/core/result.h"
 #include "engine/dialogue/dialogue_graph_edit.h"
+#include "engine/ui/editor_ui_hotspots.h"
 #include "engine/ui/world_forge_graph_camera.h"
 
 #include <cstdint>
@@ -29,10 +30,13 @@ struct WorldForgeViewportDrawContext {
     const TerrainEditStore* terrain_edits = nullptr;
     /// Bumped when sculpt heights change so the Map underlay can rebake.
     std::uint64_t terrain_revision = 0;
+    /// Optional MCP hotspot sink (filled while drawing World Forge widgets).
+    EditorUiHotspotRegistry* hotspots = nullptr;
 };
 
 /// Which World Forge sub-tab is active in the Viewports "World Forge" tab.
 enum class WorldForgeEditorPane : std::uint8_t {
+    Overview,
     Hierarchy,
     Archetypes,
     Resources,
@@ -40,6 +44,15 @@ enum class WorldForgeEditorPane : std::uint8_t {
     Map,
     Quests,
     Dialogues
+};
+
+/// Map Canvas authoring tool (TICKET-0208 Pencil tool rail).
+enum class WorldForgeMapTool : std::uint8_t {
+    Select,
+    Anchor,
+    Route,
+    Border,
+    Water
 };
 
 /// Hierarchy authorship sub-page (TICKET-0184).
@@ -61,6 +74,7 @@ struct WorldForgeEditorSession {
         Links,
         Hydrology,
         FerryRoutes,
+        TravelRoutes,
         Quests,
         Dialogues,
         DialogueGraph,
@@ -71,13 +85,28 @@ struct WorldForgeEditorSession {
     };
 
     WorldForgeEditorPane pane = WorldForgeEditorPane::Hierarchy;
+    /// When true, next pane tab bar draw forces ImGui selection to `pane` (MCP map_view).
+    bool force_select_pane = false;
+    /// When true, tab bar open-handlers must not overwrite `pane` (keeps MCP map_view sticky).
+    bool lock_pane_tab = false;
     /// Global Act lens (DEC-0036). Empty = All acts. Values: act0..act4.
     std::string act_filter;
     WorldForgeHierarchyPage hierarchy_page = WorldForgeHierarchyPage::Religion;
     /// Hierarchy pages: tree list vs parentId graph canvas.
     bool hierarchy_graph_mode = false;
     /// Map pane: list+detail vs spatial XZ canvas (TICKET-0187).
-    bool map_canvas_mode = false;
+    bool map_canvas_mode = true;
+    /// Map Canvas tool rail (TICKET-0208).
+    WorldForgeMapTool map_tool = WorldForgeMapTool::Select;
+    /// Cartography: titles appear on hover (selected always labeled).
+    bool map_labels_on_hover = true;
+    bool map_show_legend = true;
+    bool map_show_heraldry_legend = true;
+    bool map_show_draft_badge = true;
+    /// Cursor world XZ under the map aperture (status / toolbar readout).
+    bool map_cursor_valid = false;
+    float map_cursor_world_x = 0.0f;
+    float map_cursor_world_z = 0.0f;
     /// Hierarchy → Persons: when true, list/graph show only person nodes tagged `companion`.
     bool hierarchy_persons_companions_only = false;
     WorldForgeFactionsAsset factions;
@@ -151,6 +180,10 @@ struct WorldForgeEditorSession {
     std::array<char, 96> create_ferry_route_name{};
     std::array<char, 96> create_ferry_from_poi_id{};
     std::array<char, 96> create_ferry_to_poi_id{};
+    std::array<char, 96> create_travel_route_name{};
+    std::array<char, 96> create_travel_from_poi_id{};
+    std::array<char, 96> create_travel_to_poi_id{};
+    WorldForgeTravelRouteKind create_travel_kind = WorldForgeTravelRouteKind::Road;
 
     std::array<char, 96> create_dialogue_tree_name{};
     std::array<char, 96> create_dialogue_tree_parent_quest{};
@@ -189,6 +222,19 @@ struct WorldForgeEditorSession {
     bool map_filter_links = true;
     bool map_filter_hydrology = true;
     bool map_filter_ferry_routes = true;
+    bool map_filter_travel_routes = true;
+    /// Cartography (parchment) vs top-down terrain canvas.
+    bool map_cartography_mode = true;
+    /// Cartography: draw official Tessera world-map art under markers (not geo-1:1 with the slice).
+    bool map_show_official_backdrop = true;
+    /// Cartography: ornate parchment frame overlay (screen-space chrome). Off by default — plate fills the canvas.
+    bool map_show_frame = false;
+    bool map_show_borders = true;
+    /// Click on canvas appends polyline points to this travel route (empty = off).
+    std::string map_travel_draw_id;
+    /// Click on canvas appends points to this region's border (empty = off).
+    std::string map_border_region_id;
+    bool map_reference_popup = false;
     /// Click-drag on canvas sets bounds for this hydrology id (empty = off).
     std::string map_hydrology_bounds_id;
     bool map_hydrology_bounds_dragging = false;
@@ -240,6 +286,55 @@ struct WorldForgeEditorSession {
 
     std::unordered_map<std::string, std::uint64_t> concept_placeholder_tex;
     bool concept_placeholder_tex_ready = false;
+    /// Cartography Map Canvas icons / heraldry (`icon-village`, `heraldry-kingdom_tessera`, …).
+    std::unordered_map<std::string, std::uint64_t> cartography_tex;
+    bool cartography_tex_ready = false;
+
+    /// Discrete Cartography zoom plates (see `world-map-layers/manifest.json`). Preferred over tiles.
+    struct WorldMapLayer {
+        std::string id;
+        float u0 = 0.0f;
+        float v0 = 0.0f;
+        float u1 = 1.0f;
+        float v1 = 1.0f;
+        float min_zoom = 0.0f;
+        int priority = 0;
+        int width = 0;
+        int height = 0;
+    };
+    bool map_layers_ready = false;
+    float map_layer_aspect = 1.5f;
+    int map_layer_native_width = 0;
+    float map_layer_transition_seconds = 0.35f;
+    std::vector<WorldMapLayer> map_layers;
+    std::unordered_map<std::string, std::uint64_t> map_layer_tex;
+    std::string map_layer_active_id;
+    std::string map_layer_pending_id;
+    /// 0 = idle; (0,1] = fog-in / swap / fog-out progress.
+    float map_layer_transition_t = 0.0f;
+    /// Status: last drawn layer id.
+    std::string map_layer_draw_id;
+
+    /// Legacy multi-LOD tiles (fallback if layers missing).
+    struct WorldMapTileLevel {
+        int lod = 0;
+        int cols = 0;
+        int rows = 0;
+        int content_width = 0;
+        int content_height = 0;
+        int level_width = 0;
+        int level_height = 0;
+    };
+    bool map_tiles_ready = false;
+    int map_tile_size = 512;
+    int map_tile_max_lod = 0;
+    int map_tile_native_width = 0;
+    float map_tile_aspect = 1.5f;
+    /// Last drawn backdrop LOD (for status); -1 if unused this frame.
+    int map_tile_draw_lod = -1;
+    std::vector<WorldMapTileLevel> map_tile_levels;
+    /// Packed key: `(lod << 24) | (x << 12) | y` → ImGui texture bits.
+    std::unordered_map<std::uint32_t, std::uint64_t> map_tile_tex;
 
     [[nodiscard]] Result<void> reload(const std::filesystem::path& project_root);
     [[nodiscard]] Result<void> save(const std::filesystem::path& project_root);

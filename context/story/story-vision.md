@@ -9,6 +9,15 @@ The campaign is medieval dark fantasy with a medium- to low-fantasy baseline. It
 
 The art style and comedy should reinforce one another. Dark player choices may produce dark comedy, while lighter paths can support more playful humor. Characters may have distinct comedic styles rather than sharing one uniform voice.
 
+## Magic and relics (draft boundary)
+
+Supernatural power is **deliberately limited**. Ordinary people and rank-and-file faction members are not wizards. Meaningful magical capability is **rare** and usually comes from:
+
+- **Major artifacts** — chief among them the **Nefarium Shroud** (primary story contention) and a separate Creator-origin crystal/relic associated with Cristallo / Creotar that polarizes against the Shroud but is intentionally weaker than it.
+- **Minor relics** — tribal / regional attunements (e.g. Thalassar **Anál Muir** under a Muirthalia water-deity rite) that grant distinct but lesser abilities to a rite-passed leader, not to an entire culture as a racial kit. Minor relics stay ≪ **Nefarium Shroud**.
+
+Do not treat faction flavor (pirates, druids, knights) as blanket magic classes. Attunement rules and whether proposed coastal abilities (water-walking, enhanced breath) are literal or abstracted remain **open** — see [factions.md](factions.md#design-session-2026-07-20-coastal-arrotrebae--relics--act-1-draft).
+
 ## Central Player Fantasy
 
 Tessera exists independently of the player; the protagonist is native to the setting rather than transported into it. A major kingdom has fallen from grace under an overt supernatural evil. The player can oppose that evil, exploit it, or ultimately become a greater evil.
@@ -42,13 +51,16 @@ Historical imported outline (kept for provenance):
 7. Retreat to a camp after the Great Evil drives the party from the tutorial area.
 8. Reach the first village or town and unlock the wider campaign structure.
 
-Act 0 working spine (Twine-backed, **draft**): Calrenoth siege with Arkand → Commander Grenge → drawbridge → Luceran collapse → Creotar vision. See [campaign-beat-sheet.md](campaign-beat-sheet.md).
+Act 0 — **Landfall** working spine (Twine-backed, **draft**): Calrenoth siege with Arkand → Commander Grenge → drawbridge → Luceran collapse → Creotar vision. Prefer open-world Calrenoth; rare instances only when needed. See [campaign-beat-sheet.md](campaign-beat-sheet.md).
 
 ## World and Locations
 
 **Tessera** is the world’s primary land — the Middle-earth-scale geography of the campaign ([DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land)). The **Kingdom of Tessera** is one polity within that land, not the land itself.
 
+**Official map:** [`official-world-map.md`](official-world-map.md) / [`official-world-map.png`](official-world-map.png) — unlabeled overworld art (continents around an interior sea, central + northeastern islands). The v1 seamless 4×4 km slice is authored inside this land, not as a replacement for the map.
+
 Tessera includes high mountains, prairie, farmland, woods, and chaotic regions warped by supernatural forces. Candidate location types include towns, castles, cities, villages, groves, markets, islands, docks, plazas, bazaars, battlefields, forests, hills, and mountains.
+
 
 ## Difficulty-Dependent Story
 
@@ -61,5 +73,5 @@ The source material proposes “softcore” and “hardcore” modes that can al
 - The exact morality scale, archetype thresholds, faction lock-in rules, and ending branches remain undefined.
 - “Softcore” and “hardcore” need final names and explicit narrative differences.
 - The source material mentions male and female versions of each character; whether that means player options, character variants, or the full cast remains unclear.
-- Creotar (Twine vision guide) vs Creo/Frangitur identity — **open**; see beat sheet Act 0.
-- Wild God revival opening vs Calrenoth Act 0 chronology — **open**.
+- ~~Creotar (Twine vision guide) vs Creo/Frangitur identity~~ — **resolved 2026-07-20:** Creotar = Creo (short); Frangitur = fallen form ([frangitur-the-great-evil.md](frangitur-the-great-evil.md)). Destroy-Shroud honesty/irony still open.
+- ~~Wild God revival opening vs Calrenoth Act 0 chronology~~ — **resolved** for default spine: Calrenoth / **Landfall** (Wild God remains alternate).

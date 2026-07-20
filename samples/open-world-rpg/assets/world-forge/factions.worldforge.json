@@ -17,14 +17,21 @@
       "openQuestions": [
         "Whether the kingdom is a playable faction choice or the political arena surrounding the other factions",
         "Precise geography vs setting name Tessera"
-      ]
+      ],
+      "emblemPath": "assets/ui/cartography/heraldry-kingdom_tessera.png",
+      "mapColor": [
+        0.44999998807907104,
+        0.3799999952316284,
+        0.2800000011920929
+      ],
+      "mapTypefaceId": "cinzel"
     },
     {
       "id": "chaotic_imperium",
       "kind": "faction",
       "displayName": "Chaotic Imperium",
       "canonStatus": "established",
-      "summary": "Evil coalition of living creatures and ethereal spirits; dark Roman visual language (references only); led by Luceran the Hollow.",
+      "summary": "Evil coalition of living creatures and ethereal spirits; dark crusade / fractured-creator heraldry (Roman eagle retired); led by Luceran the Hollow.",
       "storyRef": "context/story/factions.md#chaotic-imperium",
       "tags": [
         "imperium",
@@ -33,7 +40,14 @@
       "parentId": "",
       "openQuestions": [
         "How Imperium authority ties to Frangitur, the Nefarium Shroud, and Luceran's remaining agency"
-      ]
+      ],
+      "emblemPath": "assets/ui/cartography/heraldry-chaotic_imperium.png",
+      "mapColor": [
+        0.3499999940395355,
+        0.11999999731779099,
+        0.14000000059604645
+      ],
+      "mapTypefaceId": "forum"
     },
     {
       "id": "cristallo",
@@ -52,26 +66,70 @@
         "Theology, hierarchy, and politics",
         "Relationship to Creo/Frangitur and the gods",
         "Player influence thresholds, lock-in, and destruction conditions"
-      ]
+      ],
+      "emblemPath": "assets/ui/cartography/heraldry-cristallo.png",
+      "mapColor": [
+        0.550000011920929,
+        0.6200000047683716,
+        0.7200000286102295
+      ],
+      "mapTypefaceId": "eb_garamond"
     },
     {
       "id": "arrotrebae",
       "kind": "faction",
       "displayName": "Arrotrebae of the Rampant Wilds",
       "canonStatus": "draft",
-      "summary": "Woodland multi-tribe coalition; chieftains act as local battlelords with no single overlord; adversarial with Cristallo; tonal barbarian/druid references.",
+      "summary": "Umbrella culture of regional woodland/coastal tribes molded by local land and Loa/gods; shared world/Gaia council tradition with possible inter-tribe conflict; adversarial with Cristallo; tonal barbarian/druid references. First named clan: The Thalassar (thalassar).",
       "storyRef": "context/story/factions.md#arrotrebae-of-the-rampant-wilds",
       "tags": [
         "neutral",
         "woodland",
-        "multi-tribe"
+        "multi-tribe",
+        "umbrella"
       ],
       "parentId": "",
       "openQuestions": [
         "Collective decision rules when chieftains disagree",
-        "Named tribes / philosophical traditions for relationship-graph nodes",
+        "Named tribes / philosophical traditions for relationship-graph nodes — name from land; prioritize Act 0 / Act 1",
+        "Thalassar (thalassar): mask Muirthalia + relic Anál Muir (anal_muir) locked; Sea of Whispers false patron; succession rite; council seat",
         "Player influence thresholds, lock-in, and destruction conditions"
-      ]
+      ],
+      "emblemPath": "assets/ui/cartography/heraldry-arrotrebae.png",
+      "mapColor": [
+        0.2800000011920929,
+        0.47999998927116394,
+        0.3199999928474426
+      ],
+      "mapTypefaceId": "uncial_antiqua"
+    },
+    {
+      "id": "thalassar",
+      "kind": "clan",
+      "displayName": "The Thalassar",
+      "canonStatus": "draft",
+      "summary": "Arrotrebae clan south of the Calrenoth peninsula (Act 0) and coastal/seafarer power in the Act 1 southwest theater; advanced organized pirate culture; Greek–Irish naming theme. Public liturgy mask Muirthalia; false patron The Sea of Whispers; rite-gated minor leadership relic Anál Muir (anal_muir), deliberately weaker than the Nefarium Shroud. Display name locked Dom + owner 2026-07-20.",
+      "storyRef": "context/story/factions.md#the-thalassar",
+      "tags": [
+        "coastal",
+        "seafarer",
+        "act0",
+        "act1"
+      ],
+      "parentId": "arrotrebae",
+      "openQuestions": [
+        "Public mask Muirthalia locked; false patron The Sea of Whispers (sea_of_whispers = Luceran lieutenant plant) — reveal timing open",
+        "Anál Muir (anal_muir) locked; literal vs abstracted water-walking / enhanced breath still open",
+        "Succession rite after assassination (A1-05)",
+        "Council membership vs conflict with other Arrotrebae tribes"
+      ],
+      "emblemPath": "assets/ui/cartography/heraldry-thalassar.png",
+      "mapColor": [
+        0.2199999988079071,
+        0.41999998688697815,
+        0.47999998927116394
+      ],
+      "mapTypefaceId": "uncial_antiqua"
     },
     {
       "id": "orc_warbands",
@@ -87,10 +145,44 @@
       ],
       "parentId": "",
       "openQuestions": [
-        "Stable warband IDs and names for data modeling",
+        "Stable warband IDs and names — underflow seeded for Act 0",
         "Which warband possessed the Nefarium Shroud and why",
         "Name of the great orc leader slain by Luceran"
-      ]
+      ],
+      "emblemPath": "assets/ui/cartography/heraldry-orc_warbands.png",
+      "mapColor": [
+        0.41999998688697815,
+        0.36000001430511475,
+        0.2800000011920929
+      ],
+      "mapTypefaceId": "metamorphous"
+    },
+    {
+      "id": "underflow",
+      "kind": "warband",
+      "displayName": "The Underflow",
+      "canonStatus": "draft",
+      "summary": "Minor orc warband inland/east of the Calrenoth peninsula corridor (Act 0 / Landfall). Land-derived: subsurface underflow beneath the ridge feeding the watershed. Same original water cult as The Thalassar, but rite perverted — false patron The Sea of Whispers (Luceran lieutenant plant). Public liturgy mask: Grakk-Maren (vs Thalassar Muirthalia). Owner confirmed 2026-07-20.",
+      "storyRef": "context/story/factions.md#the-underflow",
+      "tags": [
+        "orc",
+        "act0",
+        "mountain",
+        "same-god-conflict",
+        "grakk-maren"
+      ],
+      "parentId": "orc_warbands",
+      "openQuestions": [
+        "Named war-chief for Act 0 encounters",
+        "Imperium / Nefarium stance in Act 0 corridor"
+      ],
+      "emblemPath": "assets/ui/cartography/heraldry-underflow.png",
+      "mapColor": [
+        0.3799999952316284,
+        0.3400000035762787,
+        0.30000001192092896
+      ],
+      "mapTypefaceId": "metamorphous"
     }
   ]
 }

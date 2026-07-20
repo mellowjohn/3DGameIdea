@@ -490,3 +490,19 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Consequences: EPIC-0016; feature doc [`../features/water-hydrology.md`](../features/water-hydrology.md). Update [`open-world-navigation.md`](../features/open-world-navigation.md), [`terrain-authoring.md`](../features/terrain-authoring.md), [`character-controller.md`](../features/character-controller.md), [`world-forge-scope.md`](../features/world-forge-scope.md). Blockers: blended material/water render pass, `WaterStore` (or equivalent) persistence, swim mode, deep-water stamina/damage rules, World Forge ferry-route schema. Boats remain script-driven rather than full physics sim in v1.
 - Supersedes: none
 
+### DEC-0040: Discrete Cartography zoom layers with fog and frame
+
+- Status: accepted
+- Date: 2026-07-20
+- Context: Continuous multi-LOD tiling of the official Tessera map fought AI quadrant seams and did not match TES/Witcher/HOI-style strategic map UX. Owner chose discrete zoom layers shared by editor Cartography and the future player discovery map, with fog transitions and an ornate parchment frame.
+- Decision:
+  1. **Discrete plates, not continuous tile pyramids**, are the primary Cartography backdrop. Plates are crops of one continuous master (`tools/build_world_map_layers.py`); AI quadrant inject stays off by default.
+  2. **Layer swap** selects the highest-priority plate whose UV contains the view center and whose `minZoom` is met. Continent remains the base; theater/local plates overlay their UV rects.
+  3. **Fog transition** (~0.35s parchment mist) covers plate swaps; fog draws under the ornate frame.
+  4. **Ornate frame** is screen-space chrome (toggleable), not baked into geography art. Shared assets feed TICKET-0061.
+  5. **Top-down** mode stays the geo-aligned terrain underlay path; Cartography remains campaign parchment reference (not 1:1 heightmap).
+  6. Legacy `world-map-tiles` LOD pyramid remains a fallback only when the layers manifest is missing.
+- Rationale: Avoids Frankenstein geography from mismatched detail plates; matches discrete strategic-map UX; reuses one plate/frame/fog kit for editor and player map.
+- Consequences: Manifest at `world-map-layers/manifest.json`; frame/fog under `assets/ui/cartography/{frame,fog}/`. Update [`../story/official-world-map.md`](../story/official-world-map.md), [`../art/cartography-design.md`](../art/cartography-design.md). TICKET-0061 should consume the same layer model.
+- Supersedes: continuous multi-LOD Cartography backdrop as the preferred path (tiles remain fallback)
+

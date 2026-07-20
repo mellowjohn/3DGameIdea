@@ -14,7 +14,15 @@ This directory is durable memory for humans and AI agents. Source code remains a
 - `features/authoring-git-sync.md` — multi-author project sync via git + in-editor Project Sync (EPIC-0014 / DEC-0037)
 - `features/world-forge-scope.md` — World Forge vs editor/MCP boundary (EPIC-0002 / TICKET-0010)
 - `story/index.md` — narrative premise, setting, characters, factions, and other story canon
+- `story/official-world-map.md` — canonical Tessera overworld map art (`official-world-map.png`)
+- `design/README.md` — design tabs (Dom open questions, map-canvas explorations)
+- `design/dom-open-questions.md` — prioritized P0/P1/P2 world-design questions Dom still needs to answer
+- `design/dom-answered-questions.md` — archive of Dom + owner locks
 - `art/character-direction.md` — player-character art references and starter-kit direction
+
+- `art/theme-palette.md` — open-world slice color swatches (terrain, foliage, reserved Nefarium accents)
+- `art/visual-direction.md` — stylized look, atmosphere, terrain, and typography baselines
+- `art/cartography-design.md` — fantasy cartography language (Map Canvas, overworld reference, culture type, roads)
 - `resources/index.md` — dependencies, assets, tools, references, and licenses
 - `interviews/open-questions.md` — unresolved owner decisions
 - `planning/epics.md` — hybrid epic/ticket backlog with Priority (mirrored to Notion Wrathful Conquest)

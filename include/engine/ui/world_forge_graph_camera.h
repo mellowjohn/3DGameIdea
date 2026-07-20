@@ -32,7 +32,7 @@ struct WorldForgeGraphBounds {
     const std::vector<std::string>* only_keys = nullptr);
 
 void fit_graph_camera_to_bounds(WorldForgeGraphCamera& camera, float canvas_w, float canvas_h,
-    const WorldForgeGraphBounds& bounds, float pad = 48.0f);
+    const WorldForgeGraphBounds& bounds, float pad = 48.0f, bool cover = false);
 
 void center_graph_camera_on(WorldForgeGraphCamera& camera, float canvas_w, float canvas_h,
     const std::array<float, 2>& world, float zoom);

@@ -1,0 +1,1 @@
+- Discrete zoom plates cropped from world-map-master.png by tools/build_world_map_layers.py (2026-07-20).\n- Continuous geography only — no AI quadrant inject.\n- Runtime: samples/open-world-rpg/assets/ui/cartography/world-map-layers/\n

@@ -20,11 +20,14 @@ add_library(engine_core
     src/core/error.cpp
     src/core/id_slug.cpp
     src/diagnostics/logger.cpp
+    src/diagnostics/gpu_diagnostics.cpp
     src/diagnostics/crash_bundle.cpp
     src/automation/automation_trace.cpp
     src/automation/command.cpp
     src/automation/editor_bridge.cpp
     src/automation/editor_session.cpp
+    src/automation/editor_screenshot.cpp
+    src/automation/live_automation_control.cpp
     src/automation/mcp_server.cpp
     src/automation/world_forge_commands.cpp
     src/automation/project_git_commands.cpp
@@ -67,8 +70,11 @@ add_library(engine_core
     src/ui/hud_runtime.cpp
     src/ui/ui_canvas_stack.cpp
     src/ui/ui_canvas_editor.cpp
+    src/ui/editor_ui_hotspots.cpp
+    src/ui/editor_chrome.cpp
     src/ui/world_forge_editor.cpp
     src/ui/world_forge_graph_camera.cpp
+    src/ui/cartography_strokes.cpp
     src/ui/imgui_png_texture.cpp
     src/world/world_partition.cpp
     src/world/cell_streamer.cpp

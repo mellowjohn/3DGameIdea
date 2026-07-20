@@ -51,6 +51,14 @@ Sample: `samples/open-world-rpg/assets/world-forge/factions.worldforge.json`.
 
 Optional `standing` ([DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer)): when `tracksPlayer` is true, session `StandingRuntime` tracks a continuous score (default 0). `ranks` must be ordered by non-decreasing `minScore`. `lockIn` is optional; when score ≥ `threshold`, `lock_in_faction()` returns this faction id. Do **not** invent Cristallo/Arrotrebae thresholds in sample data until owner fills numbers.
 
+### Cartography presentation (optional)
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `emblemPath` | string | Project-relative heraldry PNG (Map Canvas / future player map) |
+| `mapColor` | `[r,g,b]` 0..1 | Political border / tint; never the only culture cue |
+| `mapTypefaceId` | string | `cinzel` \| `forum` \| `eb_garamond` \| `uncial_antiqua` \| `metamorphous` \| `medievalsharp` — see [cartography-design.md](../art/cartography-design.md) |
+
 ## Enums
 
 | Field | Values |
@@ -81,8 +89,10 @@ Project `validate` loads the default path when present (`WorldForgeFactionsAsset
 | `kingdom_tessera` | faction | draft | `politicalRole: unknown` |
 | `chaotic_imperium` | faction | established | Existence + leader established; openQuestions for Shroud links |
 | `cristallo` | faction | draft | openQuestions for theology / influence |
-| `arrotrebae` | faction | draft | Later tribes/clans as children via `parentId`; none invented here |
-| `orc_warbands` | faction | draft | Multi-warband container tags; no invented warband names |
+| `arrotrebae` | faction | draft | Tribes/clans as children via `parentId`; **`thalassar`** clan seeded (Dom + owner 2026-07-20) |
+| `thalassar` | clan | draft | **The Thalassar** — Act 0 south-of-peninsula + Act 1 coastal; `parentId`: `arrotrebae`; relic **Anál Muir** (`anal_muir`) |
+| `orc_warbands` | faction | draft | Multi-warband container; **`underflow`** warband seeded (2026-07-20) |
+| `underflow` | warband | draft | **The Underflow** — Act 0 Calrenoth corridor; false patron **Sea of Whispers** |
 
 ## Non-goals
 

@@ -1,23 +1,15 @@
 {
-  "designResolution": [
-    1920.0,
-    1080.0
-  ],
+  "designResolution": [1920.0, 1080.0],
   "id": "player_hud",
   "schemaVersion": 1,
   "widgets": [
     {
       "anchor": "top_left",
       "id": "player_health_panel",
-      "offset": [
-        24.83819580078125,
-        30.567657470703125
-      ],
-      "size": [
-        500.0,
-        110.0
-      ],
-      "type": "panel"
+      "offset": [24.0, 24.0],
+      "size": [280.0, 88.0],
+      "type": "panel",
+      "color": [201, 184, 150, 240]
     },
     {
       "anchor": "top_left",
@@ -25,29 +17,21 @@
       "id": "player_health",
       "label": "Health",
       "maxBind": "player.healthMax",
-      "offset": [
-        48.0,
-        64.0
-      ],
-      "size": [
-        440.0,
-        32.0
-      ],
-      "type": "bar"
+      "offset": [40.0, 52.0],
+      "size": [248.0, 14.0],
+      "type": "bar",
+      "color": [139, 58, 58, 255],
+      "fontSize": 16.0
     },
     {
       "anchor": "top_left",
       "bind": "player.healthText",
       "id": "player_health_text",
-      "offset": [
-        48.0,
-        104.0
-      ],
-      "size": [
-        440.0,
-        34.0
-      ],
-      "type": "text"
+      "offset": [40.0, 72.0],
+      "size": [248.0, 24.0],
+      "type": "text",
+      "color": [42, 36, 32, 255],
+      "fontSize": 18.0
     }
   ]
 }

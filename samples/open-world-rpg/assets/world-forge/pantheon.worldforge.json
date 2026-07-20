@@ -7,15 +7,14 @@
       "kind": "deity",
       "displayName": "Frangitur",
       "canonStatus": "established",
-      "summary": "The Great Evil; opponent/corrupting force tied to Nefarium and the Shroud narrative. Pantheon registry id aligns with relationships deity node.",
+      "summary": "The Great Evil; fallen/perverted form of Creotar (Creo). Opponent/corrupting force tied to Nefarium and the Shroud. Plants false gods and demi-god patrons into local cults.",
       "storyRef": "context/story/frangitur-the-great-evil.md",
       "tags": [
         "great-evil"
       ],
       "parentId": "",
       "openQuestions": [
-        "Exact mechanism of influence over Luceran and Imperium authority",
-        "Whether Frangitur is a fallen aspect of Creo (Creo not seeded until owner-approved)"
+        "Exact mechanism of influence over Luceran and Imperium authority"
       ]
     },
     {
@@ -23,15 +22,38 @@
       "kind": "deity",
       "displayName": "Creotar",
       "canonStatus": "draft",
-      "summary": "Vision-space being who warns the protagonist about Luceran and the Nefarium Shroud (Twine-backed draft). Pantheon registry id aligns with relationships deity node.",
-      "storyRef": "context/story/campaign-beat-sheet.md",
+      "summary": "God of knowledge and creation; Creo is the short form of the same being. Act 0 vision guide who warns about Luceran and the Nefarium Shroud. Frangitur is the fallen form of this being (locked Dom + owner 2026-07-20).",
+      "storyRef": "context/story/frangitur-the-great-evil.md",
       "tags": [
         "vision",
-        "knowledge"
+        "knowledge",
+        "creation"
       ],
       "parentId": "",
       "openQuestions": [
-        "Canon status vs Creo; whether Creotar is established god identity or draft alias"
+        "Whether Act 0 'destroy the Shroud' guidance is honest or dramatic irony vs Frangitur's prologue",
+        "Creator-origin crystal location and current holder"
+      ]
+    },
+    {
+      "id": "sea_of_whispers",
+      "kind": "deity",
+      "displayName": "The Sea of Whispers",
+      "canonStatus": "draft",
+      "summary": "False deity of the Calrenoth watershed cult (The Thalassar + The Underflow). Hinted true name for narrative; public rite titles Muirthalia (Thalassar) and Grakk-Maren (Underflow). Not a true god — a lieutenant of Luceran the Hollow planted by Frangitur; Underflow rite perverted. Candidate early Act 1 boss.",
+      "storyRef": "context/story/factions.md#the-sea-of-whispers",
+      "tags": [
+        "false-deity",
+        "act0",
+        "act1",
+        "water",
+        "muirthalia",
+        "grakk-maren"
+      ],
+      "parentId": "",
+      "openQuestions": [
+        "When the false nature is confirmed to the player",
+        "Lieutenant display name if distinct from cult title"
       ]
     }
   ]

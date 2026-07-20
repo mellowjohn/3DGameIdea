@@ -1,4 +1,5 @@
 #include "engine/diagnostics/logger.h"
+#include "engine/diagnostics/gpu_diagnostics.h"
 
 #include <chrono>
 #include <iostream>
@@ -14,6 +15,7 @@ void Logger::initialize(const std::filesystem::path& jsonl_path) {
     path_ = jsonl_path;
     if (path_.has_parent_path()) std::filesystem::create_directories(path_.parent_path());
     stream_.open(path_, std::ios::app);
+    set_process_gpu_diagnostics(GpuDiagnostics::capture());
 }
 
 void Logger::write(Severity severity, std::string subsystem, std::string message, std::string correlation_id) {
@@ -29,7 +31,12 @@ void Logger::write(const EngineError& error) {
     if(colored){WORD color=FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE;if(error.severity==Severity::Warning)color=FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_INTENSITY;else if(error.severity==Severity::Error||error.severity==Severity::Fatal)color=FOREGROUND_RED|FOREGROUND_INTENSITY;SetConsoleTextAttribute(console,color);}
     std::cerr << error.to_text() << '\n';
     if(colored)SetConsoleTextAttribute(console,original.wAttributes);
-    if (stream_) { stream_ << error.to_json() << '\n'; stream_.flush(); }
+    if (stream_) {
+        std::string event = error.to_json();
+        event.pop_back();
+        stream_ << event << ",\"gpuDiagnostics\":" << process_gpu_diagnostics().to_json() << "}\n";
+        stream_.flush();
+    }
     if(error.severity==Severity::Error||error.severity==Severity::Fatal){++error_count_;recent_errors_.push_back(error);while(recent_errors_.size()>128)recent_errors_.pop_front();}
 }
 std::uint64_t Logger::error_count() const { std::lock_guard<std::mutex> lock(mutex_); return error_count_; }

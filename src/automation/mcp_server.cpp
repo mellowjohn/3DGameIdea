@@ -3,6 +3,7 @@
 #include "engine/automation/automation_trace.h"
 #include "engine/automation/editor_bridge.h"
 #include "engine/automation/editor_session.h"
+#include "engine/automation/live_automation_control.h"
 #include "engine/automation/world_forge_commands.h"
 #include "engine/automation/project_git_commands.h"
 #include "engine/core/result.h"
@@ -122,7 +123,7 @@ nlohmann::json tool_text_content(const std::string& text) {
 }
 
 constexpr const char* k_live_automation_hint =
-    "Enable \"MCP connection\" in the editor Diagnostics panel, then retry.";
+    "Call engine_editor_live with action=enable (editor must be running), wait ~1s, then retry. Or enable \"MCP connection\" in Diagnostics.";
 
 nlohmann::json bridge_to_tool_result(const EditorBridgeResponse& response) {
     nlohmann::json payload;
@@ -191,11 +192,95 @@ EditorBridgeResponse forward_to_editor(const std::filesystem::path& project_root
     return response;
 }
 
-const char* k_tools_list_json = R"([
+const char* k_tools_list_json =
+    R"([
     {
         "name": "engine_editor_status",
-        "description": "Report whether the editor has live automation enabled and basic session state.",
+        "description": "Report whether the editor has live automation enabled and basic session state (viewport tab, World Forge map layer/frame when live).",
         "inputSchema": { "type": "object", "properties": {}, "required": [] }
+    },
+    {
+        "name": "engine_editor_live",
+        "description": "Enable or disable the editor live MCP bridge without using the Diagnostics checkbox. Writes a project request file the running editor consumes next frame. Actions: enable|disable|status. Works offline (no bridge required for enable/disable).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": { "type": "string" }
+            },
+            "required": ["action"]
+        }
+    },
+    {
+        "name": "engine_editor_screenshot",
+        "description": "Capture the live editor window to a PNG under project out/. Optional filename stem. Requires live MCP bridge (use engine_editor_live enable first).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "filename": { "type": "string" },
+                "clientAreaOnly": { "type": "boolean" }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "engine_editor_input",
+        "description": "Queue mouse/keyboard UI input for the live editor (ImGui). Actions: move|click|drag|scroll|key|wait|clear|unlock_tab. Coords: x/y client px, nx/ny [0,1], or targetId from engine_editor_ui_query. Optional steps[] sequence. Shows a yellow MCP cursor overlay. Requires live bridge.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": { "type": "string" },
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "nx": { "type": "number" },
+                "ny": { "type": "number" },
+                "targetId": { "type": "string" },
+                "button": { "type": "string" },
+                "delta": { "type": "number" },
+                "key": { "type": "string" },
+                "keyCode": { "type": "number" },
+                "frames": { "type": "number" },
+                "holdFrames": { "type": "number" },
+                "toNx": { "type": "number" },
+                "toNy": { "type": "number" },
+                "toTargetId": { "type": "string" },
+                "steps": { "type": "array", "items": { "type": "object" } }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "engine_editor_ui_query",
+        "description": "List registered editor UI hotspots (widget id → client rect/center) from the last drawn frame. Filters: id (exact), idPrefix, contains. Use with engine_editor_input targetId. Requires live bridge; prefer over CV for clicking named controls.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "idPrefix": { "type": "string" },
+                "contains": { "type": "string" }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "engine_world_forge_map_view",
+        "description": "Open World Forge Map Canvas and set Cartography view options for agent testing. Params: cartography (bool), topDown (bool), worldMap (bool), frame (bool), fit (bool), zoom (number), panX/panZ (number), layerId (string), forceTransition (bool), lockTab (bool). Requires live MCP bridge.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "cartography": { "type": "boolean" },
+                "topDown": { "type": "boolean" },
+                "worldMap": { "type": "boolean" },
+                "frame": { "type": "boolean" },
+                "fit": { "type": "boolean" },
+                "zoom": { "type": "number" },
+                "panX": { "type": "number" },
+                "panZ": { "type": "number" },
+                "layerId": { "type": "string" },
+                "forceTransition": { "type": "boolean" },
+                "lockTab": { "type": "boolean" }
+            },
+            "required": []
+        }
     },
     {
         "name": "engine_scene_plan",
@@ -352,7 +437,8 @@ const char* k_tools_list_json = R"([
         }
     },
     {
-        "name": "engine_ui_stack",
+        "name": "engine_ui_stack",)"
+    R"(
         "description": "Engine-owned UI canvas stack. action=register|push|pop|show|hide|clear|status. register/push/show take id (and path to register). Equal to Lua engine.ui_*. Requires live editor MCP. Allowed during play test.",
         "inputSchema": {
             "type": "object",
@@ -533,11 +619,58 @@ nlohmann::json handle_tools_call(const std::filesystem::path& project_root, cons
             payload["exitCode"] = 0;
             payload["summary"] = "Editor live automation is not connected";
             payload["metadata"] = {{"editorRunning", "false"}, {"liveAutomationEnabled", "false"},
-                {"projectRoot", project_root.generic_string()}};
+                {"projectRoot", project_root.generic_string()},
+                {"liveRequestPath", live_automation_request_path(project_root).generic_string()}};
             payload["recommendation"] = k_live_automation_hint;
             return {{"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
         }
         return bridge_to_tool_result(response);
+    }
+    if (tool_name == "engine_editor_live") {
+        const auto action = arguments.value("action", std::string{});
+        nlohmann::json payload;
+        payload["schemaVersion"] = 1;
+        payload["projectRoot"] = project_root.generic_string();
+        payload["requestPath"] = live_automation_request_path(project_root).generic_string();
+        if (action == "status") {
+            EditorBridgeClient client(project_root);
+            const bool bridge_up = client.is_editor_running();
+            payload["exitCode"] = 0;
+            payload["summary"] = bridge_up ? "Editor live bridge is reachable" : "Editor live bridge is not connected";
+            payload["metadata"] = {{"bridgeReachable", bridge_up ? "true" : "false"},
+                {"liveAutomationEnabled", bridge_up ? "true" : "false"}};
+            if (!bridge_up) payload["recommendation"] = k_live_automation_hint;
+            return {{"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
+        }
+        if (action == "enable" || action == "disable") {
+            const bool enable = action == "enable";
+            std::string error;
+            if (!write_live_automation_request(project_root, enable, &error)) {
+                return {{"isError", true},
+                    {"content", nlohmann::json::array({tool_text_content(error.empty() ? "Failed to write live-automation request" : error)})}};
+            }
+            payload["exitCode"] = 0;
+            payload["summary"] = enable ? "Requested live automation enable; editor will apply on next frame"
+                                        : "Requested live automation disable; editor will apply on next frame";
+            payload["metadata"] = {{"requestedEnabled", enable ? "true" : "false"}};
+            payload["recommendation"] =
+                "Wait ~500ms–1s for the running editor to consume the request, then call engine_editor_status.";
+            return {{"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
+        }
+        return {{"isError", true},
+            {"content", nlohmann::json::array({tool_text_content("action must be enable|disable|status")})}};
+    }
+    if (tool_name == "engine_editor_screenshot") {
+        return bridge_to_tool_result(forward_to_editor(project_root, "editor_screenshot", arguments));
+    }
+    if (tool_name == "engine_editor_input") {
+        return bridge_to_tool_result(forward_to_editor(project_root, "editor_input", arguments));
+    }
+    if (tool_name == "engine_editor_ui_query") {
+        return bridge_to_tool_result(forward_to_editor(project_root, "editor_ui_query", arguments));
+    }
+    if (tool_name == "engine_world_forge_map_view") {
+        return bridge_to_tool_result(forward_to_editor(project_root, "world_forge_map_view", arguments));
     }
     if (tool_name == "engine_scene_plan") {
         if (arguments.contains("description")) {

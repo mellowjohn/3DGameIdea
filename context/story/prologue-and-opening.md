@@ -27,7 +27,7 @@ The protagonist begins as an ordinary resident of a Tessera settlement. A draft 
 
 One draft interpretation makes the instruction to destroy the Shroud a manipulation. Frangitur wants heroes to mistake the prison for the source of evil and break it, freeing what it contains. This concept is not yet reconciled with the established account of Luceran wearing and being controlled by the Shroud.
 
-Twine Act 0 ([`sources/wrathful-conquest-act0.twee`](sources/wrathful-conquest-act0.twee)) has **Creotar** urge destroying the Shroud / freeing Luceran while Frangitur’s prologue urges ripping Tessera apart — keep both as **draft** tension; see [campaign-beat-sheet.md](campaign-beat-sheet.md) A0-08.
+Twine Act 0 ([`sources/wrathful-conquest-act0.twee`](sources/wrathful-conquest-act0.twee)) has **Creotar** (Creo short form) urge destroying the Shroud / freeing Luceran while Frangitur’s prologue urges ripping Tessera apart — identity locked (Frangitur = fallen Creotar); keep honesty/irony as **draft** tension; see [campaign-beat-sheet.md](campaign-beat-sheet.md) A0-08.
 
 ## Open Questions and Conflicts
 

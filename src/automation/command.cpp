@@ -21,9 +21,11 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <sstream>
 #include <unordered_set>
+#include <windows.h>
 
 namespace engine {
 namespace {
@@ -60,6 +62,103 @@ std::uint32_t positive_number(const std::string& value, std::uint32_t fallback) 
     } catch (...) { return fallback; }
 }
 bool has_argument(const CommandRequest& request,const std::string& name){return std::find(request.arguments.begin(),request.arguments.end(),name)!=request.arguments.end();}
+
+const std::vector<std::string>& ctest_suite_names() {
+    static const std::vector<std::string> names{
+        "core", "world", "world_influence", "assets", "world_forge", "streaming", "terrain", "foliage",
+        "water", "collision", "navigation", "character", "interaction", "combat", "camera", "diagnostics",
+        "scripting", "automation", "hud", "animator", "project_validation"};
+    return names;
+}
+
+bool known_ctest_suite(const std::string& name) {
+    const auto& names = ctest_suite_names();
+    return std::find(names.begin(), names.end(), name) != names.end();
+}
+
+std::wstring quote_windows_arg(const std::filesystem::path& path) {
+    const std::wstring value = path.wstring();
+    if (value.find_first_of(L" \t\"") == std::wstring::npos) return value;
+    std::wstring quoted = L"\"";
+    for (const wchar_t character : value) {
+        if (character == L'"') quoted += L"\\\"";
+        else quoted += character;
+    }
+    return quoted + L'"';
+}
+
+std::filesystem::path environment_path(const char* name) {
+    char value[32768]{};
+    const DWORD length = GetEnvironmentVariableA(name, value, static_cast<DWORD>(sizeof(value)));
+    return length > 0 && length < sizeof(value) ? std::filesystem::path(value) : std::filesystem::path{};
+}
+
+std::filesystem::path find_ctest_executable() {
+    if (const auto program_files = environment_path("ProgramFiles"); !program_files.empty()) {
+        const auto installed = program_files / "CMake" / "bin" / "ctest.exe";
+        if (std::filesystem::exists(installed)) return installed;
+    }
+    if (const auto program_files_x86 = environment_path("ProgramFiles(x86)"); !program_files_x86.empty()) {
+        const auto visual_studio = program_files_x86 / "Microsoft Visual Studio" / "2019" /
+                                   "Community" / "Common7" / "IDE" / "CommonExtensions" / "Microsoft" / "CMake" /
+                                   "CMake" / "bin" / "ctest.exe";
+        if (std::filesystem::exists(visual_studio)) return visual_studio;
+    }
+    return "ctest.exe";
+}
+
+std::string run_ctest(const std::filesystem::path& ctest_executable, const std::filesystem::path& build_directory,
+                      const std::string& suite, int& exit_code) {
+    wchar_t temp_directory[MAX_PATH]{};
+    wchar_t temp_file[MAX_PATH]{};
+    if (GetTempPathW(MAX_PATH, temp_directory) == 0 ||
+        GetTempFileNameW(temp_directory, L"eng", 0, temp_file) == 0) {
+        exit_code = -1;
+        return "Could not create a temporary CTest output file.";
+    }
+    const std::filesystem::path output_path(temp_file);
+    HANDLE output = CreateFileW(temp_file, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS,
+                                FILE_ATTRIBUTE_TEMPORARY, nullptr);
+    if (output == INVALID_HANDLE_VALUE) {
+        std::error_code cleanup;
+        std::filesystem::remove(output_path, cleanup);
+        exit_code = -1;
+        return "Could not open a temporary CTest output file.";
+    }
+
+    std::wstring command_line = L"--test-dir " + quote_windows_arg(build_directory) + L" -C Debug -R \"^";
+    command_line.append(suite.begin(), suite.end());
+    command_line += L"$\" --output-on-failure";
+    std::vector<wchar_t> mutable_command(command_line.begin(), command_line.end());
+    mutable_command.push_back(L'\0');
+    STARTUPINFOW startup{};
+    startup.cb = sizeof(startup);
+    startup.dwFlags = STARTF_USESTDHANDLES;
+    startup.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    startup.hStdOutput = output;
+    startup.hStdError = output;
+    PROCESS_INFORMATION process{};
+    const BOOL created = CreateProcessW(ctest_executable.wstring().c_str(), mutable_command.data(), nullptr, nullptr,
+                                        TRUE, CREATE_NO_WINDOW, nullptr, build_directory.wstring().c_str(), &startup, &process);
+    CloseHandle(output);
+    if (!created) {
+        std::error_code cleanup;
+        std::filesystem::remove(output_path, cleanup);
+        exit_code = -1;
+        return "Could not start CTest (" + std::to_string(GetLastError()) + ").";
+    }
+    WaitForSingleObject(process.hProcess, INFINITE);
+    DWORD result = 1;
+    GetExitCodeProcess(process.hProcess, &result);
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+    std::ifstream file(output_path);
+    std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::error_code cleanup;
+    std::filesystem::remove(output_path, cleanup);
+    exit_code = static_cast<int>(result);
+    return text;
+}
 }
 
 std::string CommandResponse::to_json() const {
@@ -290,6 +389,54 @@ CommandResponse execute_command(const CommandRequest& request) {
         response.artifacts.push_back(database_path.generic_string());
         return response;
     }
+    if (request.name == "test") {
+        const std::string suite = argument_value(request, "--suite");
+        if (suite.empty()) {
+            auto error = command_error("CLI-TEST-SUITE-REQUIRED", "test requires --suite <name>",
+                                       "Run engine help for the supported suite names.", request.correlation_id);
+            error.category = ErrorCategory::Validation;
+            return {ExitCode::InvalidArguments, "Test command rejected", {}, {std::move(error)}};
+        }
+        if (!known_ctest_suite(suite)) {
+            auto error = command_error("CLI-TEST-SUITE-UNKNOWN", "Unknown CTest suite: " + suite,
+                                       "Use one of the suite names shown by engine help.", request.correlation_id);
+            error.category = ErrorCategory::Validation;
+            return {ExitCode::InvalidArguments, "Test command rejected", {}, {std::move(error)}};
+        }
+        const auto build_directory = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / "build" / "windows-msvc-debug";
+        if (!std::filesystem::exists(build_directory / "CTestTestfile.cmake")) {
+            auto error = command_error("CLI-TEST-BUILD-MISSING", "CTest build tree was not found: " + build_directory.generic_string(),
+                                       "Configure and build the Windows debug preset before running engine test.", request.correlation_id);
+            error.category = ErrorCategory::Configuration;
+            return {ExitCode::Unavailable, "Test command unavailable", {}, {std::move(error)}};
+        }
+        CommandResponse response{ExitCode::Success, "CTest suite scheduled: " + suite, {}, {}};
+        response.metrics = {{"testCount", 1.0}};
+        response.metadata = {{"suite", suite}, {"buildDirectory", build_directory.generic_string()}};
+        if (request.dry_run) return response;
+
+        const auto started = std::chrono::steady_clock::now();
+        int ctest_exit_code = -1;
+        const auto ctest_executable = find_ctest_executable();
+        const std::string output = run_ctest(ctest_executable, build_directory, suite, ctest_exit_code);
+        const double elapsed_milliseconds = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - started).count();
+        response.metrics["elapsedMilliseconds"] = elapsed_milliseconds;
+        response.metadata["ctestExitCode"] = std::to_string(ctest_exit_code);
+        response.metadata["ctestExecutable"] = ctest_executable.generic_string();
+        if (ctest_exit_code == 0) {
+            response.summary = "CTest suite passed: " + suite;
+            return response;
+        }
+        auto error = command_error("CLI-TEST-FAILED", "CTest suite failed: " + suite,
+                                   "Review the captured CTest output and rerun the suite directly.", request.correlation_id);
+        error.category = ErrorCategory::Validation;
+        if (!output.empty()) error.causes.push_back(output);
+        response.exit_code = ExitCode::ValidationFailed;
+        response.summary = "CTest suite failed: " + suite;
+        response.diagnostics.push_back(std::move(error));
+        return response;
+    }
     if (request.name == "run" || request.name == "capture" || request.name == "benchmark" || request.name == "editor") {
         RenderOptions options;
         options.project_root = request.project;
@@ -337,6 +484,7 @@ std::string command_help() {
            "Options: --project <path> --json --dry-run --debug-world --log-file <path> --frames <n> --width <px> --height <px> --console\n"
            "Capture/editor: --output <file.ppm> [--viewport scene|sculpt|game|ui|world-forge]\n"
            "Benchmark: defaults to 300 frames at 2560x1440\n"
+           "Test: engine test --project <path> --suite <core|world|world_influence|assets|world_forge|streaming|terrain|foliage|water|collision|navigation|character|interaction|combat|camera|diagnostics|scripting|automation|hud|animator|project_validation> [--dry-run] [--json]\n"
            "project-git: engine project-git --project <path> --action status|fetch|pull|commit|push [--message <text>] [--json]\n"
            "MCP: engine mcp --project <path> starts the Model Context Protocol stdio server";
 }

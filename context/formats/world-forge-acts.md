@@ -8,8 +8,8 @@ Campaign acts organize World Forge authoring without splitting assets into per-a
 
 | Id | Label | Beat sheet |
 | --- | --- | --- |
-| `act0` | Act 0 | Fall of Calrenoth |
-| `act1` | Act 1 | First hub / open world |
+| `act0` | Act 0 — Landfall | Fall of Calrenoth |
+| `act1` | Act 1 | **Ledgeport** hub / open world |
 | `act2` | Act 2 | Faction war |
 | `act3` | Act 3 | Usurper crisis |
 | `act4` | Act 4 | Endings |

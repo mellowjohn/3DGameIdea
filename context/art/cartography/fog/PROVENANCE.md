@@ -1,0 +1,1 @@
+- Fog veil generated 2026-07-20 via Cursor GenerateImage; alpha derived for parchment mist transitions.\n- Runtime: samples/open-world-rpg/assets/ui/cartography/fog/\n

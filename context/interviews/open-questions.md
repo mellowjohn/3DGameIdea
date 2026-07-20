@@ -2,6 +2,8 @@
 
 No question blocks milestones 1 or 2. Re-run the project interview skill before decisions that expand shipping platforms, online services, world scale, mod support, or multiplayer.
 
+**World design (Dom):** open P0/P1/P2 items in [`../design/dom-open-questions.md`](../design/dom-open-questions.md); answered locks in [`../design/dom-answered-questions.md`](../design/dom-answered-questions.md). This file keeps the full cross-cutting engine + story backlog.
+
 ## Entity component authoring
 
 Resolved 2026-07-13 as [DEC-0016](../decisions/index.md#dec-0016-entity-attached-components-and-dual-mcp-apply-paths) and [DEC-0017](../decisions/index.md#dec-0017-prefab-and-scene-component-authoring-with-unity-like-inheritance): Add Component on prefab assets and scene entities; Unity-like prefab→instance inherit/override; MCP dual path (dedicated tools + `engine_prefab_apply` / `engine_scene_apply`). Implementation: TICKET-0147. No open blockers for this topic.
@@ -20,18 +22,28 @@ Filed from TICKET-0021 review. Full gap list: [`context/story/factions.md`](../s
 
 - Luceran–Frangitur–Shroud: what grants Chaotic Imperium command, and how much agency Luceran retains?
 - Cristallo: faith, hierarchy, politics, and relationship to Creo before the fall?
-- Arrotrebae: council/decision rules when chieftains disagree; named tribes for relationship graph?
-- Orc warbands: stable names/IDs; which warband held the Nefarium Shroud and why; name of the slain great leader?
-- Player influence: **model** resolved as [DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer) (continuous standing + hostility transfer + lock-in fields). **Numeric thresholds** for Cristallo/Arrotrebae lock-in, destruction/reform, and morality binding remain open.
+- Arrotrebae: ~~council structure~~ (**draft lock:** tribal-leaders council, rite-passed seats only). Still open: **decision rules** when chieftains disagree; named tribes incl. 1–2 Luceran-lost; **The Thalassar** (`thalassar`) locked as first clan — [`factions.md`](../story/factions.md#the-thalassar).
+- **The Thalassar (locked 2026-07-20):** succession shape + powers locked; council seat vs others open. Liturgy mask **Muirthalia**. Minor relic **Anál Muir** (`anal_muir`). False patron **The Sea of Whispers** — [`factions.md`](../story/factions.md#the-sea-of-whispers).
+- **The Underflow (locked 2026-07-20):** Act 0 inland orc warband (`underflow`); liturgy mask **Grakk-Maren**; A1 usurper path draft — [`factions.md`](../story/factions.md#the-underflow).
+- ~~Calrenoth pair public liturgy names (D-P0-04)~~ — **locked:** **Muirthalia** / **Grakk-Maren**.
+- ~~**Neutral coastal trade port display name**~~ — **Ledgeport** (`ledgeport`) **confirmed**. Still open: ferry wiring to Cristallo (Dom **D-P0-09**); world coords (D-P2-08).
+- ~~Exact placement evergreen wake vs Ledgeport vs Calrenoth (D-P0-05)~~ — Calrenoth keep; evergreen wake **deprecated** as competing Act 1 geography; focus = **Ledgeport**. Reconcile DEC-0032 wake/camp → Dom **D-P0-10**.
+- **Relic hierarchy (draft):** minor tribal relics ≪ Nefarium Shroud confirmed for **Anál Muir**; name/locate Cristallo Creator-origin crystal.
+- Orc warbands: which warband held the Nefarium Shroud and why; name of the slain great leader? (**2026-07-20:** **The Underflow** locked as Act 0 minor warband — same **Sea of Whispers** cult as Thalassar.)
+- Player influence: **model** resolved as [DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer). **Numeric thresholds** remain open.
 - Kingdom of Tessera: playable faction choice vs political arena around other factions?
-- Campaign structure: reconcile draft chapter-locked flow with seamless open world ([DEC-0001](../decisions/index.md#dec-0001-product-and-platform-target)) — also in [`story-vision.md`](../story/story-vision.md).
+- ~~Campaign structure~~ — **resolved** [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances).
+- **Faction theaters / Act 0–1 geography (draft 2026-07-20):** Cristallo = central island; Tessera = west; Imperium = south; Calrenoth tip **confirmed**; Act 0 **Landfall**; **The Thalassar** + **The Underflow**; Act 1 hub **Ledgeport** (focus region). Exact coordinates, borders, 4×4 km footprint still open — [`official-world-map.md`](../story/official-world-map.md#draft-faction-theaters-2026-07-20).
+- Imperium heraldry: dark-crusade / fractured-creator art shipped (`heraldry-chaotic_imperium.png`); owner lock vs revise.
+- **Act 1 dual-path intro (locked draft):** Arrotrebae/Thalassar path ↔ Cristallo path by travel; light standing in Act 1.
+- **Act 1 assassination / succession (draft locks):** lieutenant boss leads plot; trials + champion path + Underflow usurper; person names **TBD**; quest id + standing rewards open — [`campaign-beat-sheet.md`](../story/campaign-beat-sheet.md).
 
 **Update 2026-07-15:** Open-world vs chapter-lock **resolved** as [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances). Beat sheet: [`campaign-beat-sheet.md`](../story/campaign-beat-sheet.md). Remaining story opens from Act 0 Twine:
 
-- Creotar vs Creo/Frangitur; destroy-Shroud guidance vs Frangitur “rip Tessera apart” irony
+- ~~Creotar vs Creo/Frangitur~~ — **resolved 2026-07-20:** Creotar = Creo (short); Frangitur = fallen form. Destroy-Shroud guidance vs Frangitur “rip Tessera apart” irony still open.
 - Crystal location (Twine stubs empty); who holds it
-- Wake-up / O’hlundian evergreens vs first hub after Calrenoth
-- Wild God revival chronology vs Calrenoth Act 0 spine
+- ~~Wake-up / O’hlundian evergreens vs first hub~~ — first hub = **Ledgeport** (confirmed). Named evergreen wake deprecated as Act 1 geography competitor (D-P0-05); DEC-0032 wake/camp reconcile still open (Dom D-P0-10)
+- ~~Wild God revival chronology vs Calrenoth Act 0 spine~~ — **resolved** for default spine: Calrenoth / **Landfall** (Wild God remains alternate/open)
 - Acts 1–4 not yet in Twine (planning beats only)
 - Which consequential side quests ([side-quest-catalog.md](../story/side-quest-catalog.md)) can flip faction lock-in vs only nudge standing (blocked on morality thresholds)
 
@@ -41,10 +53,10 @@ Resolved 2026-07-15 as [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with
 
 Still open from beat sheet / Act 0 Twine import:
 
-- ~~Wake-up / camp location after Creotar vision~~ — **resolved** DEC-0032: O’hlundian evergreens → navigate to first village.
+- ~~Wake-up / camp location after Creotar vision~~ — DEC-0032 evergreen wake under **reconcile** with Ledgeport-first Act 1 geography (Dom D-P0-10).
 - ~~Whether Calrenoth remains ruined on the seamless map after Act 0~~ — **resolved** DEC-0032: yes, ruined/impacted revisit.
-- Creotar identity vs Creo/Frangitur.
-- ~~Wild God revival chronology vs Calrenoth Act 0 spine~~ — **resolved** for default spine: Act 0 Calrenoth (Wild God remains alternate/open).
+- ~~Creotar identity vs Creo/Frangitur~~ — **resolved 2026-07-20:** Creotar = Creo; Frangitur = fallen form ([frangitur-the-great-evil.md](../story/frangitur-the-great-evil.md)).
+- ~~Wild God revival chronology vs Calrenoth Act 0 spine~~ — **resolved** for default spine: Act 0 Calrenoth / **Landfall** (Wild God remains alternate/open).
 - Vanessa introduction beat timing.
 - Morality thresholds and ending matrix (Act 4).
 - Twine draft orc names (Grul’thaz / Shadowpaw) — not established until owner review (also TICKET-0021).

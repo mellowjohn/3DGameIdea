@@ -87,6 +87,34 @@ Result<WorldForgeHydrologyKind> parse_hydrology_kind(const std::string& raw) {
         "Unsupported hydrology kind: " + raw, "Use lake, river, or sea."));
 }
 
+Result<WorldForgeTravelRouteKind> parse_travel_route_kind(const std::string& raw) {
+    const auto key = lower_copy(raw);
+    if (key == "track" || key == "path") return Result<WorldForgeTravelRouteKind>::success(WorldForgeTravelRouteKind::Track);
+    if (key == "road") return Result<WorldForgeTravelRouteKind>::success(WorldForgeTravelRouteKind::Road);
+    if (key == "highway") return Result<WorldForgeTravelRouteKind>::success(WorldForgeTravelRouteKind::Highway);
+    return Result<WorldForgeTravelRouteKind>::failure(map_error("WORLD-FORGE-MAP-TRAVEL-KIND", ErrorCategory::Validation,
+        "Unsupported travel route kind: " + raw, "Use track, road, or highway."));
+}
+
+std::vector<WorldForgeMapPoint2> read_map_points(const nlohmann::json& node) {
+    std::vector<WorldForgeMapPoint2> out;
+    if (!node.is_array()) return out;
+    for (const auto& point : node) {
+        if (!point.is_object()) continue;
+        WorldForgeMapPoint2 entry;
+        entry.x = point.value("x", 0.0f);
+        entry.z = point.value("z", 0.0f);
+        out.push_back(entry);
+    }
+    return out;
+}
+
+nlohmann::json write_map_points(const std::vector<WorldForgeMapPoint2>& points) {
+    auto out = nlohmann::json::array();
+    for (const auto& point : points) out.push_back({{"x", point.x}, {"z", point.z}});
+    return out;
+}
+
 std::vector<std::string> read_string_array(const nlohmann::json& node) {
     std::vector<std::string> out;
     if (!node.is_array()) return out;
@@ -195,6 +223,15 @@ const char* to_string(WorldForgeHydrologyKind value) noexcept {
     case WorldForgeHydrologyKind::Sea: return "sea";
     }
     return "lake";
+}
+
+const char* to_string(WorldForgeTravelRouteKind value) noexcept {
+    switch (value) {
+    case WorldForgeTravelRouteKind::Track: return "track";
+    case WorldForgeTravelRouteKind::Road: return "road";
+    case WorldForgeTravelRouteKind::Highway: return "highway";
+    }
+    return "road";
 }
 
 std::filesystem::path default_world_forge_map_path(const std::filesystem::path& project_root) {
@@ -329,6 +366,36 @@ Result<void> WorldForgeMapAsset::validate() const {
                 "Choose distinct fromPoiId and toPoiId."));
         }
     }
+    std::unordered_set<std::string> travel_ids;
+    travel_ids.reserve(travel_routes.size());
+    for (const auto& route : travel_routes) {
+        if (route.id.empty()) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-TRAVEL-ID", ErrorCategory::Validation,
+                "Travel route id is required", "Set a unique non-empty id for each travel route."));
+        }
+        if (!travel_ids.insert(route.id).second) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-TRAVEL-ID-DUP", ErrorCategory::Validation,
+                "Duplicate travel route id: " + route.id, "Ensure every travel route id is unique."));
+        }
+        if (const auto acts_ok = validate_world_forge_acts(route.acts, "travel route", route.id); !acts_ok) {
+            return Result<void>::failure(acts_ok.error());
+        }
+        if (!route.from_poi_id.empty() && poi_ids.find(route.from_poi_id) == poi_ids.end()) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-TRAVEL-POI", ErrorCategory::Validation,
+                "Travel route '" + route.id + "' fromPoiId must reference a POI in this file when set",
+                "Set fromPoiId to an existing POI id or leave it empty."));
+        }
+        if (!route.to_poi_id.empty() && poi_ids.find(route.to_poi_id) == poi_ids.end()) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-TRAVEL-POI", ErrorCategory::Validation,
+                "Travel route '" + route.id + "' toPoiId must reference a POI in this file when set",
+                "Set toPoiId to an existing POI id or leave it empty."));
+        }
+        if (!route.from_poi_id.empty() && route.from_poi_id == route.to_poi_id) {
+            return Result<void>::failure(map_error("WORLD-FORGE-MAP-TRAVEL-SELF", ErrorCategory::Validation,
+                "Travel route cannot use the same POI for both endpoints: " + route.id,
+                "Choose distinct fromPoiId and toPoiId, or clear one."));
+        }
+    }
     return Result<void>::success();
 }
 
@@ -394,6 +461,7 @@ Result<WorldForgeMapAsset> WorldForgeMapAsset::parse(const std::string& text, co
             region.tags = read_string_array(node.value("tags", nlohmann::json::array()));
             region.soft_gate = read_soft_gate(node.value("softGate", nlohmann::json::object()));
             if (node.contains("anchor") && !node["anchor"].is_null()) region.anchor = read_anchor(node["anchor"]);
+            if (node.contains("border")) region.border = read_map_points(node.at("border"));
             region.open_questions = read_string_array(node.value("openQuestions", nlohmann::json::array()));
             asset.regions.push_back(std::move(region));
         }
@@ -509,15 +577,31 @@ Result<WorldForgeMapAsset> WorldForgeMapAsset::parse(const std::string& text, co
                 route.summary = node.value("summary", std::string{});
                 route.acts = read_string_array(node.value("acts", nlohmann::json::array()));
                 if (node.contains("points") && node.at("points").is_array()) {
-                    for (const auto& point : node.at("points")) {
-                        if (!point.is_object()) continue;
-                        WorldForgeFerryRoutePoint entry;
-                        entry.x = point.value("x", 0.0f);
-                        entry.z = point.value("z", 0.0f);
-                        route.points.push_back(entry);
-                    }
+                    route.points = read_map_points(node.at("points"));
                 }
                 asset.ferry_routes.push_back(std::move(route));
+            }
+        }
+
+        if (json.contains("travelRoutes")) {
+            const auto routes = json.at("travelRoutes");
+            if (!routes.is_array()) {
+                return Result<WorldForgeMapAsset>::failure(map_error("WORLD-FORGE-MAP-TRAVEL", ErrorCategory::Validation,
+                    "travelRoutes must be an array", "Provide a travelRoutes array."));
+            }
+            for (const auto& node : routes) {
+                if (!node.is_object()) continue;
+                WorldForgeTravelRoute route;
+                route.id = node.value("id", std::string{});
+                const auto kind = parse_travel_route_kind(node.value("kind", std::string{"road"}));
+                if (!kind) return Result<WorldForgeMapAsset>::failure(kind.error());
+                route.kind = kind.value();
+                route.from_poi_id = node.value("fromPoiId", std::string{});
+                route.to_poi_id = node.value("toPoiId", std::string{});
+                route.summary = node.value("summary", std::string{});
+                route.acts = read_string_array(node.value("acts", nlohmann::json::array()));
+                if (node.contains("points")) route.points = read_map_points(node.at("points"));
+                asset.travel_routes.push_back(std::move(route));
             }
         }
 
@@ -563,6 +647,7 @@ std::string WorldForgeMapAsset::to_json() const {
         node["tags"] = write_string_array(region.tags);
         node["softGate"] = write_soft_gate(region.soft_gate);
         if (region.anchor) node["anchor"] = write_anchor(*region.anchor);
+        if (!region.border.empty()) node["border"] = write_map_points(region.border);
         node["openQuestions"] = write_string_array(region.open_questions);
         regions_json.push_back(std::move(node));
     }
@@ -626,12 +711,23 @@ std::string WorldForgeMapAsset::to_json() const {
         node["toPoiId"] = route.to_poi_id;
         node["summary"] = route.summary;
         node["acts"] = write_string_array(route.acts);
-        auto points_json = nlohmann::ordered_json::array();
-        for (const auto& point : route.points) points_json.push_back({{"x", point.x}, {"z", point.z}});
-        node["points"] = std::move(points_json);
+        node["points"] = write_map_points(route.points);
         ferry_json.push_back(std::move(node));
     }
     json["ferryRoutes"] = std::move(ferry_json);
+    auto travel_json = nlohmann::ordered_json::array();
+    for (const auto& route : travel_routes) {
+        nlohmann::ordered_json node;
+        node["id"] = route.id;
+        node["kind"] = to_string(route.kind);
+        node["fromPoiId"] = route.from_poi_id;
+        node["toPoiId"] = route.to_poi_id;
+        node["summary"] = route.summary;
+        node["acts"] = write_string_array(route.acts);
+        node["points"] = write_map_points(route.points);
+        travel_json.push_back(std::move(node));
+    }
+    json["travelRoutes"] = std::move(travel_json);
     return json.dump(2) + "\n";
 }
 

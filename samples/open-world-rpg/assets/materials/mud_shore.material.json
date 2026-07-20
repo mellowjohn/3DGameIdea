@@ -1,14 +1,23 @@
 {
   "schemaVersion": 1,
-  "baseColor": [0.28, 0.22, 0.16, 1.0],
-  "roughness": 0.96,
+  "baseColor": [
+    0.2199999988079071,
+    0.18000000715255737,
+    0.14100000262260437,
+    1.0
+  ],
+  "roughness": 0.9599999785423279,
   "metallic": 0.0,
   "opacityMode": "opaque",
   "opacityCutoff": 0.5,
-  "emissive": [0.0, 0.0, 0.0],
+  "emissive": [
+    0.0,
+    0.0,
+    0.0
+  ],
   "doubleSided": false,
   "physics": {
-    "friction": 0.95,
+    "friction": 0.949999988079071,
     "restitution": 0.0,
     "density": 1700.0,
     "surface": "mud"

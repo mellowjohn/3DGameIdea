@@ -36,4 +36,4 @@ Per ticket type: rebuild `engine` for C++/shader changes; doc review for design 
 
 ## Agent notes
 
-_(stub — expand when picked up)_
+Stub expanded: depends on World Forge region/POI ids. Will consume cartography kit, culture labels, and road layers from TICKET-0205–0207 when picked up.
