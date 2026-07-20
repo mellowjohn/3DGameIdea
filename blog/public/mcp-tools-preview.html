@@ -97,17 +97,16 @@
         <tr><th>Tool</th><th>What it does</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>engine_editor_status</code></td><td class="desc">Is the editor live and automation connected?</td></tr>
+        <tr><td><code>engine_editor_live</code> / <code>engine_editor_status</code></td><td class="desc">Flip live automation on and confirm the editor bridge</td></tr>
+        <tr><td><code>engine_editor_screenshot</code> / <code>engine_editor_ui_query</code> / <code>engine_editor_input</code></td><td class="desc">Capture the window, find UI hotspots, click tabs and controls</td></tr>
         <tr><td><code>engine_scene_plan</code></td><td class="desc">Route work: scene, prefab, terrain, World Forge, Lua, UI…</td></tr>
-        <tr><td><code>engine_scene_apply</code></td><td class="desc">Mutate the live scene through the editor command history</td></tr>
-        <tr><td><code>engine_entity_component_apply</code></td><td class="desc">Add or edit components on scene entities</td></tr>
-        <tr><td><code>engine_prefab_apply</code> / <code>engine_prefab_component_apply</code></td><td class="desc">Create or update prefabs and their components</td></tr>
-        <tr><td><code>engine_asset_apply</code></td><td class="desc">Write prefab/material JSON and refresh catalogs</td></tr>
-        <tr><td><code>engine_lua_apply</code> / <code>engine_lua_call</code></td><td class="desc">Edit gameplay scripts and call Lua handlers</td></tr>
+        <tr><td><code>engine_scene_apply</code></td><td class="desc">Place and move objects in the live scene</td></tr>
+        <tr><td><code>engine_terrain_apply</code> / <code>engine_water_apply</code></td><td class="desc">Sculpt terrain, paint foliage, and place water</td></tr>
+        <tr><td><code>engine_world_forge_apply</code> / <code>engine_world_forge_map_view</code></td><td class="desc">Author story data and drive the Map Canvas view</td></tr>
+        <tr><td><code>engine_prefab_apply</code> / <code>engine_asset_apply</code></td><td class="desc">Create or update prefabs, materials, and catalogs</td></tr>
+        <tr><td><code>engine_lua_apply</code> / <code>engine_lua_call</code></td><td class="desc">Edit gameplay scripts and call handlers without a rebuild</td></tr>
         <tr><td><code>engine_hud_apply</code> / <code>engine_ui_canvas_mutate</code> / <code>engine_ui_stack</code></td><td class="desc">HUD and UI canvas authoring / stack control</td></tr>
-        <tr><td><code>engine_terrain_apply</code></td><td class="desc">Sculpt, paint, and foliage strokes</td></tr>
-        <tr><td><code>engine_world_forge_apply</code></td><td class="desc">Read/validate/write factions, relationships, map, quests, dialogues</td></tr>
-        <tr><td><code>engine_project_validate</code></td><td class="desc">Validate project data and surface actionable diagnostics</td></tr>
+        <tr><td><code>engine_project_validate</code> / <code>engine_project_git</code></td><td class="desc">Validate project data and sync authoring through git</td></tr>
       </tbody>
     </table>
     <footer>Project MCP for Wrathful Conquest · not a generic third-party plugin list</footer>
