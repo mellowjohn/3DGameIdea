@@ -52,7 +52,7 @@ I think more at the macro level now instead of living in micro-tactical clicks. 
 
 ![Design Docs tab listing art, design, and feature notes inside the editor](/images/blog-mcp-design-docs.webp)
 
-*Design Docs as a viewport tab, not a side wiki. Same session, same MCP bridge.*
+*Design Docs with the MCP Live Editor Automation page open. Same session, same MCP bridge.*
 
 ## What still hurts
 

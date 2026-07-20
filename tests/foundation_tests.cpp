@@ -1,4 +1,5 @@
 #include "engine/automation/command.h"
+#include "engine/automation/editor_screenshot.h"
 #include "engine/core/result.h"
 #include "engine/assets/asset_registry.h"
 #include "engine/automation/scene_commands.h"
@@ -213,6 +214,14 @@ int main() {
     check(states2&&states2.value().get({-1,2},"chest.open")==std::optional<std::string>("true"), "Cell state round trips");
     check(!CellStateStore::from_json("{bad"), "Malformed cell state is rejected");
     auto state_path=project/"saves"/"cells.json"; check(states.save_atomic(state_path)&&CellStateStore::load(state_path), "Cell state saves atomically");
+
+    {
+        const std::uint8_t rgba[] = {255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255};
+        const auto png = write_rgba_png(project, "shot-rgba-test", 2, 2, rgba);
+        check(png && std::filesystem::exists(png.value()) && std::filesystem::file_size(png.value()) > 32,
+            "write_rgba_png encodes a tiny RGBA buffer");
+    }
+
     std::filesystem::remove_all(project);
 
     std::cout << (failures == 0 ? "All foundation tests passed\n" : "Foundation tests failed\n");

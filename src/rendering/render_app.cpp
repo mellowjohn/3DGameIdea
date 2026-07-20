@@ -1189,9 +1189,12 @@ public:
         if (FAILED(hr)) return Result<void>::failure(device_error("GFX-LIST-CLOSE", "Could not close command list", hr));
         ID3D12CommandList* lists[] = {command_list_.Get()};
         queue_->ExecuteCommandLists(1, lists);
+        const UINT presented_index = frame_index_;
         hr = swap_chain_->Present(1, 0);
         if (FAILED(hr)) return Result<void>::failure(device_error("GFX-PRESENT", "Could not present frame", hr));
         wait_for_gpu();
+        last_presented_index_ = presented_index;
+        has_presented_backbuffer_ = true;
 
         if (timestamp_readback_ && timestamp_frequency_ > 0) {
             UINT64* timestamps = nullptr;
@@ -2557,6 +2560,108 @@ public:
         command_list_->SetGraphicsRootSignature(root_signature_.Get());
     }
 
+    /// GPU readback of the last presented swap-chain buffer (includes ImGui chrome). Matches rendered colors.
+    Result<std::filesystem::path> capture_presented_backbuffer_png(const std::filesystem::path& project_root,
+        const std::string& filename_stem) {
+        if (!has_presented_backbuffer_ || !device_ || !queue_ || !command_list_) {
+            return Result<std::filesystem::path>::failure(
+                EngineError{"SHOT-GPU-FRAME", Severity::Error, ErrorCategory::Io, "automation",
+                    "No presented backbuffer is available yet", std::nullopt, {},
+                    "Wait one frame after the editor starts, then retry."});
+        }
+        if (last_presented_index_ >= frame_count || !targets_[last_presented_index_]) {
+            return Result<std::filesystem::path>::failure(
+                EngineError{"SHOT-GPU-TARGET", Severity::Error, ErrorCategory::Io, "automation",
+                    "Presented backbuffer target is missing", std::nullopt, {}, "Retry after a successful present."});
+        }
+
+        wait_for_gpu();
+        ID3D12Resource* source = targets_[last_presented_index_].Get();
+        const auto desc = source->GetDesc();
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
+        UINT64 readback_size = 0;
+        device_->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &readback_size);
+
+        D3D12_HEAP_PROPERTIES heap{};
+        heap.Type = D3D12_HEAP_TYPE_READBACK;
+        D3D12_RESOURCE_DESC buffer{};
+        buffer.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        buffer.Width = readback_size;
+        buffer.Height = 1;
+        buffer.DepthOrArraySize = 1;
+        buffer.MipLevels = 1;
+        buffer.SampleDesc.Count = 1;
+        buffer.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        ComPtr<ID3D12Resource> readback;
+        HRESULT hr = device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &buffer,
+            D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&readback));
+        if (FAILED(hr)) {
+            return Result<std::filesystem::path>::failure(
+                graphics_error("SHOT-GPU-BUFFER", "Could not allocate screenshot readback", hr));
+        }
+
+        hr = allocators_[frame_index_]->Reset();
+        if (FAILED(hr)) {
+            return Result<std::filesystem::path>::failure(
+                device_error("SHOT-GPU-ALLOC", "Could not reset screenshot allocator", hr));
+        }
+        hr = command_list_->Reset(allocators_[frame_index_].Get(), nullptr);
+        if (FAILED(hr)) {
+            return Result<std::filesystem::path>::failure(
+                device_error("SHOT-GPU-LIST", "Could not reset screenshot command list", hr));
+        }
+        auto to_copy = CD3DX12_RESOURCE_BARRIER_placeholder(source, D3D12_RESOURCE_STATE_PRESENT,
+            D3D12_RESOURCE_STATE_COPY_SOURCE);
+        command_list_->ResourceBarrier(1, &to_copy);
+        D3D12_TEXTURE_COPY_LOCATION destination{};
+        destination.pResource = readback.Get();
+        destination.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        destination.PlacedFootprint = footprint;
+        D3D12_TEXTURE_COPY_LOCATION src_loc{};
+        src_loc.pResource = source;
+        src_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        src_loc.SubresourceIndex = 0;
+        command_list_->CopyTextureRegion(&destination, 0, 0, 0, &src_loc, nullptr);
+        auto to_present = CD3DX12_RESOURCE_BARRIER_placeholder(source, D3D12_RESOURCE_STATE_COPY_SOURCE,
+            D3D12_RESOURCE_STATE_PRESENT);
+        command_list_->ResourceBarrier(1, &to_present);
+        hr = command_list_->Close();
+        if (FAILED(hr)) {
+            return Result<std::filesystem::path>::failure(
+                device_error("SHOT-GPU-CLOSE", "Could not close screenshot command list", hr));
+        }
+        ID3D12CommandList* lists[] = {command_list_.Get()};
+        queue_->ExecuteCommandLists(1, lists);
+        wait_for_gpu();
+
+        void* mapped = nullptr;
+        D3D12_RANGE range{0, static_cast<SIZE_T>(readback_size)};
+        hr = readback->Map(0, &range, &mapped);
+        if (FAILED(hr) || !mapped) {
+            return Result<std::filesystem::path>::failure(
+                graphics_error("SHOT-GPU-MAP", "Could not map screenshot readback", hr));
+        }
+
+        const UINT width = static_cast<UINT>(desc.Width);
+        const UINT height = desc.Height;
+        std::vector<std::uint8_t> rgba(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4u);
+        const auto* bytes = static_cast<const std::uint8_t*>(mapped) + footprint.Offset;
+        for (UINT y = 0; y < height; ++y) {
+            const auto* row = bytes + static_cast<std::size_t>(y) * footprint.Footprint.RowPitch;
+            std::uint8_t* dst = rgba.data() + static_cast<std::size_t>(y) * width * 4u;
+            for (UINT x = 0; x < width; ++x) {
+                const auto* px = row + static_cast<std::size_t>(x) * 4u;
+                dst[x * 4u + 0] = px[0];
+                dst[x * 4u + 1] = px[1];
+                dst[x * 4u + 2] = px[2];
+                dst[x * 4u + 3] = 255;
+            }
+        }
+        readback->Unmap(0, nullptr);
+
+        return write_rgba_png(project_root, filename_stem, width, height, rgba);
+    }
+
 private:
     EngineError device_error(std::string code, std::string message, HRESULT hr) const {
         EngineError error = graphics_error(std::move(code), std::move(message), hr);
@@ -2681,6 +2786,8 @@ private:
     ComPtr<ID3D12Fence> fence_;
     ComPtr<ID3D12QueryHeap> timestamp_heap_;
     ComPtr<ID3D12Resource> timestamp_readback_;
+    UINT last_presented_index_ = 0;
+    bool has_presented_backbuffer_ = false;
 };
 
 constexpr const char* k_prefab_drag_payload = "ENGINE_PREFAB";
@@ -4798,7 +4905,8 @@ void draw_debug_sphere(ImDrawList* draw_list, const std::array<float, 16>& view_
             static_cast<float>(center.y), static_cast<float>(center.z), edge_x, edge_y, edge_depth)
             ? std::hypot(edge_x - sx, edge_y - sy)
             : 8.0f;
-    const float screen_radius = std::clamp(screen_radius_raw, 4.0f, std::max(frame.width, frame.height) * 0.45f);
+    const float screen_radius_hi = std::max(4.0f, std::max(frame.width, frame.height) * 0.45f);
+    const float screen_radius = std::clamp(screen_radius_raw, 4.0f, screen_radius_hi);
     draw_list->AddCircle({sx, sy}, screen_radius, color, 0, 2.0f);
     if (fill_color) draw_list->AddCircleFilled({sx, sy}, screen_radius, fill_color);
 }
@@ -6595,6 +6703,7 @@ void draw_design_docs_viewport(EditorState& state) {
             state.design_docs_dom_form_source_path.clear();
             if (is_dom_open_questions_doc(doc)) state.design_docs_dom_form_mode = true;
         }
+        register_ui_hotspot_last_item(&state.ui_hotspots, "DesignDocs.Doc." + std::to_string(i), doc.title);
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\nstatus: %s", doc.relative_path.c_str(), doc.status.c_str());
         ImGui::SameLine();
         ImGui::TextDisabled("%s", doc.status.c_str());
@@ -8393,12 +8502,19 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                             EngineError{"SHOT-JSON", Severity::Error, ErrorCategory::Validation, "automation",
                                 "params_json parse failed", std::nullopt, {}, "Send valid JSON arguments."});
                     }
-                    const auto properties = SDL_GetWindowProperties(window);
-                    void* hwnd = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
                     const auto filename = params.value("filename", std::string{"editor-screenshot"});
                     const bool client_only = params.value("clientAreaOnly", true);
-                    const auto captured =
-                        capture_window_png(hwnd, editor->project_root, filename, client_only);
+                    // Prefer GPU readback of the presented swap-chain (exact rendered colors + ImGui).
+                    // Fall back to composed desktop BitBlt / PrintWindow if no frame has presented yet.
+                    auto captured = renderer.capture_presented_backbuffer_png(editor->project_root, filename);
+                    std::string capture_path_kind = "gpu_backbuffer";
+                    if (!captured) {
+                        const auto properties = SDL_GetWindowProperties(window);
+                        void* hwnd =
+                            SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+                        captured = capture_window_png(hwnd, editor->project_root, filename, client_only);
+                        capture_path_kind = "gdi_fallback";
+                    }
                     if (!captured) {
                         return make_bridge_err(ExitCode::InternalError, captured.error().message, captured.error());
                     }
@@ -8406,7 +8522,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     return make_bridge_ok("Screenshot saved",
                         {{"path", captured.value().generic_string()},
                             {"relativePath",
-                                std::filesystem::relative(captured.value(), editor->project_root).generic_string()}});
+                                std::filesystem::relative(captured.value(), editor->project_root).generic_string()},
+                            {"capturePath", capture_path_kind}});
                 }
 
                 if (request.operation == "editor_input") {
