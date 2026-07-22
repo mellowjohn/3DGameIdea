@@ -35,7 +35,7 @@ Full table lives in [`epics.md`](../../context/planning/epics.md#priority-ladder
 2. Set **Status** → `ready` (or `active`), **Agent** → `cursor-agent` (or `human`), and **Priority** → `P0`–`P3` per the ladder (mirror the same Priority in `epics.md`).
 3. Paste the ticket ID / Notion URL into the agent chat (e.g. “Work TICKET-0101”).
 
-Full rules: [`notion-sync.md`](../../context/planning/notion-sync.md). Template: [`ticket-template.md`](../../context/planning/ticket-template.md).
+Full rules: [`notion-sync.md`](../../context/planning/notion-sync.md). Template: [`ticket-template.md`](../../context/planning/ticket-template.md). **Authoring quality** (testable acceptance before `ready`): [`write-engine-ticket`](../write-engine-ticket/SKILL.md).
 
 ## Owner approval (humans)
 
@@ -118,6 +118,7 @@ Matches `AGENTS.md` verification bar (builds, relevant tests pass, user-visible 
 ## Additional resources
 
 - [`ticket-template.md`](../../context/planning/ticket-template.md)
+- [`write-engine-ticket/SKILL.md`](../write-engine-ticket/SKILL.md) — author/upgrade tickets before `ready`
 - [`tickets/`](../../context/planning/tickets/)
 - [`epics.md`](../../context/planning/epics.md)
 - [`notion-sync.md`](../../context/planning/notion-sync.md)

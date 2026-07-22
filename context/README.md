@@ -33,6 +33,7 @@ This directory is durable memory for humans and AI agents. Source code remains a
 - `planning/tickets/` — ticket briefs for agents (required for ready/active/needs-approval)
 - `.cursor/rules/epic-ticket-population.mdc` — keep epics/tickets fully populated in repo + Notion (repo root)
 - `skills/engine-ticket-workflow/SKILL.md` — pick up, prioritize, and close assigned tickets
+- `skills/write-engine-ticket/SKILL.md` — author tickets with testable acceptance before ready
 - `skills/grill-me/SKILL.md` — pressure-test ambiguities with pointed questions
 - `skills/teach/SKILL.md` — explain a confusing agent question so the owner can answer it
 - `skills/interview-engine-decisions/SKILL.md` — resolve blocking engine decisions and record them
