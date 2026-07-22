@@ -32,6 +32,7 @@ This directory is durable memory for humans and AI agents. Source code remains a
 - `planning/ticket-template.md` — ticket page/stub documentation template
 - `planning/tickets/` — ticket briefs for agents (required for ready/active/needs-approval)
 - `.cursor/rules/epic-ticket-population.mdc` — keep epics/tickets fully populated in repo + Notion (repo root)
+- `skills/desktop-qa/SKILL.md` — owner Windows session to batch-run gates and clear needs-approval
 - `skills/evaluate/SKILL.md` — evaluate needs-approval tickets/PRs; recommend approve, defer-desktop, or rework
 - `skills/engine-ticket-workflow/SKILL.md` — pick up, prioritize, and close assigned tickets
 - `skills/grill-me/SKILL.md` — pressure-test ambiguities with pointed questions
