@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <filesystem>
 #include <sstream>
 
 namespace engine {
@@ -152,9 +153,42 @@ const PrefabRigidbody* find_prefab_rigidbody(const PrefabAsset& prefab, const st
     return nullptr;
 }
 
+const PrefabAudioSource* find_prefab_audio_source(const PrefabAsset& prefab, const std::string& id) {
+    for (const auto& audio : prefab.audio_sources) {
+        if (audio.id == id) return &audio;
+    }
+    return nullptr;
+}
+
 bool is_valid_rigidbody_motion_type(const std::string& value) {
     const auto key = normalize_key(value);
     return key == "dynamic" || key == "kinematic";
+}
+
+bool is_valid_audio_clip_path(const std::string& clip) {
+    if (clip.empty()) return false;
+    const std::filesystem::path relative(clip);
+    if (relative.is_absolute()) return false;
+    const auto normalized = normalize_key(clip);
+    return normalized.size() >= 4 && normalized.compare(normalized.size() - 4, 4, ".wav") == 0;
+}
+
+nlohmann::json write_audio_source_object(const AudioSourceComponentData& audio) {
+    return {{"clip", audio.clip}, {"volume", audio.volume}, {"loop", audio.loop}, {"spatial", audio.spatial},
+        {"playOnStart", audio.play_on_start}, {"minDistance", audio.min_distance},
+        {"maxDistance", audio.max_distance}};
+}
+
+AudioSourceComponentData read_audio_source_data(const nlohmann::json& data) {
+    AudioSourceComponentData audio;
+    audio.clip = data.value("clip", std::string{});
+    audio.volume = data.value("volume", 1.0f);
+    audio.loop = data.value("loop", false);
+    audio.spatial = data.value("spatial", true);
+    audio.play_on_start = data.value("playOnStart", data.value("play_on_start", false));
+    audio.min_distance = data.value("minDistance", data.value("min_distance", 0.5f));
+    audio.max_distance = data.value("maxDistance", data.value("max_distance", 40.0f));
+    return audio;
 }
 
 } // namespace
@@ -165,6 +199,7 @@ std::string authored_component_type_name(AuthoredComponentType type) {
     case AuthoredComponentType::ScriptBinding: return "scriptBinding";
     case AuthoredComponentType::Animator: return "animator";
     case AuthoredComponentType::Rigidbody: return "rigidbody";
+    case AuthoredComponentType::AudioSource: return "audioSource";
     }
     return "collider";
 }
@@ -175,13 +210,14 @@ std::optional<AuthoredComponentType> parse_authored_component_type(const std::st
     if (key == "scriptbinding" || key == "script") return AuthoredComponentType::ScriptBinding;
     if (key == "animator") return AuthoredComponentType::Animator;
     if (key == "rigidbody") return AuthoredComponentType::Rigidbody;
+    if (key == "audiosource" || key == "audio") return AuthoredComponentType::AudioSource;
     return std::nullopt;
 }
 
 AuthoredComponentsComponent seed_authored_components_from_prefab(const PrefabAsset& prefab) {
     AuthoredComponentsComponent components;
     components.entries.reserve(prefab.collision.size() + prefab.script_bindings.size() + prefab.animators.size() +
-        prefab.rigidbodies.size());
+        prefab.rigidbodies.size() + prefab.audio_sources.size());
     for (std::size_t index = 0; index < prefab.collision.size(); ++index) {
         AuthoredComponentEntry entry;
         entry.type = AuthoredComponentType::Collider;
@@ -227,6 +263,22 @@ AuthoredComponentsComponent seed_authored_components_from_prefab(const PrefabAss
         entry.rigidbody.freeze_rotation = prefab.rigidbodies[index].freeze_rotation;
         entry.id = prefab.rigidbodies[index].id.empty() ? ("rigidbody-" + std::to_string(index))
                                                           : prefab.rigidbodies[index].id;
+        components.entries.push_back(std::move(entry));
+    }
+    for (std::size_t index = 0; index < prefab.audio_sources.size(); ++index) {
+        AuthoredComponentEntry entry;
+        entry.type = AuthoredComponentType::AudioSource;
+        entry.from_prefab = true;
+        entry.overridden = false;
+        entry.audio_source.clip = prefab.audio_sources[index].clip;
+        entry.audio_source.volume = prefab.audio_sources[index].volume;
+        entry.audio_source.loop = prefab.audio_sources[index].loop;
+        entry.audio_source.spatial = prefab.audio_sources[index].spatial;
+        entry.audio_source.play_on_start = prefab.audio_sources[index].play_on_start;
+        entry.audio_source.min_distance = prefab.audio_sources[index].min_distance;
+        entry.audio_source.max_distance = prefab.audio_sources[index].max_distance;
+        entry.id = prefab.audio_sources[index].id.empty() ? ("audio-" + std::to_string(index))
+                                                            : prefab.audio_sources[index].id;
         components.entries.push_back(std::move(entry));
     }
     components.generation = 1;
@@ -313,6 +365,21 @@ Result<void> validate_authored_component_entry(const AuthoredComponentEntry& ent
                 "COMPONENT-RIGIDBODY-DAMPING", "rigidbody damping values must be finite and non-negative"));
         return Result<void>::success();
     }
+    if (entry.type == AuthoredComponentType::AudioSource) {
+        if (!is_valid_audio_clip_path(entry.audio_source.clip))
+            return Result<void>::failure(authored_error(
+                "COMPONENT-AUDIO-CLIP", "audioSource clip must be a project-relative .wav path"));
+        if (!(entry.audio_source.volume >= 0.0f) || !(entry.audio_source.volume <= 1.0f) ||
+            !std::isfinite(entry.audio_source.volume))
+            return Result<void>::failure(
+                authored_error("COMPONENT-AUDIO-VOLUME", "audioSource volume must be finite in [0,1]"));
+        if (!(entry.audio_source.min_distance > 0.0f) || !std::isfinite(entry.audio_source.min_distance) ||
+            !(entry.audio_source.max_distance > 0.0f) || !std::isfinite(entry.audio_source.max_distance) ||
+            entry.audio_source.max_distance < entry.audio_source.min_distance)
+            return Result<void>::failure(authored_error("COMPONENT-AUDIO-DISTANCE",
+                "audioSource minDistance/maxDistance must be positive with maxDistance >= minDistance"));
+        return Result<void>::success();
+    }
     if (entry.script.kind.empty() || entry.script.binding_id.empty())
         return Result<void>::failure(
             authored_error("COMPONENT-SCRIPT-INVALID", "scriptBinding requires kind and bindingId"));
@@ -348,6 +415,8 @@ std::string authored_component_entry_to_json(const AuthoredComponentEntry& entry
         root["data"] = {{"motionType", entry.rigidbody.motion_type}, {"mass", entry.rigidbody.mass},
             {"linearDamping", entry.rigidbody.linear_damping}, {"angularDamping", entry.rigidbody.angular_damping},
             {"useGravity", entry.rigidbody.use_gravity}, {"freezeRotation", entry.rigidbody.freeze_rotation}};
+    } else if (entry.type == AuthoredComponentType::AudioSource) {
+        root["data"] = write_audio_source_object(entry.audio_source);
     } else
         root["data"] = {{"kind", entry.script.kind}, {"bindingId", entry.script.binding_id}};
     return root.dump();
@@ -388,6 +457,8 @@ Result<AuthoredComponentEntry> authored_component_entry_from_json(const std::str
             entry.rigidbody.use_gravity = data.value("useGravity", data.value("use_gravity", true));
             entry.rigidbody.freeze_rotation =
                 data.value("freezeRotation", data.value("freeze_rotation", false));
+        } else if (entry.type == AuthoredComponentType::AudioSource) {
+            entry.audio_source = read_audio_source_data(data);
         } else {
             entry.script.kind = data.value("kind", std::string{});
             entry.script.binding_id = data.value("bindingId", data.value("binding_id", std::string{}));
@@ -461,6 +532,17 @@ std::size_t propagate_prefab_components_into_entries(
                 entry.rigidbody.freeze_rotation = source->freeze_rotation;
                 ++updated;
             }
+        } else if (entry.type == AuthoredComponentType::AudioSource) {
+            if (const auto* source = find_prefab_audio_source(prefab, entry.id)) {
+                entry.audio_source.clip = source->clip;
+                entry.audio_source.volume = source->volume;
+                entry.audio_source.loop = source->loop;
+                entry.audio_source.spatial = source->spatial;
+                entry.audio_source.play_on_start = source->play_on_start;
+                entry.audio_source.min_distance = source->min_distance;
+                entry.audio_source.max_distance = source->max_distance;
+                ++updated;
+            }
         } else if (const auto* source = find_prefab_script(prefab, entry.id)) {
             entry.script.kind = source->kind;
             entry.script.binding_id = source->binding_id;
@@ -487,6 +569,8 @@ std::size_t propagate_prefab_components_into_entries(
                            return find_prefab_animator(prefab, entry.id) == nullptr;
                        if (entry.type == AuthoredComponentType::Rigidbody)
                            return find_prefab_rigidbody(prefab, entry.id) == nullptr;
+                       if (entry.type == AuthoredComponentType::AudioSource)
+                           return find_prefab_audio_source(prefab, entry.id) == nullptr;
                        return find_prefab_script(prefab, entry.id) == nullptr;
                    }),
         next.end());

@@ -14,6 +14,8 @@
 #include "engine/automation/scene_commands.h"
 #include "engine/assets/script_bindings_asset.h"
 #include "engine/animation/animator_runtime.h"
+#include "engine/audio/audio_engine.h"
+#include "engine/animation/animation_preview.h"
 #include "engine/animation/root_motion.h"
 #include "engine/assets/animator_controller_asset.h"
 #include "engine/physics/character_controller.h"
@@ -2486,6 +2488,18 @@ int main(int argc,char**argv){
             r.check(via_op.exit_code == engine::ExitCode::Success, "editor project_git operation succeeds");
             std::filesystem::remove_all(fixture, ec);
         }
+        {
+            engine::AnimationPreviewRequest sample_preview;
+            sample_preview.project_root=project;
+            sample_preview.frames=40;
+            auto sample=engine::run_animation_preview(sample_preview);
+            r.check(sample&&sample.value().ok,"sample project animation preview ok");
+            r.check(sample&&sample.value().controller_path.find("example.animator.json")!=std::string::npos,
+                "sample project picks example controller");
+            auto found=engine::find_default_animator_controller(project);
+            r.check(found&&found.value().find("example.animator.json")!=std::string::npos,
+                "find_default_animator_controller locates sample");
+        }
     }else if(suite=="diagnostics"){
         auto path=std::filesystem::temp_directory_path()/("engine-diagnostics-suite-"+engine::make_correlation_id()+".jsonl");engine::Logger::instance().initialize(path);
         engine::EngineError error{"TEST-RUNTIME",engine::Severity::Error,engine::ErrorCategory::Validation,"diagnostics-test","visible error",std::nullopt,{},"fix","test-correlation",engine::ErrorPriority::P1High};engine::Logger::instance().write(error);
@@ -2621,6 +2635,24 @@ int main(int argc,char**argv){
         engine::AuthoredComponentEntry bad_motion=rb_seeded.entries[0];
         bad_motion.rigidbody.motion_type="static";
         r.check(!engine::validate_authored_component_entry(bad_motion),"rigidbody rejects invalid motionType");
+
+        const auto audio_prefab_path=root/"assets/prefabs/torch_audio.prefab.json";
+        std::ofstream(audio_prefab_path)<<R"({"schemaVersion":2,"entities":[{"name":"Torch","mesh":{"primitive":"cube","color":[0.6,0.4,0.2]}}],"components":[{"id":"audio-0","type":"audioSource","data":{"clip":"assets/audio/campfire_crackle.wav","volume":0.8,"loop":true,"spatial":true,"playOnStart":true,"minDistance":1.0,"maxDistance":25.0}}]})";
+        auto audio_prefab=engine::PrefabAsset::load(audio_prefab_path);
+        r.check(audio_prefab&&audio_prefab.value().audio_sources.size()==1&&audio_prefab.value().audio_sources[0].volume==0.8f,"prefab audioSource component parsed");
+        auto audio_seeded=engine::seed_authored_components_from_prefab(audio_prefab.value());
+        r.check(audio_seeded.entries.size()==1&&audio_seeded.entries[0].type==engine::AuthoredComponentType::AudioSource,"authored audioSource seeded from prefab");
+        auto audio_round=engine::authored_component_entry_from_json(engine::authored_component_entry_to_json(audio_seeded.entries[0]));
+        r.check(audio_round&&audio_round.value().audio_source.clip=="assets/audio/campfire_crackle.wav"&&audio_round.value().audio_source.play_on_start,"audioSource component JSON round trip");
+        engine::AuthoredComponentEntry bad_clip=audio_seeded.entries[0];
+        bad_clip.audio_source.clip="C:/absolute/tone.wav";
+        r.check(!engine::validate_authored_component_entry(bad_clip),"audioSource rejects absolute clip path");
+        engine::AuthoredComponentEntry bad_vol=audio_seeded.entries[0];
+        bad_vol.audio_source.volume=1.5f;
+        r.check(!engine::validate_authored_component_entry(bad_vol),"audioSource rejects volume out of range");
+        engine::AuthoredComponentEntry bad_dist=audio_seeded.entries[0];
+        bad_dist.audio_source.min_distance=10.0f;bad_dist.audio_source.max_distance=2.0f;
+        r.check(!engine::validate_authored_component_entry(bad_dist),"audioSource rejects maxDistance < minDistance");
 
         engine::LuaRuntime lua; lua.set_animator_runtime(&animator);
         const auto script=root/"drive.lua";
@@ -2803,6 +2835,70 @@ end
             "on_animation_event updates blackboard");
         r.check(name_entry&&name_entry->string_value=="footstep","on_animation_event receives event name");
 
+        engine::AnimationPreviewRequest preview_req;
+        preview_req.project_root=root;
+        preview_req.controller_path="assets/animators/hero.animator.json";
+        preview_req.frames=30;
+        auto preview=engine::run_animation_preview(preview_req);
+        r.check(preview&&preview.value().ok&&preview.value().final_state=="attack",
+            "animation preview CLI helper reaches attack state");
+
+        std::filesystem::remove_all(root);
+    }else if(suite=="audio"){
+        const auto root=std::filesystem::temp_directory_path()/("engine-audio-suite-"+engine::make_correlation_id());
+        std::filesystem::create_directories(root/"assets/audio");
+        const auto tone_path=root/"assets/audio/tone.wav";
+        r.check(engine::write_test_tone_wav(tone_path).has_value(),"test tone wav writes");
+        r.check(std::filesystem::exists(tone_path),"test tone wav exists");
+
+        engine::AudioEngine audio;
+        engine::AudioEngineConfig config{};
+        config.no_device=true;
+        config.master_volume=0.75f;
+        r.check(audio.initialize(config).has_value(),"audio engine initializes headless");
+        r.check(audio.is_initialized(),"audio engine reports initialized");
+        r.check(std::abs(audio.master_volume()-0.75f)<1e-4f,"master volume applies");
+        audio.set_project_root(root);
+
+        r.check(audio.play_project_sound("assets/audio/tone.wav").has_value(),"one-shot play succeeds");
+        r.check(audio.play_project_sound_at("assets/audio/tone.wav",1.0f,0.5f,-2.0f).has_value(),"spatial play succeeds");
+        audio.update_listener({0.0f,1.6f,0.0f},{0.0f,0.0f,1.0f});
+        audio.update(0.05f);
+
+        const auto missing=audio.play_project_sound("assets/audio/missing.wav");
+        r.check(!missing&&missing.error().code=="AUDIO-FILE-MISSING","missing file fails closed");
+
+        const auto escape=audio.play_project_sound("../outside.wav");
+        r.check(!escape&&escape.error().code=="AUDIO-PATH-ESCAPE","path escape rejected");
+
+        engine::LuaRuntime lua;
+        lua.set_audio_engine(&audio);
+        const auto script=root/"play.lua";
+        std::ofstream(script)<<R"(
+function play_campfire()
+  engine.play_sound("assets/audio/tone.wav")
+end
+function play_at()
+  engine.play_sound_at("assets/audio/tone.wav", 2, 0, -1)
+end
+function set_vol()
+  engine.set_master_volume(0.5)
+end
+)";
+        r.check(lua.load_script(script).has_value(),"audio lua script loads");
+        r.check(lua.call_handler("play_campfire", "{}").has_value(),"lua play_sound succeeds");
+        r.check(lua.call_handler("play_at", "{}").has_value(),"lua play_sound_at succeeds");
+        r.check(lua.call_handler("set_vol", "{}").has_value(),"lua set_master_volume succeeds");
+        r.check(std::abs(audio.master_volume()-0.5f)<1e-4f,"lua volume bind updates engine");
+
+        const auto sample_root=std::filesystem::path(ENGINE_REPOSITORY_ROOT)/"samples/open-world-rpg";
+        const auto sample_wav=sample_root/"assets/audio/campfire_crackle.wav";
+        r.check(std::filesystem::exists(sample_wav),"sample campfire wav shipped");
+        audio.set_project_root(sample_root);
+        r.check(audio.play_project_sound("assets/audio/campfire_crackle.wav").has_value(),"sample campfire plays");
+
+        audio.shutdown();
+        r.check(!audio.is_initialized(),"audio engine shutdown clears initialized");
         std::filesystem::remove_all(root);
     }else{std::cerr<<"unknown suite\n";return 2;}
     std::cout<<"{\"suite\":\""<<r.suite<<"\",\"assertions\":"<<r.assertions<<",\"passed\":"<<(r.assertions-r.failures)<<",\"failed\":"<<r.failures<<"}\n";

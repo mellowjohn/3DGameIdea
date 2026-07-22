@@ -81,6 +81,17 @@ struct PrefabRigidbody {
     bool freeze_rotation = false;
 };
 
+struct PrefabAudioSource {
+    std::string id;
+    std::string clip;
+    float volume = 1.0f;
+    bool loop = false;
+    bool spatial = true;
+    bool play_on_start = false;
+    float min_distance = 0.5f;
+    float max_distance = 40.0f;
+};
+
 struct PrefabAsset {
     int schema_version = 1;
     std::string mesh;
@@ -89,6 +100,7 @@ struct PrefabAsset {
     std::vector<PrefabScriptBinding> script_bindings;
     std::vector<PrefabAnimator> animators;
     std::vector<PrefabRigidbody> rigidbodies;
+    std::vector<PrefabAudioSource> audio_sources;
     std::optional<PrefabPointLight> light;
     std::optional<std::string> character_asset;
 

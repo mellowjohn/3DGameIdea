@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "kind": "animatorController",
+  "id": "example_locomotion",
+  "parameters": [
+    {"name": "speed", "type": "float", "default": 0.0},
+    {"name": "attack", "type": "trigger"}
+  ],
+  "layers": [{
+    "name": "base",
+    "defaultState": "idle",
+    "blendMode": "override",
+    "states": [
+      {"name": "idle", "motion": {"type": "clip", "clipSource": "assets/models/player_clips.gltf", "clip": "Idle", "loop": true}},
+      {"name": "locomotion", "motion": {"type": "blendTree1D", "parameter": "speed", "children": [
+        {"threshold": 0.0, "clipSource": "assets/models/player_clips.gltf", "clip": "Idle", "loop": true},
+        {"threshold": 1.0, "clipSource": "assets/models/player_clips.gltf", "clip": "Walk", "loop": true}
+      ]}},
+      {"name": "attack", "motion": {"type": "clip", "clipSource": "assets/models/player_clips.gltf", "clip": "Attack", "loop": false}}
+    ],
+    "transitions": [
+      {"from": "idle", "to": "locomotion", "duration": 0.1, "conditions": [{"parameter": "speed", "op": "greater", "value": 0.1}]},
+      {"from": "locomotion", "to": "idle", "duration": 0.1, "conditions": [{"parameter": "speed", "op": "lessOrEqual", "value": 0.1}]},
+      {"from": "*", "to": "attack", "duration": 0.05, "conditions": [{"parameter": "attack", "op": "trigger"}]}
+    ]
+  }],
+  "timelineEvents": [
+    {"state": "locomotion", "time": 0.25, "name": "footstep", "layer": "base", "payload": {"foot": "left"}},
+    {"state": "attack", "time": 0.15, "name": "hit", "layer": "base", "payload": {"phase": "windup"}}
+  ]
+}

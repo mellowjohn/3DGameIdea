@@ -18,6 +18,28 @@ Status: active (TICKET-0103) — design locked by [DEC-0022](../decisions/index.
 3. **`AnimatorRuntime`**: attach/detach, param setters, automatic transitions, crossfade, `tick`, status with active clip weights.
 4. **Lua drive API**: `animator_set_float` / `animator_set_bool` / `animator_set_trigger` / `animator_crossfade` / `animator_get_state`.
 
+## M5 exit verification (TICKET-0110)
+
+Headless evidence (no desktop viewport required):
+
+```text
+engine test --project samples/open-world-rpg --suite m5-exit
+engine test --project samples/open-world-rpg --suite animator
+engine animation-preview --project samples/open-world-rpg --json
+```
+
+- **`m5-exit`** runs `animator`, `character`, `interaction`, `combat`, and `scripting` CTest suites.
+- **`animation-preview`** ticks the sample `assets/animators/example.animator.json` controller and prints deterministic JSON (`initialState`, `finalState`, key frames, timeline event count, root-motion sum).
+
+### Editor preview (until TICKET-0135 ships)
+
+- **Scene Inspector:** select an entity with an **Animator** component to inspect/edit its controller path and default state.
+- **Prefab Editor:** same fields on prefab `animator` components.
+- **Play test:** locomotion/combat/interaction still visible via Diagnostics movement console, interaction feed, and combat hit feed.
+- **TICKET-0135 (ready):** adds **Animation** tab beside **Diagnostics** for controller/clip/rig browse + headless preview text — see [`../planning/tickets/TICKET-0135.md`](../planning/tickets/TICKET-0135.md).
+
+Sample project ships `assets/animators/example.animator.json` + `assets/models/player_clips.gltf` (referenced from `vertical-slice.world.json`).
+
 ## Root motion (TICKET-0104 / DEC-0030, retarget TICKET-0199)
 
 Controllers may set `applyRootMotion` (+ optional `rootJoint` / `rootMotionY`). `AnimatorRuntime::tick` accumulates weighted root translation deltas.
@@ -36,7 +58,7 @@ Controllers may author `timelineEvents[]` (state + time + name + optional layer/
 - Auto combat-volume enable from events; play-session animator wiring polish.
 - Lua-authored state machines (rejected unless a new decision supersedes DEC-0022).
 - Production character art — fixture glTF is enough for engineering.
-- Editor Animation manage/preview panel (TICKET-0135).
+- Editor Animation manage/preview panel — **TICKET-0135** (`ready`; implement after 0110 owner approval).
 
 ## Related
 

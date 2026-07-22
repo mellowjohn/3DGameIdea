@@ -45,7 +45,8 @@ For content assets, extend the registry entry with creator/source URL, acquisiti
 | Tessera cartography art kit | image | World Forge Map Canvas icons, heraldry chips, stroke references | generated 2026-07-20 (see PROVENANCE) | Project-owned | `context/art/cartography/`; runtime `samples/open-world-rpg/assets/ui/cartography/` |
 | World Forge concept placeholders | image | Editor kind preview cards (person/deity/artifact/org/faction/region/poi) | generated 2026-07-15; resized 256² | Project-owned AI placeholders (see PROVENANCE) | `assets/world-forge/placeholders/` |
 | ImGuizmo | library | Editor move, rotate, and scale gizmos | 2024-05-29#1 at pinned baseline | MIT | integrated editor viewport |
-| miniaudio | library | Audio device and playback | pinned by baseline | public domain or MIT-0 | planned integration |
+| Campfire crackle SFX | audio | Sample one-shot for interaction smoke | generated 2026-07-22 (procedural WAV) | Project-owned | `samples/open-world-rpg/assets/audio/campfire_crackle.wav` |
+| miniaudio | library | Audio device and playback | vcpkg baseline (`vcpkg.json`); [miniaudio](https://github.com/mackron/miniaudio) @ pinned baseline | Public domain or MIT-0 (dual-licensed; either applies) | integrated — `src/audio/audio_engine.cpp`; TICKET-0107 |
 | spdlog | library | Production structured logging sink | pinned by baseline | MIT | planned integration |
 | Catch2 | library | Unit and integration tests | pinned by baseline | BSL-1.0 | planned integration |
 | Official Tessera world map | concept art | Clean continent/ocean geography (no towns/roads); Cartography discrete zoom plates | regenerate 2026-07-20 | Project-owned | overview `context/story/official-world-map.png`; master `context/art/cartography/world-map-master.png`; layers `samples/open-world-rpg/assets/ui/cartography/world-map-layers/`; notes `context/story/official-world-map.md` |

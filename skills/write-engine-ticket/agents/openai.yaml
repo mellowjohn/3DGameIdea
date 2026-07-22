@@ -1,0 +1,4 @@
+interface:
+  display_name: "Write Engine Ticket"
+  short_description: "Author tickets with testable acceptance before ready"
+  default_prompt: "Use $write-engine-ticket to draft or upgrade a TICKET with testable acceptance criteria and verification steps."
