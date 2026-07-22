@@ -512,9 +512,13 @@ int engine_animator_get_state(lua_State* state) {
 
 int engine_play_sound(lua_State* state) {
     auto* host = host_from_state(state);
-    if (!host || !host->audio) return luaL_error(state, "audio engine is not available");
     const char* path = luaL_checkstring(state, 1);
     const bool loop = lua_gettop(state) >= 2 ? lua_toboolean(state, 2) != 0 : false;
+    // Soft-fail when audio is unavailable so interaction scripts still run in headless suites.
+    if (!host || !host->audio || !host->audio->is_initialized()) {
+        Logger::instance().write(Severity::Warning, "lua", "play_sound skipped: audio engine is not available");
+        return 0;
+    }
     const auto result = host->audio->play_project_sound(path, loop);
     if (!result) return luaL_error(state, "%s", result.error().message.c_str());
     return 0;
@@ -522,12 +526,15 @@ int engine_play_sound(lua_State* state) {
 
 int engine_play_sound_at(lua_State* state) {
     auto* host = host_from_state(state);
-    if (!host || !host->audio) return luaL_error(state, "audio engine is not available");
     const char* path = luaL_checkstring(state, 1);
     const float x = static_cast<float>(luaL_checknumber(state, 2));
     const float y = static_cast<float>(luaL_checknumber(state, 3));
     const float z = static_cast<float>(luaL_checknumber(state, 4));
     const bool loop = lua_gettop(state) >= 5 ? lua_toboolean(state, 5) != 0 : false;
+    if (!host || !host->audio || !host->audio->is_initialized()) {
+        Logger::instance().write(Severity::Warning, "lua", "play_sound_at skipped: audio engine is not available");
+        return 0;
+    }
     const auto result = host->audio->play_project_sound_at(path, x, y, z, loop);
     if (!result) return luaL_error(state, "%s", result.error().message.c_str());
     return 0;

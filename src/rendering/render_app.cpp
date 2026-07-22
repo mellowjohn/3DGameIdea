@@ -3802,6 +3802,22 @@ bool draw_rigidbody_property_fields(RigidbodyComponentData& rigidbody) {
     return commit;
 }
 
+bool draw_audio_source_property_fields(EditorState& state, AudioSourceComponentData& audio) {
+    bool commit = false;
+    auto clips = collect_asset_paths(state, ".wav");
+    if (!audio.clip.empty() && std::find(clips.begin(), clips.end(), audio.clip) == clips.end())
+        clips.insert(clips.begin(), audio.clip);
+    if (draw_asset_path_combo("Clip", audio.clip, clips)) commit = true;
+    if (ImGui::SliderFloat("Volume", &audio.volume, 0.0f, 1.0f, "%.2f")) commit = true;
+    if (ImGui::Checkbox("Loop", &audio.loop)) commit = true;
+    if (ImGui::Checkbox("Spatial", &audio.spatial)) commit = true;
+    if (ImGui::Checkbox("Play On Start", &audio.play_on_start)) commit = true;
+    if (ImGui::InputFloat("Min Distance", &audio.min_distance, 0.1f, 1.0f, "%.2f")) commit = true;
+    if (ImGui::InputFloat("Max Distance", &audio.max_distance, 0.5f, 5.0f, "%.2f")) commit = true;
+    ImGui::TextDisabled("Runtime playOnStart / Lua trigger: TICKET-0211");
+    return commit;
+}
+
 void draw_character_asset_inspector(EditorState& state, bool placement_entity = false) {
     const std::string asset_path = state.inspector_asset_path
                                        ? normalize_asset_path(*state.inspector_asset_path)
@@ -7620,6 +7636,9 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                             commit = draw_animator_property_fields(state, draft.animator);
                         } else if (draft.type == AuthoredComponentType::Rigidbody) {
                             commit = draw_rigidbody_property_fields(draft.rigidbody);
+                        } else if (draft.type == AuthoredComponentType::AudioSource) {
+                            state.inspector_component_edit_id = entry.id;
+                            commit = draw_audio_source_property_fields(state, draft.audio_source);
                         } else {
                             if (!state.inspector_component_edit_id ||
                                 *state.inspector_component_edit_id != entry.id) {
@@ -7656,72 +7675,65 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             } else {
                 ImGui::TextDisabled("No components");
             }
-            if (ImGui::Button("Add Collider")) {
-                AuthoredComponentEntry entry;
-                entry.type = AuthoredComponentType::Collider;
-                entry.id = "collider-" + std::to_string(state.scene.authored_components(*state.selected)
-                        ? state.scene.authored_components(*state.selected)->entries.size()
-                        : 0);
-                entry.collider.id = entry.id;
-                entry.collider.shape = PrefabCollisionShape::Box;
-                entry.collider.half_extent = {0.5f, 0.5f, 0.5f};
-                const auto result = state.history.execute(state.scene,
-                    std::make_unique<AddEntityComponentCommand>(*state.selected, std::move(entry)));
-                state.status = result ? "Collider added" : result.error().message;
-                if (!result) Logger::instance().write(result.error());
-                else mark_scene_dirty(state);
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Add Script Binding")) {
-                AuthoredComponentEntry entry;
-                entry.type = AuthoredComponentType::ScriptBinding;
-                entry.id = "script-" + std::to_string(state.scene.authored_components(*state.selected)
-                        ? state.scene.authored_components(*state.selected)->entries.size()
-                        : 0);
-                entry.script.kind = "handler";
-                entry.script.binding_id = "new_handler";
-                const auto result = state.history.execute(state.scene,
-                    std::make_unique<AddEntityComponentCommand>(*state.selected, std::move(entry)));
-                state.status = result ? "Script binding added" : result.error().message;
-                if (!result) Logger::instance().write(result.error());
-                else mark_scene_dirty(state);
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Add Animator")) {
-                AuthoredComponentEntry entry;
-                entry.type = AuthoredComponentType::Animator;
-                entry.id = "animator-" + std::to_string(state.scene.authored_components(*state.selected)
-                        ? state.scene.authored_components(*state.selected)->entries.size()
-                        : 0);
-                const auto controllers = collect_asset_paths(state, ".animator.json");
-                entry.animator.controller = controllers.empty() ? std::string{} : controllers.front();
-                // Prefer idle as the instance override when that state exists on the controller.
-                const auto states = collect_animator_state_names(state, entry.animator.controller);
-                const bool has_idle =
-                    std::find(states.begin(), states.end(), "idle") != states.end() ||
-                    std::find(states.begin(), states.end(), "Idle") != states.end();
-                if (has_idle)
-                    entry.animator.default_state =
-                        std::find(states.begin(), states.end(), "idle") != states.end() ? "idle" : "Idle";
-                const auto result = state.history.execute(state.scene,
-                    std::make_unique<AddEntityComponentCommand>(*state.selected, std::move(entry)));
-                state.status = result ? "Animator added" : result.error().message;
-                if (!result) Logger::instance().write(result.error());
-                else mark_scene_dirty(state);
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Add Rigidbody")) {
-                AuthoredComponentEntry entry;
-                entry.type = AuthoredComponentType::Rigidbody;
-                entry.id = "rigidbody-" + std::to_string(state.scene.authored_components(*state.selected)
-                        ? state.scene.authored_components(*state.selected)->entries.size()
-                        : 0);
-                entry.rigidbody = RigidbodyComponentData{};
-                const auto result = state.history.execute(state.scene,
-                    std::make_unique<AddEntityComponentCommand>(*state.selected, std::move(entry)));
-                state.status = result ? "Rigidbody added" : result.error().message;
-                if (!result) Logger::instance().write(result.error());
-                else mark_scene_dirty(state);
+            {
+                static int add_component_type = 0;
+                const char* add_labels[] = {"Collider", "Script Binding", "Animator", "Rigidbody", "Audio Source"};
+                ImGui::SetNextItemWidth(160.0f);
+                ImGui::Combo("##AddComponentType", &add_component_type, add_labels,
+                    static_cast<int>(IM_ARRAYSIZE(add_labels)));
+                ImGui::SameLine();
+                if (ImGui::Button("Add Component")) {
+                    const auto next_index = state.scene.authored_components(*state.selected)
+                                               ? state.scene.authored_components(*state.selected)->entries.size()
+                                               : 0;
+                    AuthoredComponentEntry entry;
+                    const char* status_ok = "Component added";
+                    if (add_component_type == 0) {
+                        entry.type = AuthoredComponentType::Collider;
+                        entry.id = "collider-" + std::to_string(next_index);
+                        entry.collider.id = entry.id;
+                        entry.collider.shape = PrefabCollisionShape::Box;
+                        entry.collider.half_extent = {0.5f, 0.5f, 0.5f};
+                        status_ok = "Collider added";
+                    } else if (add_component_type == 1) {
+                        entry.type = AuthoredComponentType::ScriptBinding;
+                        entry.id = "script-" + std::to_string(next_index);
+                        entry.script.kind = "handler";
+                        entry.script.binding_id = "new_handler";
+                        status_ok = "Script binding added";
+                    } else if (add_component_type == 2) {
+                        entry.type = AuthoredComponentType::Animator;
+                        entry.id = "animator-" + std::to_string(next_index);
+                        const auto controllers = collect_asset_paths(state, ".animator.json");
+                        entry.animator.controller = controllers.empty() ? std::string{} : controllers.front();
+                        const auto states = collect_animator_state_names(state, entry.animator.controller);
+                        const bool has_idle =
+                            std::find(states.begin(), states.end(), "idle") != states.end() ||
+                            std::find(states.begin(), states.end(), "Idle") != states.end();
+                        if (has_idle)
+                            entry.animator.default_state =
+                                std::find(states.begin(), states.end(), "idle") != states.end() ? "idle" : "Idle";
+                        status_ok = "Animator added";
+                    } else if (add_component_type == 3) {
+                        entry.type = AuthoredComponentType::Rigidbody;
+                        entry.id = "rigidbody-" + std::to_string(next_index);
+                        entry.rigidbody = RigidbodyComponentData{};
+                        status_ok = "Rigidbody added";
+                    } else {
+                        entry.type = AuthoredComponentType::AudioSource;
+                        entry.id = "audio-" + std::to_string(next_index);
+                        entry.audio_source = AudioSourceComponentData{};
+                        const auto clips = collect_asset_paths(state, ".wav");
+                        entry.audio_source.clip =
+                            clips.empty() ? std::string{"assets/audio/campfire_crackle.wav"} : clips.front();
+                        status_ok = "Audio Source added";
+                    }
+                    const auto result = state.history.execute(state.scene,
+                        std::make_unique<AddEntityComponentCommand>(*state.selected, std::move(entry)));
+                    state.status = result ? status_ok : result.error().message;
+                    if (!result) Logger::instance().write(result.error());
+                    else mark_scene_dirty(state);
+                }
             }
             if (ImGui::Button("Snap To Terrain") && collision) {
                 const auto current = state.scene.transform(*state.selected).value();
@@ -7816,8 +7828,9 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             state.prefab_bounds[normalized] = prefab.bounds(state.mesh_bounds, lookup_material);
             ImGui::Separator();
             ImGui::Text("Collision / Components");
-            ImGui::Text("Colliders: %zu | Scripts: %zu | Animators: %zu | Rigidbodies: %zu", prefab.collision.size(),
-                prefab.script_bindings.size(), prefab.animators.size(), prefab.rigidbodies.size());
+            ImGui::Text("Colliders: %zu | Scripts: %zu | Animators: %zu | Rigidbodies: %zu | Audio: %zu",
+                prefab.collision.size(), prefab.script_bindings.size(), prefab.animators.size(),
+                prefab.rigidbodies.size(), prefab.audio_sources.size());
             for (std::size_t index = 0; index < prefab.collision.size(); ++index) {
                 auto& volume = prefab.collision[index];
                 ImGui::PushID(static_cast<int>(index));
@@ -7910,26 +7923,72 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 }
                 ImGui::PopID();
             }
-            if (ImGui::Button("Add Prefab Collider")) {
-                PrefabCollisionVolume volume;
-                volume.id = "collision-" + std::to_string(prefab.collision.size());
-                volume.shape = PrefabCollisionShape::Box;
-                volume.half_extent = {0.5f, 0.5f, 0.5f};
-                prefab.collision.push_back(std::move(volume));
+            for (std::size_t index = 0; index < prefab.audio_sources.size(); ++index) {
+                auto& audio = prefab.audio_sources[index];
+                ImGui::PushID(static_cast<int>(3000 + index));
+                const std::string node_label = audio.id + " [" + audio.clip + "]";
+                const bool open = ImGui::TreeNodeEx(node_label.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                if (open) {
+                    AudioSourceComponentData draft;
+                    draft.clip = audio.clip;
+                    draft.volume = audio.volume;
+                    draft.loop = audio.loop;
+                    draft.spatial = audio.spatial;
+                    draft.play_on_start = audio.play_on_start;
+                    draft.min_distance = audio.min_distance;
+                    draft.max_distance = audio.max_distance;
+                    if (draw_audio_source_property_fields(state, draft)) {
+                        audio.clip = draft.clip;
+                        audio.volume = draft.volume;
+                        audio.loop = draft.loop;
+                        audio.spatial = draft.spatial;
+                        audio.play_on_start = draft.play_on_start;
+                        audio.min_distance = draft.min_distance;
+                        audio.max_distance = draft.max_distance;
+                    }
+                    if (ImGui::SmallButton("Remove##audio")) {
+                        prefab.audio_sources.erase(prefab.audio_sources.begin() + static_cast<std::ptrdiff_t>(index));
+                        ImGui::TreePop();
+                        ImGui::PopID();
+                        break;
+                    }
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
             }
-            ImGui::SameLine();
-            if (ImGui::Button("Add Prefab Script")) {
-                PrefabScriptBinding binding;
-                binding.id = "script-" + std::to_string(prefab.script_bindings.size());
-                binding.kind = "handler";
-                binding.binding_id = "new_handler";
-                prefab.script_bindings.push_back(std::move(binding));
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Add Prefab Rigidbody")) {
-                PrefabRigidbody rigidbody;
-                rigidbody.id = "rigidbody-" + std::to_string(prefab.rigidbodies.size());
-                prefab.rigidbodies.push_back(std::move(rigidbody));
+            {
+                static int add_prefab_component_type = 0;
+                const char* add_labels[] = {"Collider", "Script Binding", "Rigidbody", "Audio Source"};
+                ImGui::SetNextItemWidth(160.0f);
+                ImGui::Combo("##AddPrefabComponentType", &add_prefab_component_type, add_labels,
+                    static_cast<int>(IM_ARRAYSIZE(add_labels)));
+                ImGui::SameLine();
+                if (ImGui::Button("Add Component##prefab")) {
+                    if (add_prefab_component_type == 0) {
+                        PrefabCollisionVolume volume;
+                        volume.id = "collision-" + std::to_string(prefab.collision.size());
+                        volume.shape = PrefabCollisionShape::Box;
+                        volume.half_extent = {0.5f, 0.5f, 0.5f};
+                        prefab.collision.push_back(std::move(volume));
+                    } else if (add_prefab_component_type == 1) {
+                        PrefabScriptBinding binding;
+                        binding.id = "script-" + std::to_string(prefab.script_bindings.size());
+                        binding.kind = "handler";
+                        binding.binding_id = "new_handler";
+                        prefab.script_bindings.push_back(std::move(binding));
+                    } else if (add_prefab_component_type == 2) {
+                        PrefabRigidbody rigidbody;
+                        rigidbody.id = "rigidbody-" + std::to_string(prefab.rigidbodies.size());
+                        prefab.rigidbodies.push_back(std::move(rigidbody));
+                    } else {
+                        PrefabAudioSource audio;
+                        audio.id = "audio-" + std::to_string(prefab.audio_sources.size());
+                        const auto clips = collect_asset_paths(state, ".wav");
+                        audio.clip =
+                            clips.empty() ? std::string{"assets/audio/campfire_crackle.wav"} : clips.front();
+                        prefab.audio_sources.push_back(std::move(audio));
+                    }
+                }
             }
             if (ImGui::Button("Save Prefab")) {
                 const auto saved = prefab.save(state.project_root / normalized);
@@ -8094,6 +8153,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             if (file_extension == ".gltf" || file_extension == ".glb") {
                 auto imported = import_project_mesh(options.project_root / relative);
                 if (!imported) {
+                    // Clip-only glTFs are animation sources, not render meshes.
+                    if (imported.error().code == "MESH-ANIMATION-ONLY") continue;
                     SDL_DestroyWindow(window);
                     SDL_Quit();
                     return Result<RenderStats>::failure(imported.error());

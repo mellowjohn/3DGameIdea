@@ -40,6 +40,8 @@ Headless `audio` suite covers init, WAV load/play, spatial listener calls, missi
 
 Event graphs, occlusion/reverb, music crossfade, editor audio browser — deferred to later milestones.
 
+Authored **AudioSource** component schema + Inspector Add Component: TICKET-0210. Runtime playOnStart / entity Lua trigger: TICKET-0211.
+
 ## References
 
 - [`context/resources/index.md`](../resources/index.md) — miniaudio license

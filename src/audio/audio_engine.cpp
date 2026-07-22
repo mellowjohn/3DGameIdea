@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <list>
 #include <vector>
 
 namespace engine {
@@ -32,7 +33,8 @@ struct AudioEngine::Impl {
     ma_engine engine{};
     bool initialized = false;
     float master_volume = 1.0f;
-    std::vector<ma_sound> active_sounds;
+    // list: ma_sound is not relocatable; vector growth would invalidate engine pointers.
+    std::list<ma_sound> active_sounds;
 };
 
 AudioEngine::AudioEngine() : impl_(std::make_unique<Impl>()) {}
@@ -42,7 +44,12 @@ AudioEngine::~AudioEngine() { shutdown(); }
 Result<void> AudioEngine::initialize(const AudioEngineConfig& config) {
     if (impl_->initialized) return Result<void>::success();
     ma_engine_config engine_config = ma_engine_config_init();
-    if (config.no_device) engine_config.noDevice = MA_TRUE;
+    if (config.no_device) {
+        // Headless/offline engines must declare mix format; the device normally supplies it.
+        engine_config.noDevice = MA_TRUE;
+        engine_config.channels = 2;
+        engine_config.sampleRate = 48000;
+    }
     const ma_result result = ma_engine_init(&engine_config, &impl_->engine);
     if (result != MA_SUCCESS) {
         return Result<void>::failure(
@@ -87,13 +94,14 @@ void AudioEngine::update_listener(const std::array<float, 3>& position, const st
 
 void AudioEngine::update(float /*dt_seconds*/) {
     if (!impl_ || !impl_->initialized) return;
-    impl_->active_sounds.erase(std::remove_if(impl_->active_sounds.begin(), impl_->active_sounds.end(),
-                                   [](ma_sound& sound) {
-                                       if (ma_sound_is_playing(&sound)) return false;
-                                       ma_sound_uninit(&sound);
-                                       return true;
-                                   }),
-        impl_->active_sounds.end());
+    for (auto it = impl_->active_sounds.begin(); it != impl_->active_sounds.end();) {
+        if (ma_sound_is_playing(&*it)) {
+            ++it;
+            continue;
+        }
+        ma_sound_uninit(&*it);
+        it = impl_->active_sounds.erase(it);
+    }
 }
 
 Result<std::filesystem::path> AudioEngine::resolve_project_path(const std::string& project_relative_path) const {
@@ -133,8 +141,9 @@ Result<void> AudioEngine::play_absolute(const std::filesystem::path& absolute_pa
             "Confirm the asset exists under the project and the path is correct."));
     }
 
-    ma_uint32 flags = MA_SOUND_FLAG_NO_SPATIALIZATION;
-    if (position.has_value()) flags = MA_SOUND_FLAG_SPATIAL;
+    // Spatialization is enabled by default; only disable it for non-positional playback.
+    ma_uint32 flags = 0;
+    if (!position.has_value()) flags = MA_SOUND_FLAG_NO_SPATIALIZATION;
     if (loop) flags |= MA_SOUND_FLAG_LOOPING;
 
     impl_->active_sounds.emplace_back();

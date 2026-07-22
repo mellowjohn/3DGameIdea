@@ -3124,6 +3124,85 @@
       }
     },
     {
+      "id": "90283478-d198-4c91-8168-7fb3cc833bb8",
+      "name": "campfire",
+      "transform": {
+        "position": [
+          -1052.8304443359375,
+          9.3251314163208,
+          303.9387512207031
+        ],
+        "rotation": [
+          0.0,
+          -0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/campfire.prefab.json",
+        "cell": [
+          -9,
+          2
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "interaction": "use_campfire",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "clip": "assets/audio/campfire_crackle.wav",
+            "loop": true,
+            "maxDistance": 40.0,
+            "minDistance": 0.5,
+            "playOnStart": true,
+            "spatial": true,
+            "volume": 1.0
+          },
+          "id": "audio-1",
+          "overridden": true,
+          "source": "instance",
+          "type": "audioSource"
+        }
+      ]
+    },
+    {
       "id": "911ede5a-c11e-4dd3-8b92-0ee9f08b4997",
       "name": "MCP Test Tree",
       "transform": {

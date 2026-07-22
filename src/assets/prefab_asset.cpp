@@ -243,6 +243,41 @@ Result<PrefabRigidbody> read_rigidbody_component(const nlohmann::json& value) {
     return Result<PrefabRigidbody>::success(std::move(rigidbody));
 }
 
+Result<PrefabAudioSource> read_audio_source_component(const nlohmann::json& value) {
+    if (!value.is_object())
+        return Result<PrefabAudioSource>::failure(
+            prefab_error("PREFAB-COMPONENT-INVALID", "Component entry must be an object"));
+    PrefabAudioSource audio;
+    audio.id = value.value("id", std::string{});
+    const auto type = normalize_primitive_name(value.value("type", std::string{}));
+    if (type != "audiosource" && type != "audio")
+        return Result<PrefabAudioSource>::failure(
+            prefab_error("PREFAB-COMPONENT-TYPE", "Unsupported prefab component type (expected audioSource)"));
+    const auto& data = value.contains("data") ? value.at("data") : value;
+    audio.clip = data.value("clip", std::string{});
+    audio.volume = data.value("volume", 1.0f);
+    audio.loop = data.value("loop", false);
+    audio.spatial = data.value("spatial", true);
+    audio.play_on_start = data.value("playOnStart", data.value("play_on_start", false));
+    audio.min_distance = data.value("minDistance", data.value("min_distance", 0.5f));
+    audio.max_distance = data.value("maxDistance", data.value("max_distance", 40.0f));
+    if (audio.clip.empty() || std::filesystem::path(audio.clip).is_absolute())
+        return Result<PrefabAudioSource>::failure(
+            prefab_error("PREFAB-AUDIO-CLIP", "audioSource clip must be a project-relative path"));
+    const auto clip_lower = normalize_primitive_name(audio.clip);
+    if (clip_lower.size() < 4 || clip_lower.compare(clip_lower.size() - 4, 4, ".wav") != 0)
+        return Result<PrefabAudioSource>::failure(
+            prefab_error("PREFAB-AUDIO-CLIP", "audioSource clip must end with .wav"));
+    if (!(audio.volume >= 0.0f) || !(audio.volume <= 1.0f) || !std::isfinite(audio.volume))
+        return Result<PrefabAudioSource>::failure(
+            prefab_error("PREFAB-AUDIO-VOLUME", "audioSource volume must be finite in [0,1]"));
+    if (!(audio.min_distance > 0.0f) || !std::isfinite(audio.min_distance) || !(audio.max_distance > 0.0f) ||
+        !std::isfinite(audio.max_distance) || audio.max_distance < audio.min_distance)
+        return Result<PrefabAudioSource>::failure(prefab_error(
+            "PREFAB-AUDIO-DISTANCE", "audioSource distances must be positive with maxDistance >= minDistance"));
+    return Result<PrefabAudioSource>::success(std::move(audio));
+}
+
 void expand_bounds_component(MeshBounds& bounds, float x, float y, float z) {
     if (x < bounds.min_x) bounds.min_x = x;
     if (y < bounds.min_y) bounds.min_y = y;
@@ -456,6 +491,14 @@ Result<PrefabAsset> PrefabAsset::load(const std::filesystem::path& path) {
                 asset.rigidbodies.push_back(std::move(component));
                 continue;
             }
+            if (type == "audiosource" || type == "audio") {
+                const auto audio = read_audio_source_component(entry);
+                if (!audio) return Result<PrefabAsset>::failure(audio.error());
+                PrefabAudioSource component = audio.value();
+                if (component.id.empty()) component.id = "audio-" + std::to_string(asset.audio_sources.size());
+                asset.audio_sources.push_back(std::move(component));
+                continue;
+            }
             const auto binding = read_script_binding_component(entry);
             if (!binding) return Result<PrefabAsset>::failure(binding.error());
             PrefabScriptBinding script = binding.value();
@@ -465,7 +508,7 @@ Result<PrefabAsset> PrefabAsset::load(const std::filesystem::path& path) {
     }
     if (asset.schema_version >= 2) {
         if (asset.parts.empty() && asset.collision.empty() && asset.script_bindings.empty() && asset.animators.empty() &&
-            asset.rigidbodies.empty())
+            asset.rigidbodies.empty() && asset.audio_sources.empty())
             return Result<PrefabAsset>::failure(
                 prefab_error("PREFAB-PARTS-MISSING", "schemaVersion 2 prefabs require mesh parts, collision, or components"));
     } else if (asset.mesh.empty() && asset.parts.empty()) {
@@ -523,7 +566,7 @@ Result<void> PrefabAsset::save(const std::filesystem::path& path) const {
         }
         document["collision"] = std::move(collision_array);
     }
-    if (!script_bindings.empty() || !animators.empty() || !rigidbodies.empty()) {
+    if (!script_bindings.empty() || !animators.empty() || !rigidbodies.empty() || !audio_sources.empty()) {
         nlohmann::json components = nlohmann::json::array();
         for (const auto& binding : script_bindings) {
             components.push_back({{"id", binding.id}, {"type", "scriptBinding"},
@@ -539,6 +582,12 @@ Result<void> PrefabAsset::save(const std::filesystem::path& path) const {
                 {"data", {{"motionType", rigidbody.motion_type}, {"mass", rigidbody.mass},
                     {"linearDamping", rigidbody.linear_damping}, {"angularDamping", rigidbody.angular_damping},
                     {"useGravity", rigidbody.use_gravity}, {"freezeRotation", rigidbody.freeze_rotation}}}});
+        }
+        for (const auto& audio : audio_sources) {
+            components.push_back({{"id", audio.id}, {"type", "audioSource"},
+                {"data", {{"clip", audio.clip}, {"volume", audio.volume}, {"loop", audio.loop},
+                    {"spatial", audio.spatial}, {"playOnStart", audio.play_on_start},
+                    {"minDistance", audio.min_distance}, {"maxDistance", audio.max_distance}}}});
         }
         document["components"] = std::move(components);
     }

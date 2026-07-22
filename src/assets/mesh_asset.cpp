@@ -380,6 +380,15 @@ Result<ImportedMesh> import_gltf_mesh(const std::filesystem::path& path) {
         return Result<ImportedMesh>::failure(std::move(error));
     }
     auto& asset = parsed.get();
+    if (asset.meshes.empty()) {
+        if (!asset.animations.empty()) {
+            return Result<ImportedMesh>::failure(mesh_error("MESH-ANIMATION-ONLY",
+                "glTF contains animation clips but no mesh primitives",
+                "Use this file as an animation clipSource, not as a render mesh."));
+        }
+        return Result<ImportedMesh>::failure(
+            mesh_error("MESH-TOPOLOGY-INVALID", "Expanded mesh must contain a non-empty triangle list"));
+    }
     ImportedMesh output;
     for (const auto& skin : asset.skins) {
         auto imported_skin = import_skin(asset, skin);

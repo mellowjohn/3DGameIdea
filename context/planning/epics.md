@@ -208,6 +208,8 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0105 | Animation events → gameplay/collision hooks | needs-approval | P2 | DEC-0031 controller timelineEvents → Lua `on_animation_event`; [`tickets/TICKET-0105.md`](tickets/TICKET-0105.md) |
 | TICKET-0106 | IK hooks + retargeting metadata | needs-approval | P2 | `*.rig.json` / `RigAsset`; DEC-0041; [`tickets/TICKET-0106.md`](tickets/TICKET-0106.md); [`../formats/rig-assets.md`](../formats/rig-assets.md) |
 | TICKET-0107 | miniaudio integration + spatial/event playback | needs-approval | P1 | On PR #8; `audio` suite + Lua + sample crackle; [`tickets/TICKET-0107.md`](tickets/TICKET-0107.md) |
+| TICKET-0210 | Authored AudioSource schema + Add Component dropdown | needs-approval | P1 | Schema/inspector/prefab; Add Component combo; runtime deferred to 0211; [`tickets/TICKET-0210.md`](tickets/TICKET-0210.md) |
+| TICKET-0211 | AudioSource runtime playOnStart + Lua entity trigger | ready | P1 | playOnStart + `play_entity_audio`; blocked by 0210; [`tickets/TICKET-0211.md`](tickets/TICKET-0211.md) |
 | TICKET-0108 | Full triangle mesh viewport picking | proposed | P3 | Editor polish; needs desktop QA — hold until approval backlog cleared |
 | TICKET-0109 | Recast/detour navmesh integration (beyond grid) | deferred | P3 | Not blocking M5 exit |
 | TICKET-0110 | M5 exit: animation tests + CLI/editor previews | needs-approval | P0 | Exit gate; `m5-exit` + `animation-preview` CLI; sample example.animator.json; [`tickets/TICKET-0110.md`](tickets/TICKET-0110.md) |

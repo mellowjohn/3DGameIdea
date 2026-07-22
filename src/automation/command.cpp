@@ -297,7 +297,7 @@ CommandResponse execute_command(const CommandRequest& request) {
             auto material = MaterialAsset::load(request.project / path);
             if (!material) asset_errors.push_back(material.error());
         }
-        const auto extension=std::filesystem::path(path).extension().string();if(extension==".gltf"||extension==".glb"){auto mesh=import_project_mesh(request.project/path);if(!mesh)asset_errors.push_back(mesh.error());}
+        const auto extension=std::filesystem::path(path).extension().string();if(extension==".gltf"||extension==".glb"){auto mesh=import_project_mesh(request.project/path);if(!mesh&&mesh.error().code!="MESH-ANIMATION-ONLY")asset_errors.push_back(mesh.error());}
     }
     const auto terrain_edit_valid = TerrainEditStore::validate_file(default_terrain_edits_path(request.project));
     if (!terrain_edit_valid) asset_errors.push_back(terrain_edit_valid.error());

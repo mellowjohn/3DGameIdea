@@ -10,7 +10,7 @@
 
 namespace engine {
 
-enum class AuthoredComponentType : std::uint8_t { Collider, ScriptBinding, Animator, Rigidbody };
+enum class AuthoredComponentType : std::uint8_t { Collider, ScriptBinding, Animator, Rigidbody, AudioSource };
 
 struct ScriptBindingComponentData {
     std::string kind; // interaction | combatHit | combatHurt | handler
@@ -31,6 +31,17 @@ struct RigidbodyComponentData {
     bool freeze_rotation = false;
 };
 
+/// Authored AudioSource (TICKET-0210). Runtime playOnStart / Lua trigger is TICKET-0211.
+struct AudioSourceComponentData {
+    std::string clip; // project-relative assets/.../*.wav
+    float volume = 1.0f;
+    bool loop = false;
+    bool spatial = true;
+    bool play_on_start = false;
+    float min_distance = 0.5f;
+    float max_distance = 40.0f;
+};
+
 struct AuthoredComponentEntry {
     std::string id;
     AuthoredComponentType type = AuthoredComponentType::Collider;
@@ -40,6 +51,7 @@ struct AuthoredComponentEntry {
     ScriptBindingComponentData script{};
     AnimatorComponentData animator{};
     RigidbodyComponentData rigidbody{};
+    AudioSourceComponentData audio_source{};
 };
 
 struct AuthoredComponentsComponent {

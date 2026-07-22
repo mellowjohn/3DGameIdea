@@ -161,7 +161,7 @@ Prefabs may declare authored collision parts independent of render meshes:
 - `radius`: sphere/capsule radius in meters (required for `sphere` / `capsule`)
 - `halfHeight`: capsule cylinder half-height in meters (required for `capsule`; total height ≈ `2*(halfHeight+radius)`)
 
-### Optional `components` array (script bindings / animator / rigidbody)
+### Optional `components` array (script bindings / animator / rigidbody / audioSource)
 
 Non-collider components on the prefab asset:
 
@@ -188,11 +188,24 @@ Non-collider components on the prefab asset:
       "useGravity": true,
       "freezeRotation": false
     }
+  },
+  {
+    "id": "audio-0",
+    "type": "audioSource",
+    "data": {
+      "clip": "assets/audio/campfire_crackle.wav",
+      "volume": 1.0,
+      "loop": false,
+      "spatial": true,
+      "playOnStart": false,
+      "minDistance": 0.5,
+      "maxDistance": 40.0
+    }
   }
 ]
 ```
 
-`kind` is `interaction`, `combatHit`, `combatHurt`, or `handler`. Animator `controller` is a project-relative `*.animator.json` ([`animator-controller-assets.md`](animator-controller-assets.md)). **Rigidbody** ([DEC-0038](../decisions/index.md#dec-0038-authored-rigidbody--dynamic-bodies-for-player-and-entities)): `motionType` is `dynamic` or `kinematic`; `mass` must be positive; damping ≥ 0. Runtime spawn of Jolt bodies is TICKET-0197. Collider entries may also appear under `components` with `type: "collider"` and are merged into `collision[]` on load. Existing `collision[]`-only prefabs remain valid ([DEC-0017](../decisions/index.md#dec-0017-prefab-and-scene-component-authoring-with-unity-like-inheritance)).
+`kind` is `interaction`, `combatHit`, `combatHurt`, or `handler`. Animator `controller` is a project-relative `*.animator.json` ([`animator-controller-assets.md`](animator-controller-assets.md)). **Rigidbody** ([DEC-0038](../decisions/index.md#dec-0038-authored-rigidbody--dynamic-bodies-for-player-and-entities)): `motionType` is `dynamic` or `kinematic`; `mass` must be positive; damping ≥ 0. Runtime spawn of Jolt bodies is TICKET-0197. **AudioSource** (TICKET-0210): `clip` is project-relative `.wav`; `volume` in [0,1]; `maxDistance` ≥ `minDistance` > 0. Runtime playOnStart / Lua entity trigger is TICKET-0211. Collider entries may also appear under `components` with `type: "collider"` and are merged into `collision[]` on load. Existing `collision[]`-only prefabs remain valid ([DEC-0017](../decisions/index.md#dec-0017-prefab-and-scene-component-authoring-with-unity-like-inheritance)).
 
 On placement, `spawn_prefab_collision()` / `PlacementCollisionTracker` use entity authored components when present (effective volume = local override or linked prefab volume by id); otherwise they fall back to prefab `collision[]`.
 

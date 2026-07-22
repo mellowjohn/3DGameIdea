@@ -2636,6 +2636,24 @@ int main(int argc,char**argv){
         bad_motion.rigidbody.motion_type="static";
         r.check(!engine::validate_authored_component_entry(bad_motion),"rigidbody rejects invalid motionType");
 
+        const auto audio_prefab_path=root/"assets/prefabs/torch_audio.prefab.json";
+        std::ofstream(audio_prefab_path)<<R"({"schemaVersion":2,"entities":[{"name":"Torch","mesh":{"primitive":"cube","color":[0.6,0.4,0.2]}}],"components":[{"id":"audio-0","type":"audioSource","data":{"clip":"assets/audio/campfire_crackle.wav","volume":0.8,"loop":true,"spatial":true,"playOnStart":true,"minDistance":1.0,"maxDistance":25.0}}]})";
+        auto audio_prefab=engine::PrefabAsset::load(audio_prefab_path);
+        r.check(audio_prefab&&audio_prefab.value().audio_sources.size()==1&&audio_prefab.value().audio_sources[0].volume==0.8f,"prefab audioSource component parsed");
+        auto audio_seeded=engine::seed_authored_components_from_prefab(audio_prefab.value());
+        r.check(audio_seeded.entries.size()==1&&audio_seeded.entries[0].type==engine::AuthoredComponentType::AudioSource,"authored audioSource seeded from prefab");
+        auto audio_round=engine::authored_component_entry_from_json(engine::authored_component_entry_to_json(audio_seeded.entries[0]));
+        r.check(audio_round&&audio_round.value().audio_source.clip=="assets/audio/campfire_crackle.wav"&&audio_round.value().audio_source.play_on_start,"audioSource component JSON round trip");
+        engine::AuthoredComponentEntry bad_clip=audio_seeded.entries[0];
+        bad_clip.audio_source.clip="C:/absolute/tone.wav";
+        r.check(!engine::validate_authored_component_entry(bad_clip),"audioSource rejects absolute clip path");
+        engine::AuthoredComponentEntry bad_vol=audio_seeded.entries[0];
+        bad_vol.audio_source.volume=1.5f;
+        r.check(!engine::validate_authored_component_entry(bad_vol),"audioSource rejects volume out of range");
+        engine::AuthoredComponentEntry bad_dist=audio_seeded.entries[0];
+        bad_dist.audio_source.min_distance=10.0f;bad_dist.audio_source.max_distance=2.0f;
+        r.check(!engine::validate_authored_component_entry(bad_dist),"audioSource rejects maxDistance < minDistance");
+
         engine::LuaRuntime lua; lua.set_animator_runtime(&animator);
         const auto script=root/"drive.lua";
         std::ofstream(script)<<R"(
