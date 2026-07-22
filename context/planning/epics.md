@@ -197,7 +197,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 - Status: active
 - Goal: Complete M5 remaining work — skeletal animation, root motion, events, IK/retargeting, audio, and related editor picking/nav polish.
 - Roadmap home: **M5**.
-- Priority guidance: Core animation path done (0101–0104). **Next: TICKET-0110 (P0, ready)** M5 exit gate, then **TICKET-0107 (P1, ready)** audio. 0105/0106 in needs-approval (desktop QA). 0109 deferred P3.
+- Priority guidance: Core animation path done (0101–0104). **TICKET-0110 + 0107** on PR #8 → `needs-approval` (owner desktop QA). **Next agent work:** TICKET-0135 (`ready`) after 0110 `done`. 0105/0106 in needs-approval (desktop QA). 0109 deferred P3.
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
@@ -207,7 +207,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0104 | Root motion extraction and character sync | done | P2 | Owner approved 2026-07-16; DEC-0030; [`tickets/TICKET-0104.md`](tickets/TICKET-0104.md) |
 | TICKET-0105 | Animation events → gameplay/collision hooks | needs-approval | P2 | DEC-0031 controller timelineEvents → Lua `on_animation_event`; [`tickets/TICKET-0105.md`](tickets/TICKET-0105.md) |
 | TICKET-0106 | IK hooks + retargeting metadata | needs-approval | P2 | `*.rig.json` / `RigAsset`; DEC-0041; [`tickets/TICKET-0106.md`](tickets/TICKET-0106.md); [`../formats/rig-assets.md`](../formats/rig-assets.md) |
-| TICKET-0107 | miniaudio integration + spatial/event playback | needs-approval | P1 | miniaudio + spatial listener + Lua play + `audio` suite; [`tickets/TICKET-0107.md`](tickets/TICKET-0107.md) |
+| TICKET-0107 | miniaudio integration + spatial/event playback | needs-approval | P1 | On PR #8; `audio` suite + Lua + sample crackle; [`tickets/TICKET-0107.md`](tickets/TICKET-0107.md) |
 | TICKET-0108 | Full triangle mesh viewport picking | proposed | P3 | Editor polish; needs desktop QA — hold until approval backlog cleared |
 | TICKET-0109 | Recast/detour navmesh integration (beyond grid) | deferred | P3 | Not blocking M5 exit |
 | TICKET-0110 | M5 exit: animation tests + CLI/editor previews | needs-approval | P0 | Exit gate; `m5-exit` + `animation-preview` CLI; sample example.animator.json; [`tickets/TICKET-0110.md`](tickets/TICKET-0110.md) |
@@ -217,7 +217,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 - Status: proposed
 - Goal: Finish M10 specialized tools beyond the active editor MVP slice.
 - Roadmap home: **M10**.
-- Priority guidance: **TICKET-0135 (P2, proposed)** animation tools panel after M5 exit. TICKET-0147–0151 + 0182 in needs-approval (desktop QA). Other children P3 until M10 pull-forward.
+- Priority guidance: **TICKET-0135 (P2, ready)** animation tools panel after M5 exit owner approval. TICKET-0147–0151 + 0182 in needs-approval (desktop QA). Other children P3 until M10 pull-forward.
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
@@ -226,7 +226,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0132 | Viewport gizmos for prefab part editing | proposed | P3 | |
 | TICKET-0133 | Play-state save/resume | proposed | P3 | Beyond test-session reset |
 | TICKET-0134 | World partition authoring UI | proposed | P3 | |
-| TICKET-0135 | Animation tools panel (Diagnostics-adjacent) | proposed | P2 | After 0110; owner request 2026-07-21; manage/preview clips+rig; [`tickets/TICKET-0135.md`](tickets/TICKET-0135.md) |
+| TICKET-0135 | Animation tools panel (Diagnostics-adjacent) | ready | P2 | Diagnostics/Animation tabs; browse controllers/clips/rig; headless preview text; [`tickets/TICKET-0135.md`](tickets/TICKET-0135.md) |
 | TICKET-0136 | Dialogue graph editor surface | deferred | P3 | **Superseded** by TICKET-0165–0168+ (extends TICKET-0053) |
 | TICKET-0137 | Particle/VFX editor preview | proposed | P3 | Pairs with TICKET-0125 |
 | TICKET-0138 | Profiler panel integration | proposed | P3 | |
@@ -347,9 +347,9 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 
 ## Suggested work order
 
-1. **Agents — start now:** TICKET-0107 (P1, ready) audio after owner reviews TICKET-0110.
-2. **Agents — after M5 exit approved:** TICKET-0135 animation tools (P2, proposed → ready when 0110 lands).
-3. **Owner — when at desktop (not mobile):** batch-review ~65 `needs-approval` tickets (World Forge, UI, rigidbody, quest/dialogue, 0191/0182). Drag to `done` or request rework.
+1. **Owner — when at desktop:** Review PR #8 — run `m5-exit`, `audio`, `animation-preview`; approve **TICKET-0110** then **TICKET-0107**; merge #8.
+2. **Agents — next implementation (after 0110 `done`):** **TICKET-0135** (P2, **ready**) — Animation tools panel; full acceptance in [`tickets/TICKET-0135.md`](tickets/TICKET-0135.md).
+3. **Owner — batch when at desktop:** ~65 other `needs-approval` tickets (World Forge, UI, rigidbody, quest/dialogue, 0191/0182). Drag to `done` or request rework.
 4. **Hold new work until approval backlog thins:** World Forge UI/cartography, UI canvas, water (0200–0204), rigidbody chain extensions, dialogue phase 2+ (0169–0179).
 5. **P3 until M5 exit + owner sign-off:** M6–M11 runtime, mini-map, combat slice, particles, ship gate.
 6. **Decision gate (no code yet):** TICKET-0041 shader authoring strategy interview before large shader-graph investment.

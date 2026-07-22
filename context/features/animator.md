@@ -31,11 +31,12 @@ engine animation-preview --project samples/open-world-rpg --json
 - **`m5-exit`** runs `animator`, `character`, `interaction`, `combat`, and `scripting` CTest suites.
 - **`animation-preview`** ticks the sample `assets/animators/example.animator.json` controller and prints deterministic JSON (`initialState`, `finalState`, key frames, timeline event count, root-motion sum).
 
-### Editor preview (until TICKET-0135)
+### Editor preview (until TICKET-0135 ships)
 
 - **Scene Inspector:** select an entity with an **Animator** component to inspect/edit its controller path and default state.
 - **Prefab Editor:** same fields on prefab `animator` components.
-- **Play test:** locomotion/combat/interaction still visible via Diagnostics movement console, interaction feed, and combat hit feed; live animator state panel ships in TICKET-0135.
+- **Play test:** locomotion/combat/interaction still visible via Diagnostics movement console, interaction feed, and combat hit feed.
+- **TICKET-0135 (ready):** adds **Animation** tab beside **Diagnostics** for controller/clip/rig browse + headless preview text — see [`../planning/tickets/TICKET-0135.md`](../planning/tickets/TICKET-0135.md).
 
 Sample project ships `assets/animators/example.animator.json` + `assets/models/player_clips.gltf` (referenced from `vertical-slice.world.json`).
 
@@ -57,7 +58,7 @@ Controllers may author `timelineEvents[]` (state + time + name + optional layer/
 - Auto combat-volume enable from events; play-session animator wiring polish.
 - Lua-authored state machines (rejected unless a new decision supersedes DEC-0022).
 - Production character art — fixture glTF is enough for engineering.
-- Editor Animation manage/preview panel (TICKET-0135).
+- Editor Animation manage/preview panel — **TICKET-0135** (`ready`; implement after 0110 owner approval).
 
 ## Related
 
