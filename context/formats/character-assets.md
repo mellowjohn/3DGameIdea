@@ -5,6 +5,7 @@ Character assets use the `.character.json` suffix and schema version 1. They def
 ## Fields
 
 - `visualPrefab`: project-relative compositional prefab used for the visible player body during playtests.
+- `rig` (optional): project-relative `*.rig.json` with IK hooks + retarget bone roles ([`rig-assets.md`](rig-assets.md), TICKET-0106).
 - `capsuleRadius`, `capsuleHalfHeight`: Jolt capsule controller dimensions in meters.
 - `maxSlopeRatio`, `stepHeight`, `maxSpeed`, `gravity`, `jumpVelocity`: movement tuning passed to `CharacterController`.
 - `maxSpeed`: maximum horizontal travel speed in meters per second. Input with magnitude `<= 1` is treated as a direction (optionally scaled for analog sticks). Magnitudes above `1` (for example keyboard diagonals before normalization) are normalized to this speed.

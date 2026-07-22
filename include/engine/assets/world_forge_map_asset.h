@@ -38,6 +38,15 @@ struct WorldForgeWorldAnchor {
     float z = 0.0f;
 };
 
+/// Fixed Cartography backdrop AABB in world meters (optional). When set, the official map
+/// plate uses this rect instead of fitting around marker content.
+struct WorldForgeCartographyPlate {
+    float center_x = 0.0f;
+    float center_z = 0.0f;
+    float width_meters = 4000.0f;
+    float height_meters = 4000.0f;
+};
+
 struct WorldForgeMapPoint2 {
     float x = 0.0f;
     float z = 0.0f;
@@ -130,6 +139,8 @@ struct WorldForgeMapLink {
 struct WorldForgeMapAsset {
     int schema_version = 1;
     std::string id;
+    /// When set, Cartography official-map backdrop locks to this world-meter plate.
+    std::optional<WorldForgeCartographyPlate> cartography_plate;
     std::vector<WorldForgeRegion> regions;
     std::vector<WorldForgePoi> pois;
     std::vector<WorldForgeMapLink> links;
@@ -158,5 +169,21 @@ struct WorldForgeMapAsset {
 [[nodiscard]] const char* to_string(WorldForgeTravelRouteKind value) noexcept;
 
 [[nodiscard]] std::filesystem::path default_world_forge_map_path(const std::filesystem::path& project_root);
+
+/// True when width/height are finite and positive.
+[[nodiscard]] bool cartography_plate_valid(const WorldForgeCartographyPlate& plate) noexcept;
+
+/// Uniformly scale all authored map XZ geometry about (center_x, center_z). Anchor Y unchanged.
+void scale_map_xz_about(WorldForgeMapAsset& asset, float center_x, float center_z, float scale);
+
+/// Content AABB of anchors / borders / hydrology / route points. Returns false if empty.
+[[nodiscard]] bool compute_map_xz_content_bounds(const WorldForgeMapAsset& asset, float& out_min_x,
+    float& out_max_x, float& out_min_z, float& out_max_z);
+
+/// Build a plate centered on content (or origin), sized to `width_meters` × aspect-matched height,
+/// then scale content so it fills the plate with `pad` (default 1.35 matches Cartography fit).
+/// Writes `asset.cartography_plate`. Returns the applied uniform scale (1 if nothing to scale).
+float apply_cartography_plate_and_rescale(WorldForgeMapAsset& asset, float width_meters,
+    float map_aspect = 16.0f / 9.0f, float pad = 1.35f);
 
 } // namespace engine

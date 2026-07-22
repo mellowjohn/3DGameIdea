@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "id": "player",
+  "displayName": "Player",
+  "mesh": "assets/models/player.gltf",
+  "ikHooks": [
+    {
+      "id": "left_hand",
+      "tipJoint": "LeftHand",
+      "rootJoint": "LeftUpperArm",
+      "chainLength": 3
+    },
+    {
+      "id": "right_hand",
+      "tipJoint": "RightHand",
+      "rootJoint": "RightUpperArm",
+      "chainLength": 3
+    },
+    {
+      "id": "left_foot",
+      "tipJoint": "LeftFoot",
+      "rootJoint": "LeftUpperLeg",
+      "poleJoint": "LeftLowerLeg",
+      "chainLength": 3
+    },
+    {
+      "id": "right_foot",
+      "tipJoint": "RightFoot",
+      "rootJoint": "RightUpperLeg",
+      "poleJoint": "RightLowerLeg",
+      "chainLength": 3
+    }
+  ],
+  "boneRoles": [
+    { "role": "hips", "jointName": "Hips" },
+    { "role": "spine", "jointName": "Spine" },
+    { "role": "chest", "jointName": "Chest" },
+    { "role": "neck", "jointName": "Neck" },
+    { "role": "head", "jointName": "Head" },
+    { "role": "left_upper_arm", "jointName": "LeftUpperArm" },
+    { "role": "left_lower_arm", "jointName": "LeftLowerArm" },
+    { "role": "left_hand", "jointName": "LeftHand" },
+    { "role": "right_upper_arm", "jointName": "RightUpperArm" },
+    { "role": "right_lower_arm", "jointName": "RightLowerArm" },
+    { "role": "right_hand", "jointName": "RightHand" },
+    { "role": "left_upper_leg", "jointName": "LeftUpperLeg" },
+    { "role": "left_lower_leg", "jointName": "LeftLowerLeg" },
+    { "role": "left_foot", "jointName": "LeftFoot" },
+    { "role": "right_upper_leg", "jointName": "RightUpperLeg" },
+    { "role": "right_lower_leg", "jointName": "RightLowerLeg" },
+    { "role": "right_foot", "jointName": "RightFoot" }
+  ]
+}

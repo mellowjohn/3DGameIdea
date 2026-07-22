@@ -1,39 +1,59 @@
 # TICKET-0106: IK hooks + retargeting metadata
 
 - Epic: EPIC-0008
-- Status: proposed
-- Agent: unassigned
+- Status: needs-approval
+- Agent: cursor-agent
 - Priority: P2
-- Notion: (see Notion Tickets DB by Ticket ID)
+- Notion: https://app.notion.com/p/39ad3efc569581eea890ea2e6f75f0a1
 
 ## Goal
 
-IK hooks + retargeting metadata. Expand acceptance when this ticket moves to ready/active.
+Ship authorable rig metadata (`*.rig.json`) for IK effector hooks and retarget bone-role maps, with C++ load/validate and a sample player rig — no IK solver yet ([DEC-0041](../../decisions/index.md#dec-0041-rig-metadata-before-ik-solver)).
 
 ## Context links
 
-- `context/planning/epics.md` (EPIC-0008)
-- `context/roadmap.md`
-- Related tickets in the same epic (see epics.md)
+- [`../../formats/rig-assets.md`](../../formats/rig-assets.md)
+- [`../../formats/mesh-assets.md`](../../formats/mesh-assets.md)
+- [`../../formats/character-assets.md`](../../formats/character-assets.md)
+- [`../../features/animator.md`](../../features/animator.md)
+- Related: TICKET-0101 (skin), TICKET-0105 (events), TICKET-0135 (Animation tools UI), future full IK
 
 ## Acceptance criteria
 
-- [ ] Deliverable matches the ticket title and epics.md Notes.
-- [ ] Status/Priority mirrored in Notion when work starts.
-- [ ] Context indexes updated if behavior or formats change.
+- [x] `*.rig.json` schema v1 documented (`ikHooks`, `boneRoles`).
+- [x] `RigAsset` C++ load / save / validate + optional `validate_against_joint_names`.
+- [x] Optional `rig` field on `.character.json`.
+- [x] Sample `assets/characters/player.rig.json` + player character references it.
+- [x] `assets` suite covers round-trip, duplicate rejection, joint mismatch, sample load.
+- [x] DEC-0041 recorded; mesh/character/animator context updated.
+- [x] Rebuild `engine` / `engine_suite_tests`; Status → needs-approval (not done).
 
 ## Out of scope
 
-Anything beyond this ticket's Notes in epics.md; do not pull later milestone work early without owner override.
+- Runtime IK solve (owner: eventually yes — separate follow-on)
+- GPU skinning / pose playback
+- Editor Animation manage panel (TICKET-0135)
+- Auto-inferring bone roles from glTF
 
 ## Dependencies
 
-See epics.md Notes and Priority ladder. Hold P3 / proposed work behind M5 animation exit unless overridden.
+Soft: skinned mesh joint names for strict `validate_against_joint_names` (player mesh may still be static).
 
 ## Verification
 
-Per ticket type: rebuild `engine` for C++/shader changes; doc review for design tickets; named suites / `engine_project_validate` when applicable. Set Status to needs-approval after verification — never done.
+- `engine_suite_tests --suite assets` → **72/72**
+- Rebuilt `engine` + `engine_suite_tests` (MSVC Debug)
+
+## What changed
+
+- Summary: New `*.rig.json` / `RigAsset` format stores IK hooks and humanoid bone-role maps; characters can optionally reference a rig. Sample player rig + character binding shipped. No solver.
+- Files / surfaces: `rig_asset.h/.cpp`, `character_asset` optional `rig`, sample JSON, format/feature/decision docs, assets suite tests, CMake.
+- Schema / API / format deltas: `RigAsset`, errors `RIG-*`; character `rig` field; DEC-0041.
+- Seed / sample data: `samples/open-world-rpg/assets/characters/player.rig.json` (humanoid placeholder joint names for future skinned player).
+- Tests / verification evidence: assets suite (see build output).
+- Decisions & tradeoffs: metadata before solver (DEC-0041); Animation UI deferred to 0135.
+- Leftover risk / follow-ons: joint names are aspirational until player skinning; full IK + Animation Diagnostics-adjacent panel.
 
 ## Agent notes
 
-_(stub — expand when picked up)_
+Owner chose metadata-only now, full IK later; requested Diagnostics-adjacent Animation manage tab → elevated TICKET-0135 brief (P2).

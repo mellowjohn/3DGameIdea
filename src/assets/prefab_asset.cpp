@@ -1,6 +1,7 @@
 #include "engine/assets/prefab_asset.h"
 
 #include "engine/assets/material_asset.h"
+#include "engine/assets/mesh_asset.h"
 
 #include <nlohmann/json.hpp>
 
@@ -9,6 +10,7 @@
 #include <cstdio>
 #include <fstream>
 #include <limits>
+#include <set>
 #include <sstream>
 
 namespace engine {
@@ -588,6 +590,64 @@ const PrefabAsset* find_prefab_in_catalog(const std::map<std::string, PrefabAsse
     const auto resolved = resolve_prefab_catalog_path(catalog, prefab_asset);
     const auto found = catalog.find(resolved);
     return found == catalog.end() ? nullptr : &found->second;
+}
+
+void ensure_prefab_catalog_meshes(const std::filesystem::path& project_root,
+    const std::map<std::string, PrefabAsset>& prefab_catalog, const PrefabAsset::MaterialLookup& lookup_material,
+    std::map<std::string, MeshBounds>& mesh_bounds,
+    std::vector<std::pair<std::string, ImportedMesh>>& imported_meshes,
+    std::set<std::string>* reload_mesh_keys) {
+    std::set<std::string> existing;
+    for (const auto& mesh : imported_meshes) existing.insert(normalize_asset_path(mesh.first));
+    if (reload_mesh_keys && !reload_mesh_keys->empty()) {
+        std::set<std::string> normalized_reloads;
+        for (const auto& key : *reload_mesh_keys) normalized_reloads.insert(normalize_asset_path(key));
+        imported_meshes.erase(std::remove_if(imported_meshes.begin(), imported_meshes.end(),
+                                   [&](const std::pair<std::string, ImportedMesh>& entry) {
+                                       return normalized_reloads.count(normalize_asset_path(entry.first)) > 0;
+                                   }),
+            imported_meshes.end());
+        for (const auto& key : normalized_reloads) {
+            mesh_bounds.erase(key);
+            existing.erase(key);
+            const auto extension = std::filesystem::path(key).extension().string();
+            if (extension != ".gltf" && extension != ".glb") continue;
+            auto imported = import_project_mesh(project_root / key);
+            if (!imported) continue;
+            mesh_bounds[key] = imported.value().aabb;
+            imported_meshes.emplace_back(key, std::move(imported.value()));
+            existing.insert(key);
+        }
+        reload_mesh_keys->clear();
+    }
+    for (const auto& entry : prefab_catalog) {
+        for (const auto& key : entry.second.required_mesh_keys(lookup_material)) {
+            const auto normalized = normalize_asset_path(key);
+            if (existing.find(normalized) != existing.end()) continue;
+            if (normalized.rfind("__primitive/", 0) == 0) {
+                const auto rest = normalized.substr(12);
+                const auto slash = rest.find('/');
+                if (slash == std::string::npos) continue;
+                const auto primitive = rest.substr(0, slash);
+                const auto color_token = rest.substr(slash + 1);
+                std::array<float, 3> color{};
+                if (std::sscanf(color_token.c_str(), "%f_%f_%f", &color[0], &color[1], &color[2]) != 3) continue;
+                auto generated = generate_primitive_mesh(primitive, color);
+                if (!generated) continue;
+                mesh_bounds[normalized] = generated.value().aabb;
+                imported_meshes.emplace_back(normalized, std::move(generated.value()));
+                existing.insert(normalized);
+                continue;
+            }
+            const auto extension = std::filesystem::path(normalized).extension().string();
+            if (extension != ".gltf" && extension != ".glb") continue;
+            auto imported = import_project_mesh(project_root / normalized);
+            if (!imported) continue;
+            mesh_bounds[normalized] = imported.value().aabb;
+            imported_meshes.emplace_back(normalized, std::move(imported.value()));
+            existing.insert(normalized);
+        }
+    }
 }
 
 } // namespace engine

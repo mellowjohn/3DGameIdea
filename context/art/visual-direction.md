@@ -4,7 +4,7 @@
 
 The game targets an Unturned-inspired blocky stylized look with a dark-fantasy atmosphere. Terrain is smooth low-poly heightfield geometry rather than stepped voxel blocks. Characters, buildings, trees, rocks, weapons, and other props use simple modular forms, readable proportions, and strong silhouettes.
 
-Player-character proportions, starter kits, and turnaround presentation are defined in [Character Art Direction](character-direction.md), anchored by the starting Squire concept reference.
+Player-character proportions, starter kits, and turnaround presentation are defined in [Character Art Direction](character-direction.md), anchored by the starting Squire concept reference. Prioritized Blockbench props, kits, and set pieces for Act 0 → early Act 1 live in [blockbench-asset-list.md](blockbench-asset-list.md).
 
 ## Palette and atmosphere
 

@@ -1,0 +1,30 @@
+---
+description: Paint grass foliage only on grass terrain materials; never on water, stone, mud, or sand
+alwaysApply: true
+---
+
+# Grass Foliage On Grass Terrain
+
+When painting or scattering **grass foliage** (foliage layer `grass`, or mixed meadow strokes that include grass), only apply it where the **terrain material is grass**.
+
+## Rules
+
+1. When adding grass foliage (`paint_foliage` / `paint_foliage_mixed` with grass), also paint terrain material `assets/materials/grass.material.json` on the same ground so the ground color matches the blades.
+2. Before foliage paint, confirm the target is (or will be in the same edit) grass material — not water, moat, mud/sand shore, or stone.
+3. Do **not** paint grass foliage on water, moats, shore mud/sand, stone keeps/roads, or bare dirt that is not grass-painted.
+4. If foliage already exists on non-grass surfaces (especially water), **erase** it (`erase: true`) rather than leaving it.
+5. Erase strokes over water/non-grass are always allowed; grass foliage paint strokes are not.
+6. Other foliage layers (flower, bush, etc.) follow the same sense rule: do not plant them in water. Prefer ground that matches their look (meadow/grass for flowers; land for bushes).
+
+## Examples
+
+```text
+❌ BAD: paint_foliage_mixed over a moat / water fill / mud_shore after carving a channel
+✅ GOOD: paint grass.material.json then grass foliage on approaches/meadows; erase foliage from the moat bed
+
+❌ BAD: Add grass foliage strokes without painting green grass material underneath
+✅ GOOD: Same batch: paint grass material + paint_foliage on that ground
+
+❌ BAD: Scatter grass across a stone fortress plateau for “coverage”
+✅ GOOD: Keep stone clear; put grass material + foliage on the landward approach
+```

@@ -2,6 +2,24 @@
 
 Record material defects or constraints that can prevent recurrence. Newest entries go first.
 
+## 2026-07-21 — Imported glTF prefab meshes did not render until editor restart
+
+- Reproduction: while the editor is running, add a new `.gltf` (or overwrite one via MCP/`engine_asset_apply` / bake), create or update a prefab that references it, place instances; keep the session open.
+- Impact: placements resolved in the catalog/bounds but drew nothing in Scene/Game until restart. Affected every new mesh-backed prefab, which blocks MCP art iteration.
+- Cause: `prefab_meshes_dirty` only ran `ensure_prefab_primitive_meshes`, which skipped non-`__primitive/` keys. New glTF paths never entered `imported_meshes`, so `mesh_ranges_` had no draw range (silent skip). Overwrites also kept the old GPU copy because existing keys were not invalidated.
+- Resolution: `ensure_prefab_catalog_meshes` imports missing glTF/glb required by the prefab catalog and re-imports paths queued in `pending_mesh_reloads`. MCP asset writes for `.gltf`/`.glb` queue that reload and set `prefab_meshes_dirty`; the render loop still calls `Renderer::sync_imported_meshes()`.
+- Verification: `assets` suite checks missing-key import + reload-queue reimport; rebuild `engine`, MCP-apply a mesh+prefab, place without restart.
+- Remaining risk: rewriting only a sidecar albedo PNG (without rewriting the glTF or queuing reload) will not refresh GPU albedo until the mesh is invalidated; full file-watch hot reload is still out of scope.
+
+## 2026-07-20 — MSVC Debug `std::clamp` assert in World Forge Hierarchy Graph
+
+- Reproduction: World Forge → Hierarchy → Graph (or Relationships → Graph) with pane width ≲ 520px.
+- Impact: Debug Assertion / abort (`std::clamp` invalid bounds; dialog may say “invalid iterator range”).
+- Cause: `list_w = clamp(avail.x * 0.70f, 320.0f, avail.x - 200.0f)` inverts when `avail.x < 520`. Crash dump stack hit `draw_hierarchy_factions_page`. Related footguns: cartography label clamps and graph node canvas clamps with unordered lo/hi.
+- Resolution: `hierarchy_graph_list_width()` orders bounds; same ordering for map labels, graph node canvas, HUD slider thumb, orbit distance.
+- Verification: Rebuild `engine`; open Hierarchy Graph in a narrow pane — no assert.
+- Remaining risk: Narrow panes still squeeze layout; clamp only prevents the CRT abort.
+
 ## 2026-07-19 — Water refraction read the live lit RT (shoreline fuzz / highlight feedback)
 
 - Reproduction: Game/editor view with authored water; look at shorelines and bright specular areas (sun).

@@ -315,6 +315,11 @@ EditorBridgeResponse apply_asset_write(EditorSessionContext& context, const nloh
         const auto written = write_text_asset_atomic(absolute, payload.value());
         if (!written) return make_response(ExitCode::ValidationFailed, written.error().message, {}, {written.error()});
     }
+    const auto extension = std::filesystem::path(relative).extension().string();
+    if (extension == ".gltf" || extension == ".glb") {
+        if (context.pending_mesh_reloads) context.pending_mesh_reloads->insert(relative);
+        if (context.prefab_meshes_dirty) *context.prefab_meshes_dirty = true;
+    }
     std::size_t prefab_count = 0;
     if (params.value("refreshCatalog", true)) {
         const auto refreshed = refresh_prefab_catalog(context);

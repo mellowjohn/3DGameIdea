@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
 #include <sstream>
 
@@ -155,6 +156,22 @@ nlohmann::json write_anchor(const WorldForgeWorldAnchor& anchor) {
     return nlohmann::ordered_json{{"x", anchor.x}, {"y", anchor.y}, {"z", anchor.z}};
 }
 
+std::optional<WorldForgeCartographyPlate> read_cartography_plate(const nlohmann::json& node) {
+    if (!node.is_object()) return std::nullopt;
+    WorldForgeCartographyPlate plate;
+    plate.center_x = node.value("centerX", 0.0f);
+    plate.center_z = node.value("centerZ", 0.0f);
+    plate.width_meters = node.value("widthMeters", 4000.0f);
+    plate.height_meters = node.value("heightMeters", 4000.0f);
+    if (!cartography_plate_valid(plate)) return std::nullopt;
+    return plate;
+}
+
+nlohmann::json write_cartography_plate(const WorldForgeCartographyPlate& plate) {
+    return nlohmann::ordered_json{{"centerX", plate.center_x}, {"centerZ", plate.center_z},
+        {"widthMeters", plate.width_meters}, {"heightMeters", plate.height_meters}};
+}
+
 bool endpoint_exists(WorldForgeMapEndpointKind kind, const std::string& id,
     const std::unordered_set<std::string>& region_ids, const std::unordered_set<std::string>& poi_ids) {
     if (kind == WorldForgeMapEndpointKind::Region) return region_ids.find(id) != region_ids.end();
@@ -162,6 +179,121 @@ bool endpoint_exists(WorldForgeMapEndpointKind kind, const std::string& id,
 }
 
 } // namespace
+
+bool cartography_plate_valid(const WorldForgeCartographyPlate& plate) noexcept {
+    return std::isfinite(plate.center_x) && std::isfinite(plate.center_z) && std::isfinite(plate.width_meters) &&
+           std::isfinite(plate.height_meters) && plate.width_meters > 1e-3f && plate.height_meters > 1e-3f;
+}
+
+bool compute_map_xz_content_bounds(const WorldForgeMapAsset& asset, float& out_min_x, float& out_max_x,
+    float& out_min_z, float& out_max_z) {
+    bool valid = false;
+    auto expand = [&](float x, float z) {
+        if (!valid) {
+            out_min_x = out_max_x = x;
+            out_min_z = out_max_z = z;
+            valid = true;
+        } else {
+            out_min_x = (std::min)(out_min_x, x);
+            out_max_x = (std::max)(out_max_x, x);
+            out_min_z = (std::min)(out_min_z, z);
+            out_max_z = (std::max)(out_max_z, z);
+        }
+    };
+    for (const auto& region : asset.regions) {
+        if (region.anchor) expand(region.anchor->x, region.anchor->z);
+        for (const auto& point : region.border) expand(point.x, point.z);
+    }
+    for (const auto& poi : asset.pois) {
+        if (poi.anchor) expand(poi.anchor->x, poi.anchor->z);
+    }
+    for (const auto& hydro : asset.hydrology_regions) {
+        expand(hydro.min_x, hydro.min_z);
+        expand(hydro.max_x, hydro.max_z);
+    }
+    for (const auto& route : asset.ferry_routes) {
+        for (const auto& point : route.points) expand(point.x, point.z);
+    }
+    for (const auto& route : asset.travel_routes) {
+        for (const auto& point : route.points) expand(point.x, point.z);
+    }
+    return valid;
+}
+
+void scale_map_xz_about(WorldForgeMapAsset& asset, float center_x, float center_z, float scale) {
+    if (!std::isfinite(scale) || std::abs(scale - 1.0f) < 1e-8f) return;
+    auto scale_xz = [&](float& x, float& z) {
+        x = center_x + (x - center_x) * scale;
+        z = center_z + (z - center_z) * scale;
+    };
+    for (auto& region : asset.regions) {
+        if (region.anchor) scale_xz(region.anchor->x, region.anchor->z);
+        for (auto& point : region.border) scale_xz(point.x, point.z);
+    }
+    for (auto& poi : asset.pois) {
+        if (poi.anchor) scale_xz(poi.anchor->x, poi.anchor->z);
+    }
+    for (auto& hydro : asset.hydrology_regions) {
+        scale_xz(hydro.min_x, hydro.min_z);
+        scale_xz(hydro.max_x, hydro.max_z);
+        if (hydro.min_x > hydro.max_x) std::swap(hydro.min_x, hydro.max_x);
+        if (hydro.min_z > hydro.max_z) std::swap(hydro.min_z, hydro.max_z);
+    }
+    for (auto& route : asset.ferry_routes) {
+        for (auto& point : route.points) scale_xz(point.x, point.z);
+    }
+    for (auto& route : asset.travel_routes) {
+        for (auto& point : route.points) scale_xz(point.x, point.z);
+    }
+}
+
+float apply_cartography_plate_and_rescale(WorldForgeMapAsset& asset, float width_meters, float map_aspect,
+    float pad) {
+    if (!(width_meters > 1e-3f) || !std::isfinite(width_meters)) width_meters = 4000.0f;
+    if (!(map_aspect > 1e-3f) || !std::isfinite(map_aspect)) map_aspect = 16.0f / 9.0f;
+    if (!(pad > 1e-3f) || !std::isfinite(pad)) pad = 1.35f;
+
+    float min_x = 0.0f, max_x = 0.0f, min_z = 0.0f, max_z = 0.0f;
+    const bool has_content = compute_map_xz_content_bounds(asset, min_x, max_x, min_z, max_z);
+
+    float center_x = 0.0f;
+    float center_z = 0.0f;
+    if (asset.cartography_plate && cartography_plate_valid(*asset.cartography_plate)) {
+        center_x = asset.cartography_plate->center_x;
+        center_z = asset.cartography_plate->center_z;
+    } else if (has_content) {
+        center_x = 0.5f * (min_x + max_x);
+        center_z = 0.5f * (min_z + max_z);
+    }
+
+    float height_meters = width_meters / map_aspect;
+    WorldForgeCartographyPlate plate;
+    plate.center_x = center_x;
+    plate.center_z = center_z;
+    plate.width_meters = width_meters;
+    plate.height_meters = height_meters;
+    asset.cartography_plate = plate;
+
+    if (!has_content) return 1.0f;
+
+    float half_w = 0.5f * (max_x - min_x);
+    float half_h = 0.5f * (max_z - min_z);
+    half_w = (std::max)(half_w, 25.0f);
+    half_h = (std::max)(half_h, 25.0f);
+    half_w *= pad;
+    half_h *= pad;
+    // Match resolve_official_map_world_rect aspect lock so scale matches visual fit.
+    if (half_w / half_h > map_aspect) {
+        half_h = half_w / map_aspect;
+    } else {
+        half_w = half_h * map_aspect;
+    }
+    const float fitted_w = 2.0f * half_w;
+    const float scale = width_meters / fitted_w;
+    if (!std::isfinite(scale) || scale <= 1e-6f) return 1.0f;
+    scale_map_xz_about(asset, center_x, center_z, scale);
+    return scale;
+}
 
 const char* to_string(WorldForgeMapCanonStatus value) noexcept {
     switch (value) {
@@ -242,6 +374,11 @@ Result<void> WorldForgeMapAsset::validate() const {
     if (schema_version != 1) {
         return Result<void>::failure(map_error("WORLD-FORGE-MAP-SCHEMA", ErrorCategory::Validation,
             "Only World Forge map schemaVersion 1 is supported", "Use schemaVersion 1."));
+    }
+    if (cartography_plate && !cartography_plate_valid(*cartography_plate)) {
+        return Result<void>::failure(map_error("WORLD-FORGE-MAP-PLATE", ErrorCategory::Validation,
+            "cartographyPlate requires finite positive widthMeters and heightMeters",
+            "Set widthMeters/heightMeters > 0 (typically 4000 for the v1 slice)."));
     }
     std::unordered_set<std::string> region_ids;
     region_ids.reserve(regions.size());
@@ -428,6 +565,15 @@ Result<WorldForgeMapAsset> WorldForgeMapAsset::parse(const std::string& text, co
                 "Unsupported World Forge map schemaVersion", "Use schemaVersion 1."));
         }
         asset.id = json.value("id", std::string{});
+        if (json.contains("cartographyPlate") && !json["cartographyPlate"].is_null()) {
+            asset.cartography_plate = read_cartography_plate(json["cartographyPlate"]);
+            if (!asset.cartography_plate) {
+                return Result<WorldForgeMapAsset>::failure(map_error("WORLD-FORGE-MAP-PLATE",
+                    ErrorCategory::Validation,
+                    "Invalid cartographyPlate (need finite positive widthMeters/heightMeters)",
+                    "Fix cartographyPlate or omit it."));
+            }
+        }
 
         const auto regions = json.value("regions", nlohmann::json::array());
         if (!regions.is_array()) {
@@ -632,6 +778,7 @@ std::string WorldForgeMapAsset::to_json() const {
     nlohmann::ordered_json json;
     json["schemaVersion"] = schema_version;
     json["id"] = id;
+    if (cartography_plate) json["cartographyPlate"] = write_cartography_plate(*cartography_plate);
     auto regions_json = nlohmann::ordered_json::array();
     for (const auto& region : regions) {
         nlohmann::ordered_json node;

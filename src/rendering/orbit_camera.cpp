@@ -35,8 +35,9 @@ void OrbitCamera::apply_look(float mouse_dx, float mouse_dy) {
 
 void OrbitCamera::adjust_distance(float delta_meters) {
     if (!std::isfinite(delta_meters)) return;
-    desired_distance_ =
-        std::clamp(desired_distance_ - delta_meters, config_.min_distance, config_.max_distance);
+    const float lo = std::min(config_.min_distance, config_.max_distance);
+    const float hi = std::max(config_.min_distance, config_.max_distance);
+    desired_distance_ = std::clamp(desired_distance_ - delta_meters, lo, hi);
 }
 
 void OrbitCamera::set_orientation(float yaw, float pitch) {
@@ -47,7 +48,9 @@ void OrbitCamera::set_orientation(float yaw, float pitch) {
 
 void OrbitCamera::set_config(const OrbitCameraConfig& config) {
     config_ = config;
-    desired_distance_ = std::clamp(desired_distance_, config_.min_distance, config_.max_distance);
+    const float lo = std::min(config_.min_distance, config_.max_distance);
+    const float hi = std::max(config_.min_distance, config_.max_distance);
+    desired_distance_ = std::clamp(desired_distance_, lo, hi);
     if (std::abs(desired_distance_ - config_.default_distance) < 0.001f)
         desired_distance_ = config_.default_distance;
     clamp_pitch();
@@ -79,7 +82,9 @@ WorldPosition OrbitCamera::look_target() const {
 Result<void> OrbitCamera::update(WorldPosition pivot, const CollisionWorld& world) {
     pivot_ = pivot;
     collision_shortened_ = false;
-    resolved_distance_ = std::clamp(desired_distance_, config_.min_distance, config_.max_distance);
+    const float lo = std::min(config_.min_distance, config_.max_distance);
+    const float hi = std::max(config_.min_distance, config_.max_distance);
+    resolved_distance_ = std::clamp(desired_distance_, lo, hi);
 
     const WorldPosition pivot_center = look_target();
     const auto radial = orbit_offset(resolved_distance_);

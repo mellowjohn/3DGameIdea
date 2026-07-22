@@ -225,8 +225,11 @@ struct WorldForgeEditorSession {
     bool map_filter_travel_routes = true;
     /// Cartography (parchment) vs top-down terrain canvas.
     bool map_cartography_mode = true;
-    /// Cartography: draw official Tessera world-map art under markers (not geo-1:1 with the slice).
+    /// Cartography: draw official Tessera world-map art under markers.
+    /// When `map.cartography_plate` is set, the backdrop locks to that world-meter window.
     bool map_show_official_backdrop = true;
+    /// Draft span (km) for Apply plate + rescale (default 4 km = v1 slice width).
+    float map_plate_span_km = 4.0f;
     /// Cartography: ornate parchment frame overlay (screen-space chrome). Off by default — plate fills the canvas.
     bool map_show_frame = false;
     bool map_show_borders = true;

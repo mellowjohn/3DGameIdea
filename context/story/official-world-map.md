@@ -10,7 +10,7 @@ Related: [DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary
 
 This illustration is the **canonical overworld geography** for Tessera (the primary land) and a **huge five-act campaign reference** — not a 1:1 heightmap and not the World Forge Map Canvas underlay for the v1 seamless **4×4 km** playable slice. The slice is authored *inside* Tessera and should eventually be located as a marked window on this map ([DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land)).
 
-Use it for story placement, faction theaters, act pacing, World Forge region planning, and travel fantasy. Map Canvas **Cartography** mode can show this PNG as a pan/zoom **backdrop** under markers (aspect-preserved fit around authored content — not a geo-locked heightmap). **Top-down** mode still uses the terrain underlay for XZ alignment with the playable slice.
+Use it for story placement, faction theaters, act pacing, World Forge region planning, and travel fantasy. Map Canvas **Cartography** mode can show this PNG as a pan/zoom **backdrop** under markers. When `cartographyPlate` is authored on `map.worldforge.json` (typically **4 km** wide for the v1 slice), the backdrop locks to that world-meter window; otherwise it aspect-fits around authored content. It is still **not** a geo-locked heightmap. **Top-down** mode still uses the terrain underlay for XZ alignment with the playable slice.
 
 ## Layout (unlabeled)
 
@@ -39,7 +39,7 @@ Backdrop art is **geography only** (coasts, landmass, soft terrain washes). Town
 2. Keep the **Kingdom of Tessera** as one polity *on* this land — not the whole map ([DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land)).
 3. World Forge regions/POIs and the 4×4 km sample should cite or overlay this map when geography is locked; meshes stay Scene/Sculpt-owned.
 4. Labeling, faction color overlays, and playable-slice footprint remain **open**; **draft theater placement** from 2026-07-20 is recorded below and may guide Cartography callouts without locking borders.
-5. Cartography may use this PNG as a **campaign backdrop** (`World map` checkbox). Do **not** treat that backdrop as the 4×4 km slice heightmap — Top-down terrain underlay remains the alignment source until the playable footprint is locked on this art.
+5. Cartography may use this PNG as a **campaign backdrop** (`World map` checkbox). Prefer an authored `cartographyPlate` sized to the v1 **4×4 km** slice when aligning marker distances to playable meters. Do **not** treat that backdrop as the slice heightmap — Top-down terrain underlay remains the alignment source for sculpt/terrain.
 
 ## Draft faction theaters (2026-07-20)
 

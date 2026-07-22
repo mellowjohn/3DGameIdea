@@ -46,6 +46,7 @@ add_library(engine_core
     src/assets/play_session_settings.cpp
     src/assets/mesh_asset.cpp
     src/assets/png_decode.cpp
+    src/assets/rig_asset.cpp
     src/assets/animation_clip_asset.cpp
     src/assets/animator_controller_asset.cpp
     src/animation/animator_runtime.cpp

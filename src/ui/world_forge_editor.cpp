@@ -1552,8 +1552,12 @@ void clamp_node_world_to_canvas(WorldForgeEditorSession& session, const std::str
     const float max_world_x = (canvas_size.x - pad - session.graph_pan[0]) / z;
     const float min_world_y = (pad - session.graph_pan[1]) / z;
     const float max_world_y = (canvas_size.y - pad - session.graph_pan[1]) / z;
-    it->second[0] = (std::clamp)(it->second[0], min_world_x, max_world_x);
-    it->second[1] = (std::clamp)(it->second[1], min_world_y, max_world_y);
+    const float lo_x = (std::min)(min_world_x, max_world_x);
+    const float hi_x = (std::max)(min_world_x, max_world_x);
+    const float lo_y = (std::min)(min_world_y, max_world_y);
+    const float hi_y = (std::max)(min_world_y, max_world_y);
+    it->second[0] = (std::clamp)(it->second[0], lo_x, hi_x);
+    it->second[1] = (std::clamp)(it->second[1], lo_y, hi_y);
 }
 
 void draw_create_name_row(const char* title, char* buffer, std::size_t buffer_size, const std::string& preview_id) {
@@ -2051,6 +2055,14 @@ constexpr float kListFraction = 0.35f;
 
 void begin_list_detail(const ImVec2& avail, float& list_w) {
     list_w = (std::clamp)(avail.x * kListFraction, 180.0f, 420.0f);
+}
+
+/// Graph pane width that leaves room for a detail column. Orders clamp bounds when avail is narrow.
+float hierarchy_graph_list_width(float avail_x) {
+    constexpr float k_lo = 320.0f;
+    constexpr float k_detail_reserve = 200.0f;
+    const float hi = (std::max)(k_lo, avail_x - k_detail_reserve);
+    return (std::clamp)(avail_x * 0.70f, k_lo, hi);
 }
 
 /// Kind-colored silhouette card used until real portraits/POI images exist (GPU textures later).
@@ -3043,6 +3055,31 @@ WorldForgeGraphBounds compute_map_canvas_fit_bounds(const WorldForgeMapAsset& as
 
 void resolve_official_map_world_rect(WorldForgeEditorSession& session, float& out_min_x, float& out_max_x,
     float& out_min_z, float& out_max_z, float aspect_override = 0.0f) {
+    float map_aspect = aspect_override > 1e-3f ? aspect_override
+                      : session.map_layers_ready ? session.map_layer_aspect
+                      : session.map_tiles_ready  ? session.map_tile_aspect
+                                                 : (1536.0f / 1024.0f);
+    if (map_aspect < 1e-3f) map_aspect = 16.0f / 9.0f;
+
+    if (session.map.cartography_plate && cartography_plate_valid(*session.map.cartography_plate)) {
+        const auto& plate = *session.map.cartography_plate;
+        float half_w = 0.5f * plate.width_meters;
+        float half_h = 0.5f * plate.height_meters;
+        // Keep framed 16:9 stage filled when aspect override is active.
+        if (aspect_override > 1e-3f) {
+            if (half_w / half_h > map_aspect) {
+                half_h = half_w / map_aspect;
+            } else {
+                half_w = half_h * map_aspect;
+            }
+        }
+        out_min_x = plate.center_x - half_w;
+        out_max_x = plate.center_x + half_w;
+        out_min_z = plate.center_z - half_h;
+        out_max_z = plate.center_z + half_h;
+        return;
+    }
+
     auto bounds = compute_map_canvas_fit_bounds(session.map, session.map_filter_regions, session.map_filter_pois,
         session.map_filter_hydrology, session.map_filter_ferry_routes, session.map_filter_travel_routes,
         session.map_show_borders, session.act_filter);
@@ -3054,11 +3091,6 @@ void resolve_official_map_world_rect(WorldForgeEditorSession& session, float& ou
         bounds.valid = true;
     }
 
-    float map_aspect = aspect_override > 1e-3f ? aspect_override
-                      : session.map_layers_ready ? session.map_layer_aspect
-                      : session.map_tiles_ready  ? session.map_tile_aspect
-                                                 : (1536.0f / 1024.0f);
-    if (map_aspect < 1e-3f) map_aspect = 16.0f / 9.0f;
     const float cx = 0.5f * (bounds.min_x + bounds.max_x);
     const float cz = 0.5f * (bounds.min_y + bounds.max_y);
     float half_w = 0.5f * (bounds.max_x - bounds.min_x);
@@ -4217,11 +4249,16 @@ void draw_map_spatial_canvas(WorldForgeEditorSession& session, const ImVec2& siz
             static constexpr float k_dx[] = {0.0f, 0.0f, 18.0f, -18.0f, 28.0f, -28.0f, 12.0f, -12.0f};
             static constexpr float k_dy[] = {0.0f, 14.0f, 0.0f, 0.0f, 10.0f, 10.0f, -16.0f, -16.0f};
             bool placed = false;
+            // Text can be wider/taller than the padded canvas; keep clamp bounds ordered.
+            const float lo_x = min_x + chip;
+            const float hi_x = std::max(lo_x, max_x - text_size.x);
+            const float lo_y = min_y;
+            const float hi_y = std::max(lo_y, max_y - text_size.y);
             for (int nudge = 0; nudge < 8; ++nudge) {
                 ImVec2 candidate_pos{center.x - text_size.x * 0.5f + chip + k_dx[nudge],
                     center.y + marker_radius + 4.0f + k_dy[nudge]};
-                candidate_pos.x = std::clamp(candidate_pos.x, min_x + chip, max_x - text_size.x);
-                candidate_pos.y = std::clamp(candidate_pos.y, min_y, max_y - text_size.y);
+                candidate_pos.x = std::clamp(candidate_pos.x, lo_x, hi_x);
+                candidate_pos.y = std::clamp(candidate_pos.y, lo_y, hi_y);
                 const ImVec4 candidate{candidate_pos.x - 4.0f - chip, candidate_pos.y - 1.0f,
                     candidate_pos.x + text_size.x + 4.0f, candidate_pos.y + text_size.y + 1.0f};
                 bool overlaps = false;
@@ -4529,6 +4566,36 @@ void draw_map_canvas_toolbar(WorldForgeEditorSession& session, EditorUiHotspotRe
     if (session.map_cartography_mode) {
         ImGui::Checkbox("World map##MapCanvasOfficial", &session.map_show_official_backdrop);
         register_ui_hotspot_last_item(hotspots, "WorldForge.Map.WorldMap", "World map");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(56.0f);
+        ImGui::DragFloat("Span km##MapPlateSpan", &session.map_plate_span_km, 0.1f, 0.5f, 64.0f, "%.1f");
+        register_ui_hotspot_last_item(hotspots, "WorldForge.Map.PlateSpan", "Plate span km");
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+            ImGui::SetTooltip("Cartography plate width in kilometers (v1 slice = 4).");
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Apply plate##MapPlateApply")) {
+            float map_aspect = session.map_layers_ready   ? session.map_layer_aspect
+                               : session.map_tiles_ready ? session.map_tile_aspect
+                                                         : (16.0f / 9.0f);
+            if (session.map_show_frame) map_aspect = 16.0f / 9.0f;
+            if (map_aspect < 1e-3f) map_aspect = 16.0f / 9.0f;
+            const float width_m = (std::max)(500.0f, session.map_plate_span_km * 1000.0f);
+            const float scale =
+                apply_cartography_plate_and_rescale(session.map, width_m, map_aspect, 1.35f);
+            session.dirty = true;
+            session.map_camera_fit_requested = true;
+            session.map_underlay_revision = 0;
+            char buf[96];
+            std::snprintf(buf, sizeof(buf), "Cartography plate %.1f km (scale x%.2f)", session.map_plate_span_km,
+                scale);
+            session.status = buf;
+        }
+        register_ui_hotspot_last_item(hotspots, "WorldForge.Map.ApplyPlate", "Apply plate + rescale");
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+            ImGui::SetTooltip(
+                "Lock World map to Span km and rescale anchors/borders/routes to fill the plate.");
+        }
         ImGui::SameLine();
         if (!session.map_layer_active_id.empty() && session.map_layer_active_id != "continent") {
             if (ImGui::SmallButton("Continent##MapReturnContinent")) {
@@ -5680,7 +5747,7 @@ void draw_hierarchy_factions_page(WorldForgeEditorSession& session) {
     };
 
     if (session.hierarchy_graph_mode) {
-        list_w = (std::clamp)(avail.x * 0.70f, 320.0f, avail.x - 200.0f);
+        list_w = hierarchy_graph_list_width(avail.x);
         std::vector<HierarchyGraphNode> nodes;
         nodes.reserve(session.factions.entities.size());
         for (const auto& entity : session.factions.entities) {
@@ -5773,7 +5840,7 @@ void draw_hierarchy_religion_page(WorldForgeEditorSession& session) {
     };
 
     if (session.hierarchy_graph_mode) {
-        list_w = (std::clamp)(avail.x * 0.70f, 320.0f, avail.x - 200.0f);
+        list_w = hierarchy_graph_list_width(avail.x);
         std::vector<HierarchyGraphNode> nodes;
         nodes.reserve(session.pantheon.entities.size());
         for (const auto& entity : session.pantheon.entities) {
@@ -5944,7 +6011,7 @@ void draw_hierarchy_persons_page(WorldForgeEditorSession& session) {
     };
 
     if (session.hierarchy_graph_mode) {
-        list_w = (std::clamp)(avail.x * 0.70f, 320.0f, avail.x - 200.0f);
+        list_w = hierarchy_graph_list_width(avail.x);
         enrich_hierarchy_nodes_with_relationship_proxies(session, graph_nodes);
         apply_hierarchy_depth_colors(graph_nodes);
         draw_hierarchy_graph_canvas(session, graph_nodes, ImVec2(list_w, avail.y), "WorldForgeHierarchyPersonsGraph");
@@ -6050,7 +6117,7 @@ void draw_relationships_pane(WorldForgeEditorSession& session) {
     const ImVec2 avail = ImGui::GetContentRegionAvail();
     float list_w = 0.0f;
     if (session.list_kind == ListKind::Graph) {
-        list_w = (std::clamp)(avail.x * 0.70f, 320.0f, avail.x - 200.0f);
+        list_w = hierarchy_graph_list_width(avail.x);
         draw_relationship_graph_canvas(session, ImVec2(list_w, avail.y));
         ImGui::SameLine();
         ImGui::BeginChild("WorldForgeGraphDetail", ImVec2(0.0f, avail.y), true);
@@ -8190,6 +8257,11 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
     map_camera_fit_requested = true;
     map_drag_key.clear();
     map_place_id.clear();
+    if (map.cartography_plate && cartography_plate_valid(*map.cartography_plate)) {
+        map_plate_span_km = map.cartography_plate->width_meters / 1000.0f;
+    } else {
+        map_plate_span_km = 4.0f;
+    }
     map_underlay_ready = false;
     map_underlay_heights.clear();
     map_underlay_revision = 0;

@@ -1,39 +1,45 @@
-# TICKET-0135: Animation preview/authoring tool
+# TICKET-0135: Animation tools panel (Diagnostics-adjacent)
 
 - Epic: EPIC-0009
 - Status: proposed
 - Agent: unassigned
-- Priority: P3
+- Priority: P2
 - Notion: (see Notion Tickets DB by Ticket ID)
 
 ## Goal
 
-After EPIC-0008. Expand acceptance when this ticket moves to ready/active.
+Add an editor **Animation** tools surface beside (or switchable with) the existing **Diagnostics** panel so authors can browse/manage clips, controllers, and rig metadata, and preview playback — without inventing a second viewport tab.
 
 ## Context links
 
-- `context/planning/epics.md` (EPIC-0009)
-- `context/roadmap.md`
-- Related tickets in the same epic (see epics.md)
+- `context/planning/epics.md` (EPIC-0009 / EPIC-0008)
+- [`../../features/animator.md`](../../features/animator.md)
+- [`../../formats/rig-assets.md`](../../formats/rig-assets.md) (TICKET-0106)
+- Owner request 2026-07-21: switch Diagnostics area to animation manage/preview
 
 ## Acceptance criteria
 
-- [ ] Deliverable matches the ticket title and epics.md Notes.
-- [ ] Status/Priority mirrored in Notion when work starts.
-- [ ] Context indexes updated if behavior or formats change.
+- [ ] Editor UI: Animation tools reachable from the Diagnostics docking area (tab/mode switch — exact chrome TBD at pickup).
+- [ ] List / inspect animation clips + animator controllers in the project.
+- [ ] Show linked `*.rig.json` IK hooks / bone roles (read-only minimum).
+- [ ] Preview playback controls once GPU skinning / pose path exists (may stub until then).
+- [ ] Context + epics updated; rebuild `engine`.
 
 ## Out of scope
 
-Anything beyond this ticket's Notes in epics.md; do not pull later milestone work early without owner override.
+- Full IK solver authoring (follow-on after TICKET-0106 metadata)
+- Replacing Diagnostics entirely
+- World Forge / viewport tab proliferation
 
 ## Dependencies
 
-See epics.md Notes and Priority ladder. Hold P3 / proposed work behind M5 animation exit unless overridden.
+- Soft: TICKET-0106 rig metadata (shipped schema)
+- Soft: GPU skinning / M5 exit preview path for rich playback
 
 ## Verification
 
-Per ticket type: rebuild `engine` for C++/shader changes; doc review for design tickets; named suites / `engine_project_validate` when applicable. Set Status to needs-approval after verification — never done.
+Manual editor smoke + rebuild `engine`. Set Status to needs-approval after verification — never done.
 
 ## Agent notes
 
-_(stub — expand when picked up)_
+Elevated from P3 stub on owner request (2026-07-21). Expand acceptance further when picked up.

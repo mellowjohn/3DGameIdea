@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "visualPrefab": "assets/prefabs/player/player.prefab.json",
+  "rig": "assets/characters/player.rig.json",
   "capsuleRadius": 0.3499999940395355,
   "capsuleHalfHeight": 0.8500000238418579,
   "maxSlopeRatio": 0.44999998807907104,

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Teach"
+  short_description: "Explain a confusing question so I can answer it"
+  default_prompt: "Use $teach to explain the last question you asked me — what it means, why it matters, and the tradeoffs — then re-ask it simply."

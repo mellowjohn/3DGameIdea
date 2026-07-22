@@ -11,6 +11,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -112,5 +113,14 @@ struct PrefabAsset {
     const std::string& prefab_asset);
 [[nodiscard]] const PrefabAsset* find_prefab_in_catalog(const std::map<std::string, PrefabAsset>& catalog,
     const std::string& prefab_asset);
+
+/** Ensure every prefab-required mesh key exists in `imported_meshes` (built-in primitives and glTF/glb assets).
+ *  Used by the editor after catalog changes so newly referenced meshes upload without restarting.
+ *  Paths in `reload_mesh_keys` are dropped and re-imported (MCP overwrite / hot reload). Cleared when processed. */
+void ensure_prefab_catalog_meshes(const std::filesystem::path& project_root,
+    const std::map<std::string, PrefabAsset>& prefab_catalog, const PrefabAsset::MaterialLookup& lookup_material,
+    std::map<std::string, MeshBounds>& mesh_bounds,
+    std::vector<std::pair<std::string, ImportedMesh>>& imported_meshes,
+    std::set<std::string>* reload_mesh_keys = nullptr);
 
 } // namespace engine

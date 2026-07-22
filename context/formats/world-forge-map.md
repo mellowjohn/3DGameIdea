@@ -18,6 +18,12 @@ Sample: `samples/open-world-rpg/assets/world-forge/map.worldforge.json`.
 {
   "schemaVersion": 1,
   "id": "tessera_map",
+  "cartographyPlate": {
+    "centerX": 0,
+    "centerZ": 0,
+    "widthMeters": 4000,
+    "heightMeters": 2250
+  },
   "regions": [
     {
       "id": "calrenoth",
@@ -69,6 +75,17 @@ Sample: `samples/open-world-rpg/assets/world-forge/map.worldforge.json`.
 
 Optional `anchor: { "x", "y", "z" }` on regions/POIs when a world-space hint exists. The World Forge Map **Canvas** (TICKET-0187) authors these anchors on an XZ top-down overlay; Scene/Sculpt still own mesh placement.
 
+### `cartographyPlate` (optional)
+
+Locks Cartography’s official Tessera backdrop to a fixed world-meter AABB instead of fitting around marker content. Typical v1 values match the playable **4×4 km** slice (`widthMeters: 4000`); `heightMeters` follows map aspect (often 16:9 under the framed stage).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `centerX`, `centerZ` | number | Plate center in world XZ |
+| `widthMeters`, `heightMeters` | number | Positive finite extents (meters) |
+
+When absent, Cartography keeps fit-to-content behavior. Map Canvas can **Apply plate + rescale** to write this field and uniformly scale anchors/borders/hydrology/routes about the plate center.
+
 Optional `border: [{ "x", "z" }, …]` on regions — political / region outline polyline (open or closed) for Cartography mode.
 
 ### `hydrologyRegions[]`
@@ -108,7 +125,7 @@ Land travel geometry (narrative adjacency stays in `links[]`).
 
 - **List** — Regions / POIs / Links / **Hydrology** / **Ferry** / **Travel** inspectors (anchors editable as xyz; hydrology bounds as min/max XZ; ferry/travel routes as POI refs + point list; region borders as point list).
 - **Canvas** — pan/zoom XZ view (DEC-0027 camera), place/drag markers, draw links between anchored endpoints, **draw hydrology bounding boxes**, **click-append ferry/travel polylines**, optional greyscale terrain underlay (TICKET-0188).
-- **View modes** — **Cartography** (parchment chrome, kind icons, borders, road grades, culture labels) vs **Top-down** (terrain underlay for aligning the same XZ to the playable world). Official Tessera map is a Reference affordance, not the slice underlay.
+- **View modes** — **Cartography** (parchment chrome, kind icons, borders, road grades, culture labels) vs **Top-down** (terrain underlay for aligning the same XZ to the playable world). Official Tessera map is a campaign backdrop; when `cartographyPlate` is set it is sized to that world-meter window (typically the 4 km slice), not a heightmap.
 - **Stroke presentation** — Cartography stamps transparent stroke tiles along `region.border`, `travelRoutes`, and `ferryRoutes` (`assets/ui/cartography/strokes/`). Mountain / coast silhouettes stay in discrete plates; political strokes do not paint over sea or across ridges.
 
 ## Enums

@@ -12,6 +12,8 @@ namespace engine {
 struct CharacterAsset {
     std::uint32_t schema_version = 1;
     std::string visual_prefab = "assets/prefabs/player.prefab.json";
+    /** Optional project-relative *.rig.json (IK hooks + retarget roles). Empty = none. */
+    std::string rig;
     float capsule_radius = 0.35f;
     float capsule_half_height = 0.85f;
     float max_slope_ratio = 0.45f;

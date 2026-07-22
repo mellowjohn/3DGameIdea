@@ -202,7 +202,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0103 | Blend trees + layered animation state machines | done | P2 | Owner approved 2026-07-16; controller + component + Lua drive; [`tickets/TICKET-0103.md`](tickets/TICKET-0103.md) |
 | TICKET-0104 | Root motion extraction and character sync | done | P2 | Owner approved 2026-07-16; DEC-0030; [`tickets/TICKET-0104.md`](tickets/TICKET-0104.md) |
 | TICKET-0105 | Animation events → gameplay/collision hooks | needs-approval | P2 | DEC-0031 controller timelineEvents → Lua `on_animation_event`; [`tickets/TICKET-0105.md`](tickets/TICKET-0105.md) |
-| TICKET-0106 | IK hooks + retargeting metadata | proposed | P2 | |
+| TICKET-0106 | IK hooks + retargeting metadata | needs-approval | P2 | `*.rig.json` / `RigAsset`; DEC-0041; [`tickets/TICKET-0106.md`](tickets/TICKET-0106.md); [`../formats/rig-assets.md`](../formats/rig-assets.md) |
 | TICKET-0107 | miniaudio integration + spatial/event playback | proposed | P2 | |
 | TICKET-0108 | Full triangle mesh viewport picking | proposed | P2 | Deferred from M4; editor polish |
 | TICKET-0109 | Recast/detour navmesh integration (beyond grid) | deferred | P3 | Not blocking M5 exit |
@@ -222,7 +222,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0132 | Viewport gizmos for prefab part editing | proposed | P3 | |
 | TICKET-0133 | Play-state save/resume | proposed | P3 | Beyond test-session reset |
 | TICKET-0134 | World partition authoring UI | proposed | P3 | |
-| TICKET-0135 | Animation preview/authoring tool | proposed | P3 | After EPIC-0008 |
+| TICKET-0135 | Animation tools panel (Diagnostics-adjacent) | proposed | P2 | Owner request 2026-07-21; manage/preview clips+rig; [`tickets/TICKET-0135.md`](tickets/TICKET-0135.md) |
 | TICKET-0136 | Dialogue graph editor surface | deferred | P3 | **Superseded** by TICKET-0165–0168+ (extends TICKET-0053) |
 | TICKET-0137 | Particle/VFX editor preview | proposed | P3 | Pairs with TICKET-0125 |
 | TICKET-0138 | Profiler panel integration | proposed | P3 | |

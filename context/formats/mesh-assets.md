@@ -53,12 +53,13 @@ The importer also reads a documented glTF skinning subset into engine-owned stru
 - Sparse accessors for skinning attributes.
 - Animation clip **formats** are documented in [`animation-clip-assets.md`](animation-clip-assets.md); this mesh subset still does not import clips into `ImportedMesh`.
 - Node hierarchy bake into a runtime skeleton pose beyond storing joint node indices / names / IBMs.
-- Retargeting metadata and IK hooks.
 - GPU skinning upload.
+
+Retargeting metadata and IK hooks ship as authorable `*.rig.json` ([`rig-assets.md`](rig-assets.md), TICKET-0106 / DEC-0041) — not embedded in the glTF importer.
 
 ## Pending importer work
 
-Normals, tangents, full node-transform baking for static meshes, mesh optimization, engine-owned compiled binaries, thumbnails, hot reload, and generated collision are not part of this pass. UVs and base-color texture import/sampling are now active (TICKET-0191); the remaining PBR texture set (normal, metallic-roughness, emissive maps), mipmaps, anisotropic filtering, and texture atlasing remain out of scope.
+Normals, tangents, full node-transform baking for static meshes, mesh optimization, engine-owned compiled binaries, thumbnails, generic filesystem hot reload, and generated collision are not part of this pass. **Live catalog load is active for MCP/editor authoring:** when the prefab catalog changes (or MCP writes a `.gltf`/`.glb`), missing mesh assets are imported and queued reloads re-upload GPU geometry without restarting the editor. UVs and base-color texture import/sampling are now active (TICKET-0191); the remaining PBR texture set (normal, metallic-roughness, emissive maps), mipmaps, anisotropic filtering, and texture atlasing remain out of scope.
 
 The sample `dead-tree.gltf` was authored for this project, has no external source content, and may be modified and used commercially with the project.
 
@@ -71,3 +72,9 @@ The sample `dead-tree.gltf` was authored for this project, has no external sourc
 Oak silhouette variants derived from the same Blockbench oak (shared `tree.png` atlas): `oak_wide.gltf`, `oak_tall.gltf`, `oak_lean.gltf`, `oak_asymmetric.gltf`, `oak_young.gltf`. Sources under `tools/art/tree/variants/`. Regenerate with `python tools/generate_oak_variants.py`. Matching Scene Asset prefabs: `oak_wide`, `oak_tall`, `oak_lean`, `oak_asymmetric`, `oak_young`.
 
 `stones.gltf` is a small Blockbench rock cluster bake. Source: `tools/art/stones/Stones.gltf`. Rebake with `tools/bake_stones_gltf.py` (feet at y=0, height ≈ 0.45 m, atlas `stones.png`). Prefab: `assets/prefabs/Scene Assets/stones.prefab.json`.
+
+`dead_log.gltf` is a fallen Blockbench log bake. Source: `tools/art/dead-log/DeadLog.gltf` (`.bbmodel` alongside). Rebake with `tools/bake_dead_log_gltf.py` (feet at y=0, thickness ≈ 0.45 m, atlas `dead_log.png`). Prefab: `assets/prefabs/Scene Assets/dead_log.prefab.json`.
+
+`stump.gltf` is a cut Blockbench stump bake. Source: `tools/art/stump/Stump.gltf` (`.bbmodel` alongside). Rebake with `tools/bake_stump_gltf.py` (feet at y=0, height ≈ 0.55 m, atlas `stump.png`). Prefab: `assets/prefabs/Scene Assets/stump.prefab.json`.
+
+Planned Blockbench props, character kits, and set pieces (not yet authored) are tracked in [`context/art/blockbench-asset-list.md`](../art/blockbench-asset-list.md).

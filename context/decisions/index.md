@@ -506,3 +506,17 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Consequences: Manifest at `world-map-layers/manifest.json`; frame/fog under `assets/ui/cartography/{frame,fog}/`. Update [`../story/official-world-map.md`](../story/official-world-map.md), [`../art/cartography-design.md`](../art/cartography-design.md). TICKET-0061 should consume the same layer model.
 - Supersedes: continuous multi-LOD Cartography backdrop as the preferred path (tiles remain fallback)
 
+### DEC-0041: Rig metadata before IK solver
+
+- Status: accepted
+- Date: 2026-07-21
+- Context: TICKET-0106 (IK hooks + retargeting metadata) was a stub. Owner chose schema-first authoring now, with a full IK solver later; also requested a Diagnostics-adjacent Animation manage/preview panel (tracked as TICKET-0135, not this ticket).
+- Decision:
+  1. Ship authorable `*.rig.json` (`RigAsset`) with `ikHooks[]` and `boneRoles[]`, optional `character.rig` path.
+  2. Validate schema + optional joint-name checks against `ImportedSkin::joint_names`.
+  3. Do **not** implement runtime IK solve or GPU skinning in this ticket.
+  4. Full IK solve remains a follow-on after skinning/playback foundations; Animation tools UI is TICKET-0135.
+- Rationale: Unblocks retarget/IK authoring and MCP-friendly data without committing to a solver API; matches the literal ticket title and mesh-assets pending note.
+- Consequences: Format [`../formats/rig-assets.md`](../formats/rig-assets.md); sample `player.rig.json`. Solver + Animation panel are separate tickets.
+- Supersedes: none
+

@@ -2,6 +2,36 @@
   "schemaVersion": 1,
   "entities": [
     {
+      "id": "0090638e-91e8-4e05-8060-f29acc582766",
+      "name": "Dead Log",
+      "transform": {
+        "position": [
+          -20.107999801635742,
+          -1.9279999732971191,
+          28.14299964904785
+        ],
+        "rotation": [
+          0.0,
+          0.8822259902954102,
+          0.0,
+          0.47082701325416565
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/dead_log.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
       "id": "02b172e4-734c-444f-aff7-25693570139b",
       "name": "Forest Tree 5,-4",
       "transform": {
@@ -328,6 +358,36 @@
         "cell": [
           0,
           -1
+        ]
+      }
+    },
+    {
+      "id": "13e6bbd1-6d57-4d1f-b928-2afdffe58a10",
+      "name": "Dead Log",
+      "transform": {
+        "position": [
+          7.5,
+          2.555999994277954,
+          20.5
+        ],
+        "rotation": [
+          0.0,
+          0.5,
+          0.0,
+          0.8660249710083008
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/dead_log.prefab.json",
+        "cell": [
+          0,
+          0
         ]
       }
     },
@@ -1142,6 +1202,36 @@
       }
     },
     {
+      "id": "4cf50c0f-6741-49e2-b831-a6a4af11071b",
+      "name": "Dead Log",
+      "transform": {
+        "position": [
+          25.856000900268555,
+          3.2009999752044678,
+          18.385000228881836
+        ],
+        "rotation": [
+          0.0,
+          0.987296998500824,
+          0.0,
+          0.15888799726963043
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/dead_log.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
       "id": "4f5f765b-b104-4632-aa8a-b8780257bcef",
       "name": "Forest Tree 5,0",
       "transform": {
@@ -1892,6 +1982,36 @@
       }
     },
     {
+      "id": "6aa06b2c-a0b9-4121-8429-f6d7e13c657a",
+      "name": "Stump",
+      "transform": {
+        "position": [
+          -5.9770002365112305,
+          0.6759999990463257,
+          -5.269000053405762
+        ],
+        "rotation": [
+          0.0,
+          0.9918869733810425,
+          0.0,
+          0.12712599337100983
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/stump.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      }
+    },
+    {
       "id": "6d68882d-74a7-431c-af59-f3d5f3e25da0",
       "name": "Forest Tree -5,3",
       "transform": {
@@ -2102,6 +2222,36 @@
       }
     },
     {
+      "id": "71e982f4-804b-46e2-a786-61f8afd1947e",
+      "name": "Stump",
+      "transform": {
+        "position": [
+          22.47599983215332,
+          3.0179998874664307,
+          21.59000015258789
+        ],
+        "rotation": [
+          0.0,
+          0.35214701294898987,
+          0.0,
+          -0.9359449744224548
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/stump.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
       "id": "7269fe6c-f497-4a86-af7a-1cefe139e791",
       "name": "Forest Tree 4,-1",
       "transform": {
@@ -2132,19 +2282,19 @@
       }
     },
     {
-      "id": "72d3a99d-0f12-44a2-bc46-71091f35e1c2",
-      "name": "player",
+      "id": "72bae308-3fe2-4a52-bd31-c67902eb6e05",
+      "name": "Dead Log",
       "transform": {
         "position": [
-          -1.7948964834213257,
-          1.039186954498291,
-          13.98533821105957
+          -4.441999912261963,
+          -0.020999999716877937,
+          21.91699981689453
         ],
         "rotation": [
           0.0,
-          -0.0,
+          0.667559027671814,
           0.0,
-          1.0
+          0.7445570230484009
         ],
         "scale": [
           1.0,
@@ -2154,10 +2304,40 @@
       },
       "parent": null,
       "placement": {
-        "prefab": "assets/prefabs/player/player.prefab.json",
+        "prefab": "assets/prefabs/scene assets/dead_log.prefab.json",
         "cell": [
           -1,
           0
+        ]
+      }
+    },
+    {
+      "id": "72d3a99d-0f12-44a2-bc46-71091f35e1c2",
+      "name": "player",
+      "transform": {
+        "position": [
+          -1045.0,
+          11.837618827819824,
+          305.0
+        ],
+        "rotation": [
+          -6.710689604005893e-08,
+          -0.9301393628120422,
+          -1.5465563762973034e-07,
+          -0.36720600724220276
+        ],
+        "scale": [
+          0.9992888569831848,
+          1.0,
+          0.9992888569831848
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/player/player.prefab.json",
+        "cell": [
+          -9,
+          2
         ],
         "characterAsset": "assets/characters/player.character.json"
       },
@@ -2395,6 +2575,36 @@
         "prefab": "assets/prefabs/scene assets/tree.prefab.json",
         "cell": [
           -1,
+          -1
+        ]
+      }
+    },
+    {
+      "id": "791baf9d-01d4-4c52-8954-4aa91fcde093",
+      "name": "Dead Log",
+      "transform": {
+        "position": [
+          4.942999839782715,
+          0.5479999780654907,
+          -19.07900047302246
+        ],
+        "rotation": [
+          0.0,
+          0.21677899360656738,
+          0.0,
+          0.9762210249900818
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/dead_log.prefab.json",
+        "cell": [
+          0,
           -1
         ]
       }
@@ -2849,6 +3059,36 @@
         "prefab": "assets/prefabs/scene assets/tree.prefab.json",
         "cell": [
           0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "8c5d3bca-ef00-4bfc-bb20-56e08a455308",
+      "name": "Dead Log",
+      "transform": {
+        "position": [
+          -11.390000343322754,
+          -1.3660000562667847,
+          8.192000389099121
+        ],
+        "rotation": [
+          0.0,
+          0.9299219846725464,
+          0.0,
+          0.3677560091018677
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/dead_log.prefab.json",
+        "cell": [
+          -1,
           0
         ]
       }
@@ -3339,14 +3579,14 @@
       "transform": {
         "position": [
           3.4329404830932617,
-          1.7208526134490967,
+          -321.1905212402344,
           15.758028984069824
         ],
         "rotation": [
-          -0.06406918913125992,
-          0.7668730020523071,
-          -0.07177050411701202,
-          -0.6345469355583191
+          -0.06406918168067932,
+          0.7668728828430176,
+          -0.07177051901817322,
+          -0.6345471143722534
         ],
         "scale": [
           1.0,
@@ -4045,6 +4285,36 @@
       }
     },
     {
+      "id": "b9864597-7650-4d6a-bd9b-235a06a34143",
+      "name": "Stump",
+      "transform": {
+        "position": [
+          -32.29600143432617,
+          1.2419999837875366,
+          20.711999893188477
+        ],
+        "rotation": [
+          0.0,
+          0.7784240245819092,
+          0.0,
+          -0.6277390122413635
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/stump.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
       "id": "ba3c0a6d-3ffd-4ec0-92c9-3c59c8350226",
       "name": "Forest Stones 16",
       "transform": {
@@ -4068,6 +4338,36 @@
       "parent": null,
       "placement": {
         "prefab": "assets/prefabs/scene assets/stones.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "bb15821e-3b3a-4635-b9ea-daef8c7a448b",
+      "name": "Stump",
+      "transform": {
+        "position": [
+          -14.779000282287598,
+          0.9279999732971191,
+          10.09000015258789
+        ],
+        "rotation": [
+          0.0,
+          0.4890440106391907,
+          0.0,
+          0.8722590208053589
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/stump.prefab.json",
         "cell": [
           -1,
           0
@@ -4525,6 +4825,36 @@
       }
     },
     {
+      "id": "cf062460-7dc1-47ab-a287-0abf31b264dd",
+      "name": "Stump",
+      "transform": {
+        "position": [
+          -14.583000183105469,
+          0.8399999737739563,
+          -1.0570000410079956
+        ],
+        "rotation": [
+          0.0,
+          0.3156130015850067,
+          0.0,
+          0.9488880038261414
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/stump.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      }
+    },
+    {
       "id": "cf32b142-eb67-4b0b-b81d-2457a383a910",
       "name": "Forest Tree 1,-5",
       "transform": {
@@ -4760,6 +5090,36 @@
         "prefab": "assets/prefabs/scene assets/bush.prefab.json",
         "cell": [
           -1,
+          -1
+        ]
+      }
+    },
+    {
+      "id": "e2c117d8-97c4-4644-a7d0-75f10ebd2819",
+      "name": "Stump",
+      "transform": {
+        "position": [
+          21.89299964904785,
+          -0.6579999923706055,
+          -16.889999389648438
+        ],
+        "rotation": [
+          0.0,
+          0.6872739791870117,
+          0.0,
+          -0.7263990044593811
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/stump.prefab.json",
+        "cell": [
+          0,
           -1
         ]
       }
@@ -5028,6 +5388,96 @@
       "parent": null,
       "placement": {
         "prefab": "assets/prefabs/scene assets/bush.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      }
+    },
+    {
+      "id": "f3a1a96a-366c-44a1-af2c-fdd9cc3de769",
+      "name": "Dead Log",
+      "transform": {
+        "position": [
+          -13.836999893188477,
+          -2.868000030517578,
+          -29.29199981689453
+        ],
+        "rotation": [
+          0.0,
+          0.7662330269813538,
+          0.0,
+          0.6425619721412659
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/dead_log.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      }
+    },
+    {
+      "id": "f4539b7c-36be-44dc-beff-6c3dcc5af36d",
+      "name": "Dead Log",
+      "transform": {
+        "position": [
+          9.430999755859375,
+          1.934999942779541,
+          25.99799919128418
+        ],
+        "rotation": [
+          0.0,
+          0.2450370043516159,
+          0.0,
+          0.969514012336731
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/dead_log.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "f4a8c29f-1657-4029-aa94-1c9f3975e6c9",
+      "name": "Stump",
+      "transform": {
+        "position": [
+          -35.47600173950195,
+          -0.9750000238418579,
+          -14.916000366210938
+        ],
+        "rotation": [
+          0.0,
+          0.046411000192165375,
+          0.0,
+          -0.9989219903945923
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/stump.prefab.json",
         "cell": [
           -1,
           -1

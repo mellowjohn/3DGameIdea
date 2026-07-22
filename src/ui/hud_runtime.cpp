@@ -454,7 +454,8 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
             const float thumb_w = std::max(10.0f * scale, height * 0.55f);
             const float thumb_h = height;
             const float thumb_x = origin.x + width * t - thumb_w * 0.5f;
-            const ImVec2 thumb_min{std::clamp(thumb_x, origin.x, max.x - thumb_w), origin.y};
+            const float thumb_hi = std::max(origin.x, max.x - thumb_w);
+            const ImVec2 thumb_min{std::clamp(thumb_x, origin.x, thumb_hi), origin.y};
             const ImVec2 thumb_max{thumb_min.x + thumb_w, origin.y + thumb_h};
             draw_list->AddRectFilled(thumb_min, thumb_max, with_opacity(slider_thumb, opacity), 2.0f * scale);
             draw_list->AddRect(thumb_min, thumb_max, with_opacity(button_border_default, opacity), 2.0f * scale, 0,

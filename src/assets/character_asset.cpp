@@ -46,6 +46,7 @@ std::string CharacterAsset::to_json() const {
                                 {"maxSpeed", max_speed},
                                 {"gravity", gravity},
                                 {"jumpVelocity", jump_velocity}};
+    if (!rig.empty()) root["rig"] = rig;
     return root.dump(2) + "\n";
 }
 
@@ -55,6 +56,7 @@ Result<CharacterAsset> CharacterAsset::from_json(const std::string& text) {
         CharacterAsset value;
         value.schema_version = root.at("schemaVersion").get<std::uint32_t>();
         value.visual_prefab = root.at("visualPrefab").get<std::string>();
+        value.rig = root.value("rig", std::string{});
         value.capsule_radius = root.value("capsuleRadius", 0.35f);
         value.capsule_half_height = root.value("capsuleHalfHeight", 0.85f);
         value.max_slope_ratio = root.value("maxSlopeRatio", 0.45f);

@@ -3047,6 +3047,7 @@ struct EditorState {
     std::map<std::string, MaterialAsset> material_cache;
     std::string terrain_material_path = "assets/materials/terrain.material.json";
     bool prefab_meshes_dirty = false;
+    std::set<std::string> pending_mesh_reloads;
     bool scene_dirty = false;
     std::unique_ptr<LuaRuntime> lua_runtime;
     std::unique_ptr<QuestRuntime> quest_runtime;
@@ -3441,6 +3442,7 @@ EditorSessionContext make_editor_session_context(EditorState& state, bool editor
     context.prefab_catalog = &state.prefab_catalog;
     context.scene_dirty = &state.scene_dirty;
     context.prefab_meshes_dirty = &state.prefab_meshes_dirty;
+    context.pending_mesh_reloads = &state.pending_mesh_reloads;
     context.terrain_edits = &state.terrain_edits;
     context.terrain_history = &state.terrain_history;
     context.terrain_edits_dirty = &state.terrain_edits_dirty;
@@ -4163,26 +4165,8 @@ Result<void> ensure_runtime_player_assets(const std::filesystem::path& project_r
 
 void ensure_prefab_primitive_meshes(EditorState& state, std::vector<std::pair<std::string, ImportedMesh>>& imported_meshes) {
     const auto lookup_material = make_material_lookup(&state.material_cache);
-    std::set<std::string> existing;
-    for (const auto& mesh : imported_meshes) existing.insert(mesh.first);
-    for (const auto& entry : state.prefab_catalog) {
-        for (const auto& key : entry.second.required_mesh_keys(lookup_material)) {
-            if (existing.find(key) != existing.end()) continue;
-            if (key.rfind("__primitive/", 0) != 0) continue;
-            const auto rest = key.substr(12);
-            const auto slash = rest.find('/');
-            if (slash == std::string::npos) continue;
-            const auto primitive = rest.substr(0, slash);
-            const auto color_token = rest.substr(slash + 1);
-            std::array<float, 3> color{};
-            if (std::sscanf(color_token.c_str(), "%f_%f_%f", &color[0], &color[1], &color[2]) != 3) continue;
-            auto generated = generate_primitive_mesh(primitive, color);
-            if (!generated) continue;
-            state.mesh_bounds[key] = generated.value().aabb;
-            imported_meshes.emplace_back(key, std::move(generated.value()));
-            existing.insert(key);
-        }
-    }
+    ensure_prefab_catalog_meshes(state.project_root, state.prefab_catalog, lookup_material, state.mesh_bounds,
+        imported_meshes, &state.pending_mesh_reloads);
     for (auto& entry : state.prefab_catalog) {
         state.prefab_bounds[entry.first] = entry.second.bounds(state.mesh_bounds, lookup_material);
     }
@@ -8244,6 +8228,38 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
     InteractionOverlapTracker debug_interaction_tracker;
     CombatVolumeRegistry debug_combat_registry;
     DebugCamera camera;
+    if (editor) {
+        // Open Scene camera on the authored player spawn when exactly one exists.
+        std::optional<EntityId> spawn_id;
+        for (const auto& id : editor->scene.entity_ids()) {
+            const auto placement = editor->scene.placement(id);
+            if (!placement || !placement->character_asset) continue;
+            if (spawn_id) {
+                spawn_id.reset();
+                break;
+            }
+            spawn_id = id;
+        }
+        if (spawn_id) {
+            if (const auto transform = editor->scene.transform(*spawn_id)) {
+                constexpr float k_distance = 28.0f;
+                constexpr float k_height = 16.0f;
+                const float tx = transform->position[0];
+                const float ty = transform->position[1];
+                const float tz = transform->position[2];
+                const float cam_x = tx;
+                const float cam_y = ty + k_height;
+                const float cam_z = tz - k_distance;
+                const float dx = tx - cam_x;
+                const float dy = ty - cam_y;
+                const float dz = tz - cam_z;
+                const float yaw = std::atan2(dx, dz);
+                const float horiz = std::sqrt(dx * dx + dz * dz);
+                const float pitch = std::atan2(dy, (std::max)(horiz, 0.001f));
+                camera.set_pose({cam_x, cam_y, cam_z}, yaw, pitch);
+            }
+        }
+    }
     std::optional<OrbitCamera> orbit_camera;
     float player_facing_yaw = 0.0f;
     float mouse_x=0,mouse_y=0;

@@ -2,6 +2,7 @@
 #include "engine/assets/material_asset.h"
 #include "engine/assets/character_asset.h"
 #include "engine/assets/camera_asset.h"
+#include "engine/assets/rig_asset.h"
 #include "engine/assets/play_session_settings.h"
 #include "engine/assets/mesh_asset.h"
 #include "engine/assets/animation_clip_asset.h"
@@ -352,6 +353,25 @@ int main(int argc,char**argv){
         auto player_asset=engine::PrefabAsset::load(player_prefab);r.check(player_asset&&player_asset.value().parts.size()==1&&player_asset.value().parts[0].mesh.primitive=="capsule"&&player_asset.value().character_asset=="assets/characters/player.character.json","player capsule prefab parsed");
         const auto character_asset=root/"assets/characters/player.character.json";std::filesystem::create_directories(character_asset.parent_path());std::ofstream(character_asset)<<R"({"schemaVersion":1,"visualPrefab":"assets/prefabs/player.prefab.json","capsuleRadius":0.35,"capsuleHalfHeight":0.85,"maxSlopeRatio":0.45,"stepHeight":0.35,"maxSpeed":6.0,"gravity":9.81,"jumpVelocity":5.0})";
         auto character=engine::CharacterAsset::load(character_asset);r.check(character&&character.value().controller_config().max_speed==6.0f&&character.value().controller_config().jump_velocity==5.0f,"character asset parsed");
+        engine::RigAsset rig_sample;rig_sample.id="fixture";
+        engine::RigIkHook hand;hand.id="left_hand";hand.tip_joint="LeftHand";hand.root_joint="LeftUpperArm";hand.chain_length=3;
+        engine::RigBoneRole hips;hips.role="hips";hips.joint_name="Hips";
+        rig_sample.ik_hooks={hand};rig_sample.bone_roles={hips};
+        r.check(rig_sample.validate().has_value(),"rig metadata validates");
+        const auto rig_path=root/"assets/characters/fixture.rig.json";std::filesystem::create_directories(rig_path.parent_path());
+        r.check(rig_sample.save(rig_path).has_value(),"rig asset save");
+        auto loaded_rig=engine::RigAsset::load(rig_path);
+        r.check(loaded_rig&&loaded_rig.value().ik_hooks.size()==1&&loaded_rig.value().bone_roles[0].role=="hips","rig asset round trip");
+        r.check(loaded_rig&&loaded_rig.value().validate_against_joint_names({"Hips","LeftHand","LeftUpperArm"}).has_value(),
+            "rig joints match skin names");
+        r.check(loaded_rig&&!loaded_rig.value().validate_against_joint_names({"Hips"}).has_value(),"rig rejects unknown tip joint");
+        engine::RigIkHook dup=hand;rig_sample.ik_hooks.push_back(dup);
+        r.check(!rig_sample.validate()&&rig_sample.validate().error().code=="RIG-IK-ID-DUPLICATE","duplicate ik hook id rejected");
+        const auto player_rig=std::filesystem::path(ENGINE_REPOSITORY_ROOT)/"samples/open-world-rpg/assets/characters/player.rig.json";
+        auto sample_rig=engine::RigAsset::load(player_rig);
+        r.check(sample_rig&&sample_rig.value().ik_hooks.size()==4&&sample_rig.value().bone_roles.size()>=10,"sample player.rig.json loads");
+        auto char_with_rig=engine::CharacterAsset::from_json(R"({"schemaVersion":1,"visualPrefab":"assets/prefabs/player.prefab.json","rig":"assets/characters/player.rig.json","capsuleRadius":0.35,"capsuleHalfHeight":0.85,"maxSlopeRatio":0.45,"stepHeight":0.35,"maxSpeed":6,"gravity":9.81,"jumpVelocity":5})");
+        r.check(char_with_rig&&char_with_rig.value().rig=="assets/characters/player.rig.json","character optional rig path parsed");
         const auto camera_asset=root/"assets/cameras/game.camera.json";std::filesystem::create_directories(camera_asset.parent_path());std::ofstream(camera_asset)<<R"({"schemaVersion":1,"pivotHeight":1.6,"minDistance":1.5,"maxDistance":8.0,"defaultDistance":5.0,"collisionProbeRadius":0.2,"collisionPadding":0.15,"lookSensitivity":0.0025,"verticalFovRadians":1.04719755,"nearPlane":0.1,"farPlane":2000.0})";
         auto camera=engine::CameraAsset::load(camera_asset);r.check(camera&&camera.value().orbit_config().default_distance==5.0f,"camera asset parsed");
         engine::PlaySessionSettings session;session.character_asset="assets/characters/player.character.json";session.camera_asset="assets/cameras/game.camera.json";
@@ -369,6 +389,26 @@ int main(int argc,char**argv){
         const auto lookup=engine::make_material_lookup(&materials);
         const auto resolved_color=engine::resolved_prefab_mesh_color(mesh_with_material,lookup);
         r.check(resolved_color[0]==0.2f&&resolved_color[1]==0.4f&&resolved_color[2]==0.6f,"prefab material resolves render color");
+        // Live catalog mesh ensure: newly referenced glTF must load without restart (MCP authoring).
+        {
+            const auto live_mesh=root/"assets/models/live_prop.gltf";
+            std::filesystem::create_directories(live_mesh.parent_path());
+            std::ofstream(live_mesh)<<R"({"asset":{"version":"2.0"},"buffers":[{"byteLength":96,"uri":"data:application/octet-stream;base64,AAAAvwAAAAAAAAC/AAAAPwAAAAAAAAC/AAAAPwAAAAAAAAA/AAAAvwAAAAAAAAA/AAAAAAAAAEAAAAAAAAABAAQAAQACAAQAAgADAAQAAwAAAAQAAAADAAIAAAACAAEA"}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":60},{"buffer":0,"byteOffset":60,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":5,"type":"VEC3"},{"bufferView":1,"componentType":5123,"count":18,"type":"SCALAR"}],"meshes":[{"primitives":[{"attributes":{"POSITION":0},"indices":1}]}]})";
+            engine::PrefabAsset live_prefab;live_prefab.schema_version=2;
+            engine::PrefabPart live_part;live_part.name="Body";live_part.mesh.asset="assets/models/live_prop.gltf";
+            live_prefab.parts={live_part};
+            std::map<std::string,engine::PrefabAsset> live_catalog{{"assets/prefabs/live_prop.prefab.json",live_prefab}};
+            std::map<std::string,engine::MeshBounds> live_bounds;
+            std::vector<std::pair<std::string,engine::ImportedMesh>> live_meshes;
+            engine::ensure_prefab_catalog_meshes(root,live_catalog,{},live_bounds,live_meshes);
+            r.check(live_meshes.size()==1&&live_meshes[0].second.vertices.size()==18,"catalog ensure imports missing glTF mesh");
+            r.check(live_bounds.count("assets/models/live_prop.gltf")==1,"catalog ensure records mesh bounds");
+            const auto before_count=live_meshes[0].second.vertices.size();
+            std::set<std::string> reload{"assets/models/live_prop.gltf"};
+            engine::ensure_prefab_catalog_meshes(root,live_catalog,{},live_bounds,live_meshes,&reload);
+            r.check(reload.empty()&&live_meshes.size()==1&&live_meshes[0].second.vertices.size()==before_count,
+                "catalog ensure reloads invalidated glTF mesh keys");
+        }
         test_material.roughness=0.25f;test_material.metallic=0.8f;test_material.emissive={2.0f,0.5f,0.1f};
         r.check(engine::material_supports_opaque_pbr_runtime(test_material),"opaque material supports PBR runtime");
         const auto pbr=engine::PbrSurfaceParams::from_material(test_material);
@@ -539,9 +579,12 @@ int main(int argc,char**argv){
         r.check(map_loaded.has_value(),"sample map.worldforge.json loads");
         r.check(map_loaded&&map_loaded.value().schema_version==1&&map_loaded.value().id=="tessera_map",
             "map sample schema and id");
-        r.check(map_loaded&&map_loaded.value().regions.size()==3&&map_loaded.value().pois.size()==4&&
-            map_loaded.value().links.size()==2&&map_loaded.value().hydrology_regions.size()==2&&
+        r.check(map_loaded&&map_loaded.value().regions.size()==5&&map_loaded.value().pois.size()==6&&
+            map_loaded.value().links.size()==6&&map_loaded.value().hydrology_regions.size()==2&&
             map_loaded.value().ferry_routes.size()==1,"map sample seed counts");
+        r.check(map_loaded&&map_loaded.value().cartography_plate&&
+            map_loaded.value().cartography_plate->width_meters==4000.0f,
+            "map sample has 4 km cartographyPlate");
         if(map_loaded){
             const auto round_trip=engine::WorldForgeMapAsset::parse(map_loaded.value().to_json());
             r.check(round_trip&&round_trip.value().to_json()==map_loaded.value().to_json(),
@@ -550,6 +593,28 @@ int main(int argc,char**argv){
             if(loaded) for(const auto& entity:loaded.value().entities) faction_ids.insert(entity.id);
             r.check(map_loaded.value().validate_faction_refs(faction_ids).has_value(),
                 "sample region factionIds resolve against factions asset");
+        }
+        {
+            auto plated=engine::WorldForgeMapAsset::parse(
+                R"({"schemaVersion":1,"id":"t","cartographyPlate":{"centerX":10,"centerZ":20,"widthMeters":4000,"heightMeters":2250},"regions":[{"id":"r1","kind":"region","canonStatus":"draft","anchor":{"x":0,"y":1,"z":0}}],"pois":[],"links":[]})");
+            r.check(plated&&plated.value().cartography_plate&&
+                plated.value().cartography_plate->center_x==10.0f&&
+                plated.value().cartography_plate->width_meters==4000.0f,"cartographyPlate parse");
+            const auto bad_plate=engine::WorldForgeMapAsset::parse(
+                R"({"schemaVersion":1,"id":"t","cartographyPlate":{"centerX":0,"centerZ":0,"widthMeters":0,"heightMeters":100},"regions":[],"pois":[],"links":[]})");
+            r.check(!bad_plate&&bad_plate.error().code=="WORLD-FORGE-MAP-PLATE","zero-width plate rejected");
+            auto scale_map=engine::WorldForgeMapAsset::parse(
+                R"({"schemaVersion":1,"id":"t","regions":[{"id":"r1","kind":"region","canonStatus":"draft","anchor":{"x":100,"y":2,"z":0}},{"id":"r2","kind":"region","canonStatus":"draft","anchor":{"x":200,"y":2,"z":0}}],"pois":[],"links":[]})");
+            r.check(scale_map.has_value(),"scale map parse");
+            if(scale_map){
+                const float applied=engine::apply_cartography_plate_and_rescale(scale_map.value(),4000.0f,1.0f,1.0f);
+                r.check(applied>1.0f&&scale_map.value().cartography_plate&&
+                    scale_map.value().cartography_plate->width_meters==4000.0f,"apply plate writes 4 km plate");
+                const auto& a=*scale_map.value().regions[0].anchor;
+                const auto& b=*scale_map.value().regions[1].anchor;
+                const float dist=std::fabs(b.x-a.x);
+                r.check(dist>3900.0f&&dist<4100.0f&&a.y==2.0f,"rescale spreads anchors; Y unchanged");
+            }
         }
         const auto empty_region=engine::WorldForgeMapAsset::parse(
             R"({"schemaVersion":1,"id":"t","regions":[{"id":"","kind":"region","canonStatus":"draft"}],"pois":[],"links":[]})");

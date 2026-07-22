@@ -19,6 +19,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 
 namespace engine {
@@ -44,6 +45,7 @@ struct EditorSessionContext {
     std::map<std::string, PrefabAsset>* prefab_catalog = nullptr;
     bool* scene_dirty = nullptr;
     bool* prefab_meshes_dirty = nullptr;
+    std::set<std::string>* pending_mesh_reloads = nullptr;
     TerrainEditStore* terrain_edits = nullptr;
     TerrainEditHistory* terrain_history = nullptr;
     bool* terrain_edits_dirty = nullptr;

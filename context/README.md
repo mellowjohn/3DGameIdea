@@ -19,6 +19,7 @@ This directory is durable memory for humans and AI agents. Source code remains a
 - `design/dom-open-questions.md` — prioritized P0/P1/P2 world-design questions Dom still needs to answer
 - `design/dom-answered-questions.md` — archive of Dom + owner locks
 - `art/character-direction.md` — player-character art references and starter-kit direction
+- `art/blockbench-asset-list.md` — prioritized Blockbench production backlog (Act 0 → early Act 1)
 
 - `art/theme-palette.md` — open-world slice color swatches (terrain, foliage, reserved Nefarium accents)
 - `art/visual-direction.md` — stylized look, atmosphere, terrain, and typography baselines
@@ -32,6 +33,9 @@ This directory is durable memory for humans and AI agents. Source code remains a
 - `planning/tickets/` — ticket briefs for agents (required for ready/active/needs-approval)
 - `.cursor/rules/epic-ticket-population.mdc` — keep epics/tickets fully populated in repo + Notion (repo root)
 - `skills/engine-ticket-workflow/SKILL.md` — pick up, prioritize, and close assigned tickets
+- `skills/grill-me/SKILL.md` — pressure-test ambiguities with pointed questions
+- `skills/teach/SKILL.md` — explain a confusing agent question so the owner can answer it
+- `skills/interview-engine-decisions/SKILL.md` — resolve blocking engine decisions and record them
 - `roadmap.md` — milestones and exit criteria
 - `testing/strategy.md` — layered verification and regression policy
 - `testing/findings.md` — material defects, causes, fixes, and remaining risks

@@ -32,12 +32,17 @@ Controllers may author `timelineEvents[]` (state + time + name + optional layer/
 ## Out of scope
 
 - GPU skinning / viewport character playback polish (later M5 exit work).
+- Runtime IK solve (metadata only today — [`../formats/rig-assets.md`](../formats/rig-assets.md), TICKET-0106).
 - Auto combat-volume enable from events; play-session animator wiring polish.
 - Lua-authored state machines (rejected unless a new decision supersedes DEC-0022).
 - Production character art — fixture glTF is enough for engineering.
+- Editor Animation manage/preview panel (TICKET-0135).
 
 ## Related
 
+- [`../formats/animation-clip-assets.md`](../formats/animation-clip-assets.md)
+- [`../formats/animator-controller-assets.md`](../formats/animator-controller-assets.md)
+- [`../formats/rig-assets.md`](../formats/rig-assets.md)
 - Architecture animation goals: [`../architecture/overview.md`](../architecture/overview.md)
 - Lua scripting: [`lua-scripting.md`](lua-scripting.md)
 - Content vs engine: [`../architecture/content-vs-engine-workflows.md`](../architecture/content-vs-engine-workflows.md)
