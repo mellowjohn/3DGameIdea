@@ -347,8 +347,8 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 
 ## Suggested work order
 
-1. **Agents — start now:** TICKET-0110 (P0, ready) → TICKET-0107 (P1, ready). Evidence = named suites + CLI; editor smoke optional until owner desktop session.
-2. **Agents — after M5 exit:** TICKET-0135 animation tools (P2, proposed → ready when 0110 lands).
+1. **Agents — start now:** TICKET-0107 (P1, ready) audio after owner reviews TICKET-0110.
+2. **Agents — after M5 exit approved:** TICKET-0135 animation tools (P2, proposed → ready when 0110 lands).
 3. **Owner — when at desktop (not mobile):** batch-review ~65 `needs-approval` tickets (World Forge, UI, rigidbody, quest/dialogue, 0191/0182). Drag to `done` or request rework.
 4. **Hold new work until approval backlog thins:** World Forge UI/cartography, UI canvas, water (0200–0204), rigidbody chain extensions, dialogue phase 2+ (0169–0179).
 5. **P3 until M5 exit + owner sign-off:** M6–M11 runtime, mini-map, combat slice, particles, ship gate.
