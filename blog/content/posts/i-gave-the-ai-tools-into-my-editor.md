@@ -1,5 +1,5 @@
 ---
-title: I gave the AI tools into my editor
+title: I put AI tools in the editor
 date: 2026-07-20
 summary: Chat was not enough. I exposed the same moves I make by hand (place props, sculpt terrain, author World Forge data) so an agent can work inside the live Wrathful Conquest editor.
 cover: /images/cover-mcp-tools.webp
@@ -18,7 +18,7 @@ In industry shorthand that bridge is **MCP** (Model Context Protocol). In plain 
 
 The clearest win was terrain and world building.
 
-I spent real time exposing the manual moves. Place assets. Place objects. Write scripts. Create components. Sculpt the ground. Once those lived behind MCP, a visionary idea about the environment did not have to wait for me to click every brush stroke. I could keep the editor running, dock the chat to that session, and shape the world from conversation.
+I spent real time exposing the manual moves. Place assets. Place objects. Write scripts. Create components. Sculpt the ground. Once those lived behind MCP, an idea about the environment did not have to wait for me to click every brush stroke. I could keep the editor running, dock the chat to that session, and shape the world from conversation.
 
 That is the feeling I care about. Not "AI made a game." More like this. The distance between a thought about the forest and a change on the terrain got short enough that I stay in the idea.
 
@@ -34,21 +34,21 @@ The goal with this stack is the opposite. Keep the heavy C++ rebuilds for real e
 
 ## What I do now (and what I refuse to hand off)
 
-My job tilted. I spend more time as a visionary, strategist, and creative thinker. Does this system make sense as data? Can I picture myself in this world? Which characters belong here? What art direction am I defending?
+My job tilted. I spend more time deciding what the world should be. Does this system make sense as data? Can I picture myself in this world? Which characters belong here? What art direction am I defending?
 
-I think more at the macro level now instead of living in micro-tactical clicks. I still care about the micro (a tree that floats looks silly), but I do not want that to be my default day. Taste, story calls, and "does this feel alive?" stay with me. Agents accelerate the loop when the contracts are clear.
+I still care about the micro (a tree that floats looks silly), but I do not want that to be my default day. Taste, story calls, and "does this feel alive?" stay with me. Agents accelerate the loop when the contracts are clear.
 
-## Three workflows that earn the bridge
+## Workflows that earn the bridge
 
-**1. Live scene and sculpt.** Place props, snap to terrain, raise and lower ground, and push water along a path. This is where "chat docks to a running engine" stops being a demo and starts being how the slice gets built.
+**Live scene and sculpt.** Place props, snap to terrain, raise and lower ground, and push water along a path. This is where "chat docks to a running engine" stops being a demo and starts being how the slice gets built.
 
-**2. World Forge.** Factions, map anchors, regions, quests, and dialogues. The narrative side is not a separate app I paste into later. It is a first-class tab next to Scene and Sculpt, and the agent can read and write the same JSON the UI shows.
+**World Forge** is the longer bet. Factions, map anchors, regions, quests, and dialogues sit in a first-class tab next to Scene and Sculpt. The agent can read and write the same JSON the UI shows, so narrative work is not a separate app I paste into later.
 
 ![World Forge Map Canvas driven through MCP, with cartography and live automation on](/images/blog-mcp-world-forge-map.webp)
 
 *World Forge Map Canvas after an MCP view command. Cartography is on, the world map is on, and the connection is still live in Diagnostics.*
 
-**3. Design docs inside the platform.** The connected part matters. Design notes, feature status, and the editor are not three disconnected piles. When the agent and I share one shell, we argue about the same world instead of drifting into two versions of the truth.
+**Design docs inside the platform** matter because of the connection. Design notes, feature status, and the editor stop being disconnected piles. When the agent and I share one shell, we argue about the same world instead of drifting into two versions of the truth.
 
 ![Design Docs tab listing art, design, and feature notes inside the editor](/images/blog-mcp-design-docs.webp)
 
@@ -68,10 +68,10 @@ On the Cursor side this is not a generic "chat with your repo" plugin. It is a p
 
 *What the agent sees. Intentional tools, not a grab bag of UI clicks.*
 
-## Why this is an "AI at work" story
+## What this pattern means outside games
 
 If you build products with agents, the pattern is bigger than games. Chat about a system is useful. Chat that can *operate* the system (with clear commands, checkable results, and a human still owning taste) changes the pace of the work.
 
-For Wrathful Conquest, that is the bet. Keep me in the visionary seat, keep the world feeling personal, and let the tools erase the busywork between an idea and a living scene.
+For Wrathful Conquest, that is the bet. Keep me deciding what the world should be, keep it feeling personal, and let the tools cut the busywork between an idea and a living scene.
 
 Next up on this blog will likely be more visual (maps, art direction). This post was the process piece. If you are wiring agents into your own tools, start by listing the moves you already trust by hand, then make those moves callable.

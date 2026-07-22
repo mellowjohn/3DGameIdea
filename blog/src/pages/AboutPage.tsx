@@ -26,7 +26,6 @@ export function AboutPage() {
       </div>
       <header className="page-header">
         <h1>{doc?.title ?? 'About'}</h1>
-        {doc && <p>{doc.summary}</p>}
       </header>
       {doc ? (
         <div className="prose prose--about" dangerouslySetInnerHTML={{ __html: doc.html }} />

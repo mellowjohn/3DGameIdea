@@ -10,15 +10,15 @@ tags:
 draft: false
 ---
 
-I'm Johnathan Rossi. By day I work at LinkedIn. Before that I spent about five years in consulting. Outside of work I build things constantly, and I am a lifelong RPG fan. **Wrathful Conquest** is where that passion turns into a real game, and into the custom engine underneath it.
+I'm Johnathan Rossi. This first post is the scope check for **Wrathful Conquest**: what I'm building, why I ended up on a custom engine, what already works, and how AI fits without turning the whole thing into a tech demo with no soul.
 
-This first post is the scope check. What I'm building, why I ended up here, what already works, and how AI fits without turning the whole thing into a tech demo with no soul.
+The short bio is on the [About](/about) page. Here is the build story.
 
 ## It started in 2D, then it didn't
 
 Wrathful Conquest did not begin as a "build your own engine" manifesto.
 
-I started in **GameMaker**. It was going to be a 2D project. Then I realized I wanted the open-world feel more than I wanted the comfort of that first stack. I wanted something that could feel vibrant and alive in three dimensions, so I moved to **Unity**.
+I started in **GameMaker**. It was going to be a 2D project. Then I realized I wanted the open-world feel more than I wanted the comfort of that first stack. I wanted something that could feel alive in three dimensions, so I moved to **Unity**.
 
 Unity got me further. Then the project broke in a way that made me stop and ask a blunt question: if I already want custom systems, and I already want development to stay fluent with AI, why keep forcing that through a platform I do not fully control?
 
@@ -68,7 +68,7 @@ I built structured commands so an AI agent can work against the live project: ed
 
 *What the custom MCP looks like on the agent side: project-specific tools for scene, terrain, World Forge, Lua, and UI.*
 
-That is the part that still feels a little nuts in a good way. It changes my role. I get to spend more time as a purposeful product owner and visionary, and less time as the only pair of hands between an idea and the editor.
+That is the part that still feels a little nuts in a good way. It changes my role. I spend more time deciding what the world should be, and less time as the only pair of hands between an idea and the editor.
 
 I still make the calls. Taste, scope, and "does this feel alive?" stay with me. Agents accelerate the iteration.
 
@@ -82,10 +82,8 @@ That fluency is the real reason the custom engine and the AI workflow are the sa
 
 ## What this blog is
 
-This site is the public build log.
+This site is the public build log. I want to post weekly when I can. If a week slips, that is okay. When I get technical, I will teach the terms as I go. Clarity beats gatekeeping.
 
-I want to post weekly when I can. If a week slips, that is okay. Life and shipping both happen. When I get technical, I will teach the terms as I go. My readers are a mix of friends, consultants, and engineers, and not everyone has built a game engine. Clarity beats gatekeeping.
+Subscribe if you want an email when new posts land. Share a post when it earns a conversation.
 
-If you want the short version of me and the project, the [About](/about) page has it. Subscribe if you want an email when new posts land. Share a post when it earns a conversation.
-
-Thanks for being here at the start. The goal is simple to say and hard to earn: build a world that feels alive, with tools that let me move fast without losing the person behind the work.
+The goal is simple to say and hard to earn: build a world that feels alive.

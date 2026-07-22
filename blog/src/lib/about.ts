@@ -42,7 +42,7 @@ export async function loadAbout(): Promise<AboutDoc> {
     title: data.title || 'About',
     summary:
       data.summary ||
-      'Wrathful Conquest is a from-scratch open-world RPG and the C++ engine behind it.',
+      'Who I am, what Wrathful Conquest is, and how this public build log works.',
     html: withBase,
   }
   return cached
