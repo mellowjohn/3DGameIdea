@@ -21,10 +21,14 @@ Kanban (drag Status columns): **[Work Board](https://app.notion.com/p/39ad3efc56
 
 | Priority | Meaning | Typical work |
 | --- | --- | --- |
-| P0 | Engineering critical path — do first when Ready | Owner override 2026-07-16: TICKET-0182 design-docs viewer; otherwise M5 animation path |
-| P1 | Parallel now — story, nav/map design, World Forge scope | EPIC-0003, EPIC-0004, TICKET-0010 |
-| P2 | Ready or next, but not ahead of P0 | PBR (0040/0143), M5 follow-ons, World Forge schemas after 0021 |
-| P3 | Held / later — do not start without owner override | M6/M7/UI, M8–M11, deferred items |
+| P0 | Engineering critical path — do first when Ready | **M5 exit** (TICKET-0110); close milestone with suites + CLI previews |
+| P1 | Parallel now — remaining M5 gap | TICKET-0107 miniaudio; headless-verifiable follow-ons |
+| P2 | Ready or next, but not ahead of P0 | Animation tools (0135), visual regression (0145), decision gates (0041) |
+| P3 | Held / later — do not start without owner override | M6–M11 runtime, World Forge/UI polish, water, deferred items |
+
+**Owner QA (2026-07-22):** The large `needs-approval` backlog (~65 tickets) requires **desktop editor/viewport** verification. Owner is not reviewing that queue from mobile — statuses stay as-is; **do not treat approval as blocking new agent work**. Prefer new tickets that close M5 with **automated suites / CLI evidence** so review can happen later in one desktop session.
+
+**Agent pickup (2026-07-22):** Do **not** start more World Forge UI, cartography chrome, UI canvas, water, or rigidbody chains until owner clears the existing `needs-approval` pile on desktop. Pick among `ready` tickets below.
 
 Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowest Priority number among `ready` (then `active`), skipping blocked rows.
 
@@ -119,16 +123,16 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 - Status: proposed
 - Goal: Gameplay water (swim, deep-water danger, scripted floating vessels), authored surfaces with low-poly reflective/refractive wave motion, Sculpt placement, World Forge map hydrology and ferry routes.
 - Roadmap home: extends terrain + materials; enables SQ-10 ferry/dive beats and open-world hard barriers.
-- Priority guidance: **P2** — after blended material pass (EPIC-0005) and alongside character controller stamina hooks. Owner decision: [DEC-0039](../decisions/index.md#dec-0039-water-swim-and-hydrology-authoring).
+- Priority guidance: **P3 hold** — not started; epics had wrongly marked 0200–0204 needs-approval (stubs are `proposed`). Pull forward only after M5 exit + owner desktop QA session. Owner decision: [DEC-0039](../decisions/index.md#dec-0039-water-swim-and-hydrology-authoring).
 - Feature doc: [`../features/water-hydrology.md`](../features/water-hydrology.md)
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
-| TICKET-0201 | Blended water material and render pass | needs-approval | P2 | Water PSO + wave/refraction shader; [`tickets/TICKET-0201.md`](tickets/TICKET-0201.md) |
-| TICKET-0202 | Water persistence + Sculpt water tool + MCP | needs-approval | P2 | `water-surfaces.json`, Sculpt Water tool, `engine_water_apply`; [`tickets/TICKET-0202.md`](tickets/TICKET-0202.md) |
-| TICKET-0203 | Swim mode + deep-water fatigue and damage | needs-approval | P2 | Character controller swim + nav/foliage hooks; [`tickets/TICKET-0203.md`](tickets/TICKET-0203.md) |
-| TICKET-0204 | World Forge hydrology + ferry route map authoring | needs-approval | P2 | Map schema `hydrologyRegions` / `ferryRoutes`; [`tickets/TICKET-0204.md`](tickets/TICKET-0204.md) |
-| TICKET-0200 | Scripted floating vessels + shore materials | needs-approval | P3 | Shore materials + `ferry_crossing.lua` sample; [`tickets/TICKET-0200.md`](tickets/TICKET-0200.md) |
+| TICKET-0201 | Blended water material and render pass | proposed | P3 | Water PSO + wave/refraction shader; [`tickets/TICKET-0201.md`](tickets/TICKET-0201.md) |
+| TICKET-0202 | Water persistence + Sculpt water tool + MCP | proposed | P3 | `water-surfaces.json`, Sculpt Water tool, `engine_water_apply`; [`tickets/TICKET-0202.md`](tickets/TICKET-0202.md) |
+| TICKET-0203 | Swim mode + deep-water fatigue and damage | proposed | P3 | Character controller swim + nav/foliage hooks; [`tickets/TICKET-0203.md`](tickets/TICKET-0203.md) |
+| TICKET-0204 | World Forge hydrology + ferry route map authoring | proposed | P3 | Map schema `hydrologyRegions` / `ferryRoutes`; [`tickets/TICKET-0204.md`](tickets/TICKET-0204.md) |
+| TICKET-0200 | Scripted floating vessels + shore materials | proposed | P3 | Shore materials + `ferry_crossing.lua` sample; [`tickets/TICKET-0200.md`](tickets/TICKET-0200.md) |
 
 ## EPIC-0006: RPG systems — quests and dialogue
 
@@ -193,7 +197,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 - Status: active
 - Goal: Complete M5 remaining work — skeletal animation, root motion, events, IK/retargeting, audio, and related editor picking/nav polish.
 - Roadmap home: **M5**.
-- Priority guidance: TICKET-0101 done; TICKET-0102 is next M5 engineering (P0); remaining follow-ons P2; 0109 deferred P3.
+- Priority guidance: Core animation path done (0101–0104). **Next: TICKET-0110 (P0, ready)** M5 exit gate, then **TICKET-0107 (P1, ready)** audio. 0105/0106 in needs-approval (desktop QA). 0109 deferred P3.
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
@@ -203,17 +207,17 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0104 | Root motion extraction and character sync | done | P2 | Owner approved 2026-07-16; DEC-0030; [`tickets/TICKET-0104.md`](tickets/TICKET-0104.md) |
 | TICKET-0105 | Animation events → gameplay/collision hooks | needs-approval | P2 | DEC-0031 controller timelineEvents → Lua `on_animation_event`; [`tickets/TICKET-0105.md`](tickets/TICKET-0105.md) |
 | TICKET-0106 | IK hooks + retargeting metadata | needs-approval | P2 | `*.rig.json` / `RigAsset`; DEC-0041; [`tickets/TICKET-0106.md`](tickets/TICKET-0106.md); [`../formats/rig-assets.md`](../formats/rig-assets.md) |
-| TICKET-0107 | miniaudio integration + spatial/event playback | proposed | P2 | |
-| TICKET-0108 | Full triangle mesh viewport picking | proposed | P2 | Deferred from M4; editor polish |
+| TICKET-0107 | miniaudio integration + spatial/event playback | ready | P1 | Last major M5 roadmap gap; headless + sample playback; [`tickets/TICKET-0107.md`](tickets/TICKET-0107.md) |
+| TICKET-0108 | Full triangle mesh viewport picking | proposed | P3 | Editor polish; needs desktop QA — hold until approval backlog cleared |
 | TICKET-0109 | Recast/detour navmesh integration (beyond grid) | deferred | P3 | Not blocking M5 exit |
-| TICKET-0110 | M5 exit: animation tests + CLI/editor previews | proposed | P2 | Exit gate |
+| TICKET-0110 | M5 exit: animation tests + CLI/editor previews | ready | P0 | Exit gate; suite + CLI preview evidence; [`tickets/TICKET-0110.md`](tickets/TICKET-0110.md) |
 
 ## EPIC-0009: Editor completion and specialized tools
 
 - Status: proposed
 - Goal: Finish M10 specialized tools beyond the active editor MVP slice.
 - Roadmap home: **M10**.
-- Priority guidance: **TICKET-0182 is P0** (owner override — in-editor design docs). TICKET-0147–0151 are P2; other children remain P3 until M10 pull-forward.
+- Priority guidance: **TICKET-0135 (P2, proposed)** animation tools panel after M5 exit. TICKET-0147–0151 + 0182 in needs-approval (desktop QA). Other children P3 until M10 pull-forward.
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
@@ -222,7 +226,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0132 | Viewport gizmos for prefab part editing | proposed | P3 | |
 | TICKET-0133 | Play-state save/resume | proposed | P3 | Beyond test-session reset |
 | TICKET-0134 | World partition authoring UI | proposed | P3 | |
-| TICKET-0135 | Animation tools panel (Diagnostics-adjacent) | proposed | P2 | Owner request 2026-07-21; manage/preview clips+rig; [`tickets/TICKET-0135.md`](tickets/TICKET-0135.md) |
+| TICKET-0135 | Animation tools panel (Diagnostics-adjacent) | proposed | P2 | After 0110; owner request 2026-07-21; manage/preview clips+rig; [`tickets/TICKET-0135.md`](tickets/TICKET-0135.md) |
 | TICKET-0136 | Dialogue graph editor surface | deferred | P3 | **Superseded** by TICKET-0165–0168+ (extends TICKET-0053) |
 | TICKET-0137 | Particle/VFX editor preview | proposed | P3 | Pairs with TICKET-0125 |
 | TICKET-0138 | Profiler panel integration | proposed | P3 | |
@@ -343,11 +347,9 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 
 ## Suggested work order
 
-1. EPIC-0001 done — use Notion kanban + Priority for day-to-day flow.
-2. **P0 needs-approval (owner override):** TICKET-0191 glTF mesh UV + albedo; TICKET-0182 Design Docs. Prior P0 M5 clips done (0102).
-3. **P1/P2 needs-approval pile:** 0030–0032, 0105, World Forge / UI cards — owner review.
-4. **P2 when capacity:** M5 follow-ons (0106/0107/0110); numeric budgets TICKET-0139 later; **authoring sync** EPIC-0014 (0192 → 0193 → 0194/0195); **Rigidbody** EPIC-0015 (0196 → 0197 → 0198 → 0199); **Water** EPIC-0016 (0201 → 0202 → 0203 → 0204 → 0200).
-5. Schema-first World Forge (0011–0014, P2) after faction canon (0021).
-6. Hold **P3** EPIC-0006/0007 and M6–M8 runtime tickets until M5 animation exit unless explicitly overridden.
-7. Mini-map (EPIC-0007) after region/POI IDs exist.
-8. M9–M11 after vertical-slice dependencies land.
+1. **Agents — start now:** TICKET-0110 (P0, ready) → TICKET-0107 (P1, ready). Evidence = named suites + CLI; editor smoke optional until owner desktop session.
+2. **Agents — after M5 exit:** TICKET-0135 animation tools (P2, proposed → ready when 0110 lands).
+3. **Owner — when at desktop (not mobile):** batch-review ~65 `needs-approval` tickets (World Forge, UI, rigidbody, quest/dialogue, 0191/0182). Drag to `done` or request rework.
+4. **Hold new work until approval backlog thins:** World Forge UI/cartography, UI canvas, water (0200–0204), rigidbody chain extensions, dialogue phase 2+ (0169–0179).
+5. **P3 until M5 exit + owner sign-off:** M6–M11 runtime, mini-map, combat slice, particles, ship gate.
+6. **Decision gate (no code yet):** TICKET-0041 shader authoring strategy interview before large shader-graph investment.

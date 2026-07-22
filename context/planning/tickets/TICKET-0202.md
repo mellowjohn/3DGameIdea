@@ -3,7 +3,7 @@
 - Epic: EPIC-0016
 - Status: proposed
 - Agent: unassigned
-- Priority: P2
+- Priority: P3
 - Notion: (mirror when pulled)
 
 ## Goal

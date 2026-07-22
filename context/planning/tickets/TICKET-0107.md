@@ -1,39 +1,45 @@
 # TICKET-0107: miniaudio integration + spatial/event playback
 
 - Epic: EPIC-0008
-- Status: proposed
+- Status: ready
 - Agent: unassigned
-- Priority: P2
-- Notion: https://app.notion.com/p/39ad3efc569581cb8df1d80820c2ce66
+- Priority: P1
+- Notion: https://app.notion.com/p/39ed3efc569581cb8df1d80820c2ce66
 
 ## Goal
 
-miniaudio integration + spatial/event playback. Expand acceptance when this ticket moves to ready/active.
+Integrate **miniaudio** for spatial/event audio playback so M5’s “audio” roadmap item is met with a permissively licensed, testable foundation.
 
 ## Context links
 
 - `context/planning/epics.md` (EPIC-0008)
-- `context/roadmap.md`
-- Related tickets in the same epic (see epics.md)
+- [`context/roadmap.md`](../../roadmap.md) — M5 remaining audio
+- [`context/resources/index.md`](../../resources/index.md) — record license/provenance
+- TICKET-0105 animation events (optional hook for footstep/hit one-shots)
 
 ## Acceptance criteria
 
-- [ ] Deliverable matches the ticket title and epics.md Notes.
-- [ ] Status/Priority mirrored in Notion when work starts.
-- [ ] Context indexes updated if behavior or formats change.
+- [ ] miniaudio vendored or fetched via vcpkg with license recorded (commercial use, modification, redistribution).
+- [ ] Engine audio backend: init/shutdown, load/play one-shot and looping sounds, master volume.
+- [ ] Spatial listener follows active camera; at least one 3D positioned source API.
+- [ ] Sample project: one test sound triggered from existing interaction or animation event path.
+- [ ] Named `audio` or extended suite covers init, load, play, fail-closed on missing file.
+- [ ] Context docs: feature note + resource provenance.
 
 ## Out of scope
 
-Anything beyond this ticket's Notes in epics.md; do not pull later milestone work early without owner override.
+- Full FMOD-style event graphs, occlusion, reverb zones, music crossfade
+- Combat hit SFX polish pass (M9)
+- Editor audio browser
 
 ## Dependencies
 
-See epics.md Notes and Priority ladder. Hold P3 / proposed work behind M5 animation exit unless overridden.
+- After or parallel with TICKET-0110 (P0); do not block 0110.
 
 ## Verification
 
-Per ticket type: rebuild `engine` for C++/shader changes; doc review for design tickets; named suites / `engine_project_validate` when applicable. Set Status to needs-approval after verification — never done.
+Rebuild `engine`; run audio suite + sample trigger smoke. Set Status → `needs-approval` with license path and suite counts in **What changed**.
 
 ## Agent notes
 
-_(stub — expand when picked up)_
+Elevated to **P1 / ready** 2026-07-22: last major M5 gap per roadmap; prefer headless suite evidence over owner mobile QA.

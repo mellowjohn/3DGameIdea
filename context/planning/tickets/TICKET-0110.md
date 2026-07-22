@@ -1,39 +1,45 @@
 # TICKET-0110: M5 exit: animation tests + CLI/editor previews
 
 - Epic: EPIC-0008
-- Status: proposed
+- Status: ready
 - Agent: unassigned
-- Priority: P2
+- Priority: P0
 - Notion: (see Notion Tickets DB by Ticket ID)
 
 ## Goal
 
-Exit gate. Expand acceptance when this ticket moves to ready/active.
+Close **M5** with automated animation/collision/interaction evidence and CLI/editor preview hooks so the milestone is verifiable without relying on owner mobile QA.
 
 ## Context links
 
 - `context/planning/epics.md` (EPIC-0008)
-- `context/roadmap.md`
-- Related tickets in the same epic (see epics.md)
+- [`context/roadmap.md`](../../roadmap.md) — M5 exit criterion
+- [`context/features/animator.md`](../../features/animator.md)
+- TICKET-0101–0104 (done), 0105–0106 (needs-approval desktop QA)
 
 ## Acceptance criteria
 
-- [ ] Deliverable matches the ticket title and epics.md Notes.
-- [ ] Status/Priority mirrored in Notion when work starts.
-- [ ] Context indexes updated if behavior or formats change.
+- [ ] Named suite coverage for: clip load/hot-reload, blend/state transitions, root-motion sync, animation events firing to Lua (or stub host when no script bound).
+- [ ] CLI or headless preview path documents sample player controller + clip playback (e.g. `engine` subcommand or suite artifact) with deterministic output.
+- [ ] Editor preview hook documented: where to inspect animator state during play test (Diagnostics or minimal panel — full Animation tools = TICKET-0135).
+- [ ] `context/roadmap.md` M5 section updated to reflect exit evidence; any new CLI documented in features/index.
+- [ ] Rebuild `engine`; relevant suites green (`animator`, `character`, `scripting` as applicable).
 
 ## Out of scope
 
-Anything beyond this ticket's Notes in epics.md; do not pull later milestone work early without owner override.
+- miniaudio (TICKET-0107)
+- Full IK solve (0106 metadata only)
+- Animation tools panel UI (0135)
+- M6 quest/dialogue runtime
 
 ## Dependencies
 
-See epics.md Notes and Priority ladder. Hold P3 / proposed work behind M5 animation exit unless overridden.
+- Soft: 0105/0106 in needs-approval — tests should pass against shipped code; do not block on owner approval.
 
 ## Verification
 
-Per ticket type: rebuild `engine` for C++/shader changes; doc review for design tickets; named suites / `engine_project_validate` when applicable. Set Status to needs-approval after verification — never done.
+Rebuild `engine`; run animation-related suites + new/extended tests. Set Status → `needs-approval` with suite counts and CLI sample output in **What changed**.
 
 ## Agent notes
 
-_(stub — expand when picked up)_
+Elevated to **P0 / ready** 2026-07-22: owner deferred desktop QA on needs-approval backlog; this ticket closes M5 with headless evidence first.
