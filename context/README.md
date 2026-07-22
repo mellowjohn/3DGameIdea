@@ -35,6 +35,7 @@ This directory is durable memory for humans and AI agents. Source code remains a
 - `skills/desktop-qa/SKILL.md` — owner Windows session to batch-run gates and clear needs-approval
 - `skills/evaluate/SKILL.md` — evaluate needs-approval tickets/PRs; recommend approve, defer-desktop, or rework
 - `skills/engine-ticket-workflow/SKILL.md` — pick up, prioritize, and close assigned tickets
+- `skills/write-engine-ticket/SKILL.md` — author tickets with testable acceptance before ready
 - `skills/grill-me/SKILL.md` — pressure-test ambiguities with pointed questions
 - `skills/teach/SKILL.md` — explain a confusing agent question so the owner can answer it
 - `skills/interview-engine-decisions/SKILL.md` — resolve blocking engine decisions and record them
