@@ -39,6 +39,7 @@
 #include "engine/automation/terrain_edit_commands.h"
 #include "engine/assets/script_bindings_asset.h"
 #include "engine/scripting/lua_runtime.h"
+#include "engine/audio/audio_engine.h"
 #include "engine/scripting/script_file_monitor.h"
 #include "engine/quest/quest_runtime.h"
 #include "engine/standing/standing_runtime.h"
@@ -3050,6 +3051,7 @@ struct EditorState {
     std::set<std::string> pending_mesh_reloads;
     bool scene_dirty = false;
     std::unique_ptr<LuaRuntime> lua_runtime;
+    std::unique_ptr<AudioEngine> audio_engine;
     std::unique_ptr<QuestRuntime> quest_runtime;
     std::unique_ptr<WorldForgeQuestsAsset> quest_asset;
     std::unique_ptr<StandingRuntime> standing_runtime;
@@ -7064,6 +7066,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                     state.lua_runtime->set_ui_canvas_stack(state.ui_canvas_stack.get());
                     state.lua_runtime->set_quest_runtime(state.quest_runtime.get());
                     state.lua_runtime->set_standing_runtime(state.standing_runtime.get());
+                    if (state.audio_engine) state.lua_runtime->set_audio_engine(state.audio_engine.get());
                 }
             });
     } else if (world_forge_tab) {
@@ -8207,6 +8210,14 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         editor->lua_runtime->set_quest_runtime(editor->quest_runtime.get());
         editor->lua_runtime->set_standing_runtime(editor->standing_runtime.get());
         editor->ui_canvas_stack->hud().set_text("quest.objectiveText", "");
+        editor->audio_engine = std::make_unique<AudioEngine>();
+        editor->audio_engine->set_project_root(options.project_root);
+        if (const auto audio_init = editor->audio_engine->initialize(); !audio_init) {
+            Logger::instance().write(Severity::Warning, "audio",
+                "AudioEngine init failed: " + audio_init.error().message);
+        } else {
+            editor->lua_runtime->set_audio_engine(editor->audio_engine.get());
+        }
         if (const auto bindings = editor->lua_runtime->load_bindings(options.project_root,
                 default_script_bindings_path(options.project_root));
             !bindings) {
@@ -8758,6 +8769,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                                 editor->lua_runtime->set_ui_canvas_stack(editor->ui_canvas_stack.get());
                                 editor->lua_runtime->set_quest_runtime(editor->quest_runtime.get());
                                 editor->lua_runtime->set_standing_runtime(editor->standing_runtime.get());
+                                if (editor->audio_engine)
+                                    editor->lua_runtime->set_audio_engine(editor->audio_engine.get());
                             }
                             (void)editor->ui_canvas_editor.load(absolute);
                         }
@@ -8883,6 +8896,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                             editor->lua_runtime->set_ui_canvas_stack(editor->ui_canvas_stack.get());
                             editor->lua_runtime->set_quest_runtime(editor->quest_runtime.get());
                             editor->lua_runtime->set_standing_runtime(editor->standing_runtime.get());
+                            if (editor->audio_engine)
+                                editor->lua_runtime->set_audio_engine(editor->audio_engine.get());
                         }
                     }
                     editor->status = started_rigidbody
@@ -9079,6 +9094,15 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 view_projection_matrix = camera.view_projection();
                 camera_position = camera.position();
             }
+        }
+        if (editor && editor->audio_engine && editor->audio_engine->is_initialized()) {
+            std::array<float, 3> listener_forward{0.0f, 0.0f, 1.0f};
+            if (orbit_camera && (debug_character || player_locomotion) && editor->test_session_active())
+                listener_forward = orbit_camera->forward();
+            else
+                listener_forward = camera.forward();
+            editor->audio_engine->update_listener(camera_position, listener_forward);
+            editor->audio_engine->update(frame_delta_seconds);
         }
         if (streamed_terrain && debug_world) {
             const std::array<float, 3> stream_focus = editor ? camera.position() : camera_position;

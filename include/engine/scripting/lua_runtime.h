@@ -20,6 +20,7 @@ class UiCanvasStack;
 class QuestRuntime;
 class StandingRuntime;
 class AnimatorRuntime;
+class AudioEngine;
 
 struct ScriptBindingEntry {
     std::string id;
@@ -64,6 +65,7 @@ public:
     void set_quest_runtime(QuestRuntime* quest) noexcept;
     void set_standing_runtime(StandingRuntime* standing) noexcept;
     void set_animator_runtime(AnimatorRuntime* animator) noexcept;
+    void set_audio_engine(AudioEngine* audio) noexcept;
 
     [[nodiscard]] const std::vector<EngineError>& recent_errors() const noexcept { return recent_errors_; }
     void clear_recent_errors() { recent_errors_.clear(); }

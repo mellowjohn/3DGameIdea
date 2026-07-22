@@ -67,7 +67,7 @@ const std::vector<std::string>& ctest_suite_names() {
     static const std::vector<std::string> names{
         "core", "world", "world_influence", "assets", "world_forge", "streaming", "terrain", "foliage",
         "water", "collision", "navigation", "character", "interaction", "combat", "camera", "diagnostics",
-        "scripting", "automation", "hud", "animator", "project_validation"};
+        "scripting", "automation", "hud", "animator", "audio", "project_validation"};
     return names;
 }
 
@@ -484,7 +484,7 @@ std::string command_help() {
            "Options: --project <path> --json --dry-run --debug-world --log-file <path> --frames <n> --width <px> --height <px> --console\n"
            "Capture/editor: --output <file.ppm> [--viewport scene|sculpt|game|ui|world-forge]\n"
            "Benchmark: defaults to 300 frames at 2560x1440\n"
-           "Test: engine test --project <path> --suite <core|world|world_influence|assets|world_forge|streaming|terrain|foliage|water|collision|navigation|character|interaction|combat|camera|diagnostics|scripting|automation|hud|animator|project_validation> [--dry-run] [--json]\n"
+           "Test: engine test --project <path> --suite <core|world|world_influence|assets|world_forge|streaming|terrain|foliage|water|collision|navigation|character|interaction|combat|camera|diagnostics|scripting|automation|hud|animator|audio|project_validation> [--dry-run] [--json]\n"
            "project-git: engine project-git --project <path> --action status|fetch|pull|commit|push [--message <text>] [--json]\n"
            "MCP: engine mcp --project <path> starts the Model Context Protocol stdio server";
 }

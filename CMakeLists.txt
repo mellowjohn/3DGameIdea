@@ -16,6 +16,8 @@ find_package(imguizmo CONFIG REQUIRED)
 find_package(fastgltf CONFIG REQUIRED)
 find_package(Lua REQUIRED)
 
+find_path(MINIAUDIO_INCLUDE_DIR NAMES miniaudio.h REQUIRED)
+
 add_library(engine_core
     src/core/error.cpp
     src/core/id_slug.cpp
@@ -50,6 +52,7 @@ add_library(engine_core
     src/assets/animation_clip_asset.cpp
     src/assets/animator_controller_asset.cpp
     src/animation/animator_runtime.cpp
+    src/audio/audio_engine.cpp
     src/assets/prefab_asset.cpp
     src/assets/script_bindings_asset.cpp
     src/assets/hud_asset.cpp
@@ -108,6 +111,7 @@ add_library(engine_core
     src/scripting/script_file_monitor.cpp
 )
 target_include_directories(engine_core PUBLIC include)
+target_include_directories(engine_core PRIVATE ${MINIAUDIO_INCLUDE_DIR})
 target_compile_definitions(engine_core PUBLIC UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN SDL_MAIN_HANDLED
     "ENGINE_REPOSITORY_ROOT=\"${CMAKE_SOURCE_DIR}\"")
 target_link_libraries(engine_core PUBLIC SDL3::SDL3 EnTT::EnTT nlohmann_json::nlohmann_json Jolt::Jolt imgui::imgui imguizmo::imguizmo fastgltf::fastgltf ${LUA_LIBRARIES})
@@ -127,7 +131,7 @@ if(ENGINE_BUILD_TESTS)
     add_test(NAME regression_all COMMAND engine_tests)
     add_executable(engine_suite_tests tests/suite_tests.cpp)
     target_link_libraries(engine_suite_tests PRIVATE engine_core)
-    foreach(suite IN ITEMS core world world_influence assets world_forge streaming terrain foliage water collision navigation character interaction combat camera diagnostics scripting automation hud animator)
+    foreach(suite IN ITEMS core world world_influence assets world_forge streaming terrain foliage water collision navigation character interaction combat camera diagnostics scripting automation hud animator audio)
         add_test(NAME ${suite} COMMAND engine_suite_tests --suite ${suite} --json)
         set_tests_properties(${suite} PROPERTIES LABELS "${suite};unit")
     endforeach()

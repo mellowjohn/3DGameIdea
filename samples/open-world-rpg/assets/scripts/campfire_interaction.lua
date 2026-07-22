@@ -10,6 +10,7 @@ function on_use_campfire(payload_json)
   engine.blackboard_set("interaction.lastType", tostring(payload.type or ""))
   if payload.type == "enter" then
     engine.blackboard_set("interaction.campfireActive", true)
+    engine.play_sound("assets/audio/campfire_crackle.wav")
     local current, max = engine.get_health()
     if not max or max <= 0 then
       current, max = 100, 100

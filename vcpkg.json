@@ -13,7 +13,8 @@
     },
     "imguizmo",
     "fastgltf",
-    "lua"
+    "lua",
+    "miniaudio"
   ],
   "features": {
     "testing": {

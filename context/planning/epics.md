@@ -203,7 +203,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0104 | Root motion extraction and character sync | done | P2 | Owner approved 2026-07-16; DEC-0030; [`tickets/TICKET-0104.md`](tickets/TICKET-0104.md) |
 | TICKET-0105 | Animation events → gameplay/collision hooks | needs-approval | P2 | DEC-0031 controller timelineEvents → Lua `on_animation_event`; [`tickets/TICKET-0105.md`](tickets/TICKET-0105.md) |
 | TICKET-0106 | IK hooks + retargeting metadata | needs-approval | P2 | `*.rig.json` / `RigAsset`; DEC-0041; [`tickets/TICKET-0106.md`](tickets/TICKET-0106.md); [`../formats/rig-assets.md`](../formats/rig-assets.md) |
-| TICKET-0107 | miniaudio integration + spatial/event playback | proposed | P2 | |
+| TICKET-0107 | miniaudio integration + spatial/event playback | needs-approval | P2 | miniaudio + spatial listener + Lua play + `audio` suite; [`tickets/TICKET-0107.md`](tickets/TICKET-0107.md) |
 | TICKET-0108 | Full triangle mesh viewport picking | proposed | P2 | Deferred from M4; editor polish |
 | TICKET-0109 | Recast/detour navmesh integration (beyond grid) | deferred | P3 | Not blocking M5 exit |
 | TICKET-0110 | M5 exit: animation tests + CLI/editor previews | proposed | P2 | Exit gate |

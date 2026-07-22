@@ -1,6 +1,7 @@
 #include "engine/scripting/lua_runtime.h"
 
 #include "engine/animation/animator_runtime.h"
+#include "engine/audio/audio_engine.h"
 #include "engine/assets/script_bindings_asset.h"
 #include "engine/diagnostics/logger.h"
 #include "engine/quest/quest_runtime.h"
@@ -36,6 +37,7 @@ struct LuaHost {
     QuestRuntime* quest = nullptr;
     StandingRuntime* standing = nullptr;
     AnimatorRuntime* animator = nullptr;
+    AudioEngine* audio = nullptr;
 };
 
 void sync_quest_hud(LuaHost* host) {
@@ -508,11 +510,42 @@ int engine_animator_get_state(lua_State* state) {
     return 1;
 }
 
+int engine_play_sound(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->audio) return luaL_error(state, "audio engine is not available");
+    const char* path = luaL_checkstring(state, 1);
+    const bool loop = lua_gettop(state) >= 2 ? lua_toboolean(state, 2) != 0 : false;
+    const auto result = host->audio->play_project_sound(path, loop);
+    if (!result) return luaL_error(state, "%s", result.error().message.c_str());
+    return 0;
+}
+
+int engine_play_sound_at(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->audio) return luaL_error(state, "audio engine is not available");
+    const char* path = luaL_checkstring(state, 1);
+    const float x = static_cast<float>(luaL_checknumber(state, 2));
+    const float y = static_cast<float>(luaL_checknumber(state, 3));
+    const float z = static_cast<float>(luaL_checknumber(state, 4));
+    const bool loop = lua_gettop(state) >= 5 ? lua_toboolean(state, 5) != 0 : false;
+    const auto result = host->audio->play_project_sound_at(path, x, y, z, loop);
+    if (!result) return luaL_error(state, "%s", result.error().message.c_str());
+    return 0;
+}
+
+int engine_set_master_volume(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->audio) return luaL_error(state, "audio engine is not available");
+    const float volume = static_cast<float>(luaL_checknumber(state, 1));
+    host->audio->set_master_volume(volume);
+    return 0;
+}
+
 void register_engine_api(lua_State* state, LuaHost* host) {
     lua_pushlightuserdata(state, host);
     lua_setfield(state, LUA_REGISTRYINDEX, kHostRegistryKey);
 
-    lua_createtable(state, 0, 34);
+    lua_createtable(state, 0, 37);
     lua_pushcfunction(state, engine_log);
     lua_setfield(state, -2, "log");
     lua_pushcfunction(state, engine_json_decode);
@@ -579,6 +612,12 @@ void register_engine_api(lua_State* state, LuaHost* host) {
     lua_setfield(state, -2, "animator_crossfade");
     lua_pushcfunction(state, engine_animator_get_state);
     lua_setfield(state, -2, "animator_get_state");
+    lua_pushcfunction(state, engine_play_sound);
+    lua_setfield(state, -2, "play_sound");
+    lua_pushcfunction(state, engine_play_sound_at);
+    lua_setfield(state, -2, "play_sound_at");
+    lua_pushcfunction(state, engine_set_master_volume);
+    lua_setfield(state, -2, "set_master_volume");
     lua_setglobal(state, "engine");
 }
 
@@ -735,6 +774,10 @@ void LuaRuntime::set_standing_runtime(StandingRuntime* standing) noexcept {
 
 void LuaRuntime::set_animator_runtime(AnimatorRuntime* animator) noexcept {
     if (impl_) impl_->host.animator = animator;
+}
+
+void LuaRuntime::set_audio_engine(AudioEngine* audio) noexcept {
+    if (impl_) impl_->host.audio = audio;
 }
 
 void LuaRuntime::dispatch_interaction(const InteractionEvent& event) {
