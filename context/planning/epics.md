@@ -210,7 +210,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0107 | miniaudio integration + spatial/event playback | ready | P1 | Last major M5 roadmap gap; headless + sample playback; [`tickets/TICKET-0107.md`](tickets/TICKET-0107.md) |
 | TICKET-0108 | Full triangle mesh viewport picking | proposed | P3 | Editor polish; needs desktop QA — hold until approval backlog cleared |
 | TICKET-0109 | Recast/detour navmesh integration (beyond grid) | deferred | P3 | Not blocking M5 exit |
-| TICKET-0110 | M5 exit: animation tests + CLI/editor previews | ready | P0 | Exit gate; suite + CLI preview evidence; [`tickets/TICKET-0110.md`](tickets/TICKET-0110.md) |
+| TICKET-0110 | M5 exit: animation tests + CLI/editor previews | needs-approval | P0 | Exit gate; `m5-exit` + `animation-preview` CLI; sample example.animator.json; [`tickets/TICKET-0110.md`](tickets/TICKET-0110.md) |
 
 ## EPIC-0009: Editor completion and specialized tools
 

@@ -18,6 +18,27 @@ Status: active (TICKET-0103) — design locked by [DEC-0022](../decisions/index.
 3. **`AnimatorRuntime`**: attach/detach, param setters, automatic transitions, crossfade, `tick`, status with active clip weights.
 4. **Lua drive API**: `animator_set_float` / `animator_set_bool` / `animator_set_trigger` / `animator_crossfade` / `animator_get_state`.
 
+## M5 exit verification (TICKET-0110)
+
+Headless evidence (no desktop viewport required):
+
+```text
+engine test --project samples/open-world-rpg --suite m5-exit
+engine test --project samples/open-world-rpg --suite animator
+engine animation-preview --project samples/open-world-rpg --json
+```
+
+- **`m5-exit`** runs `animator`, `character`, `interaction`, `combat`, and `scripting` CTest suites.
+- **`animation-preview`** ticks the sample `assets/animators/example.animator.json` controller and prints deterministic JSON (`initialState`, `finalState`, key frames, timeline event count, root-motion sum).
+
+### Editor preview (until TICKET-0135)
+
+- **Scene Inspector:** select an entity with an **Animator** component to inspect/edit its controller path and default state.
+- **Prefab Editor:** same fields on prefab `animator` components.
+- **Play test:** locomotion/combat/interaction still visible via Diagnostics movement console, interaction feed, and combat hit feed; live animator state panel ships in TICKET-0135.
+
+Sample project ships `assets/animators/example.animator.json` + `assets/models/player_clips.gltf` (referenced from `vertical-slice.world.json`).
+
 ## Root motion (TICKET-0104 / DEC-0030, retarget TICKET-0199)
 
 Controllers may set `applyRootMotion` (+ optional `rootJoint` / `rootMotionY`). `AnimatorRuntime::tick` accumulates weighted root translation deltas.

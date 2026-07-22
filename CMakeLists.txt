@@ -50,6 +50,7 @@ add_library(engine_core
     src/assets/animation_clip_asset.cpp
     src/assets/animator_controller_asset.cpp
     src/animation/animator_runtime.cpp
+    src/animation/animation_preview.cpp
     src/assets/prefab_asset.cpp
     src/assets/script_bindings_asset.cpp
     src/assets/hud_asset.cpp
