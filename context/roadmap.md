@@ -53,7 +53,9 @@ Add character controllers, camera collision, combat hit/hurt volumes, skeletal i
 - Complete interaction volume slice: prefab `interaction` fields, overlap enter/exit events, editor debug highlighting, and `interaction` suite coverage.
 - Complete combat hit/hurt slice: prefab `combatHit`/`combatHurt` fields, overlap hit queries, editor debug highlighting, and `combat` suite coverage.
 - Complete authoring-foundation slice (paused M5 animation work): material asset inspector/save, persisted terrain height edits, editor sculpt brush with undo/redo, streamed render/collision refresh, and validation/tests.
-- Remaining: M5 exit previews; audio **needs-approval** (TICKET-0107); IK/retarget **metadata** shipped (TICKET-0106); full IK solve + Animation tools panel (0135) follow.
+- Complete animation engineering slice (TICKET-0101–0106): glTF clips, hot reload, blend trees/state machines, root motion, timeline events → Lua, rig metadata.
+- **M5 exit gate (TICKET-0110):** `engine test --suite m5-exit` + `engine animation-preview` provide headless verification; see [`features/animator.md`](features/animator.md).
+- **Audio (TICKET-0107):** miniaudio integration **needs-approval** — spatial listener, Lua play, `audio` suite; see [`features/audio.md`](features/audio.md). Remaining before M6: editor Animation tools panel (TICKET-0135); GPU skinning polish deferred.
 
 ## M6 — Lua and RPG Data
 

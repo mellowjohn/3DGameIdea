@@ -1,5 +1,6 @@
 #include "engine/automation/command.h"
 #include "engine/automation/project_git_commands.h"
+#include "engine/animation/animation_preview.h"
 #include "engine/rendering/render_app.h"
 #include "engine/assets/asset_registry.h"
 #include "engine/assets/material_asset.h"
@@ -22,6 +23,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include <unordered_set>
@@ -72,8 +74,14 @@ const std::vector<std::string>& ctest_suite_names() {
 }
 
 bool known_ctest_suite(const std::string& name) {
+    if (name == "m5-exit") return true;
     const auto& names = ctest_suite_names();
     return std::find(names.begin(), names.end(), name) != names.end();
+}
+
+const std::vector<std::string>& m5_exit_suite_names() {
+    static const std::vector<std::string> names{"animator", "character", "interaction", "combat", "scripting"};
+    return names;
 }
 
 std::wstring quote_windows_arg(const std::filesystem::path& path) {
@@ -214,13 +222,13 @@ Result<CommandRequest> parse_command_line(int argc, char** argv) {
 CommandResponse execute_command(const CommandRequest& request) {
     if (request.name == "help") return {ExitCode::Success, command_help(), {}, {}};
     const std::vector<std::string> known{"build-assets", "validate", "inspect", "run", "test", "benchmark", "capture",
-        "editor", "mcp", "project-git"};
+        "editor", "mcp", "project-git", "animation-preview"};
     if (std::find(known.begin(), known.end(), request.name) == known.end()) {
         auto error = command_error("CLI-UNKNOWN-COMMAND", "Unknown command: " + request.name,
                                    "Run engine help for supported commands.", request.correlation_id);
         return {ExitCode::InvalidArguments, "Command rejected", {}, {std::move(error)}};
     }
-    if (request.project.empty()) {
+    if (request.name != "help" && request.project.empty()) {
         auto error = command_error("CLI-PROJECT-REQUIRED", "--project is required for " + request.name,
                                    "Pass --project <directory>.", request.correlation_id);
         return {ExitCode::InvalidArguments, "Command rejected", {}, {std::move(error)}};
@@ -403,6 +411,8 @@ CommandResponse execute_command(const CommandRequest& request) {
             error.category = ErrorCategory::Validation;
             return {ExitCode::InvalidArguments, "Test command rejected", {}, {std::move(error)}};
         }
+        const std::vector<std::string> suites_to_run =
+            suite == "m5-exit" ? m5_exit_suite_names() : std::vector<std::string>{suite};
         const auto build_directory = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / "build" / "windows-msvc-debug";
         if (!std::filesystem::exists(build_directory / "CTestTestfile.cmake")) {
             auto error = command_error("CLI-TEST-BUILD-MISSING", "CTest build tree was not found: " + build_directory.generic_string(),
@@ -410,31 +420,80 @@ CommandResponse execute_command(const CommandRequest& request) {
             error.category = ErrorCategory::Configuration;
             return {ExitCode::Unavailable, "Test command unavailable", {}, {std::move(error)}};
         }
-        CommandResponse response{ExitCode::Success, "CTest suite scheduled: " + suite, {}, {}};
-        response.metrics = {{"testCount", 1.0}};
+        CommandResponse response{ExitCode::Success,
+            suite == "m5-exit" ? "M5 exit gate scheduled" : "CTest suite scheduled: " + suite, {}, {}};
+        response.metrics = {{"testCount", static_cast<double>(suites_to_run.size())}};
         response.metadata = {{"suite", suite}, {"buildDirectory", build_directory.generic_string()}};
         if (request.dry_run) return response;
 
         const auto started = std::chrono::steady_clock::now();
-        int ctest_exit_code = -1;
         const auto ctest_executable = find_ctest_executable();
-        const std::string output = run_ctest(ctest_executable, build_directory, suite, ctest_exit_code);
+        std::ostringstream combined_output;
+        int failed_count = 0;
+        for (const auto& run_suite : suites_to_run) {
+            int ctest_exit_code = -1;
+            const std::string output = run_ctest(ctest_executable, build_directory, run_suite, ctest_exit_code);
+            response.metadata["suite:" + run_suite + ":exitCode"] = std::to_string(ctest_exit_code);
+            if (ctest_exit_code != 0) {
+                ++failed_count;
+                combined_output << "=== " << run_suite << " failed (exit " << ctest_exit_code << ") ===\n" << output << '\n';
+            }
+        }
         const double elapsed_milliseconds = std::chrono::duration<double, std::milli>(
             std::chrono::steady_clock::now() - started).count();
         response.metrics["elapsedMilliseconds"] = elapsed_milliseconds;
-        response.metadata["ctestExitCode"] = std::to_string(ctest_exit_code);
+        response.metrics["failedSuites"] = static_cast<double>(failed_count);
         response.metadata["ctestExecutable"] = ctest_executable.generic_string();
-        if (ctest_exit_code == 0) {
-            response.summary = "CTest suite passed: " + suite;
+        if (failed_count == 0) {
+            response.summary = suite == "m5-exit" ? "M5 exit gate passed" : "CTest suite passed: " + suite;
             return response;
         }
-        auto error = command_error("CLI-TEST-FAILED", "CTest suite failed: " + suite,
-                                   "Review the captured CTest output and rerun the suite directly.", request.correlation_id);
+        auto error = command_error("CLI-TEST-FAILED",
+            suite == "m5-exit" ? "M5 exit gate failed (" + std::to_string(failed_count) + " suite(s))"
+                               : "CTest suite failed: " + suite,
+            "Review the captured CTest output and rerun the suite directly.", request.correlation_id);
         error.category = ErrorCategory::Validation;
+        const std::string output = combined_output.str();
         if (!output.empty()) error.causes.push_back(output);
         response.exit_code = ExitCode::ValidationFailed;
-        response.summary = "CTest suite failed: " + suite;
+        response.summary = error.message;
         response.diagnostics.push_back(std::move(error));
+        return response;
+    }
+    if (request.name == "animation-preview") {
+        AnimationPreviewRequest preview;
+        preview.project_root = request.project;
+        preview.controller_path = argument_value(request, "--controller");
+        preview.entity_id = argument_value(request, "--entity", "animation-preview-entity");
+        preview.frames = positive_number(argument_value(request, "--frames"), 60);
+        preview.dt_seconds = static_cast<float>(std::atof(argument_value(request, "--dt", "0.0166667").c_str()));
+        preview.speed = static_cast<float>(std::atof(argument_value(request, "--speed", "0.5").c_str()));
+        preview.fire_attack_trigger = argument_value(request, "--no-trigger", "false") != "true";
+        if (request.dry_run) {
+            CommandResponse response{ExitCode::Success, "Animation preview scheduled", {}, {}};
+            response.metadata = {{"controller", preview.controller_path.empty() ? "(auto)" : preview.controller_path},
+                {"frames", std::to_string(preview.frames)}};
+            return response;
+        }
+        auto result = run_animation_preview(preview);
+        CommandResponse response;
+        if (!result) {
+            response.exit_code = ExitCode::ValidationFailed;
+            response.summary = "Animation preview failed";
+            response.diagnostics.push_back(result.error());
+            return response;
+        }
+        const auto& report = result.value();
+        response.exit_code = report.ok ? ExitCode::Success : ExitCode::ValidationFailed;
+        response.summary = report.ok
+            ? "Animation preview: " + report.initial_state + " -> " + report.final_state
+            : "Animation preview failed";
+        response.metadata = {{"controller", report.controller_path},
+            {"initialState", report.initial_state}, {"finalState", report.final_state},
+            {"totalEvents", std::to_string(report.total_events)},
+            {"totalRootMotionZ", std::to_string(report.total_root_motion_z)},
+            {"previewJson", report.to_json()}};
+        if (request.json) response.artifacts.push_back(report.to_json());
         return response;
     }
     if (request.name == "run" || request.name == "capture" || request.name == "benchmark" || request.name == "editor") {
@@ -480,11 +539,13 @@ CommandResponse execute_command(const CommandRequest& request) {
 }
 
 std::string command_help() {
-    return "AI RPG Engine 0.2.0\nCommands: build-assets, validate, inspect, run, test, benchmark, capture, editor, mcp, project-git\n"
+    return "AI RPG Engine 0.2.0\nCommands: build-assets, validate, inspect, run, test, benchmark, capture, editor, mcp, project-git, animation-preview\n"
            "Options: --project <path> --json --dry-run --debug-world --log-file <path> --frames <n> --width <px> --height <px> --console\n"
            "Capture/editor: --output <file.ppm> [--viewport scene|sculpt|game|ui|world-forge]\n"
            "Benchmark: defaults to 300 frames at 2560x1440\n"
-           "Test: engine test --project <path> --suite <core|world|world_influence|assets|world_forge|streaming|terrain|foliage|water|collision|navigation|character|interaction|combat|camera|diagnostics|scripting|automation|hud|animator|audio|project_validation> [--dry-run] [--json]\n"
+           "Test: engine test --project <path> --suite <core|world|...|animator|audio|m5-exit|project_validation> [--dry-run] [--json]\n"
+           "  m5-exit runs animator+character+interaction+combat+scripting (M5 exit gate, TICKET-0110)\n"
+           "Animation preview: engine animation-preview --project <path> [--controller <path>] [--frames 60] [--speed 0.5] [--no-trigger] [--json]\n"
            "project-git: engine project-git --project <path> --action status|fetch|pull|commit|push [--message <text>] [--json]\n"
            "MCP: engine mcp --project <path> starts the Model Context Protocol stdio server";
 }

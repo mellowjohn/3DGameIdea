@@ -15,6 +15,7 @@
 #include "engine/assets/script_bindings_asset.h"
 #include "engine/animation/animator_runtime.h"
 #include "engine/audio/audio_engine.h"
+#include "engine/animation/animation_preview.h"
 #include "engine/animation/root_motion.h"
 #include "engine/assets/animator_controller_asset.h"
 #include "engine/physics/character_controller.h"
@@ -2487,6 +2488,18 @@ int main(int argc,char**argv){
             r.check(via_op.exit_code == engine::ExitCode::Success, "editor project_git operation succeeds");
             std::filesystem::remove_all(fixture, ec);
         }
+        {
+            engine::AnimationPreviewRequest sample_preview;
+            sample_preview.project_root=project;
+            sample_preview.frames=40;
+            auto sample=engine::run_animation_preview(sample_preview);
+            r.check(sample&&sample.value().ok,"sample project animation preview ok");
+            r.check(sample&&sample.value().controller_path.find("example.animator.json")!=std::string::npos,
+                "sample project picks example controller");
+            auto found=engine::find_default_animator_controller(project);
+            r.check(found&&found.value().find("example.animator.json")!=std::string::npos,
+                "find_default_animator_controller locates sample");
+        }
     }else if(suite=="diagnostics"){
         auto path=std::filesystem::temp_directory_path()/("engine-diagnostics-suite-"+engine::make_correlation_id()+".jsonl");engine::Logger::instance().initialize(path);
         engine::EngineError error{"TEST-RUNTIME",engine::Severity::Error,engine::ErrorCategory::Validation,"diagnostics-test","visible error",std::nullopt,{},"fix","test-correlation",engine::ErrorPriority::P1High};engine::Logger::instance().write(error);
@@ -2803,6 +2816,14 @@ end
         r.check(count_entry&&count_entry->type==engine::ScriptBlackboardType::Number&&count_entry->number_value>=1.0,
             "on_animation_event updates blackboard");
         r.check(name_entry&&name_entry->string_value=="footstep","on_animation_event receives event name");
+
+        engine::AnimationPreviewRequest preview_req;
+        preview_req.project_root=root;
+        preview_req.controller_path="assets/animators/hero.animator.json";
+        preview_req.frames=30;
+        auto preview=engine::run_animation_preview(preview_req);
+        r.check(preview&&preview.value().ok&&preview.value().final_state=="attack",
+            "animation preview CLI helper reaches attack state");
 
         std::filesystem::remove_all(root);
     }else if(suite=="audio"){

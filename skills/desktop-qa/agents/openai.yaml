@@ -1,0 +1,4 @@
+interface:
+  display_name: "Desktop QA"
+  short_description: "Windows approval session for needs-approval backlog"
+  default_prompt: "Use $desktop-qa to plan my Windows session to clear needs-approval tickets — gates, batch order, and spot-checks."

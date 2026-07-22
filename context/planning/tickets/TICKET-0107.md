@@ -3,7 +3,7 @@
 - Epic: EPIC-0008
 - Status: needs-approval
 - Agent: cursor-agent
-- Priority: P2
+- Priority: P1
 - Notion: https://app.notion.com/p/39ed3efc569581cb8df1d80820c2ce66
 
 ## Goal

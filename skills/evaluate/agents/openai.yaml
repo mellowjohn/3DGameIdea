@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evaluate"
+  short_description: "Score ticket acceptance and recommend approve/defer/rework"
+  default_prompt: "Use $evaluate to review TICKET-#### (or the needs-approval backlog) against acceptance criteria and recommend whether to approve."
