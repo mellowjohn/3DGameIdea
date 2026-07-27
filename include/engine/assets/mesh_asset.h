@@ -25,12 +25,24 @@ struct MeshJointInfluence {
     std::array<float, 4> weights{};
 };
 
+/** Rest-pose local TRS for one skin joint (glTF node transform). */
+struct ImportedJointRestLocal {
+    std::array<float, 3> translation{0.0f, 0.0f, 0.0f};
+    /** glTF quaternion xyzw. */
+    std::array<float, 4> rotation{0.0f, 0.0f, 0.0f, 1.0f};
+    std::array<float, 3> scale{1.0f, 1.0f, 1.0f};
+    /** Parent index within this skin's joints array, or -1 for a skin root. */
+    std::int32_t parent_joint = -1;
+};
+
 /** One glTF skin: joint node indices, names, and column-major inverse-bind matrices. */
 struct ImportedSkin {
     std::string name;
     std::vector<std::uint32_t> joint_node_indices;
     std::vector<std::string> joint_names;
     std::vector<std::array<float, 16>> inverse_bind_matrices;
+    /** Parallel to `joint_node_indices` — rest locals + hierarchy for CPU skinning. */
+    std::vector<ImportedJointRestLocal> joint_rest_locals;
     std::int32_t skeleton_root = -1;
 };
 

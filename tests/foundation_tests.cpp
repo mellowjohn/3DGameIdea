@@ -112,6 +112,8 @@ int main() {
     check(history.undo(scene).has_value(), "Second undo succeeds");
     check(history.execute(scene, std::make_unique<RenameEntityCommand>(root.value(), "Branch")).has_value(), "New command after undo succeeds");
     check(history.redo_size() == 0 && !history.redo(scene), "New command clears redo branch");
+    history.clear();
+    check(history.undo_size() == 0 && history.redo_size() == 0 && !history.undo(scene), "Clear empties undo and redo");
     check(history.execute(scene, std::make_unique<ReparentEntityCommand>(child.value(), std::nullopt)).has_value(), "Reparent command applies");
     check(!scene.parent(child.value()).has_value(), "Reparent command detaches child");
     check(history.undo(scene) && scene.parent(child.value()) == std::optional<EntityId>(root.value()), "Undo restores parent");

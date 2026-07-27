@@ -10,12 +10,12 @@ Editor and runtime support for saved terrain height edits on top of procedural l
 - MCP `engine_terrain_apply` for agent-driven raise/lower/flatten/paint/paint_foliage/sample/undo/redo/save (live editor required for mutate).
 - **Paint** mode on the Sculpt tab assigns `.material.json` assets to terrain samples with brush radius, undo/redo, and save to `assets/terrain/terrain-paint.json`.
 - Material Inspector (via **Edit Tint** or **Edit** on the paint brush) can switch materials, create new ones with **+ New**, and assign **Use as Paint Brush** or **Use as Global Tint**.
-- Streamed cells reload render and Jolt collision after height edits; paint reloads render meshes only.
+- Streamed cells reload render and Jolt collision after height edits; paint reloads render meshes only. Runtime streaming amortizes cell generation and uploads terrain GPU meshes per cell (see [debug-world.md](debug-world.md)).
 - **Foliage** mode on the Sculpt tab paints ground-cover density (grass, flowers, bushes) into `assets/terrain/foliage-density.json` using the layer palette at `assets/foliage/ground-cover.layers.json`.
 - Foliage brush strength is independent from terrain sculpt/paint strength. **Sparse / Medium / Dense** presets map to common density strengths.
 - Foliage brush modes: **Paint** (single layer), **Erase** (removes all layers), **Mixed** (meadow blend of grass, flowers, and bushes). Shift+drag also erases while painting or mixing.
-- GPU-instanced foliage scatters deterministically per loaded cell, reloads on brush edits, and streams with terrain. Grass renders as faceted `grass_blade` instances; bushes use `discrete` scatter (one bush per strongly painted sample).
-- During **play test**, character movement feeds `WorldInfluenceBus` and blades bend away in the vertex shader (no collision blocking). Fly camera has no bend.
+- GPU-instanced foliage scatters deterministically per loaded cell, reloads on brush edits, and streams with terrain (incremental per-cell scatter on stream add/remove). Grass renders as multi-blade `grass_blade` **tuft** instances; bushes use `discrete` scatter (one bush per strongly painted sample).
+- During **play test**, character movement feeds `WorldInfluenceBus` and blades **lean + trample** in the foliage vertex shader (tip-weighted; strength scales with horizontal speed). Idle meadows get ambient tip flutter plus traveling **gust bands** from a shared wind field. Tree canopies (`tree` / `dead-tree`) sway from the same field. Faint camera-local wind streak particles ride the breeze in Game/play-test. No collision blocking. Fly camera has no bend.
 
 ## API
 

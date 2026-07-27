@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "npc_test",
+  "displayName": "NPC Test (Player_V2)",
+  "visualPrefab": "assets/prefabs/NPC/npc_test.prefab.json",
+  "rig": "assets/characters/player.rig.json",
+  "capsuleRadius": 0.45,
+  "capsuleHalfHeight": 1.2,
+  "maxSlopeRatio": 0.45,
+  "stepHeight": 0.4,
+  "maxSpeed": 4.0,
+  "gravity": 9.81,
+  "jumpVelocity": 5.0
+}

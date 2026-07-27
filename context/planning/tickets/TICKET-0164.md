@@ -22,12 +22,12 @@ Allow UI canvases to reference project image files (including agent-generated ar
 
 - [x] Widget schema: optional `image` (project-relative path); `imageMode` v1: `stretch` | `contain`
 - [x] Widget types: dedicated `image` widget (non-interactive) and `image` on `button` / `panel`
-- [ ] Runtime: load/cache PNG via ImGui/D3D12 — **not in this pass** (placeholder draw instead)
+- [x] Runtime: load/cache PNG via `UiTextureCache` + WIC/`load_png_imgui_srv` (ImGui heap SRV 256–511); placeholder fallback when missing
 - [x] Editor UI tab: image path field + imageMode
 - [x] MCP: `engine_ui_canvas_mutate` style/add accepts `image` / `imageMode`
-- [ ] Provenance index for real textures — deferred until real assets land
-- [x] Sample: main-menu New Game references `assets/ui/textures/btn_new_game.png` (missing → placeholder OK)
-- [x] Suite tests: parse `image` field, mutate set image; rebuild `engine`
+- [x] Provenance for sample chrome packs (`assets/ui/hud/`, `assets/ui/dialogue/`, `assets/ui/textures/PROVENANCE.md`) — still prototype / owner redraw before ship
+- [x] Sample: main-menu New Game → `assets/ui/textures/btn_new_game.png`; HUD/dialogue canvases reference chrome PNGs
+- [x] Suite tests: parse `image` field, mutate set image, `hud_image_fit_rect` stretch/contain; rebuild `engine`
 
 ## Out of scope
 
@@ -43,4 +43,4 @@ Placeholder visible when `image` set; suite parse/mutate; `engine_suite_tests --
 
 ## Agent notes
 
-**MVP shipped:** schema + editor/MCP + purple placeholder with filename stem. **Follow-on:** Windows WIC (or stb_image) decode + D3D12 SRV / ImGui texture ID cache + hot-reload + provenance for real PNGs under `assets/ui/textures/`.
+**Shipped:** schema + editor/MCP + `UiTextureCache` GPU draw (`stretch`/`contain`) with purple placeholder fallback. Texture cache is path-keyed (survives canvas hot-reload). Nine-slice / SVG still out of scope.

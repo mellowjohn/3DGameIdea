@@ -12,6 +12,7 @@
 #include <cstring>
 #include <limits>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -30,6 +31,25 @@ std::array<float, 16> matrix_to_column_major(const fastgltf::math::fmat4x4& matr
         }
     }
     return out;
+}
+
+ImportedJointRestLocal read_node_rest_local(const fastgltf::Node& node) {
+    ImportedJointRestLocal rest;
+    if (const auto* trs = std::get_if<fastgltf::TRS>(&node.transform)) {
+        rest.translation = {trs->translation.x(), trs->translation.y(), trs->translation.z()};
+        rest.rotation = {trs->rotation.x(), trs->rotation.y(), trs->rotation.z(), trs->rotation.w()};
+        rest.scale = {trs->scale.x(), trs->scale.y(), trs->scale.z()};
+        return rest;
+    }
+    const auto& matrix = std::get<fastgltf::math::fmat4x4>(node.transform);
+    fastgltf::math::fvec3 scale{};
+    fastgltf::math::fquat rotation{};
+    fastgltf::math::fvec3 translation{};
+    fastgltf::math::decomposeTransformMatrix(matrix, scale, rotation, translation);
+    rest.translation = {translation.x(), translation.y(), translation.z()};
+    rest.rotation = {rotation.x(), rotation.y(), rotation.z(), rotation.w()};
+    rest.scale = {scale.x(), scale.y(), scale.z()};
+    return rest;
 }
 
 Result<ImportedSkin> import_skin(const fastgltf::Asset& asset, const fastgltf::Skin& skin) {
@@ -92,6 +112,33 @@ Result<ImportedSkin> import_skin(const fastgltf::Asset& asset, const fastgltf::S
         }
     } else {
         output.inverse_bind_matrices.assign(skin.joints.size(), identity_matrix4());
+    }
+
+    std::vector<std::int32_t> node_parent(asset.nodes.size(), -1);
+    for (std::size_t node_index = 0; node_index < asset.nodes.size(); ++node_index) {
+        for (const auto child : asset.nodes[node_index].children) {
+            if (child < node_parent.size()) node_parent[child] = static_cast<std::int32_t>(node_index);
+        }
+    }
+    std::unordered_map<std::uint32_t, std::int32_t> node_to_joint;
+    node_to_joint.reserve(output.joint_node_indices.size());
+    for (std::size_t joint = 0; joint < output.joint_node_indices.size(); ++joint) {
+        node_to_joint[output.joint_node_indices[joint]] = static_cast<std::int32_t>(joint);
+    }
+    output.joint_rest_locals.reserve(output.joint_node_indices.size());
+    for (const auto joint_node : output.joint_node_indices) {
+        auto rest = read_node_rest_local(asset.nodes[joint_node]);
+        std::int32_t parent_node = node_parent[joint_node];
+        rest.parent_joint = -1;
+        while (parent_node >= 0) {
+            const auto found = node_to_joint.find(static_cast<std::uint32_t>(parent_node));
+            if (found != node_to_joint.end()) {
+                rest.parent_joint = found->second;
+                break;
+            }
+            parent_node = node_parent[static_cast<std::size_t>(parent_node)];
+        }
+        output.joint_rest_locals.push_back(rest);
     }
     return Result<ImportedSkin>::success(std::move(output));
 }
@@ -362,8 +409,9 @@ Result<void> ImportedMesh::validate()const{
     }
     for(const auto& skin:skins){
         if(skin.joint_node_indices.empty())return Result<void>::failure(mesh_error("MESH-SKIN-EMPTY","Imported skin has no joints"));
-        if(skin.joint_names.size()!=skin.joint_node_indices.size()||skin.inverse_bind_matrices.size()!=skin.joint_node_indices.size()){
-            return Result<void>::failure(mesh_error("MESH-SKIN-PARALLEL","Skin joint names and inverse-bind matrices must match joint count"));
+        if(skin.joint_names.size()!=skin.joint_node_indices.size()||skin.inverse_bind_matrices.size()!=skin.joint_node_indices.size()
+            ||skin.joint_rest_locals.size()!=skin.joint_node_indices.size()){
+            return Result<void>::failure(mesh_error("MESH-SKIN-PARALLEL","Skin joint names, rest locals, and inverse-bind matrices must match joint count"));
         }
     }
     return Result<void>::success();
@@ -373,7 +421,8 @@ Result<ImportedMesh> import_gltf_mesh(const std::filesystem::path& path) {
     if (!data) return Result<ImportedMesh>::failure(mesh_error("MESH-FILE-READ", "Could not read glTF: " + path.generic_string()));
     fastgltf::Parser parser;
     auto parsed = parser.loadGltf(data.get(), path.parent_path(),
-        fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages);
+        fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages
+            | fastgltf::Options::DecomposeNodeMatrices);
     if (!parsed) {
         auto error = mesh_error("MESH-GLTF-PARSE", "fastgltf rejected " + path.generic_string());
         error.causes.push_back(std::string(fastgltf::getErrorMessage(parsed.error())));
@@ -673,11 +722,71 @@ Result<ImportedMesh> generate_primitive_mesh(const std::string& primitive_name, 
         emit_hemisphere(-cylinder_half, false);
         emit_hemisphere(cylinder_half, true);
     } else if (primitive == "grass_blade") {
-        const auto base = mesh_vertex(0.0f, 0.0f, 0.0f, r, g, b);
-        const auto tip = mesh_vertex(0.04f, 0.58f, 0.12f, r * 1.05f, g * 1.05f, b * 0.9f);
-        const auto side = mesh_vertex(-0.03f, 0.28f, 0.02f, r, g, b);
-        push_triangle(mesh.vertices, mesh.aabb, base, side, tip);
-        push_triangle(mesh.vertices, mesh.aabb, base, tip, mesh_vertex(-side.x, side.y, -side.z, r, g, b));
+        // One instance = one tuft (BOTW-style bunch): several tapered multi-segment blades
+        // sharing a root so meadows read as clumps, not isolated spikes.
+        constexpr int k_segments = 4;
+        constexpr float k_base_half_width = 0.028f;
+        constexpr float k_tip_half_width = 0.005f;
+        const auto tint_at = [&](float t) {
+            // Darker base / brighter tip within theme olive (no neon).
+            const float base_mul_r = 0.62f;
+            const float base_mul_g = 0.70f;
+            const float base_mul_b = 0.62f;
+            const float tip_mul_r = 1.12f;
+            const float tip_mul_g = 1.18f;
+            const float tip_mul_b = 0.95f;
+            const float tr = base_mul_r + (tip_mul_r - base_mul_r) * t;
+            const float tg = base_mul_g + (tip_mul_g - base_mul_g) * t;
+            const float tb = base_mul_b + (tip_mul_b - base_mul_b) * t;
+            return std::array<float, 3>{r * tr, g * tg, b * tb};
+        };
+        // yaw (rad), lean outward (m at tip), height scale, root radial offset (m)
+        const std::array<std::array<float, 4>, 9> blades = {{
+            {{0.00f, 0.10f, 1.00f, 0.00f}},
+            {{0.70f, 0.15f, 0.94f, 0.022f}},
+            {{1.40f, 0.17f, 0.88f, 0.030f}},
+            {{2.10f, 0.14f, 0.96f, 0.018f}},
+            {{2.80f, 0.18f, 0.90f, 0.028f}},
+            {{3.50f, 0.13f, 0.85f, 0.024f}},
+            {{4.20f, 0.16f, 0.92f, 0.026f}},
+            {{4.90f, 0.12f, 0.87f, 0.020f}},
+            {{5.60f, 0.15f, 0.91f, 0.025f}},
+        }};
+        for (const auto& blade : blades) {
+            const float yaw = blade[0];
+            const float lean = blade[1];
+            const float height = 0.72f * blade[2];
+            const float root_r = blade[3];
+            const float cos_yaw = std::cos(yaw);
+            const float sin_yaw = std::sin(yaw);
+            // Card plane faces sideways to the lean direction.
+            const float side_x = -sin_yaw;
+            const float side_z = cos_yaw;
+            const float root_x = cos_yaw * root_r;
+            const float root_z = sin_yaw * root_r;
+            for (int seg = 0; seg < k_segments; ++seg) {
+                const float t0 = static_cast<float>(seg) / static_cast<float>(k_segments);
+                const float t1 = static_cast<float>(seg + 1) / static_cast<float>(k_segments);
+                const float y0 = t0 * height;
+                const float y1 = t1 * height;
+                const float lean0 = lean * (t0 * t0);
+                const float lean1 = lean * (t1 * t1);
+                const float w0 = k_base_half_width + (k_tip_half_width - k_base_half_width) * t0;
+                const float w1 = k_base_half_width + (k_tip_half_width - k_base_half_width) * t1;
+                const auto c0 = tint_at(t0);
+                const auto c1 = tint_at(t1);
+                const float cx0 = root_x + cos_yaw * lean0;
+                const float cz0 = root_z + sin_yaw * lean0;
+                const float cx1 = root_x + cos_yaw * lean1;
+                const float cz1 = root_z + sin_yaw * lean1;
+                const auto bl = mesh_vertex(cx0 - side_x * w0, y0, cz0 - side_z * w0, c0[0], c0[1], c0[2]);
+                const auto br = mesh_vertex(cx0 + side_x * w0, y0, cz0 + side_z * w0, c0[0], c0[1], c0[2]);
+                const auto tl = mesh_vertex(cx1 - side_x * w1, y1, cz1 - side_z * w1, c1[0], c1[1], c1[2]);
+                const auto tr = mesh_vertex(cx1 + side_x * w1, y1, cz1 + side_z * w1, c1[0], c1[1], c1[2]);
+                push_triangle(mesh.vertices, mesh.aabb, bl, br, tr);
+                push_triangle(mesh.vertices, mesh.aabb, bl, tr, tl);
+            }
+        }
     } else if (primitive == "grass_clump") {
         const auto blade = [&](float yaw, float lean) {
             const float cos_yaw = std::cos(yaw);

@@ -3,18 +3,18 @@
   "id": "player_hud",
   "widgets": [
     {
-      "id": "player_health_panel",
+      "id": "player_vitals_panel",
       "type": "panel",
       "anchor": "top_left",
-      "offset": [32, 32],
-      "size": [500, 110]
+      "offset": [24, 24],
+      "size": [300, 132]
     },
     {
       "id": "player_health",
       "type": "bar",
       "anchor": "top_left",
-      "offset": [48, 64],
-      "size": [440, 32],
+      "offset": [40, 56],
+      "size": [248, 14],
       "bind": "player.health",
       "maxBind": "player.healthMax",
       "label": "Health"
@@ -23,16 +23,41 @@
       "id": "player_health_text",
       "type": "text",
       "anchor": "top_left",
-      "offset": [48, 104],
-      "size": [440, 34],
+      "offset": [168, 34],
+      "size": [120, 20],
       "bind": "player.healthText"
+    },
+    {
+      "id": "player_resource_label",
+      "type": "text",
+      "anchor": "top_left",
+      "offset": [40, 80],
+      "size": [120, 18],
+      "bind": "player.resourceLabel"
+    },
+    {
+      "id": "player_resource",
+      "type": "bar",
+      "anchor": "top_left",
+      "offset": [40, 102],
+      "size": [248, 14],
+      "bind": "player.resource",
+      "maxBind": "player.resourceMax"
+    },
+    {
+      "id": "player_resource_text",
+      "type": "text",
+      "anchor": "top_left",
+      "offset": [168, 80],
+      "size": [120, 18],
+      "bind": "player.resourceText"
     },
     {
       "id": "quest_objective_text",
       "type": "text",
       "anchor": "top_left",
-      "offset": [32, 160],
-      "size": [640, 40],
+      "offset": [700, 36],
+      "size": [520, 28],
       "bind": "quest.objectiveText"
     }
   ]

@@ -12,7 +12,7 @@ Placed world objects are ordinary UUID scene entities with transforms plus an op
 }
 ```
 
-The optional `characterAsset` field marks a placement as a **player spawn**. When present (or inferred from the prefab's `characterAsset` field / a character asset's `visualPrefab` match), F5 test sessions spawn the controllable character at that entity's transform instead of creating a duplicate mesh at the cursor. Only one player spawn is used automatically when exactly one exists in the scene; otherwise the selected player spawn is preferred. Runtime movement during a test session does not persist: ending the test restores the spawn transform to its pre-test position.
+The optional `characterAsset` field marks a placement as a **player spawn**. When present (or inferred from the prefab's `characterAsset` field / the play-session character asset's `visualPrefab` match), F5 test sessions spawn the controllable character at that entity's transform instead of creating a duplicate mesh at the cursor. When multiple tagged spawns exist, selection wins, then the play-session character asset, then an entity named `player`, then the sole spawn if exactly one remains. Runtime movement during a test session does not persist: ending the test restores the spawn transform to its pre-test position.
 
 Optional `characterSettings` stores per-spawn overrides (capsule size, movement, gravity, visual prefab path) authored in the editor Inspector. Values match the `.character.json` schema and round-trip with the scene file.
 

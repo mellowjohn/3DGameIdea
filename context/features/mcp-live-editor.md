@@ -27,7 +27,9 @@ Tools:
 - `engine_asset_apply` — create or update prefab or material JSON, validate, refresh catalog; `action: refresh_catalog` rescans without writing
 - `engine_lua_apply` — write Lua script assets and hot reload when live automation is enabled
 - `engine_lua_call` — dispatch a live Lua handler without physical overlap (`kind`: `interaction` | `combatHurt` | `handler`; binding `id` or `handler` name; optional `payload`). Requires live editor MCP. Agent-friendly for play-test and automated checks.
-- `engine_quest_call` — drive session `QuestRuntime` (`kind`: `start` | `complete_objective` | `abandon` | `status` | `list`; `questId`; `objectiveId` for complete). Same path as Lua `engine.quest_*` ([DEC-0028](../decisions/index.md#dec-0028-explicit-quest-progression-runtime)). Requires live editor MCP; allowed during play test.
+- `engine_quest_call` — drive session `QuestRuntime` (`kind`: `start` | `complete_objective` | `abandon` | `resolve_fork` | `status` | `list`; `questId`; `objectiveId` for complete; `forkId` + `outcomeFlag` for resolve_fork). Same path as Lua `engine.quest_*` ([DEC-0028](../decisions/index.md#dec-0028-explicit-quest-progression-runtime) / [DEC-0046](../decisions/index.md#dec-0046-session-story-flag-runtime)). Requires live editor MCP; allowed during play test.
+- `engine_flag_call` — drive session `FlagRuntime` (`kind`: `set` | `clear` | `has` | `list`; `flagId` except list). Same path as Lua `engine.flag_*` ([DEC-0046](../decisions/index.md#dec-0046-session-story-flag-runtime)). Requires live editor MCP; allowed during play test.
+- `engine_coop_call` — local co-op play-test automation (`kind`: `status` | `start_local` | `end` | `pause` | `resume` | `possess` | `move` | `jump` | `disconnect_guest` | `reconnect_guest`). Possess host/guest, inject camera-relative wish for N frames, simulate guest drop/rejoin. Requires live editor MCP; Game tab auto-selected for move/jump ([`co-op-sessions.md`](co-op-sessions.md)).
 - `engine_standing_call` — drive session `StandingRuntime` (`kind`: `get` | `set` | `adjust` | `rank` | `meets` | `lock_in` | `list`; `factionId`; `score` / `delta` / `minScore` / `minRankId` as needed). Same path as Lua `engine.standing_*` ([DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer)). Requires live editor MCP; allowed during play test.
 - `engine_hud_apply` — write UI canvas (`*.uicanvas.json`) or legacy HUD (`*.hud.json`) and hot reload during play test ([DEC-0025](../decisions/index.md#dec-0025-responsive-ui-canvas-stack-editor--mcp))
 - `engine_world_forge_apply` — read/validate/write World Forge assets (`factions` / `relationships` / `map` `*.worldforge.json`); works offline; not Scene/Sculpt ([TICKET-0014](../planning/tickets/TICKET-0014.md))
@@ -35,6 +37,7 @@ Tools:
 - `engine_ui_canvas_mutate` — structural canvas edits (`add`/`remove`/`move`/`resize`/`style`); play-test safe
 - `engine_project_validate` — run the existing validation command path
 - `engine_project_git` — authoring sync via system git (`status`/`fetch`/`pull`/`commit`/`push`); offline; OS credentials ([DEC-0037](../decisions/index.md#dec-0037-git-backed-authoring-sync-in-editor), [`../formats/project-git-sync.md`](../formats/project-git-sync.md))
+- `engine_build_coordination` — same-machine agent rebuild lease (`status`/`acquire`/`wait`/`release`/`heartbeat`/`clear-stale`); offline; ticket validated against `epics.md` (TICKET-0228, [`agent-build-coordination.md`](agent-build-coordination.md))
 
 Cursor configuration example: `.cursor/mcp.json` launches `tools/mcp-server.cmd`, which starts `engine mcp` with the sample project. Reload the MCP server in Cursor Settings after rebuilding `engine`.
 
@@ -50,7 +53,9 @@ Direct `.world.json` writes while the editor is open are rejected by design. Use
 
 `engine_scene_apply` accepts `action: "batch"` with an `ops` array of single-op payloads (`place`, `move`, `remove`, `rename`). All operations run in one bridge round-trip and one undo step. Failed mid-batch applies roll back earlier ops in that batch. Optional `label` names the undo entry; `save: true` persists after a successful batch. Maximum 100 ops per request.
 
-`engine_scene_plan`, `engine_project_validate`, and `engine_project_git` work without the bridge. `engine_world_forge_apply` also works offline (file + schema validate). Live scene, prefab, Lua, and HUD apply require the editor plus enabled MCP connection. `engine_lua_apply`, `engine_hud_apply`, `engine_lua_call`, `engine_quest_call`, and `engine_standing_call` are allowed during play test (scene edits remain blocked) so agents can iterate scripts, fire handlers, and test quest/standing progression without walking into volumes.
+`engine_scene_plan`, `engine_project_validate`, `engine_project_git`, and `engine_build_coordination` work without the bridge. `engine_world_forge_apply` also works offline (file + schema validate). Live scene, prefab, Lua, and HUD apply require the editor plus enabled MCP connection. `engine_lua_apply`, `engine_hud_apply`, `engine_lua_call`, `engine_quest_call`, `engine_flag_call`, `engine_dialogue_call`, `engine_standing_call`, and `engine_coop_call` are allowed during play test (scene edits remain blocked) so agents can iterate scripts, fire handlers, test quest/dialogue/flag/standing progression, and drive local co-op without walking into volumes.
+
+Dialogue sandbox pad + MCP scenarios: [`../testing/dialogue-sandbox-mcp.md`](../testing/dialogue-sandbox-mcp.md) (`engine editor … --world worlds/sandbox.world.json`, or **File → Open World → sandbox** in a running editor).
 
 ## UI hotspots (`engine_editor_ui_query`)
 
@@ -60,7 +65,9 @@ Common ids:
 
 | Id | Control |
 |----|---------|
-| `Viewport.WorldForge` | Viewports → World Forge tab |
+| `Viewport.Game` | Viewports → Game tab |
+| `Toolbar.test_start` | Start Test (F5) |
+| `Toolbar.test_pause` / `Toolbar.test_resume` / `Toolbar.test_end` | Play-test controls |
 | `WorldForge.Pane.Overview` | World Forge → Overview nav |
 | `WorldForge.Pane.Hierarchy` | World Forge → Hierarchy nav |
 | `WorldForge.Pane.Map` | World Forge → Map nav |

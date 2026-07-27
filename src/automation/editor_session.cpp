@@ -1,4 +1,4 @@
-#include "engine/automation/editor_session.h"
+﻿#include "engine/automation/editor_session.h"
 
 #include "engine/assets/asset_registry.h"
 #include "engine/assets/material_asset.h"
@@ -16,6 +16,9 @@
 #include "engine/scripting/lua_runtime.h"
 #include "engine/quest/quest_runtime.h"
 #include "engine/standing/standing_runtime.h"
+#include "engine/flag/flag_runtime.h"
+#include "engine/dialogue/dialogue_runtime.h"
+#include "engine/dialogue/dialogue_ui.h"
 #include "engine/assets/world_forge_quests_asset.h"
 #include "engine/ui/hud_runtime.h"
 #include "engine/world/combat_volumes.h"
@@ -186,7 +189,7 @@ EditorBridgeResponse apply_scene_batch(EditorSessionContext& context, const nloh
         return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
             {{"appliedCount", "0"}});
     }
-    if (context.scene_dirty) *context.scene_dirty = true;
+    if (context.scene_dirty) *context.scene_dirty = true; if (context.static_render_cache_dirty) *context.static_render_cache_dirty = true;
     const auto changed = context.history->last_changed_object_ids();
     if (params.value("save", false)) {
         const auto saved = context.scene->save_atomic(context.world_path);
@@ -289,6 +292,7 @@ EditorBridgeResponse apply_asset_write(EditorSessionContext& context, const nloh
         if (context.scene) {
             propagated = context.scene->propagate_prefab_components(relative, loaded.value());
             if (propagated > 0 && context.scene_dirty) *context.scene_dirty = true;
+            if (propagated > 0 && context.static_render_cache_dirty) *context.static_render_cache_dirty = true;
         }
         std::size_t prefab_count = 0;
         if (params.value("refreshCatalog", true)) {
@@ -1230,7 +1234,7 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
             sample_params["action"] = "sample";
             return apply_terrain_operation(context, sample_params);
         }
-        // Script/HUD ops stay available without a scene and during play test — agents iterate
+        // Script/HUD ops stay available without a scene and during play test â€” agents iterate
         // gameplay without rebuilds or physical volume overlaps.
         if (operation == "lua_apply") {
             const auto relative = params.value("path", std::string{});
@@ -1388,12 +1392,16 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                 }
                 InteractionEvent event;
                 const auto type = params.value("type", std::string{"enter"});
-                event.type = (type == "exit") ? InteractionEventType::Exit : InteractionEventType::Enter;
-                event.interaction_id = binding_id;
-                event.placement_entity_id = payload.value("placementEntityId", std::string{"mcp"});
-                event.interactor_id = payload.value("interactorId", std::string{"player"});
-                event.volume_index = static_cast<std::uint32_t>(payload.value("volumeIndex", 0));
-                context.lua_runtime->dispatch_interaction(event);
+                if (type == "use" || type == "activate") {
+                    context.lua_runtime->dispatch_interaction_use(binding_id);
+                } else {
+                    event.type = (type == "exit") ? InteractionEventType::Exit : InteractionEventType::Enter;
+                    event.interaction_id = binding_id;
+                    event.placement_entity_id = payload.value("placementEntityId", std::string{"mcp"});
+                    event.interactor_id = payload.value("interactorId", std::string{"player"});
+                    event.volume_index = static_cast<std::uint32_t>(payload.value("volumeIndex", 0));
+                    context.lua_runtime->dispatch_interaction(event);
+                }
             } else if (kind == "combathurt" || kind == "combat_hurt" || kind == "hurt") {
                 if (binding_id.empty()) {
                     return make_response(ExitCode::InvalidArguments, "id is required for combatHurt", {},
@@ -1532,6 +1540,32 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                 }
                 return make_response(ExitCode::Success, "Quest abandoned", {}, {}, status_metadata(status.value()));
             }
+            if (kind == "resolve_fork" || kind == "resolvefork") {
+                if (!context.flag_runtime) {
+                    return make_response(ExitCode::Unavailable, "Flag runtime is not available", {},
+                        {session_error("FLAG-RUNTIME-MISSING", "No live FlagRuntime on the editor session.",
+                            "Start the editor with MCP connection enabled.")});
+                }
+                const auto fork_id = params.value("forkId", params.value("fork_id", std::string{}));
+                const auto outcome_flag =
+                    params.value("outcomeFlag", params.value("outcome_flag", params.value("flagId", std::string{})));
+                if (fork_id.empty() || outcome_flag.empty()) {
+                    return make_response(ExitCode::InvalidArguments, "forkId and outcomeFlag are required", {},
+                        {session_error("QUEST-CALL-FORK",
+                            "resolve_fork requires questId, forkId, and outcomeFlag.",
+                            "Example: {\"kind\":\"resolve_fork\",\"questId\":\"mq_act0_calrenoth\","
+                            "\"forkId\":\"larrell_save_vs_flee\",\"outcomeFlag\":\"act0.helped_larrell\"}")});
+                }
+                const auto result =
+                    context.quest_runtime->resolve_fork(quest_id, fork_id, outcome_flag, *context.flag_runtime);
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}, {"questId", quest_id}, {"forkId", fork_id}, {"outcomeFlag", outcome_flag}});
+                }
+                return make_response(ExitCode::Success, "Quest fork resolved", {}, {},
+                    {{"kind", kind}, {"questId", quest_id}, {"forkId", fork_id}, {"outcomeFlag", outcome_flag},
+                        {"hasFlag", context.flag_runtime->has(outcome_flag) ? "true" : "false"}});
+            }
             if (kind == "status") {
                 const auto status = context.quest_runtime->status(quest_id);
                 if (!status) {
@@ -1542,7 +1576,140 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
             }
             return make_response(ExitCode::InvalidArguments, "Unknown quest_call kind", {},
                 {session_error("QUEST-CALL-KIND", "Unsupported kind: " + kind,
-                    "Use start, complete_objective, abandon, status, or list.")});
+                    "Use start, complete_objective, abandon, resolve_fork, status, or list.")});
+        }
+        if (operation == "dialogue_call") {
+            if (!context.dialogue_runtime) {
+                return make_response(ExitCode::Unavailable, "Dialogue runtime is not available", {},
+                    {session_error("DIALOGUE-RUNTIME-MISSING", "No live DialogueRuntime on the editor session.",
+                        "Start the editor with MCP connection enabled.")});
+            }
+            auto kind = params.value("kind", std::string{});
+            std::transform(kind.begin(), kind.end(), kind.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            for (char& c : kind) {
+                if (c == '-' || c == ' ') c = '_';
+            }
+            const auto tree_id = params.value("treeId", params.value("tree_id", std::string{}));
+            const auto choice_id = params.value("choiceId", params.value("choice_id", std::string{}));
+
+            auto sync_dialogue_ui = [&]() {
+                DialogueUiSession fallback{};
+                DialogueUiSession& session =
+                    context.lua_runtime ? context.lua_runtime->dialogue_ui_session() : fallback;
+                sync_dialogue_canvas(context.ui_canvas_stack, context.dialogue_runtime, session);
+            };
+            auto present_metadata = [&](const DialoguePresent& present) {
+                std::string choice_ids;
+                for (std::size_t i = 0; i < present.choices.size(); ++i) {
+                    if (i) choice_ids += ',';
+                    choice_ids += present.choices[i].id;
+                }
+                return std::map<std::string, std::string>{
+                    {"kind", kind},
+                    {"treeId", present.tree_id},
+                    {"nodeId", present.node_id},
+                    {"speakerId", present.speaker_id},
+                    {"line", present.line},
+                    {"complete", present.complete ? "true" : "false"},
+                    {"choiceIds", choice_ids},
+                    {"choiceCount", std::to_string(present.choices.size())},
+                };
+            };
+
+            if (kind == "status" || kind == "present") {
+                if (context.dialogue_runtime->tree_id().empty()) {
+                    return make_response(ExitCode::Success, "Dialogue inactive", {}, {},
+                        {{"kind", kind}, {"active", "false"}, {"complete", "false"}});
+                }
+                const auto present = context.dialogue_runtime->present();
+                if (!present) {
+                    return make_response(ExitCode::ValidationFailed, present.error().message, {}, {present.error()},
+                        {{"kind", kind}});
+                }
+                sync_dialogue_ui();
+                auto meta = present_metadata(present.value());
+                meta["active"] = present.value().complete ? "false" : "true";
+                return make_response(ExitCode::Success, "Dialogue present", {}, {}, std::move(meta));
+            }
+            if (kind == "reset") {
+                context.dialogue_runtime->reset();
+                sync_dialogue_ui();
+                return make_response(ExitCode::Success, "Dialogue reset", {}, {},
+                    {{"kind", "reset"}, {"active", "false"}});
+            }
+            if (kind == "start") {
+                if (tree_id.empty()) {
+                    return make_response(ExitCode::InvalidArguments, "treeId is required", {},
+                        {session_error("DIALOGUE-CALL-TREE", "dialogue_call start requires treeId.",
+                            "Example: {\"kind\":\"start\",\"treeId\":\"dlg_act0_wrathful_conquest\"}")});
+                }
+                const auto result = context.dialogue_runtime->start(tree_id);
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}, {"treeId", tree_id}});
+                }
+                sync_dialogue_ui();
+                const auto present = context.dialogue_runtime->present();
+                if (!present) {
+                    return make_response(ExitCode::ValidationFailed, present.error().message, {}, {present.error()},
+                        {{"kind", kind}, {"treeId", tree_id}});
+                }
+                auto meta = present_metadata(present.value());
+                meta["active"] = present.value().complete ? "false" : "true";
+                return make_response(ExitCode::Success, "Dialogue started", {}, {}, std::move(meta));
+            }
+            if (kind == "continue") {
+                DialogueUiSession fallback{};
+                DialogueUiSession& session =
+                    context.lua_runtime ? context.lua_runtime->dialogue_ui_session() : fallback;
+                if (context.ui_canvas_stack) {
+                    if (HudRuntime* canvas = context.ui_canvas_stack->find_canvas("dialogue")) {
+                        (void)canvas->skip_typewriter("dialogue.body");
+                    }
+                }
+                (void)dialogue_advance_continue(context.ui_canvas_stack, context.dialogue_runtime, session);
+                if (context.dialogue_runtime->tree_id().empty() || context.dialogue_runtime->is_complete()) {
+                    return make_response(ExitCode::Success, "Dialogue continue", {}, {},
+                        {{"kind", "continue"}, {"complete", "true"}, {"active", "false"},
+                            {"choicesPage", session.choices_page ? "true" : "false"}});
+                }
+                return make_response(ExitCode::Success, "Dialogue continue", {}, {},
+                    {{"kind", "continue"}, {"choicesPage", session.choices_page ? "true" : "false"},
+                        {"active", "true"}});
+            }
+            if (kind == "choose") {
+                if (choice_id.empty()) {
+                    return make_response(ExitCode::InvalidArguments, "choiceId is required", {},
+                        {session_error("DIALOGUE-CALL-CHOICE", "dialogue_call choose requires choiceId.",
+                            "Example: {\"kind\":\"choose\",\"choiceId\":\"choice_0\"}")});
+                }
+                DialogueUiSession fallback{};
+                DialogueUiSession& session =
+                    context.lua_runtime ? context.lua_runtime->dialogue_ui_session() : fallback;
+                const auto result = dialogue_choose_with_ui(context.ui_canvas_stack, context.dialogue_runtime,
+                    session, context.standing_runtime, context.flag_runtime, choice_id);
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}, {"choiceId", choice_id}});
+                }
+                if (context.dialogue_runtime->tree_id().empty() || context.dialogue_runtime->is_complete()) {
+                    return make_response(ExitCode::Success, "Dialogue choice applied", {}, {},
+                        {{"kind", kind}, {"choiceId", choice_id}, {"complete", "true"}, {"active", "false"}});
+                }
+                const auto present = context.dialogue_runtime->present();
+                if (!present) {
+                    return make_response(ExitCode::ValidationFailed, present.error().message, {}, {present.error()},
+                        {{"kind", kind}, {"choiceId", choice_id}});
+                }
+                auto meta = present_metadata(present.value());
+                meta["choiceId"] = choice_id;
+                meta["active"] = present.value().complete ? "false" : "true";
+                return make_response(ExitCode::Success, "Dialogue choice applied", {}, {}, std::move(meta));
+            }
+            return make_response(ExitCode::InvalidArguments, "Unknown dialogue_call kind", {},
+                {session_error("DIALOGUE-CALL-KIND", "Unsupported kind: " + kind,
+                    "Use start, present, status, continue, choose, or reset.")});
         }
         if (operation == "standing_call") {
             if (!context.standing_runtime) {
@@ -1643,6 +1810,62 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                 {session_error("STANDING-CALL-KIND", "Unsupported kind: " + kind,
                     "Use get, set, adjust, rank, meets, lock_in, or list.")});
         }
+        if (operation == "flag_call") {
+            if (!context.flag_runtime) {
+                return make_response(ExitCode::Unavailable, "Flag runtime is not available", {},
+                    {session_error("FLAG-RUNTIME-MISSING", "No live FlagRuntime on the editor session.",
+                        "Start the editor with MCP connection enabled.")});
+            }
+            auto kind = params.value("kind", std::string{});
+            std::transform(kind.begin(), kind.end(), kind.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            for (char& c : kind) {
+                if (c == '-' || c == ' ') c = '_';
+            }
+            const auto flag_id = params.value("flagId", params.value("flag_id", std::string{}));
+            if (kind == "list") {
+                const auto listed = context.flag_runtime->list();
+                std::string ids;
+                for (std::size_t i = 0; i < listed.size(); ++i) {
+                    if (i) ids += ',';
+                    ids += listed[i];
+                }
+                return make_response(ExitCode::Success, "Flags listed", {}, {},
+                    {{"kind", "list"}, {"count", std::to_string(listed.size())}, {"flagIds", ids}});
+            }
+            if (flag_id.empty()) {
+                return make_response(ExitCode::InvalidArguments, "flagId is required", {},
+                    {session_error("FLAG-CALL-ID", "flag_call requires flagId (except kind=list).",
+                        "Example: {\"kind\":\"set\",\"flagId\":\"act0.helped_larrell\"}")});
+            }
+            if (kind == "set") {
+                const auto result = context.flag_runtime->set(flag_id);
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}, {"flagId", flag_id}});
+                }
+                return make_response(ExitCode::Success, "Flag set", {}, {},
+                    {{"kind", kind}, {"flagId", flag_id}, {"has", "true"}});
+            }
+            if (kind == "clear") {
+                const auto result = context.flag_runtime->clear(flag_id);
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}, {"flagId", flag_id}});
+                }
+                return make_response(ExitCode::Success, "Flag cleared", {}, {},
+                    {{"kind", kind}, {"flagId", flag_id},
+                        {"has", context.flag_runtime->has(flag_id) ? "true" : "false"}});
+            }
+            if (kind == "has" || kind == "get" || kind == "status") {
+                return make_response(ExitCode::Success, "Flag queried", {}, {},
+                    {{"kind", kind}, {"flagId", flag_id},
+                        {"has", context.flag_runtime->has(flag_id) ? "true" : "false"}});
+            }
+            return make_response(ExitCode::InvalidArguments, "Unknown flag_call kind", {},
+                {session_error("FLAG-CALL-KIND", "Unsupported kind: " + kind,
+                    "Use set, clear, has, or list.")});
+        }
         if (!context.scene || !context.history) {
             return make_response(ExitCode::Unavailable, "Editor session is unavailable", {}, {session_error(
                 "EDITOR-SESSION-MISSING", "Scene or command history is not available.", "Launch the editor first.")});
@@ -1657,14 +1880,14 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
             if (action == "undo") {
                 const auto result = context.history->undo(*context.scene);
                 if (!result) return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()});
-                if (context.scene_dirty) *context.scene_dirty = true;
+                if (context.scene_dirty) *context.scene_dirty = true; if (context.static_render_cache_dirty) *context.static_render_cache_dirty = true;
                 return make_response(ExitCode::Success, context.history->last_summary(),
                     context.history->last_changed_object_ids());
             }
             if (action == "redo") {
                 const auto result = context.history->redo(*context.scene);
                 if (!result) return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()});
-                if (context.scene_dirty) *context.scene_dirty = true;
+                if (context.scene_dirty) *context.scene_dirty = true; if (context.static_render_cache_dirty) *context.static_render_cache_dirty = true;
                 return make_response(ExitCode::Success, context.history->last_summary(),
                     context.history->last_changed_object_ids());
             }
@@ -1700,7 +1923,7 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                     std::move(seed));
                 const auto result = context.history->execute(*context.scene, std::move(command));
                 if (!result) return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()});
-                if (context.scene_dirty) *context.scene_dirty = true;
+                if (context.scene_dirty) *context.scene_dirty = true; if (context.static_render_cache_dirty) *context.static_render_cache_dirty = true;
                 if (context.selected && !context.history->last_changed_object_ids().empty()) {
                     if (const auto parsed = EntityId::parse(context.history->last_changed_object_ids().front()); parsed)
                         *context.selected = parsed.value();
@@ -1717,7 +1940,7 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                 const auto result = context.history->execute(*context.scene,
                     std::make_unique<MoveWorldObjectCommand>(parsed.value(), transform));
                 if (!result) return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()});
-                if (context.scene_dirty) *context.scene_dirty = true;
+                if (context.scene_dirty) *context.scene_dirty = true; if (context.static_render_cache_dirty) *context.static_render_cache_dirty = true;
                 return make_response(ExitCode::Success, context.history->last_summary(),
                     context.history->last_changed_object_ids());
             }
@@ -1727,7 +1950,7 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                 const auto result = context.history->execute(*context.scene,
                     std::make_unique<RemoveWorldObjectCommand>(parsed.value()));
                 if (!result) return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()});
-                if (context.scene_dirty) *context.scene_dirty = true;
+                if (context.scene_dirty) *context.scene_dirty = true; if (context.static_render_cache_dirty) *context.static_render_cache_dirty = true;
                 if (context.selected && *context.selected == parsed.value()) context.selected->reset();
                 return make_response(ExitCode::Success, context.history->last_summary(),
                     context.history->last_changed_object_ids());
@@ -1738,7 +1961,7 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                 const auto result = context.history->execute(*context.scene,
                     std::make_unique<RenameEntityCommand>(parsed.value(), params.value("name", std::string{"Renamed"})));
                 if (!result) return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()});
-                if (context.scene_dirty) *context.scene_dirty = true;
+                if (context.scene_dirty) *context.scene_dirty = true; if (context.static_render_cache_dirty) *context.static_render_cache_dirty = true;
                 return make_response(ExitCode::Success, context.history->last_summary(),
                     context.history->last_changed_object_ids());
             }
@@ -1763,7 +1986,7 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                     std::nullopt, placement->character_asset, std::move(seed));
                 const auto result = context.history->execute(*context.scene, std::move(command));
                 if (!result) return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()});
-                if (context.scene_dirty) *context.scene_dirty = true;
+                if (context.scene_dirty) *context.scene_dirty = true; if (context.static_render_cache_dirty) *context.static_render_cache_dirty = true;
                 return make_response(ExitCode::Success, context.history->last_summary(),
                     context.history->last_changed_object_ids());
             }
@@ -1780,7 +2003,7 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                     const auto result = context.history->execute(*context.scene,
                         std::make_unique<RemoveEntityComponentCommand>(parsed.value(), component_id));
                     if (!result) return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()});
-                    if (context.scene_dirty) *context.scene_dirty = true;
+                    if (context.scene_dirty) *context.scene_dirty = true; if (context.static_render_cache_dirty) *context.static_render_cache_dirty = true;
                     return make_response(ExitCode::Success, context.history->last_summary(),
                         context.history->last_changed_object_ids());
                 }
@@ -1798,7 +2021,7 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                     command = std::make_unique<SetEntityComponentCommand>(parsed.value(), entry.value());
                 const auto result = context.history->execute(*context.scene, std::move(command));
                 if (!result) return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()});
-                if (context.scene_dirty) *context.scene_dirty = true;
+                if (context.scene_dirty) *context.scene_dirty = true; if (context.static_render_cache_dirty) *context.static_render_cache_dirty = true;
                 return make_response(ExitCode::Success, context.history->last_summary(),
                     context.history->last_changed_object_ids());
             }
@@ -1823,7 +2046,7 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
         }
         return make_response(ExitCode::InvalidArguments, "Unknown editor operation", {},
             {session_error("EDITOR-OP-UNKNOWN", "Unsupported operation: " + operation,
-                "Use editor_status/scene_plan/.../hud_apply/world_forge_apply/project_git/ui_canvas_mutate/ui_stack/lua_call/quest_call/standing_call.")});
+                "Use editor_status/scene_plan/.../hud_apply/world_forge_apply/project_git/ui_canvas_mutate/ui_stack/lua_call/quest_call/dialogue_call/standing_call/flag_call/coop_call.")});
     } catch (const std::exception& exception) {
         return make_response(ExitCode::InternalError, "Editor operation failed", {},
             {session_error("EDITOR-OP-EXCEPTION", exception.what(), "Check params JSON and retry.")});

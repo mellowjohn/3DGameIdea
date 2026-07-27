@@ -1,6 +1,7 @@
 #include "engine/quest/quest_runtime.h"
 
 #include "engine/core/error.h"
+#include "engine/flag/flag_runtime.h"
 
 #include <algorithm>
 #include <utility>
@@ -184,6 +185,54 @@ Result<void> QuestRuntime::abandon(const std::string& quest_id) {
     return Result<void>::success();
 }
 
+Result<void> QuestRuntime::resolve_fork(const std::string& quest_id, const std::string& fork_id,
+    const std::string& outcome_flag, FlagRuntime& flags) {
+    if (!asset_) {
+        return Result<void>::failure(rt_error("QUEST-RUNTIME-STATE", ErrorCategory::Validation,
+            "QuestRuntime is not bound to a quests asset", "Call bind before resolve_fork."));
+    }
+    if (outcome_flag.empty()) {
+        return Result<void>::failure(rt_error("QUEST-RUNTIME-FORK-FLAG", ErrorCategory::Validation,
+            "outcome_flag must be non-empty", "Pass one outcomeFlags entry from the quest fork."));
+    }
+    const auto* quest = find_quest(quest_id);
+    if (!quest) {
+        return Result<void>::failure(rt_error("QUEST-RUNTIME-UNKNOWN", ErrorCategory::Validation,
+            "Unknown quest: " + quest_id, "Use a quest id from quests.worldforge.json."));
+    }
+    const auto* instance = find_instance(quest_id);
+    if (!instance ||
+        (instance->status != QuestInstanceStatus::Active && instance->status != QuestInstanceStatus::Completed)) {
+        return Result<void>::failure(rt_error("QUEST-RUNTIME-NOT-ACTIVE", ErrorCategory::Validation,
+            "Quest must be active or completed to resolve a fork: " + quest_id,
+            "Call start before resolve_fork."));
+    }
+    const WorldForgeQuestFork* fork = nullptr;
+    for (const auto& candidate : quest->forks) {
+        if (candidate.id == fork_id) {
+            fork = &candidate;
+            break;
+        }
+    }
+    if (!fork) {
+        return Result<void>::failure(rt_error("QUEST-RUNTIME-UNKNOWN-FORK", ErrorCategory::Validation,
+            "Unknown fork '" + fork_id + "' on quest '" + quest_id + "'",
+            "Use a fork id from the quest asset."));
+    }
+    const bool known = std::find(fork->outcome_flags.begin(), fork->outcome_flags.end(), outcome_flag) !=
+        fork->outcome_flags.end();
+    if (!known) {
+        return Result<void>::failure(rt_error("QUEST-RUNTIME-FORK-FLAG", ErrorCategory::Validation,
+            "Flag '" + outcome_flag + "' is not an outcomeFlags entry on fork '" + fork_id + "'",
+            "Pass one of the fork's authored outcomeFlags."));
+    }
+    for (const auto& sibling : fork->outcome_flags) {
+        if (sibling == outcome_flag) continue;
+        if (const auto cleared = flags.clear(sibling); !cleared) return cleared;
+    }
+    return flags.set(outcome_flag);
+}
+
 Result<QuestProgressStatus> QuestRuntime::status(const std::string& quest_id) const {
     if (!asset_) {
         return Result<QuestProgressStatus>::failure(rt_error("QUEST-RUNTIME-STATE", ErrorCategory::Validation,
@@ -250,6 +299,58 @@ std::string QuestRuntime::primary_objective_text() const {
     if (active.empty()) return {};
     if (!active.front().current_objective_summary.empty()) return active.front().current_objective_summary;
     return active.front().current_objective_id;
+}
+
+std::vector<QuestProgressStatus> QuestRuntime::list_instances() const {
+    std::vector<QuestProgressStatus> out;
+    if (!asset_) return out;
+    for (const auto& [quest_id, instance] : instances_) {
+        if (instance.status == QuestInstanceStatus::Inactive) continue;
+        const auto* quest = find_quest(quest_id);
+        if (!quest) continue;
+        if (auto built = build_status(*quest, &instance); built) out.push_back(std::move(built.value()));
+    }
+    return out;
+}
+
+Result<void> QuestRuntime::restore_instance(const std::string& quest_id, QuestInstanceStatus status,
+    std::vector<std::string> completed_objective_ids) {
+    if (!asset_) {
+        return Result<void>::failure(rt_error("QUEST-RUNTIME-STATE", ErrorCategory::Validation,
+            "QuestRuntime is not bound to a quests asset", "Call bind before restore_instance."));
+    }
+    if (status == QuestInstanceStatus::Inactive) {
+        return Result<void>::failure(rt_error("QUEST-RUNTIME-RESTORE", ErrorCategory::Validation,
+            "Cannot restore inactive quest instance", "Omit inactive quests from the save blob."));
+    }
+    const auto* quest = find_quest(quest_id);
+    if (!quest) {
+        return Result<void>::failure(rt_error("QUEST-RUNTIME-UNKNOWN", ErrorCategory::Validation,
+            "Unknown quest: " + quest_id, "Use a quest id from quests.worldforge.json."));
+    }
+    for (const auto& objective_id : completed_objective_ids) {
+        bool known = false;
+        for (const auto& objective : quest->objectives) {
+            if (objective.id == objective_id) {
+                known = true;
+                break;
+            }
+        }
+        if (!known) {
+            return Result<void>::failure(rt_error("QUEST-RUNTIME-UNKNOWN-OBJECTIVE", ErrorCategory::Validation,
+                "Unknown objective '" + objective_id + "' on quest '" + quest_id + "'",
+                "Fix sharedCampaign.quests.instances completedObjectiveIds."));
+        }
+    }
+    Instance instance;
+    instance.status = status;
+    instance.completed_objective_ids = std::move(completed_objective_ids);
+    if (auto* existing = find_instance(quest_id)) {
+        *existing = std::move(instance);
+    } else {
+        instances_.emplace_back(quest_id, std::move(instance));
+    }
+    return Result<void>::success();
 }
 
 } // namespace engine

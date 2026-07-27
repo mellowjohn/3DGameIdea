@@ -44,7 +44,7 @@ Story markdown remains the **human/agent narrative source of truth**. World Forg
 
 6. **Quest authoring** — Quest data model, validation, and quest creator tooling (TICKET-0050 / 0051). Lives under World Forge panels; links to regions, POIs, factions, and people in the relationship graph. Format: [`../formats/world-forge-quests.md`](../formats/world-forge-quests.md) (multi-stage dialogue hooks per [DEC-0026](../decisions/index.md#dec-0026-quest-owned-dialogue-hooks-multi-stage)).
 7. **Dialogue authoring** — Branching dialogue graphs, editor, and headless tests (TICKET-0052 / 0053; UX polish TICKET-0165–0168 Phase 1; follow-ons 0169–0179). Speakers and conditions reference World Forge people/faction IDs; trees may set `parentQuestId` when owned by a quest stage. Shared graph camera with relationship canvas ([DEC-0027](../decisions/index.md#dec-0027-shared-world-forge-graph-camera)).
-8. **Story events** — Authorable event definitions (triggers, conditions, outcomes) that wire campaign beats into engine-consumable assets. Exact schema is a follow-on ticket; product home is World Forge.
+8. **Story events** — Authorable event **timeline sequences** (ordered typed steps: wait, control lock, dialogue, emit/VFX hooks, camera) as engine-consumable World Forge assets ([DEC-0045](../decisions/index.md#dec-0045-json-event-timelines-with-c-sequencer-world-forge-home)). Format: [`../formats/world-forge-events.md`](../formats/world-forge-events.md). Runtime TICKET-0221/0222; **Events pane + MCP `kind=events`** (TICKET-0223).
 
 ### Integration contract
 
@@ -79,7 +79,7 @@ Do **not** implement these as World Forge duplicates:
 | Relationship graph editor UI | **Command-backed** | Follows 0012; same command path as MCP |
 | Quest model + quest creator | **Pure data** then **command-backed** UI | TICKET-0050 / 0051 (World Forge home); format [`world-forge-quests.md`](../formats/world-forge-quests.md) |
 | Dialogue runtime + graph editor | **Pure data** then **command-backed** UI | TICKET-0052 / 0053 (World Forge home) |
-| Story event schemas + editor | **Pure data** then **command-backed** UI | Follow-on under EPIC-0002/0006 |
+| Story event schemas + editor | **Pure data** then **command-backed** UI | TICKET-0221 / 0222 (runtime); TICKET-0223 (Events pane + MCP) — shipped |
 
 Schema tickets ship formats and validators before UI. UI and MCP must share the same mutation commands.
 

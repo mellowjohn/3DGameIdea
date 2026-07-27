@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 2,
+  "entities": [
+    {
+      "name": "Talk Marker",
+      "transform": {
+        "position": [0.0, 0.6, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [0.35, 1.2, 0.35]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cylinder",
+        "color": [0.85, 0.72, 0.28]
+      }
+    }
+  ],
+  "collision": [
+    {
+      "shape": "sphere",
+      "layer": "trigger",
+      "trigger": true,
+      "transform": {
+        "position": [0.0, 0.75, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "radius": 1.4,
+      "interaction": "talk_act0"
+    }
+  ]
+}

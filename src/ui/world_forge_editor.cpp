@@ -954,6 +954,47 @@ std::string unique_quest_id(const WorldForgeQuestsAsset& asset, const std::strin
         "quest");
 }
 
+EventTimelineSequence* find_event_sequence(WorldForgeEventsAsset& asset, const std::string& id) {
+    return asset.find_sequence(id);
+}
+
+const EventTimelineSequence* find_event_sequence(const WorldForgeEventsAsset& asset, const std::string& id) {
+    return asset.find_sequence(id);
+}
+
+std::string unique_event_sequence_id(const WorldForgeEventsAsset& asset, const std::string& preferred) {
+    return unique_slugify_id(preferred,
+        [&](const std::string& candidate) { return find_event_sequence(asset, candidate) != nullptr; }, "event");
+}
+
+bool add_event_sequence(WorldForgeEditorSession& session, std::string id, std::string display_name) {
+    id = sanitize_id_token(std::move(id));
+    if (!is_valid_id_token(id) || find_event_sequence(session.events, id)) return false;
+    EventTimelineSequence sequence;
+    sequence.id = id;
+    sequence.display_name = std::move(display_name);
+    sequence.canon_status = WorldForgeEventCanonStatus::Draft;
+    session.events.sequences.push_back(std::move(sequence));
+    if (session.events.id.empty()) session.events.id = "tessera_events";
+    session.events.schema_version = 1;
+    session.selected_id = id;
+    session.dirty = true;
+    session.status = "Added event sequence " + id;
+    return true;
+}
+
+bool remove_event_sequence(WorldForgeEditorSession& session, const std::string& id) {
+    auto& sequences = session.events.sequences;
+    const auto it =
+        std::find_if(sequences.begin(), sequences.end(), [&](const auto& s) { return s.id == id; });
+    if (it == sequences.end()) return false;
+    sequences.erase(it);
+    if (session.selected_id == id) session.selected_id.clear();
+    session.dirty = true;
+    session.status = "Removed event sequence " + id;
+    return true;
+}
+
 bool add_quest(WorldForgeEditorSession& session, std::string id, std::string display_name) {
     id = sanitize_id_token(std::move(id));
     if (!is_valid_id_token(id) || find_quest(session.quests, id)) return false;
@@ -1584,6 +1625,28 @@ void draw_add_quest_controls(WorldForgeEditorSession& session) {
                 session.create_quest_name.fill('\0');
             } else {
                 session.status = "Could not create quest (invalid or duplicate id).";
+            }
+        }
+        ImGui::Unindent();
+    }
+}
+
+void draw_add_event_sequence_controls(WorldForgeEditorSession& session) {
+    if (ImGui::CollapsingHeader("Create sequence##WorldForgeAddEvent", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        const auto name = trim(session.create_event_sequence_name.data());
+        const auto preview_id =
+            name.empty() ? std::string{} : unique_event_sequence_id(session.events, name);
+        draw_create_name_row("Display name", session.create_event_sequence_name.data(),
+            session.create_event_sequence_name.size(), preview_id);
+        ImGui::Spacing();
+        if (ImGui::Button("Create sequence##WorldForgeCreateEvent")) {
+            if (name.empty()) {
+                session.status = "Enter a display name for the event sequence.";
+            } else if (add_event_sequence(session, preview_id, name)) {
+                session.create_event_sequence_name.fill('\0');
+            } else {
+                session.status = "Could not create event sequence (invalid or duplicate id).";
             }
         }
         ImGui::Unindent();
@@ -6920,6 +6983,143 @@ void draw_quests_pane(WorldForgeEditorSession& session) {
     ImGui::EndChild();
 }
 
+void draw_events_pane(WorldForgeEditorSession& session) {
+    session.list_kind = ListKind::Events;
+    const ImVec2 avail = ImGui::GetContentRegionAvail();
+    float list_w = 0.0f;
+    begin_list_detail(avail, list_w);
+
+    ImGui::BeginChild("WorldForgeEventsList", ImVec2(list_w, avail.y), true);
+    draw_add_event_sequence_controls(session);
+    ImGui::Separator();
+    if (session.events.sequences.empty()) ImGui::TextDisabled("(no event sequences)");
+    for (const auto& sequence : session.events.sequences) {
+        if (!entity_matches_act_lens(session, sequence.acts, sequence.tags)) continue;
+        std::string label = sequence.id;
+        if (!sequence.display_name.empty()) label += "  (" + sequence.display_name + ")";
+        const bool selected = session.selected_id == sequence.id;
+        if (ImGui::Selectable(label.c_str(), selected)) session.selected_id = sequence.id;
+    }
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+    ImGui::BeginChild("WorldForgeEventsDetail", ImVec2(0.0f, avail.y), true);
+    auto* sequence = find_event_sequence(session.events, session.selected_id);
+    if (!sequence) {
+        ImGui::TextDisabled("Select a sequence or create one");
+    } else {
+        static std::string last_sequence_id;
+        static int selected_step_index = -1;
+        if (last_sequence_id != sequence->id) {
+            last_sequence_id = sequence->id;
+            selected_step_index = -1;
+        }
+
+        ImGui::Text("id: %s", sequence->id.c_str());
+        if (ImGui::Button("Delete sequence##WorldForgeDeleteEvent")) {
+            const auto id = sequence->id;
+            if (remove_event_sequence(session, id)) {
+                ImGui::EndChild();
+                return;
+            }
+            session.status = "Could not remove event sequence";
+        }
+        ImGui::Separator();
+        if (draw_input_text("Display name", sequence->display_name)) session.dirty = true;
+        if (draw_enum_combo("Canon status", sequence->canon_status,
+                {WorldForgeEventCanonStatus::Established, WorldForgeEventCanonStatus::Draft,
+                    WorldForgeEventCanonStatus::Proposal, WorldForgeEventCanonStatus::Open}))
+            session.dirty = true;
+        if (draw_text_area("Summary", sequence->summary, 96.0f)) session.dirty = true;
+        ImGui::Separator();
+        ImGui::Text("steps (%zu)", sequence->steps.size());
+        if (ImGui::Button("Add wait##WorldForgeAddEventStep")) {
+            EventTimelineStep step;
+            step.kind = EventTimelineStepKind::Wait;
+            step.seconds = 0.5f;
+            sequence->steps.push_back(std::move(step));
+            selected_step_index = static_cast<int>(sequence->steps.size()) - 1;
+            session.dirty = true;
+        }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(selected_step_index < 0 ||
+                             selected_step_index >= static_cast<int>(sequence->steps.size()));
+        if (ImGui::Button("Delete step##WorldForgeDeleteEventStep")) {
+            sequence->steps.erase(sequence->steps.begin() + selected_step_index);
+            selected_step_index = -1;
+            session.dirty = true;
+        }
+        ImGui::EndDisabled();
+
+        const auto tree_ids = collect_dialogue_tree_ids(session.dialogues);
+        for (std::size_t i = 0; i < sequence->steps.size(); ++i) {
+            auto& step = sequence->steps[i];
+            ImGui::PushID(static_cast<int>(i));
+            const bool step_selected = selected_step_index == static_cast<int>(i);
+            const std::string row = std::to_string(i) + ": " + to_string(step.kind);
+            if (ImGui::Selectable(row.c_str(), step_selected)) selected_step_index = static_cast<int>(i);
+            if (step_selected) {
+                if (draw_enum_combo("Kind##EventStep", step.kind,
+                        {EventTimelineStepKind::Wait, EventTimelineStepKind::LockControl,
+                            EventTimelineStepKind::UnlockControl, EventTimelineStepKind::StartDialogue,
+                            EventTimelineStepKind::Emit, EventTimelineStepKind::LookAt}))
+                    session.dirty = true;
+                switch (step.kind) {
+                case EventTimelineStepKind::Wait:
+                    if (ImGui::DragFloat("seconds##EventWait", &step.seconds, 0.05f, 0.0f, 120.0f, "%.2f"))
+                        session.dirty = true;
+                    break;
+                case EventTimelineStepKind::LockControl:
+                case EventTimelineStepKind::UnlockControl:
+                    ImGui::TextDisabled("No extra fields");
+                    break;
+                case EventTimelineStepKind::StartDialogue:
+                    if (draw_id_combo("dialogueId##EventDlg", step.dialogue_id, tree_ids)) session.dirty = true;
+                    break;
+                case EventTimelineStepKind::Emit:
+                    if (draw_input_text("name##EventEmit", step.emit_name)) session.dirty = true;
+                    {
+                        std::string payload = step.payload_json;
+                        if (draw_text_area("payload JSON##EventEmit", payload, 72.0f, 4096)) {
+                            try {
+                                const auto parsed = nlohmann::json::parse(payload.empty() ? "{}" : payload);
+                                if (parsed.is_object()) {
+                                    step.payload_json = parsed.dump();
+                                    session.dirty = true;
+                                } else {
+                                    session.status = "emit.payload must be a JSON object";
+                                }
+                            } catch (...) {
+                                session.status = "emit.payload JSON parse failed";
+                            }
+                        }
+                    }
+                    break;
+                case EventTimelineStepKind::LookAt:
+                    if (ImGui::DragFloat("seconds##EventLook", &step.seconds, 0.05f, 0.0f, 120.0f, "%.2f"))
+                        session.dirty = true;
+                    if (ImGui::DragFloat3("target##EventLook", step.look_at_target.data(), 0.1f))
+                        session.dirty = true;
+                    if (ImGui::DragFloat("distance##EventLook", &step.look_at_distance, 0.1f, 0.0f, 80.0f,
+                            "%.1f"))
+                        session.dirty = true;
+                    if (ImGui::Checkbox("override pitch##EventLook", &step.look_at_has_pitch))
+                        session.dirty = true;
+                    if (step.look_at_has_pitch &&
+                        ImGui::DragFloat("pitch##EventLook", &step.look_at_pitch, 0.01f, -1.5f, 1.5f, "%.2f"))
+                        session.dirty = true;
+                    break;
+                }
+            }
+            ImGui::PopID();
+        }
+        ImGui::Separator();
+        if (draw_acts_field(sequence->acts)) session.dirty = true;
+        if (draw_csv_field("Tags", sequence->tags)) session.dirty = true;
+    }
+    ImGui::EndChild();
+}
+
 void push_dialogue_nav(WorldForgeEditorSession& session, const std::string& node_id) {
     if (node_id.empty() || session.dialogue_nav_suppress) return;
     if (session.dialogue_nav_history_index >= 0 &&
@@ -7827,6 +8027,7 @@ const char* world_forge_pane_label(WorldForgeEditorPane pane) {
     case WorldForgeEditorPane::Map: return "Map";
     case WorldForgeEditorPane::Quests: return "Quests";
     case WorldForgeEditorPane::Dialogues: return "Dialogues";
+    case WorldForgeEditorPane::Events: return "Events";
     case WorldForgeEditorPane::Archetypes: return "Archetypes";
     case WorldForgeEditorPane::Resources: return "Resources";
     }
@@ -7857,6 +8058,7 @@ void select_world_forge_pane(WorldForgeEditorSession& session, WorldForgeEditorP
         session.dialogue_link_from.clear();
         session.dialogue_graph_full_relayout = true;
         break;
+    case WorldForgeEditorPane::Events: session.list_kind = ListKind::Events; break;
     case WorldForgeEditorPane::Resources: session.list_kind = ListKind::Resources; break;
     }
 }
@@ -7961,6 +8163,8 @@ void draw_world_forge_navigation(WorldForgeEditorSession& session, EditorUiHotsp
         "WorldForge.Pane.Quests", hotspots);
     draw_world_forge_nav_item(session, WorldForgeEditorPane::Dialogues, "Dialogues##WorldForgeNav",
         "WorldForge.Pane.Dialogues", hotspots);
+    draw_world_forge_nav_item(session, WorldForgeEditorPane::Events, "Events##WorldForgeNav",
+        "WorldForge.Pane.Events", hotspots);
     draw_world_forge_nav_item(session, WorldForgeEditorPane::Archetypes, "Archetypes##WorldForgeNav",
         "WorldForge.Pane.Archetypes", hotspots);
     ImGui::Dummy(ImVec2(0.0f, 12.0f));
@@ -8079,35 +8283,545 @@ void draw_overview_stat_card(const char* label, std::size_t value, float width) 
     ImGui::EndChild();
 }
 
+struct Act0LiveSignals {
+    int regions = 0;
+    int regions_anchored = 0;
+    int pois = 0;
+    int pois_anchored = 0;
+    int quests = 0;
+    int quests_ready = 0;
+    int dialogues = 0;
+    int dialogues_with_nodes = 0;
+    int travel = 0;
+};
+
+Act0LiveSignals compute_act0_live_signals(const WorldForgeEditorSession& session) {
+    constexpr const char* k_act0 = "act0";
+    Act0LiveSignals signals;
+    for (const auto& region : session.map.regions) {
+        if (!matches_world_forge_act_filter(region.acts, region.tags, k_act0)) continue;
+        ++signals.regions;
+        if (region.anchor) ++signals.regions_anchored;
+    }
+    for (const auto& poi : session.map.pois) {
+        if (!matches_world_forge_act_filter(poi.acts, poi.tags, k_act0)) continue;
+        ++signals.pois;
+        if (poi.anchor) ++signals.pois_anchored;
+    }
+    for (const auto& quest : session.quests.quests) {
+        if (!matches_world_forge_act_filter(quest.acts, quest.tags, k_act0)) continue;
+        ++signals.quests;
+        if (!quest.summary.empty() && !quest.objectives.empty()) ++signals.quests_ready;
+    }
+    for (const auto& tree : session.dialogues.trees) {
+        if (!matches_world_forge_act_filter(tree.acts, tree.tags, k_act0)) continue;
+        ++signals.dialogues;
+        if (!tree.nodes.empty()) ++signals.dialogues_with_nodes;
+    }
+    for (const auto& route : session.map.travel_routes) {
+        if (!matches_world_forge_act_filter(route.acts, {}, k_act0)) continue;
+        ++signals.travel;
+    }
+    return signals;
+}
+
+bool draw_mvp_status_combo(const char* widget_id, WorldForgeMvpItemStatus& status) {
+    bool changed = false;
+    if (ImGui::BeginCombo(widget_id, to_string(status))) {
+        const WorldForgeMvpItemStatus options[] = {WorldForgeMvpItemStatus::Todo, WorldForgeMvpItemStatus::Wip,
+            WorldForgeMvpItemStatus::Done, WorldForgeMvpItemStatus::Blocked};
+        for (const auto option : options) {
+            const bool selected = status == option;
+            if (ImGui::Selectable(to_string(option), selected)) {
+                status = option;
+                changed = true;
+            }
+            if (selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+    return changed;
+}
+
+ImVec4 mvp_priority_color(WorldForgeMvpItemPriority priority) {
+    switch (priority) {
+    case WorldForgeMvpItemPriority::P0: return ImVec4(0.92f, 0.45f, 0.28f, 1.0f);
+    case WorldForgeMvpItemPriority::P1: return ImVec4(0.835f, 0.725f, 0.471f, 1.0f);
+    case WorldForgeMvpItemPriority::P2: return ImVec4(0.55f, 0.58f, 0.62f, 1.0f);
+    }
+    return ImVec4(0.835f, 0.725f, 0.471f, 1.0f);
+}
+
+int mvp_status_sort_rank(WorldForgeMvpItemStatus status) {
+    switch (status) {
+    case WorldForgeMvpItemStatus::Blocked: return 0;
+    case WorldForgeMvpItemStatus::Wip: return 1;
+    case WorldForgeMvpItemStatus::Todo: return 2;
+    case WorldForgeMvpItemStatus::Done: return 3;
+    }
+    return 2;
+}
+
 void draw_overview_pane(WorldForgeEditorSession& session) {
     ImGui::BeginChild("WorldForgeOverview", ImVec2(0.0f, 0.0f), true);
-    ImGui::TextColored(ImVec4(0.835f, 0.725f, 0.471f, 1.0f), "Tessera — World Forge");
-    ImGui::TextDisabled("Narrative tooling home. Scene placement and terrain sculpting stay in Scene / Sculpt.");
+    const float pane_w = ImGui::GetContentRegionAvail().x;
+
+    ImGui::TextColored(ImVec4(0.835f, 0.725f, 0.471f, 1.0f), "Act Zero — Landfall MVP");
+    ImGui::TextWrapped(
+        "Playable demo readiness tracker. Select a row for full context, descriptions, refs, and concept art. "
+        "Checklist status is authoritative; Act 0 catalog counts below are supporting evidence only.");
     ImGui::Spacing();
 
-    const WorldForgeWorldProgress progress = compute_world_forge_progress(session);
-    ImGui::TextUnformatted("WORLD AUTHORING PROGRESS");
-    ImGui::TextDisabled("Done work vs remaining checklist across map, lore, quests, and dialogue.");
-    ImGui::Spacing();
+    auto& readiness = session.mvp_readiness;
+    const int mvp_done = readiness.count_done();
+    const int mvp_total = readiness.count_items();
+    const float mvp_frac = readiness.done_fraction();
 
+    ImGui::TextUnformatted("ACT ZERO MVP READINESS");
     char pct_label[64];
-    std::snprintf(pct_label, sizeof(pct_label), "%d / %d checklist items  (%.0f%%)", progress.done, progress.total,
-        progress.fraction * 100.0f);
-
-    // Gold fill over dark track.
-    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.710f, 0.545f, 0.267f, 1.0f)); // #B58B44
+    std::snprintf(pct_label, sizeof(pct_label), "%d / %d checklist items  (%.0f%%)", mvp_done, mvp_total,
+        mvp_frac * 100.0f);
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.710f, 0.545f, 0.267f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.106f, 0.118f, 0.125f, 1.0f));
-    ImGui::ProgressBar(progress.fraction, ImVec2(-1.0f, 28.0f), pct_label);
+    ImGui::ProgressBar(mvp_frac, ImVec2(-1.0f, 28.0f), pct_label);
     ImGui::PopStyleColor(2);
 
-    const int remaining = (std::max)(0, progress.total - progress.done);
-    ImGui::TextColored(ImVec4(0.608f, 0.639f, 0.655f, 1.0f), "%d remaining to finish the authored world checklist",
-        remaining);
+    int wip = 0;
+    int blocked = 0;
+    int todo = 0;
+    int p0_open = 0;
+    for (const auto& category : readiness.categories) {
+        for (const auto& item : category.items) {
+            switch (item.status) {
+            case WorldForgeMvpItemStatus::Todo: ++todo; break;
+            case WorldForgeMvpItemStatus::Wip: ++wip; break;
+            case WorldForgeMvpItemStatus::Blocked: ++blocked; break;
+            case WorldForgeMvpItemStatus::Done: break;
+            }
+            if (item.priority == WorldForgeMvpItemPriority::P0 && item.status != WorldForgeMvpItemStatus::Done)
+                ++p0_open;
+        }
+    }
+    ImGui::TextColored(ImVec4(0.608f, 0.639f, 0.655f, 1.0f),
+        "%d remaining  ·  %d P0 open  ·  %d todo  ·  %d wip  ·  %d blocked",
+        (std::max)(0, mvp_total - mvp_done), p0_open, todo, wip, blocked);
 
-    if (ImGui::TreeNodeEx("Breakdown by category##WorldProgressBreakdown", ImGuiTreeNodeFlags_DefaultOpen)) {
+    ImGui::Spacing();
+    ImGui::TextUnformatted("WORKSTREAM");
+    ImGui::TextDisabled("Bounce between art, coding, story, combat, cinematics, UI/UX, and more.");
+    {
+        const bool all_selected = session.overview_workstream_filter.empty();
+        if (all_selected) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.45f, 0.35f, 0.18f, 1.0f));
+        if (ImGui::Button("All##MvpStreamAll")) session.overview_workstream_filter.clear();
+        if (all_selected) ImGui::PopStyleColor();
+        for (int i = 0; i < k_world_forge_mvp_workstream_count; ++i) {
+            ImGui::SameLine();
+            const auto stream = k_world_forge_mvp_workstreams[i];
+            const char* id = to_string(stream);
+            const bool selected = session.overview_workstream_filter == id;
+            if (selected) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.45f, 0.35f, 0.18f, 1.0f));
+            char label[64];
+            std::snprintf(label, sizeof(label), "%s##MvpStream_%s", world_forge_mvp_workstream_label(stream), id);
+            if (ImGui::Button(label)) {
+                session.overview_workstream_filter = selected ? std::string{} : std::string{id};
+            }
+            if (selected) ImGui::PopStyleColor();
+        }
+        ImGui::SameLine();
+        ImGui::Checkbox("Hide done##MvpHideDone", &session.overview_hide_done);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(220.0f);
+        if (ImGui::BeginCombo("##MvpSortMode",
+                session.overview_sort_by_blockers ? "Sort: next unblocker" : "Sort: priority")) {
+            if (ImGui::Selectable("Sort: next unblocker", session.overview_sort_by_blockers))
+                session.overview_sort_by_blockers = true;
+            if (ImGui::Selectable("Sort: priority", !session.overview_sort_by_blockers))
+                session.overview_sort_by_blockers = false;
+            ImGui::EndCombo();
+        }
+    }
+
+    if (readiness.categories.empty()) {
+        ImGui::Spacing();
+        ImGui::TextWrapped(
+            "No Act Zero MVP checklist loaded. Add assets/world-forge/act0_mvp_readiness.worldforge.json and Reload.");
+    }
+
+    // Fan-in: how many checklist items list this id in dependsOn (global — bottleneck signal).
+    std::unordered_map<std::string, int> waiter_counts;
+    std::unordered_map<std::string, const WorldForgeMvpChecklistItem*> item_by_id;
+    for (const auto& category : readiness.categories) {
+        for (const auto& item : category.items) {
+            item_by_id[item.id] = &item;
+            for (const auto& dep_id : item.depends_on) ++waiter_counts[dep_id];
+        }
+    }
+
+    // Goal-path progress: open nodes that sit on a path to an open verifiable goal.
+    // Completing X advances every open goal-path node that transitively depends on X.
+    std::unordered_set<std::string> goal_path_open;
+    for (const auto& category : readiness.categories) {
+        for (const auto& item : category.items) {
+            if (!item.goal || item.status == WorldForgeMvpItemStatus::Done) continue;
+            goal_path_open.insert(item.id);
+            std::vector<std::string> stack = item.depends_on;
+            std::unordered_set<std::string> seen{item.id};
+            while (!stack.empty()) {
+                const std::string dep_id = std::move(stack.back());
+                stack.pop_back();
+                if (!seen.insert(dep_id).second) continue;
+                const auto* dep = item_by_id.count(dep_id) ? item_by_id[dep_id] : nullptr;
+                if (!dep || dep->status == WorldForgeMvpItemStatus::Done) continue;
+                goal_path_open.insert(dep_id);
+                for (const auto& next : dep->depends_on) stack.push_back(next);
+            }
+        }
+    }
+
+    // Reverse edges among open goal-path nodes (dependent → listed in dependsOn of parent).
+    std::unordered_map<std::string, std::vector<std::string>> goal_dependents;
+    for (const auto& id : goal_path_open) {
+        const auto* item = item_by_id.count(id) ? item_by_id[id] : nullptr;
+        if (!item) continue;
+        for (const auto& dep_id : item->depends_on) {
+            if (goal_path_open.count(dep_id)) goal_dependents[dep_id].push_back(id);
+        }
+    }
+
+    std::unordered_map<std::string, int> goal_progress;
+    for (const auto& root_id : goal_path_open) {
+        int reach = 0;
+        std::vector<std::string> stack{root_id};
+        std::unordered_set<std::string> seen;
+        while (!stack.empty()) {
+            const std::string cur = std::move(stack.back());
+            stack.pop_back();
+            if (!seen.insert(cur).second) continue;
+            ++reach;
+            for (const auto& child : goal_dependents[cur]) stack.push_back(child);
+        }
+        goal_progress[root_id] = reach;
+    }
+
+    const auto mvp_deps_satisfied = [&](const WorldForgeMvpChecklistItem& item) -> bool {
+        for (const auto& dep_id : item.depends_on) {
+            const auto* dep = readiness.find_item(dep_id);
+            if (!dep || dep->status != WorldForgeMvpItemStatus::Done) return false;
+        }
+        return true;
+    };
+
+    std::vector<WorldForgeMvpChecklistItem*> visible;
+    visible.reserve(static_cast<std::size_t>(mvp_total));
+    for (auto& category : readiness.categories) {
+        for (auto& item : category.items) {
+            if (session.overview_hide_done && item.status == WorldForgeMvpItemStatus::Done) continue;
+            if (!session.overview_workstream_filter.empty() &&
+                to_string(item.workstream) != session.overview_workstream_filter)
+                continue;
+            visible.push_back(&item);
+        }
+    }
+    std::sort(visible.begin(), visible.end(),
+        [&](const WorldForgeMvpChecklistItem* a, const WorldForgeMvpChecklistItem* b) {
+            const int wa = waiter_counts[a->id];
+            const int wb = waiter_counts[b->id];
+            if (session.overview_sort_by_blockers) {
+                // Next ticket: actionable first, then most progress toward verifiable goals.
+                const bool a_open = a->status != WorldForgeMvpItemStatus::Done;
+                const bool b_open = b->status != WorldForgeMvpItemStatus::Done;
+                if (a_open != b_open) return a_open;
+                const bool a_ready = a_open && mvp_deps_satisfied(*a);
+                const bool b_ready = b_open && mvp_deps_satisfied(*b);
+                if (a_ready != b_ready) return a_ready;
+                const int ga = goal_progress[a->id];
+                const int gb = goal_progress[b->id];
+                if (ga != gb) return ga > gb;
+                if (wa != wb) return wa > wb;
+                if (a->priority != b->priority) return static_cast<int>(a->priority) < static_cast<int>(b->priority);
+                const bool a_wip = a->status == WorldForgeMvpItemStatus::Wip;
+                const bool b_wip = b->status == WorldForgeMvpItemStatus::Wip;
+                if (a_wip != b_wip) return a_wip;
+                return a->title < b->title;
+            }
+            if (a->priority != b->priority) return static_cast<int>(a->priority) < static_cast<int>(b->priority);
+            const int ra = mvp_status_sort_rank(a->status);
+            const int rb = mvp_status_sort_rank(b->status);
+            if (ra != rb) return ra < rb;
+            if (wa != wb) return wa > wb;
+            return a->title < b->title;
+        });
+
+    if (!session.overview_selected_item_id.empty() && !readiness.find_item(session.overview_selected_item_id))
+        session.overview_selected_item_id.clear();
+    if (session.overview_selected_item_id.empty() && !visible.empty())
+        session.overview_selected_item_id = visible.front()->id;
+
+    const float split_gap = 12.0f;
+    const float detail_w = (std::clamp)(pane_w * 0.42f, 280.0f, 520.0f);
+    const float list_w = (std::max)(240.0f, pane_w - detail_w - split_gap);
+    const float body_h = (std::max)(220.0f, ImGui::GetContentRegionAvail().y - 220.0f);
+
+    if (session.overview_sort_by_blockers && !visible.empty() &&
+        visible.front()->status != WorldForgeMvpItemStatus::Done && mvp_deps_satisfied(*visible.front())) {
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.835f, 0.725f, 0.471f, 1.0f), "Do next");
+        ImGui::SameLine();
+        const int next_goal = goal_progress[visible.front()->id];
+        const int next_waiting = waiter_counts[visible.front()->id];
+        std::string next_label = visible.front()->title;
+        if (next_goal > 0) next_label += " · goal +" + std::to_string(next_goal);
+        else if (next_waiting > 0) next_label += " · " + std::to_string(next_waiting) + " waiting";
+        ImGui::TextWrapped("%s", next_label.c_str());
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(
+                "Top actionable work toward verifiable goals — prerequisites done, highest goal-path progress.");
+        if (ImGui::IsItemClicked()) session.overview_selected_item_id = visible.front()->id;
+    }
+
+    ImGui::Spacing();
+    ImGui::BeginChild("MvpChecklistList", ImVec2(list_w, body_h), true);
+    ImGui::TextUnformatted("CHECKLIST");
+    if (session.overview_sort_by_blockers) {
+        ImGui::TextDisabled(
+            "%zu shown · actionable first, then most progress toward goals", visible.size());
+    } else {
+        ImGui::TextDisabled("%zu shown · sorted by priority then status", visible.size());
+    }
+    ImGui::Separator();
+
+    if (ImGui::BeginTable("##MvpChecklistTable", 6,
+            ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV |
+                ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable)) {
+        ImGui::TableSetupColumn("Goal+", ImGuiTableColumnFlags_WidthFixed, 52.0f);
+        ImGui::TableSetupColumn("Waiting", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+        ImGui::TableSetupColumn("Pri", ImGuiTableColumnFlags_WidthFixed, 72.0f);
+        ImGui::TableSetupColumn("Item", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+        ImGui::TableSetupColumn("Stream", ImGuiTableColumnFlags_WidthFixed, 96.0f);
+        ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+        ImGui::TableHeadersRow();
+
+        for (auto* item : visible) {
+            ImGui::PushID(item->id.c_str());
+            ImGui::TableNextRow();
+            const bool row_selected = session.overview_selected_item_id == item->id;
+            const int waiting = waiter_counts[item->id];
+            const int progress = goal_progress[item->id];
+
+            ImGui::TableSetColumnIndex(0);
+            if (item->goal && item->status != WorldForgeMvpItemStatus::Done) {
+                ImGui::TextColored(ImVec4(0.92f, 0.75f, 0.28f, 1.0f), "GOAL");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Verifiable acceptance sink");
+            } else if (progress > 0) {
+                ImGui::TextColored(ImVec4(0.835f, 0.725f, 0.471f, 1.0f), "%d", progress);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip(
+                        "Completing this advances %d open item(s) on the path to a verifiable goal", progress);
+            } else {
+                ImGui::TextDisabled("—");
+            }
+
+            ImGui::TableSetColumnIndex(1);
+            if (waiting > 0) {
+                const ImVec4 wait_col = waiting >= 5 ? ImVec4(0.92f, 0.35f, 0.25f, 1.0f) :
+                    waiting >= 2 ? ImVec4(0.92f, 0.55f, 0.28f, 1.0f) : ImVec4(0.835f, 0.725f, 0.471f, 1.0f);
+                ImGui::TextColored(wait_col, "%d", waiting);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%d checklist item(s) list this as a prerequisite", waiting);
+            } else {
+                ImGui::TextDisabled("—");
+            }
+
+            ImGui::TableSetColumnIndex(2);
+            ImGui::TextColored(mvp_priority_color(item->priority), "%s",
+                world_forge_mvp_priority_label(item->priority));
+
+            ImGui::TableSetColumnIndex(3);
+            if (ImGui::Selectable(item->title.c_str(), row_selected,
+                    ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap)) {
+                session.overview_selected_item_id = item->id;
+            }
+            if (!item->notes.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", item->notes.c_str());
+
+            ImGui::TableSetColumnIndex(4);
+            ImGui::TextDisabled("%s", world_forge_mvp_workstream_label(item->workstream));
+
+            ImGui::TableSetColumnIndex(5);
+            ImGui::SetNextItemWidth(-1.0f);
+            if (draw_mvp_status_combo("##status", item->status)) {
+                session.dirty = true;
+                session.overview_selected_item_id = item->id;
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    ImGui::EndChild();
+
+    ImGui::SameLine(0.0f, split_gap);
+    ImGui::BeginChild("MvpChecklistDetail", ImVec2(detail_w, body_h), true);
+    ImGui::TextUnformatted("DETAIL");
+    ImGui::Separator();
+    if (auto* selected = readiness.find_item(session.overview_selected_item_id)) {
+        const int selected_waiting = waiter_counts[selected->id];
+        const int selected_goal_progress = goal_progress[selected->id];
+        ImGui::TextColored(mvp_priority_color(selected->priority), "%s",
+            world_forge_mvp_priority_label(selected->priority));
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s", world_forge_mvp_workstream_label(selected->workstream));
+        if (selected->goal) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.92f, 0.75f, 0.28f, 1.0f), "· GOAL");
+        }
+        if (selected_goal_progress > 0) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.835f, 0.725f, 0.471f, 1.0f), "· goal +%d", selected_goal_progress);
+        }
+        if (selected_waiting > 0) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.92f, 0.55f, 0.28f, 1.0f), "· %d waiting on this", selected_waiting);
+        }
+        ImGui::Spacing();
+        ImGui::TextWrapped("%s", selected->title.c_str());
+        ImGui::Spacing();
+        ImGui::SetNextItemWidth(140.0f);
+        if (draw_mvp_status_combo("##detailStatus", selected->status)) session.dirty = true;
+
+        if (selected_waiting > 0) {
+            ImGui::Spacing();
+            ImGui::TextUnformatted("Blocked / waiting on this");
+            ImGui::TextDisabled("Other checklist items that list this as a prerequisite.");
+            for (auto& category : readiness.categories) {
+                for (auto& item : category.items) {
+                    if (std::find(item.depends_on.begin(), item.depends_on.end(), selected->id) ==
+                        item.depends_on.end())
+                        continue;
+                    ImGui::PushID(item.id.c_str());
+                    char label[256];
+                    std::snprintf(label, sizeof(label), "[%s] %s (%s)##WaiterSelect", to_string(item.status),
+                        item.title.c_str(), world_forge_mvp_workstream_label(item.workstream));
+                    if (ImGui::Selectable(label, false)) session.overview_selected_item_id = item.id;
+                    ImGui::PopID();
+                }
+            }
+        }
+
+        if (!selected->notes.empty()) {
+            ImGui::Spacing();
+            ImGui::TextUnformatted("Summary");
+            ImGui::TextWrapped("%s", selected->notes.c_str());
+        }
+        if (!selected->description.empty()) {
+            ImGui::Spacing();
+            ImGui::TextUnformatted("Context");
+            ImGui::TextWrapped("%s", selected->description.c_str());
+        }
+
+        if (!selected->depends_on.empty()) {
+            ImGui::Spacing();
+            ImGui::TextUnformatted("Prerequisites");
+            ImGui::TextDisabled("Do these first — click to open.");
+            int open_deps = 0;
+            for (const auto& dep_id : selected->depends_on) {
+                const auto* dep = readiness.find_item(dep_id);
+                ImGui::PushID(dep_id.c_str());
+                if (!dep) {
+                    ImGui::BulletText("missing: %s", dep_id.c_str());
+                    ++open_deps;
+                } else {
+                    const bool dep_done = dep->status == WorldForgeMvpItemStatus::Done;
+                    if (!dep_done) ++open_deps;
+                    ImVec4 col = dep_done ? ImVec4(0.56f, 0.71f, 0.56f, 1.0f) : mvp_priority_color(dep->priority);
+                    char label[256];
+                    std::snprintf(label, sizeof(label), "[%s] %s (%s)##DepSelect", to_string(dep->status),
+                        dep->title.c_str(), world_forge_mvp_workstream_label(dep->workstream));
+                    ImGui::PushStyleColor(ImGuiCol_Text, col);
+                    if (ImGui::Selectable(label, false)) session.overview_selected_item_id = dep_id;
+                    ImGui::PopStyleColor();
+                }
+                ImGui::PopID();
+            }
+            if (open_deps > 0) {
+                ImGui::TextColored(ImVec4(0.92f, 0.55f, 0.35f, 1.0f), "%d prerequisite(s) still open", open_deps);
+            } else {
+                ImGui::TextColored(ImVec4(0.56f, 0.71f, 0.56f, 1.0f), "All listed prerequisites done");
+            }
+        }
+
+        const auto& refs = selected->refs;
+        if (!refs.story_ref.empty() || !refs.quest_id.empty() || !refs.dialogue_id.empty() ||
+            !refs.asset_path.empty() || !refs.ticket_id.empty()) {
+            ImGui::Spacing();
+            ImGui::TextUnformatted("References");
+            if (!refs.quest_id.empty()) ImGui::BulletText("Quest: %s", refs.quest_id.c_str());
+            if (!refs.dialogue_id.empty()) ImGui::BulletText("Dialogue: %s", refs.dialogue_id.c_str());
+            if (!refs.ticket_id.empty()) ImGui::BulletText("Ticket: %s", refs.ticket_id.c_str());
+            if (!refs.asset_path.empty()) ImGui::BulletText("Asset: %s", refs.asset_path.c_str());
+            if (!refs.story_ref.empty()) ImGui::BulletText("Story: %s", refs.story_ref.c_str());
+        }
+
+        if (!selected->image_paths.empty()) {
+            ImGui::Spacing();
+            ImGui::TextUnformatted("Concept / reference images");
+            for (const auto& image_path : selected->image_paths) {
+                ImGui::PushID(image_path.c_str());
+                ImGui::TextDisabled("%s", image_path.c_str());
+                if (const auto found = session.mvp_image_tex.find(image_path); found != session.mvp_image_tex.end() &&
+                                                                              found->second != 0) {
+                    const float img_w = (std::min)(ImGui::GetContentRegionAvail().x, 420.0f);
+                    const float img_h = img_w * 0.62f;
+                    ImGui::Image(static_cast<ImTextureID>(found->second), ImVec2(img_w, img_h));
+                } else {
+                    ImGui::TextDisabled("(image loading or missing)");
+                }
+                ImGui::PopID();
+            }
+        } else {
+            ImGui::Spacing();
+            ImGui::TextDisabled("No concept images linked on this item yet.");
+        }
+    } else {
+        ImGui::TextDisabled("Select a checklist item to inspect context, refs, and images.");
+    }
+    ImGui::EndChild();
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("LIVE ACT 0 SIGNALS");
+    ImGui::TextDisabled("Supporting evidence from act0-tagged World Forge data — not the readiness score.");
+    const Act0LiveSignals live = compute_act0_live_signals(session);
+    ImGui::BulletText("Regions anchored: %d / %d", live.regions_anchored, live.regions);
+    ImGui::BulletText("POIs anchored: %d / %d", live.pois_anchored, live.pois);
+    ImGui::BulletText("Quests ready (summary + objectives): %d / %d", live.quests_ready, live.quests);
+    ImGui::BulletText("Dialogue trees with nodes: %d / %d", live.dialogues_with_nodes, live.dialogues);
+    ImGui::BulletText("Travel routes tagged act0: %d", live.travel);
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("ACT 0 CATALOG COUNTS");
+    const float avail_w = ImGui::GetContentRegionAvail().x;
+    const float card_w = (std::max)(120.0f, (avail_w - 24.0f) / 4.0f);
+    draw_overview_stat_card("Act0 regions", static_cast<std::size_t>(live.regions), card_w);
+    ImGui::SameLine();
+    draw_overview_stat_card("Act0 POIs", static_cast<std::size_t>(live.pois), card_w);
+    ImGui::SameLine();
+    draw_overview_stat_card("Act0 quests", static_cast<std::size_t>(live.quests), card_w);
+    ImGui::SameLine();
+    draw_overview_stat_card("Act0 dialogues", static_cast<std::size_t>(live.dialogues), card_w);
+
+    ImGui::Separator();
+    if (ImGui::TreeNodeEx("All-acts field checklist (not MVP)##WorldProgressBreakdown", 0)) {
+        ImGui::TextDisabled(
+            "Heuristic authoring completeness across all World Forge catalogs — not Act Zero launch readiness.");
+        const WorldForgeWorldProgress progress = compute_world_forge_progress(session);
+        char field_label[64];
+        std::snprintf(field_label, sizeof(field_label), "%d / %d  (%.0f%%)", progress.done, progress.total,
+            progress.fraction * 100.0f);
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.545f, 0.455f, 0.290f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.125f, 0.141f, 0.149f, 1.0f));
+        ImGui::ProgressBar(progress.fraction, ImVec2(-1.0f, 18.0f), field_label);
+        ImGui::PopStyleColor(2);
         for (const auto& bucket : progress.buckets) {
-            const float frac = bucket.total > 0 ? static_cast<float>(bucket.done) / static_cast<float>(bucket.total) :
-                                                 0.0f;
+            const float frac =
+                bucket.total > 0 ? static_cast<float>(bucket.done) / static_cast<float>(bucket.total) : 0.0f;
             ImGui::PushID(bucket.label);
             ImGui::Text("%s", bucket.label);
             ImGui::SameLine(260.0f);
@@ -8124,27 +8838,6 @@ void draw_overview_pane(WorldForgeEditorSession& session) {
     }
 
     ImGui::Separator();
-    ImGui::TextUnformatted("CATALOG COUNTS");
-    const float avail_w = ImGui::GetContentRegionAvail().x;
-    const float card_w = (std::max)(120.0f, (avail_w - 24.0f) / 4.0f);
-    draw_overview_stat_card("Factions", session.factions.entities.size(), card_w);
-    ImGui::SameLine();
-    draw_overview_stat_card("Pantheon", session.pantheon.entities.size(), card_w);
-    ImGui::SameLine();
-    draw_overview_stat_card("Regions", session.map.regions.size(), card_w);
-    ImGui::SameLine();
-    draw_overview_stat_card("POIs", session.map.pois.size(), card_w);
-
-    draw_overview_stat_card("Quests", session.quests.quests.size(), card_w);
-    ImGui::SameLine();
-    draw_overview_stat_card("Dialogues", session.dialogues.trees.size(), card_w);
-    ImGui::SameLine();
-    draw_overview_stat_card("Travel", session.map.travel_routes.size(), card_w);
-    ImGui::SameLine();
-    draw_overview_stat_card("Rel nodes", session.relationships.nodes.size(), card_w);
-
-    ImGui::Separator();
-    ImGui::Text("Act lens: %s", session.act_filter.empty() ? "All acts" : session.act_filter.c_str());
     ImGui::TextColored(session.dirty ? ImVec4(1.0f, 0.75f, 0.35f, 1.0f) : ImVec4(0.56f, 0.71f, 0.56f, 1.0f), "%s",
         session.dirty ? "Unsaved changes" : "All saved");
     ImGui::Spacing();
@@ -8200,6 +8893,22 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
             "dialogues.worldforge.json", dialogues);
         !result)
         return result;
+    if (const auto result = reload_kind(project_root, default_world_forge_events_path(project_root), "events",
+            "events.worldforge.json", events);
+        !result)
+        return result;
+
+    // MVP readiness is editor-owned (not an MCP WorldForgeKind yet) — load/save directly.
+    {
+        const auto mvp_path = default_world_forge_mvp_readiness_path(project_root);
+        if (!std::filesystem::exists(mvp_path)) {
+            mvp_readiness = WorldForgeMvpReadinessAsset{};
+        } else {
+            auto mvp_loaded = WorldForgeMvpReadinessAsset::load(mvp_path);
+            if (!mvp_loaded) return Result<void>::failure(mvp_loaded.error());
+            mvp_readiness = std::move(mvp_loaded.value());
+        }
+    }
 
     bool selection_found = selected_id.empty();
     if (!selection_found) {
@@ -8232,6 +8941,8 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
         case ListKind::DialogueGraph:
             selection_found = find_dialogue_tree(dialogues, selected_id) != nullptr;
             break;
+        case ListKind::Events: selection_found = find_event_sequence(events, selected_id) != nullptr; break;
+        case ListKind::Resources: selection_found = find_resource(resources, selected_id) != nullptr; break;
         }
     }
     if (!selection_found) selected_id.clear();
@@ -8287,7 +8998,9 @@ Result<void> WorldForgeEditorSession::reload(const std::filesystem::path& projec
         std::to_string(relationships.nodes.size()) + " nodes, " + std::to_string(relationships.edges.size()) +
         " edges, " + std::to_string(map.regions.size()) + " regions, " + std::to_string(map.pois.size()) +
         " pois, " + std::to_string(map.links.size()) + " links, " + std::to_string(quests.quests.size()) +
-        " quests, " + std::to_string(dialogues.trees.size()) + " dialogue trees";
+        " quests, " + std::to_string(dialogues.trees.size()) + " dialogue trees, " +
+        std::to_string(events.sequences.size()) + " event sequences, " +
+        std::to_string(mvp_readiness.count_items()) + " MVP checklist items";
     return Result<void>::success();
 }
 
@@ -8309,6 +9022,12 @@ Result<void> WorldForgeEditorSession::save(const std::filesystem::path& project_
         failures.push_back("quests: " + result.error().message);
     if (const auto result = apply_kind(project_root, "dialogues", dialogues); !result)
         failures.push_back("dialogues: " + result.error().message);
+    if (const auto result = apply_kind(project_root, "events", events); !result)
+        failures.push_back("events: " + result.error().message);
+    if (const auto result =
+            mvp_readiness.save_atomic(default_world_forge_mvp_readiness_path(project_root));
+        !result)
+        failures.push_back("mvp_readiness: " + result.error().message);
 
     if (!failures.empty()) {
         std::string joined;
@@ -8322,7 +9041,7 @@ Result<void> WorldForgeEditorSession::save(const std::filesystem::path& project_
     }
 
     dirty = false;
-    status = "Saved factions/pantheon/archetypes/relationships/map/quests/dialogues";
+    status = "Saved factions/pantheon/archetypes/relationships/map/quests/dialogues/mvp_readiness";
     return Result<void>::success();
 }
 
@@ -8356,6 +9075,7 @@ void draw_world_forge_viewport(WorldForgeEditorSession& session, const std::file
     case WorldForgeEditorPane::Map: draw_map_pane(session, draw_context, project_root); break;
     case WorldForgeEditorPane::Quests: draw_quests_pane(session); break;
     case WorldForgeEditorPane::Dialogues: draw_dialogues_pane(session, project_root); break;
+    case WorldForgeEditorPane::Events: draw_events_pane(session); break;
     case WorldForgeEditorPane::Resources:
         ImGui::TextDisabled("Resources pane is not wired in this shell (see Archetypes / Map).");
         break;

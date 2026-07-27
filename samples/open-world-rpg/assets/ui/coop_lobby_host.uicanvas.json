@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "id": "coop_lobby_host",
+  "designResolution": [1920, 1080],
+  "widgets": [
+    {
+      "id": "host_dim",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [1920, 1080],
+      "opacity": 0.72,
+      "color": [21, 23, 25, 255]
+    },
+    {
+      "id": "host_panel",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [520, 460],
+      "color": [45, 41, 35, 250]
+    },
+    {
+      "id": "host_title",
+      "type": "text",
+      "anchor": "center",
+      "offset": [0, -150],
+      "size": [460, 56],
+      "bind": "coop_lobby_host.title",
+      "text": "Co-op Lobby (Host)",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 40,
+      "color": [241, 238, 232, 255]
+    },
+    {
+      "id": "host_invite_label",
+      "type": "text",
+      "anchor": "center",
+      "offset": [0, -70],
+      "size": [440, 36],
+      "bind": "coop_lobby_host.invite",
+      "text": "Invite code: COOP-LOCAL",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 26,
+      "color": [213, 185, 120, 255]
+    },
+    {
+      "id": "host_status",
+      "type": "text",
+      "anchor": "center",
+      "offset": [0, -20],
+      "size": [440, 36],
+      "bind": "coop_lobby_host.status",
+      "text": "Waiting for guest…",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 24,
+      "color": [200, 200, 200, 255]
+    },
+    {
+      "id": "host_mock_guest",
+      "type": "button",
+      "anchor": "center",
+      "offset": [0, 40],
+      "size": [360, 48],
+      "bind": "coop_lobby_host.mock_guest",
+      "text": "Simulate Guest Join",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 28,
+      "color": [213, 185, 120, 255]
+    },
+    {
+      "id": "host_open_join",
+      "type": "button",
+      "anchor": "center",
+      "offset": [0, 100],
+      "size": [360, 48],
+      "bind": "coop_lobby_host.open_join",
+      "text": "Join as Guest…",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 26,
+      "color": [41, 45, 48, 255]
+    },
+    {
+      "id": "host_back",
+      "type": "button",
+      "anchor": "center",
+      "offset": [0, 160],
+      "size": [360, 48],
+      "bind": "coop_lobby_host.back",
+      "text": "Back",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 28,
+      "color": [41, 45, 48, 255]
+    }
+  ]
+}

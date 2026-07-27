@@ -253,6 +253,8 @@ Result<CollisionBody> CollisionWorld::add_box(WorldPosition p, LocalPosition h, 
         s.mGravityFactor = settings.use_gravity ? 1.0f : 0.0f;
         if (settings.freeze_rotation)
             s.mAllowedDOFs = EAllowedDOFs::TranslationX | EAllowedDOFs::TranslationY | EAllowedDOFs::TranslationZ;
+        // Continuous detection so lag-spike / high-velocity moves cannot tunnel through thin static geometry.
+        if (settings.motion == CollisionMotionType::Dynamic) s.mMotionQuality = EMotionQuality::LinearCast;
     }
     const bool activate = settings.motion == CollisionMotionType::Dynamic;
     BodyID id = bi.CreateAndAddBody(s, activate ? EActivation::Activate : EActivation::DontActivate);
@@ -293,6 +295,7 @@ Result<CollisionBody> CollisionWorld::add_sphere(WorldPosition p, float radius, 
         s.mGravityFactor = settings.use_gravity ? 1.0f : 0.0f;
         if (settings.freeze_rotation)
             s.mAllowedDOFs = EAllowedDOFs::TranslationX | EAllowedDOFs::TranslationY | EAllowedDOFs::TranslationZ;
+        if (settings.motion == CollisionMotionType::Dynamic) s.mMotionQuality = EMotionQuality::LinearCast;
     }
     const bool activate = settings.motion == CollisionMotionType::Dynamic;
     BodyID id = bi.CreateAndAddBody(s, activate ? EActivation::Activate : EActivation::DontActivate);
@@ -335,6 +338,7 @@ Result<CollisionBody> CollisionWorld::add_capsule(WorldPosition p, float radius,
         s.mGravityFactor = settings.use_gravity ? 1.0f : 0.0f;
         if (settings.freeze_rotation)
             s.mAllowedDOFs = EAllowedDOFs::TranslationX | EAllowedDOFs::TranslationY | EAllowedDOFs::TranslationZ;
+        if (settings.motion == CollisionMotionType::Dynamic) s.mMotionQuality = EMotionQuality::LinearCast;
     }
     const bool activate = settings.motion == CollisionMotionType::Dynamic;
     BodyID id = bi.CreateAndAddBody(s, activate ? EActivation::Activate : EActivation::DontActivate);
@@ -436,7 +440,17 @@ void CollisionWorld::unload_cell(CellCoord cell) {
 Result<void> CollisionWorld::step(float seconds) {
     if (!(seconds > 0) || seconds > 0.25f)
         return Result<void>::failure(error("PHYSICS-STEP-INVALID", "Step must be within (0, 0.25] seconds"));
-    auto result = impl_->physics.Update(seconds, 1, &impl_->temp, &impl_->jobs);
+    // A frame hitch hands us a large `seconds` (up to the 0.25s clamp above). Jolt's default motion quality is
+    // discrete: with a single collision step it only checks overlap at the *end* of the move, so a fast body
+    // (or just a normal body during a big-enough dt) can skip clean over thin static geometry — terrain cell
+    // edges, walls, floors — with no collision ever detected ("collision doesn't work when there's lag").
+    // Sub-step toward a ~1/60s cadence (capped) so Jolt re-checks collision at several intermediate positions
+    // within this one Update() call instead of only at the final one.
+    constexpr float kTargetSubstepSeconds = 1.0f / 60.0f;
+    constexpr int kMaxCollisionSteps = 16;
+    const int collision_steps =
+        std::clamp(static_cast<int>(std::ceil(seconds / kTargetSubstepSeconds)), 1, kMaxCollisionSteps);
+    auto result = impl_->physics.Update(seconds, collision_steps, &impl_->temp, &impl_->jobs);
     if (result != EPhysicsUpdateError::None)
         return Result<void>::failure(error("PHYSICS-UPDATE-FAILED", "Jolt reported an update error"));
     return Result<void>::success();

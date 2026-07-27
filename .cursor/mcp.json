@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "ai-rpg-engine": {
-      "command": "C:/Users/johnr/Documents/3DGameIdea/build/windows-msvc-debug/Debug/engine.exe",
+      "command": "C:/Users/johnr/Documents/3DGameIdea/build/windows-msvc-debug/dev-next/engine.exe",
       "args": [
         "mcp",
         "--project",

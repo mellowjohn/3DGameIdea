@@ -3,45 +3,55 @@
   "id": "tessera_archetypes",
   "entities": [
     {
-      "id": "squire",
+      "id": "ashfell_blade",
       "kind": "starting",
-      "displayName": "Squire",
-      "role": "Melee trainee, noble-house path",
-      "summary": "Starting archetype for melee trainees on the Cristallo-aligned noble-house path. Shared Tessera draft premise; not the fixed protagonist identity.",
-      "draftAdvancement": "Knight or Warrior/Barbarian by faction reputation",
+      "displayName": "Ashfell Blade",
+      "role": "Melee — House Ashfell steel arm (Fighter / Brawler)",
+      "summary": "Starting melee archetype for House Ashfell under Asher’s war levy. Shared Tessera draft premise; lane home org then binds into major faction politics (DEC-0044). Former display name: Squire.",
+      "draftAdvancement": "Fighter or Brawler lean inside House Ashfell; later advanced archetypes by morality and allegiance",
       "starterKitPrefabId": "assets/prefabs/Player/player.prefab.json",
-      "storyRef": "context/story/the-squire.md",
+      "storyRef": "context/story/ashfell-blade.md",
       "tags": [
         "starting",
-        "melee"
+        "melee",
+        "house_ashfell",
+        "fighter",
+        "brawler"
       ]
     },
     {
-      "id": "archer",
+      "id": "outrider",
       "kind": "starting",
-      "displayName": "Archer",
-      "role": "Ranged fighter",
-      "summary": "Starting archetype for ranged fighters. Shared Tessera draft premise with Squire and Acolyte.",
-      "draftAdvancement": "Ranger or Marksman by faction reputation",
+      "displayName": "Outrider",
+      "role": "Ranged — Outrider Lodge scout/skirmisher (Ranger / Forager / Nomad)",
+      "summary": "Starting ranged archetype for the Outrider Lodge. Shared Tessera draft premise with Ashfell Blade and Runecaster. Former display name: Archer.",
+      "draftAdvancement": "Ranger, Forager, or Nomad lean inside Outrider Lodge; later advanced archetypes by morality and allegiance",
       "starterKitPrefabId": "",
-      "storyRef": "context/story/character-creation.md",
+      "storyRef": "context/story/outrider.md",
       "tags": [
         "starting",
-        "ranged"
+        "ranged",
+        "outrider_lodge",
+        "ranger",
+        "forager",
+        "nomad"
       ]
     },
     {
-      "id": "acolyte",
+      "id": "runecaster",
       "kind": "starting",
-      "displayName": "Acolyte",
-      "role": "Spellcaster initiate",
-      "summary": "Starting archetype for spellcaster initiates. Shared Tessera draft premise with Squire and Archer.",
-      "draftAdvancement": "Wizard or Sorcerer by faction reputation",
+      "displayName": "Runecaster",
+      "role": "Magic — Runecaster Guild (Rune / Sigil caster)",
+      "summary": "Starting magic archetype for the Runecaster Guild. Casts by creating runes and drafting sigils (item/rite-native). Not the Cristallo crystal-guardian order. Former display name: Acolyte.",
+      "draftAdvancement": "Rune or Sigil lean inside Runecaster Guild; later advanced archetypes by morality and allegiance",
       "starterKitPrefabId": "",
-      "storyRef": "context/story/character-creation.md",
+      "storyRef": "context/story/runecaster.md",
       "tags": [
         "starting",
-        "magic"
+        "magic",
+        "runecaster_guild",
+        "rune",
+        "sigil"
       ]
     }
   ]

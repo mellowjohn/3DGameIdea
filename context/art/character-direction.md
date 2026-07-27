@@ -13,7 +13,7 @@ The starting-player concept establishes the humanoid character look for v1. It s
 | Player base body back | Orthographic derived from front | `reference/player-base-body-back.png` |
 | Player base body left | Orthographic derived from front | `reference/player-base-body-left.png` |
 | Player base body right | Orthographic derived from front | `reference/player-base-body-right.png` |
-| Starting player turnaround (Squire) | Squire starting kit over base body | `reference/starting-player-squire-turnaround.png` |
+| Starting player turnaround (Ashfell Blade) | Ashfell Blade starting kit over base body (legacy filename) | `reference/starting-player-squire-turnaround.png` |
 
 ![Player base body front — canonical](reference/player-base-body-front.png)
 
@@ -23,7 +23,7 @@ The starting-player concept establishes the humanoid character look for v1. It s
 
 ![Player base body right](reference/player-base-body-right.png)
 
-![Starting player Squire turnaround](reference/starting-player-squire-turnaround.png)
+![Starting player Ashfell Blade turnaround (legacy Squire sheet)](reference/starting-player-squire-turnaround.png)
 
 ## Style
 
@@ -48,9 +48,9 @@ Shared male foundation under all starting archetype kits. Target height ≈ 1.8 
 
 Female and other body presets remain deferred. Starting kits share this one base body with kit swaps.
 
-## Starting Squire kit (reference)
+## Starting Ashfell Blade kit (reference)
 
-Directional breakdown from the concept; exact mesh names and material slots remain to be defined in asset formats. Layers over the locked base body.
+Directional breakdown from the concept (legacy **Squire** sheet); exact mesh names and material slots remain to be defined in asset formats. Layers over the locked base body.
 
 | Piece | Direction |
 | --- | --- |
@@ -69,7 +69,7 @@ The simple tunic/trouser/boot base supports:
 
 - **Palette swaps** on cloth and leather regions without remeshing.
 - **Layered equipment** (pauldrons, chest pieces, cloaks) over the base body.
-- **Shared body proportions** across starting archetypes, with archetype-specific starter kits (Archer and Acolyte references still needed).
+- **Shared body proportions** across starting archetypes, with archetype-specific starter kits (Outrider and Runecaster references still needed).
 - **Hair presets** as separate meshes on the shared hair-cap (style set still TBD).
 
 Appearance customization fields at character creation remain undefined in [Character Creation](../story/character-creation.md).
@@ -79,12 +79,12 @@ Appearance customization fields at character creation remain undefined in [Chara
 - Rig from T-pose; keep limbs aligned for retargeting across archetypes.
 - Favor modular skinned meshes or material regions over texture-heavy detail.
 - Maintain strong value separation from terrain and enemies during combat readability tests.
-- Archer and Acolyte starting kits should receive matching turnaround references before finalizing the player creation flow.
+- Outrider and Runecaster starting kits should receive matching turnaround references before finalizing the player creation flow.
 - Author Blockbench body from `reference/player-base-body-front.png` (primary) with back/left/right as orthographic support into `tools/art/player/` before kit meshes.
 
 ## Open questions
 
 - Flat shading versus softened normals on characters (inherits open terrain/prop question in visual direction).
-- Which hair preset set ships at character creation (spikes as default Squire look is expected).
+- Which hair preset set ships at character creation (spikes as default Ashfell Blade look is expected).
 - Final body proportion targets for female and other body presets (deferred after male v1).
-- Finger length / hand articulation polish when baking the mesh from the front standard.
+- Finger length polish on mesh bake if digits still read stubby (bbmodel now has open/close finger + thumb bones under each hand).

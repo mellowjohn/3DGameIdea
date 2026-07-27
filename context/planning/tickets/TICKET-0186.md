@@ -21,7 +21,7 @@ Ship a diffable World Forge archetype catalog (`archetypes.worldforge.json`) wit
 ## Acceptance criteria
 
 - [x] Schema documented (shape, enums, path, unlock object, non-goals)
-- [x] Sample seeds Squire, Archer, Acolyte as `starting`; no invented advanced list
+- [x] Sample seeds Ashfell Blade, Outrider, Runecaster as `starting` (DEC-0044 rename; legacy Squire/Archer/Acolyte); no invented advanced list
 - [x] `WorldForgeArchetypesAsset` load/parse/to_json/save_atomic/validate; `WORLD-FORGE-ARCHETYPE-*` errors
 - [x] Soft-check `unlock.factionId` against factions when known
 - [x] MCP `kind=archetypes` get/validate/apply; project validate when file present
@@ -59,7 +59,7 @@ Path `assets/world-forge/archetypes.worldforge.json`. Kind: `starting`|`advanced
 
 ### Seed / sample
 
-`squire`, `archer`, `acolyte` (starting). Squire starter kit points at player prefab. Advanced list deferred.
+`ashfell_blade`, `outrider`, `runecaster` (starting). Ashfell Blade starter kit points at player prefab. Advanced list deferred. DEC-0044.
 
 ### Tests / rebuild
 

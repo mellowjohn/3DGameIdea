@@ -1,30 +1,58 @@
 {
-  "schemaVersion": 2,
-  "entities": [
+  "collision": [
     {
-      "name": "Oak Lean",
+      "halfHeight": 1.35,
+      "id": "collision-0",
+      "layer": "staticWorld",
+      "radius": 0.42,
+      "shape": "capsule",
       "transform": {
         "position": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          1.77,
+          0
         ],
         "rotation": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
-      "parent": null,
+      "trigger": false
+    }
+  ],
+  "entities": [
+    {
       "mesh": {
         "asset": "assets/models/oak_lean.gltf"
+      },
+      "name": "Oak Lean",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3,
+          3,
+          3
+        ]
       }
     }
-  ]
+  ],
+  "schemaVersion": 2
 }

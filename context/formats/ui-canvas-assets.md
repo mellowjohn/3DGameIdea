@@ -46,7 +46,7 @@ Default sample path: `assets/ui/player.uicanvas.json`.
 | `button` | required | Activates → Lua `uiButtons` / `on_ui_button` |
 | `toggle` | bool (required) | Checkbox + label; activate flips |
 | `slider` | number (required) + optional `maxBind` | Track + thumb; arrows / click adjust |
-| `image` | — | Decorative; uses `image` path (placeholder until GPU textures) |
+| `image` | — | Decorative; uses `image` path (GPU texture via `UiTextureCache`) |
 
 Coordinates are in **design pixels**.
 
@@ -65,7 +65,7 @@ Optional style / state / image fields:
 | `image` | Project-relative texture path (e.g. `assets/ui/textures/btn.png`) |
 | `imageMode` | `stretch` (default) or `contain` within widget rect |
 
-**Image draw (TICKET-0164 MVP):** when `image` is set, the runtime draws a distinct purple placeholder with the filename stem as a label. GPU texture upload (WIC/stb + D3D12/ImGui) is a documented follow-on.
+**Image draw (TICKET-0164):** when `image` is set, the runtime loads the PNG through `UiTextureCache` (WIC → D3D12 SRV on the ImGui heap) and draws it with `stretch` or `contain`. Missing files fall back to a purple placeholder with the filename stem.
 
 Structural MCP edits: `engine_ui_canvas_mutate`.
 
@@ -86,6 +86,12 @@ content rect = centered (design_w*scale × design_h*scale) inside the viewport
 scale = max(view_w / design_w, view_h / design_h)
 content rect = centered; may extend past viewport (clipped on draw)
 ```
+
+### Safe margin (play HUD + dialogue)
+
+Author combat HUD and dialogue modal chrome against a shared **40 design-px** inset from the 1920×1080 letterbox edges (corners, hotbar baseline, dialogue plate). Keep nested content padding consistent inside plates (~20–24 px). Prefer `imageMode: contain` for square ring/slot art; use `stretch` only when the widget aspect closely matches the PNG (resource-bar rails, quest plate, prompt strip).
+
+Regenerate sample layouts with `tools/generate_ui_canvases.py` after changing safe-margin tokens.
 
 ## Sample canvases
 

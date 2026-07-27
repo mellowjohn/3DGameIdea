@@ -662,6 +662,70 @@
       }
     },
     {
+      "id": "26dec142-ff3e-4b83-9dc8-17f1c7c1e357",
+      "name": "talk_act0_marker",
+      "transform": {
+        "position": [
+          -1042.0,
+          11.899999618530273,
+          307.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/talk_marker.prefab.json",
+        "cell": [
+          -9,
+          2
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "interaction": "talk_act0",
+            "layer": "trigger",
+            "radius": 1.399999976158142,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "29897c9e-6bbe-4180-ad58-c2804eb1b62e",
       "name": "Tree",
       "transform": {
@@ -2353,15 +2417,15 @@
         },
         {
           "data": {
-            "halfHeight": 0.8500000238418579,
+            "halfHeight": 1.2000000476837158,
             "id": "collision-0",
             "layer": "dynamic",
-            "radius": 0.3499999940395355,
+            "radius": 0.44999998807907104,
             "shape": "capsule",
             "transform": {
               "position": [
                 0.0,
-                1.2000000476837158,
+                1.649999976158142,
                 0.0
               ],
               "rotation": [
@@ -3124,6 +3188,85 @@
       }
     },
     {
+      "id": "90283478-d198-4c91-8168-7fb3cc833bb8",
+      "name": "campfire",
+      "transform": {
+        "position": [
+          -1052.8304443359375,
+          9.3251314163208,
+          303.9387512207031
+        ],
+        "rotation": [
+          0.0,
+          -0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/campfire.prefab.json",
+        "cell": [
+          -9,
+          2
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "interaction": "use_campfire",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "clip": "assets/audio/campfire_crackle.wav",
+            "loop": true,
+            "maxDistance": 40.0,
+            "minDistance": 0.5,
+            "playOnStart": true,
+            "spatial": true,
+            "volume": 1.0
+          },
+          "id": "audio-1",
+          "overridden": true,
+          "source": "instance",
+          "type": "audioSource"
+        }
+      ]
+    },
+    {
       "id": "911ede5a-c11e-4dd3-8b92-0ee9f08b4997",
       "name": "MCP Test Tree",
       "transform": {
@@ -3579,14 +3722,14 @@
       "transform": {
         "position": [
           3.4329404830932617,
-          -321.1905212402344,
+          -339.6676940917969,
           15.758028984069824
         ],
         "rotation": [
           -0.06406918168067932,
           0.7668728828430176,
-          -0.07177051901817322,
-          -0.6345471143722534
+          -0.07177054136991501,
+          -0.6345471739768982
         ],
         "scale": [
           1.0,

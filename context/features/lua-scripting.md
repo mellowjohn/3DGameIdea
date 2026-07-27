@@ -56,12 +56,25 @@ Requires a running editor with MCP connection. Uses the same dispatch path as ga
 | `engine.hud_set_visible(widget_id, bool)` | Show/hide widget by id |
 | `engine.set_health(current, max)` | Updates `player.health` / `player.healthMax` / `player.healthText` |
 | `engine.get_health()` | Returns `current, max` |
+| `engine.set_resource(current, max)` / `get_resource()` | Class secondary resource (stamina/magic) |
+| `engine.apply_archetype_hud(archetypeId)` | Seeds stamina vs magic HUD for archetype |
+| `engine.world_ui_upsert(id, table)` / `world_ui_clear(id?)` | World-space billboard chips (prompts / floating bars) |
 | `engine.ui_push/show/hide(id)` / `ui_pop()` / `ui_top()` | Canvas stack ([DEC-0025](../decisions/index.md#dec-0025-responsive-ui-canvas-stack-editor--mcp)) |
 | `engine.quest_start(questId)` | Start quest ([DEC-0028](../decisions/index.md#dec-0028-explicit-quest-progression-runtime)) |
+| `engine.start_event_timeline(sequenceId)` | Start authored event sequence ([DEC-0045](../decisions/index.md#dec-0045-json-event-timelines-with-c-sequencer-world-forge-home)) |
+| `engine.cancel_event_timeline()` | Cancel active event sequence (unlocks control) |
+| `engine.event_timeline_control_locked()` | True while timeline holds player control |
 | `engine.quest_complete_objective(questId, objectiveId)` | Complete current objective only |
 | `engine.quest_abandon(questId)` | Abandon active quest |
 | `engine.quest_status(questId)` | Table: status, currentObjectiveId/Summary, completedObjectiveIds |
 | `engine.quest_dialogue_hook(questId, stage)` | Lookup tree id (`start`/`current`/`complete`/`abandon`); does not advance |
+| `engine.quest_resolve_fork(questId, forkId, outcomeFlag)` | Explicit fork outcome → FlagRuntime ([DEC-0046](../decisions/index.md#dec-0046-session-story-flag-runtime)) |
+| `engine.flag_set(flagId)` / `flag_clear` / `flag_has` / `flag_list()` | Session story/outcome flags |
+| `engine.dialogue_start(treeId)` | Start a World Forge dialogue tree on the session `DialogueRuntime` (same instance as event `start_dialogue`) |
+| `engine.dialogue_present()` | Table: treeId, nodeId, speakerId, line, choices[{id,text,nextId}], complete |
+| `engine.dialogue_choose(choiceId)` | Advance via a choice id from `present().choices` |
+| `engine.dialogue_active()` | True while a tree is started and not complete |
+| `engine.dialogue_reset()` | Clear active dialogue and pop the dialogue canvas if open |
 | `engine.animator_set_float(entityId, name, value)` | Drive float param ([DEC-0022](../decisions/index.md#dec-0022-c-animator-backend-with-lua-drive-api)) |
 | `engine.animator_set_bool(entityId, name, value)` | Drive bool param |
 | `engine.animator_set_trigger(entityId, name)` | Arm trigger (consumed on matching transition) |
@@ -79,6 +92,8 @@ Interaction payload fields: `type`, `interactionId`, `placementEntityId`, `inter
 Combat hurt payload fields: `attackerId`, `hurtPlacementEntityId`, `hurtCombatId`, `hurtVolumeIndex`.
 
 Animation event payload fields ([DEC-0031](../decisions/index.md#dec-0031-controller-authored-animation-timeline-events)): `entityId`, `name`, `state`, `layer`, `time`, `payload` (object). Global `on_animation_event` is optional — missing handler is silent.
+
+Event timeline emit payload ([DEC-0045](../decisions/index.md#dec-0045-json-event-timelines-with-c-sequencer-world-forge-home)): `sequenceId`, `name`, `payload` (object). Global `on_event_timeline_emit` is optional — missing handler is silent.
 
 Decode with `engine.json_decode` when structured fields are needed.
 

@@ -11,11 +11,14 @@ This directory records the current narrative premise and developing lore for the
 
 - [Dom Open Questions](../design/dom-open-questions.md) — prioritized P0/P1/P2 world-design questionnaire for Dom (still open)
 - [Dom Answered Questions](../design/dom-answered-questions.md) — archive of Dom + owner locks
-- [Side-Quest Catalog](side-quest-catalog.md) — lean SQ-01–12 inventory; consequential forks + Rak Zulla easter egg (TICKET-0022)
+- [Side-Quest Catalog](side-quest-catalog.md) — lean SQ-01–13 inventory; consequential forks + Rak Zulla / Thrator easter eggs (TICKET-0022 / TICKET-0236)
 - [Twine Act 0 source](sources/wrathful-conquest-act0.twee) — Harlowe export (dialogue/stage; not canon until labeled in beat sheet)
 - [Factions of Tessera](factions.md) — the kingdom, Chaotic Imperium, Cristallo, Arrotrebae (incl. **The Thalassar**), and orc warbands; [canon status + World Forge gaps](factions.md#canon-status-summary)
-- [Character Creation](character-creation.md) — starting archetypes, customization, and shared protagonist premise ([DEC-0009](../decisions/index.md#dec-0009-starting-archetype-character-creation))
-- [The Squire](the-squire.md) — Squire starting archetype: progression, relationships, and allegiance
+- [Character Creation](character-creation.md) — starting archetypes, lane orgs, customization ([DEC-0009](../decisions/index.md#dec-0009-starting-archetype-character-creation), [DEC-0044](../decisions/index.md#dec-0044-starting-archetype-lane-orgs-and-rename))
+- [Ashfell Blade](ashfell-blade.md) — melee starter; House Ashfell (Fighter / Brawler)
+- [Outrider](outrider.md) — ranged starter; Outrider Lodge (Ranger / Forager / Nomad)
+- [Runecaster](runecaster.md) — rune/sigil caster; Runecaster Guild
+- [The Squire](the-squire.md) — legacy title redirect → Ashfell Blade
 - [Companions](companions.md) — companion system concepts and initial companions Arkand and Vanessa
 - [Prologue and Opening](prologue-and-opening.md) — Frangitur's opening monologue, throne-room direction, and the player's inciting event
 - [Nefarium and the Shroud](nefarium-and-the-shroud.md) — draft appearance, effects, uses, throne imagery, and competing Shroud concepts
@@ -30,8 +33,8 @@ Important unresolved continuity questions are collected in each document rather 
 ### Top continuity blockers (current)
 
 1. ~~**Open world vs draft campaign flow**~~ — **resolved** [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances); beat sheet: [campaign-beat-sheet.md](campaign-beat-sheet.md) (TICKET-0020 awaiting approval).
-2. **Faction canon gaps** — Luceran–Frangitur–Shroud links, Cristallo theology/politics, Arrotrebae council **decision rules** / Luceran-lost tribes, lieutenant display name, Shroud-bearer warband, player influence numbers — see [factions.md gaps](factions.md#gaps-blocking-world-forge-schema-ticket-0011-and-mid-campaign-beats). **2026-07-20:** **The Thalassar**, **The Underflow**, **The Sea of Whispers** (lieutenant boss body), liturgy **Muirthalia** / **Grakk-Maren**, **Anál Muir** + powers/succession shape, Calrenoth tip, Act 0 **Landfall**, Creotar=Creo, Act 1 hub **Ledgeport** (confirmed), Act 1 dual-path intro locked draft.
-3. **Shroud continuity** — battle-worn vs throne-fused imagery; competing prison proposal still non-canon — [nefarium-and-the-shroud.md](nefarium-and-the-shroud.md).
+2. **Faction canon gaps** — Cristallo hierarchy titles + crystal name/location, Arrotrebae council **seat roster** / Luceran-lost tribe **names**, Black Howl wolf patron name, player influence numbers — see [factions.md gaps](factions.md#gaps-blocking-world-forge-schema-ticket-0011-and-mid-campaign-beats). **2026-07-20 / 07-22 locks** remain as before (Thalassar, Underflow + war-chief **Drul’gath**, Pneumyra, Ledgeport ferry → **Porto Lucente**, campsite, White Lotus, Black Howl, co-op, Asher–Luceran half-brothers **established**, orc **shared bloodline** draft, Act 0 cast survive-by-default). **Act 0+ authoring backlog** (persons, relationships, A1-05 quest, hub dialogues) now queued in [Dom Open Questions](../design/dom-open-questions.md#story-authoring-priority-create-backlog) — names still Dom-owned.
+3. **Shroud continuity** — battle-worn vs throne-fused imagery; competing prison proposal still non-canon — [nefarium-and-the-shroud.md](nefarium-and-the-shroud.md). ~~Imperium command source~~ **partially resolved 2026-07-22** (Frangitur trapped; Luceran wears binding).
 4. ~~**Opening premise / Creotar identity**~~ — Calrenoth **Landfall** default; Creotar=Creo / Frangitur=fallen locked. Destroy-Shroud honesty/irony + Wild God alternate still open — [campaign-beat-sheet.md](campaign-beat-sheet.md).
 5. **Morality / faction lock-in** — thresholds, archetype binding, ending branches undefined — [story-vision.md](story-vision.md); Act 4 **open**.
 

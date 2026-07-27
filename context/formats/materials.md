@@ -38,3 +38,5 @@ CPU reference evaluation lives in `include/engine/rendering/pbr_lighting.h` and 
 ### Ambient occlusion (TICKET-0042)
 
 Ambient occlusion is a **screen-space post-process** (SSAO v1, depth-derived), not a material map. The material schema has no `occlusionMap`/`ao` field, and none is planned until a baked-AO ticket is scoped. See `context/planning/tickets/TICKET-0042.md` and `context/features/index.md`.
+
+Directional sun contact shading uses **cascaded shadow maps** (CSM v1, TICKET-0219) sampled in the opaque/foliage lighting pass — complementary to SSAO, not a material property. See `context/features/csm-shadows.md`.

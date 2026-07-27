@@ -1,0 +1,1181 @@
+{
+  "schemaVersion": 1,
+  "id": "act0_mvp_readiness",
+  "actId": "act0",
+  "categories": [
+    {
+      "id": "art",
+      "title": "Art",
+      "items": [
+        {
+          "id": "art_shipped_oaks_stones",
+          "title": "Oak trees + stone cluster shipped",
+          "status": "done",
+          "priority": "p2",
+          "workstream": "art",
+          "notes": "Baseline world dressing already in runtime.",
+          "description": "Oak variants and stones are baked. Do not remake first — refine only when a higher-tier kit needs a shared base.",
+          "imagePaths": [
+            "context/art/oak-variants-concept-sheet.png"
+          ],
+          "refs": {
+            "assetPath": "assets/models/tree.gltf"
+          }
+        },
+        {
+          "id": "art_shipped_player_body",
+          "title": "Player body v2 (skinned + Idle) shipped",
+          "status": "done",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Shared humanoid base for kits + creation + NPC test stand-in. Runtime player.gltf has 37 joints (finger/thumb bones under each hand). Prefab: assets/prefabs/NPC/npc_test.prefab.json.",
+          "description": "Player_V2 rigged body is the foundation for modular hair/outfit/weapon swaps. Prerequisite for archetype kits and character creation preview.",
+          "refs": {
+            "assetPath": "assets/models/player.gltf"
+          }
+        },
+        {
+          "id": "art_shipped_dead_log_stump",
+          "title": "Dead log + stump shipped",
+          "status": "done",
+          "priority": "p2",
+          "workstream": "art",
+          "notes": "Road / forest fill props.",
+          "description": "Both authored and baked. Remaining Tier 1 props still need Blockbench meshes.",
+          "imagePaths": [
+            "context/art/tier1-dead-log-stump-concept.png"
+          ]
+        },
+        {
+          "id": "art_hair_styles",
+          "title": "Character-creation hair styles (modular)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Prerequisite for creation flow looking real.",
+          "description": "At least 3–5 readable hair meshes/slots that attach to the shared player body. Without these, character creation is numbers-only and feels unfinished.",
+          "dependsOn": [
+            "art_shipped_player_body"
+          ]
+        },
+        {
+          "id": "art_face_skin_variants",
+          "title": "Face / skin tint variants for creation",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Palette-safe skin/face options.",
+          "description": "Small set of skin tones / face paint or mesh variants aligned to theme palette. Needed so creation choices are visible on the body before Act 0 spawn.",
+          "imagePaths": [
+            "context/art/theme-palette-swatches.png"
+          ],
+          "dependsOn": [
+            "art_shipped_player_body"
+          ]
+        },
+        {
+          "id": "art_squire_outfit",
+          "title": "Ashfell Blade starter outfit kit",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Former Squire kit id. Tunic, wraps, belt, boots.",
+          "description": "Modular Ashfell Blade kit matching character-direction (legacy Squire turnaround). Prerequisite for archetype creation preview and Act 0 player silhouette.",
+          "dependsOn": [
+            "art_shipped_player_body"
+          ]
+        },
+        {
+          "id": "art_archer_outfit",
+          "title": "Outrider starter outfit kit",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Former Archer kit id. Cloak/hood, bracer, quiver attach — concept still open.",
+          "description": "Needs turnaround concept lock then Blockbench kit. Blocks Outrider creation fantasy and bow attach readability.",
+          "dependsOn": [
+            "art_shipped_player_body",
+            "art_concept_archer_acolyte"
+          ]
+        },
+        {
+          "id": "art_acolyte_outfit",
+          "title": "Runecaster starter outfit kit",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Former Acolyte kit id. Rune/sigil caster look — concept still open (not crystal-warden robes by default).",
+          "description": "Needs turnaround concept lock then Blockbench kit. Blocks Runecaster creation fantasy.",
+          "dependsOn": [
+            "art_shipped_player_body",
+            "art_concept_archer_acolyte"
+          ]
+        },
+        {
+          "id": "art_concept_archer_acolyte",
+          "title": "Outrider + Runecaster kit concept turnarounds",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Legacy item id. Prerequisite art-direction lock before modeling.",
+          "description": "Open in character-direction: approve front/side sheets for Outrider and Runecaster so kits do not fork canon silhouettes mid-production."
+        },
+        {
+          "id": "art_starter_weapons",
+          "title": "Starter weapons (sword, bow, rune focus)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Attachables for combat + creation. Staff/rod may become rune-inscribed focus.",
+          "description": "Short sword, bow+arrow, and Runecaster focus (staff/rod or inscribed token) as attachable meshes on shared body slots. Prerequisite for weapon feel and creation preview.",
+          "dependsOn": [
+            "art_shipped_player_body"
+          ]
+        },
+        {
+          "id": "art_tier1_props",
+          "title": "Tier 1 props (bush, campfire, crate, barrel, torch)",
+          "status": "done",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Barrel, lantern, wall_torch baked + sandbox-placed; bush_wide still primitive.",
+          "description": "Tier 1 Blockbench props shipped (bush/tall, campfire, crate, barrel, lantern, wall torch). Wide bush still primitive. Torch/lantern particle flame remains under effects_campfire_flame.",
+          "imagePaths": [
+            "context/art/tier1-bush-variants-concept.png",
+            "context/art/tier1-campfire-concept.png",
+            "context/art/tier1-crate-barrel-concept.png",
+            "context/art/tier1-torch-lantern-concept.png"
+          ]
+        },
+        {
+          "id": "art_wheelbarrow_cart",
+          "title": "Wheelbarrow + supply cart (A0-03/04)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Arkand intro + siege road clutter.",
+          "description": "Overturned wheelbarrow is story-critical for Arkand meet. Cart/wagon fills approach. Prerequisite for staging A0-03 without cubes.",
+          "dependsOn": [
+            "art_tier1_props"
+          ]
+        },
+        {
+          "id": "art_drawbridge_walls",
+          "title": "Drawbridge + battlement kit",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Fortress silhouette + A0-06 set piece.",
+          "description": "Modular walls, corners, crenels, drawbridge planks/chains/posts. Prerequisite for fortress placement and cinematic framing of the hold.",
+          "dependsOn": [
+            "art_tier1_props"
+          ]
+        },
+        {
+          "id": "art_siege_clutter",
+          "title": "Barricades, catapult, keep gate",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Approach blockers + backdrop.",
+          "description": "Road barricades, simple catapult silhouette, keep door/gate. Prerequisite for siege combat readability and backdrop events.",
+          "dependsOn": [
+            "art_drawbridge_walls"
+          ]
+        },
+        {
+          "id": "art_arkand_grenge_soldiers",
+          "title": "Arkand + Grenge + Tessera/Imperium soldiers",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Named cast + Act 0 blockers.",
+          "description": "Arkand plate, Grenge green-shroud accent, generic Tessera guard, Imperium footsoldier. Prerequisite for combat waves looking like the story cast.",
+          "imagePaths": [
+            "context/art/concepts/chaotic-imperium-soldiers-concept.png"
+          ],
+          "dependsOn": [
+            "art_shipped_player_body"
+          ]
+        },
+        {
+          "id": "art_camp_kit",
+          "title": "Tier 4 player camp kit",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "art",
+          "notes": "Tent, bedroll, chest, seats.",
+          "description": "Anywhere-camp visuals for A0-09. Prerequisite for camp wake cinematic and travel tutorial feeling like a place.",
+          "dependsOn": [
+            "art_tier1_props"
+          ]
+        },
+        {
+          "id": "art_fortress_prefab_placement",
+          "title": "Fortress prefabs placed on Calrenoth sculpt",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "art",
+          "notes": "Scene composition once kits exist.",
+          "description": "Place wall/gate/drawbridge kits so beats A0-03–A0-06 have a readable fortress. Depends on sculpt + kit art.",
+          "dependsOn": [
+            "art_drawbridge_walls",
+            "art_siege_clutter",
+            "coding_calrenoth_sculpt_ready"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "archetype",
+      "title": "Archetype",
+      "items": [
+        {
+          "id": "archetype_worldforge_seed",
+          "title": "Starting archetypes authored in World Forge",
+          "status": "wip",
+          "priority": "p0",
+          "workstream": "archetype",
+          "notes": "DEC-0044: ashfell_blade / outrider / runecaster + lane org tags.",
+          "description": "Ensure archetypes.worldforge.json has ids, display names, summaries, home-org tags, and story refs creation/runtime can consume. Prerequisite for creation UI binding."
+        },
+        {
+          "id": "archetype_lane_org_stories",
+          "title": "Lane home org story spines drafted",
+          "status": "wip",
+          "priority": "p0",
+          "workstream": "archetype",
+          "notes": "House Ashfell / Outrider Lodge / Runecaster Guild — DEC-0044.",
+          "description": "Story essays + World Forge seeds describe each starter’s home org, sub-themes, and hybrid bind into major factions. Prerequisite for per-lane quests and creation copy.",
+          "dependsOn": [
+            "archetype_worldforge_seed"
+          ]
+        },
+        {
+          "id": "archetype_lane_org_quests",
+          "title": "First home-org quest seeds per lane",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "archetype",
+          "notes": "After Act 0 shared siege; Dom+owner name faces.",
+          "description": "Author at least one early quest (or system-quest stub) per home org so Ashfell Blade / Outrider / Runecaster each have a distinct mid-game pull before faction bind.",
+          "dependsOn": [
+            "archetype_lane_org_stories"
+          ]
+        },
+        {
+          "id": "archetype_systems_comps_pass",
+          "title": "Systems + comps design pass for three lanes",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "archetype",
+          "notes": "Combat systems and party/build comps — still open after DEC-0044 naming lock.",
+          "description": "Define what systems and comps mean for Ashfell Blade / Outrider / Runecaster (including sub-themes), then how each is playable before specialization.",
+          "dependsOn": [
+            "archetype_lane_org_stories"
+          ]
+        },
+        {
+          "id": "archetype_kit_slot_schema",
+          "title": "Modular kit slot schema (hair/outfit/weapon)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "archetype",
+          "notes": "Data contract before art swaps attach.",
+          "description": "Document and implement attachment slots on the character asset so hair, outfits, and weapons swap without per-archetype body remakes. Prerequisite for creation preview and loadouts.",
+          "dependsOn": [
+            "art_shipped_player_body",
+            "coding_character_asset_slots"
+          ]
+        },
+        {
+          "id": "archetype_starter_kits_bound",
+          "title": "Starter kits bound to archetype ids",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "archetype",
+          "notes": "ashfell_blade / outrider / runecaster → outfit + weapon.",
+          "description": "Each starting archetype points at its outfit kit + default weapon. Prerequisite for creation flow and Act 0 spawn loadout.",
+          "dependsOn": [
+            "archetype_worldforge_seed",
+            "archetype_kit_slot_schema",
+            "art_squire_outfit",
+            "art_archer_outfit",
+            "art_acolyte_outfit",
+            "art_starter_weapons"
+          ]
+        },
+        {
+          "id": "archetype_creation_preview",
+          "title": "Creation preview uses kit swaps",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "archetype",
+          "notes": "See choice before spawn.",
+          "description": "Selecting an archetype (and hair/outfit options) updates the preview mesh immediately. Prerequisite for a shippable character creation beat.",
+          "dependsOn": [
+            "archetype_starter_kits_bound",
+            "art_hair_styles",
+            "coding_character_creation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "title": "Coding",
+      "items": [
+        {
+          "id": "coding_locomotion_melee_base",
+          "title": "Locomotion + melee vertical-slice base",
+          "status": "wip",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "Existing combat foundation — finish gaps.",
+          "description": "Player move/attack and basic hit reaction path must be reliable before Act 0 waves. Treat remaining gaps as P0 blockers for combat workstream."
+        },
+        {
+          "id": "coding_character_asset_slots",
+          "title": "Character asset attach slots runtime",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "Runtime for hair/outfit/weapon sockets.",
+          "description": "Load and apply modular kit parts on the skinned body. Prerequisite for archetype kits and creation preview.",
+          "dependsOn": [
+            "art_shipped_player_body"
+          ]
+        },
+        {
+          "id": "coding_character_creation",
+          "title": "Character creation flow UI + persist",
+          "status": "wip",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "Beat A0-02 — blocked on kits looking real.",
+          "description": "Playable create: pick archetype, hair/skin/outfit options, difficulty; persist into spawn. Without art kits + slots, keep status honest (wip/blocked).",
+          "dependsOn": [
+            "archetype_worldforge_seed",
+            "coding_character_asset_slots",
+            "art_hair_styles",
+            "art_face_skin_variants",
+            "archetype_starter_kits_bound"
+          ],
+          "refs": {
+            "storyRef": "context/story/character-creation.md"
+          }
+        },
+        {
+          "id": "coding_quest_runtime_flags",
+          "title": "Quest stage / flag runtime for Act 0",
+          "status": "done",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "TICKET-0225 FlagRuntime + resolve_fork; QuestRuntime already shipped.",
+          "description": "Advance objectives, set flags, gate soft corridors. World Forge JSON alone is not enough.",
+          "refs": {
+            "ticketId": "TICKET-0225"
+          }
+        },
+        {
+          "id": "coding_dialogue_runtime_hooks",
+          "title": "Dialogue runtime from quest / volumes",
+          "status": "done",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "Lua/MCP dialogue_start + talk_act0 volume; polished choice UI is ui_dialogue_presentation.",
+          "description": "Fire World Forge dialogue trees from quest stages and interaction volumes. Prerequisite for storyline beats feeling playable.",
+          "dependsOn": [
+            "coding_quest_runtime_flags"
+          ],
+          "refs": {
+            "dialogueId": "dlg_act0_wrathful_conquest"
+          }
+        },
+        {
+          "id": "coding_soft_gate_system",
+          "title": "Soft-gate / region pressure plumbing",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "DEC-0021 tutorial corridor.",
+          "description": "Engine support to soft-block Act 0 escape until flags clear. Prerequisite for gameplay corridor design."
+        },
+        {
+          "id": "coding_spawn_wave_system",
+          "title": "Scripted spawn / wave system",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "Prerequisite for combat encounters.",
+          "description": "Deterministic spawn points + wave clear conditions for road blockers and drawbridge hold. Prefer data-driven over one-off hardcode.",
+          "dependsOn": [
+            "coding_locomotion_melee_base"
+          ]
+        },
+        {
+          "id": "coding_particle_system_mvp",
+          "title": "Particle system MVP API",
+          "status": "done",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "TICKET-0122 needs-approval — Roblox-shaped CPU emitters + campfire wire-up.",
+          "description": "Spawn/update/draw path content can drive for siege fire/ash/fog. Prerequisite for effects_siege_particles.",
+          "refs": {
+            "ticketId": "TICKET-0122"
+          }
+        },
+        {
+          "id": "coding_event_timeline",
+          "title": "Event / timeline sequencer MVP",
+          "status": "done",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "Unblocks cinematics. TICKET-0221 shipped.",
+          "description": "Minimal sequenced actions: camera, wait, dialogue, VFX, lock/unlock control. Prerequisite for prologue, Luceran, Creotar theatrical beats.",
+          "refs": {
+            "ticketId": "TICKET-0221"
+          }
+        },
+        {
+          "id": "coding_camera_path",
+          "title": "Camera path / lock helpers",
+          "status": "done",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "Prerequisite for staged scenes. TICKET-0222 shipped.",
+          "description": "Blend to authored look-ats and hold player input during theatrical beats. Used by cinematics and Grenge briefing.",
+          "dependsOn": [
+            "coding_event_timeline"
+          ],
+          "refs": {
+            "ticketId": "TICKET-0222"
+          }
+        },
+        {
+          "id": "coding_camp_instance",
+          "title": "Anywhere-camp instance / travel hooks",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "DEC-0033.",
+          "description": "Travel to camp, rest HP, companion staging, travel to map destinations. Prerequisite for A0-09 handoff gameplay.",
+          "dependsOn": [
+            "coding_quest_runtime_flags"
+          ]
+        },
+        {
+          "id": "coding_inventory_thin_act0",
+          "title": "Thin inventory grant + equip (Act 0)",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "coding",
+          "notes": "Prerequisite for playable Landfall loot. EPIC-0018 / TICKET-0237.",
+          "description": "Session inventory that can grant, hold, and equip a small set of items (starter weapon + finds). Soft lane multipliers optional in this row if cheap; hard class locks forbidden (DEC-0048). Full catalog/craft deferred.",
+          "dependsOn": [
+            "coding_character_creation"
+          ],
+          "refs": {
+            "ticketId": "TICKET-0237",
+            "storyRef": "context/features/gearing-system.md"
+          }
+        },
+        {
+          "id": "coding_calrenoth_sculpt_ready",
+          "title": "Calrenoth siege sculpt / layout baseline",
+          "status": "wip",
+          "priority": "p0",
+          "workstream": "coding",
+          "notes": "Terrain + space for prefab kits.",
+          "description": "Western peninsula tip layout with approach + moat-scale drawbridge space. Prerequisite for art placement and combat pathing."
+        },
+        {
+          "id": "coding_post_process_hook",
+          "title": "Post-process hook for AO / tone",
+          "status": "wip",
+          "priority": "p1",
+          "workstream": "coding",
+          "notes": "EPIC-0005 path.",
+          "description": "Expose a restrained AO/tone pass for siege mood. Prerequisite for effects_post_process polish.",
+          "refs": {
+            "ticketId": "EPIC-0005"
+          }
+        }
+      ]
+    },
+    {
+      "id": "effects",
+      "title": "Effects",
+      "items": [
+        {
+          "id": "effects_siege_particles",
+          "title": "Siege particles (fire, ash, fog)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "effects",
+          "notes": "Needs particle API first.",
+          "description": "Minimal set for catapult fire, ash fall, Luceran fog. Depends on coding particle MVP.",
+          "dependsOn": [
+            "coding_particle_system_mvp"
+          ]
+        },
+        {
+          "id": "effects_post_process",
+          "title": "Post-process (AO / siege tone)",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "effects",
+          "notes": "Mood pass after hook exists.",
+          "description": "Tune AO/tone for stone/keep/fire readability. Depends on post-process hook.",
+          "dependsOn": [
+            "coding_post_process_hook"
+          ],
+          "refs": {
+            "ticketId": "EPIC-0005"
+          }
+        },
+        {
+          "id": "effects_campfire_flame",
+          "title": "Campfire + torch flame particles",
+          "status": "wip",
+          "priority": "p2",
+          "workstream": "effects",
+          "notes": "Campfire wired to campfire_flame.particle.json; wall_torch/lantern meshes + lights shipped — torch emitter still pending.",
+          "description": "Campfire already uses particle fire. Add particle flame to wall_torch (and optional lantern ember) once desired; keep warm point lights.",
+          "dependsOn": [
+            "coding_particle_system_mvp",
+            "art_tier1_props"
+          ]
+        },
+        {
+          "id": "effects_signal_pyre",
+          "title": "Signal pyre / watchtower fire VFX",
+          "status": "todo",
+          "priority": "p2",
+          "workstream": "effects",
+          "notes": "Side beat flavor.",
+          "description": "Hill signal fire for optional side content after core siege VFX.",
+          "dependsOn": [
+            "effects_siege_particles"
+          ]
+        },
+        {
+          "id": "effects_audio_siege_bed",
+          "title": "Siege / vision audio beds",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "effects",
+          "notes": "Supports cinematics without full mix.",
+          "description": "Minimal loops/stings for approach under fire, Luceran dread, Creotar vision. Prerequisite for theatrical beats feeling finished.",
+          "dependsOn": [
+            "cine_event_timeline_ready"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "combat",
+      "title": "Combat",
+      "items": [
+        {
+          "id": "combat_enemy_footsoldier_prefab",
+          "title": "Imperium footsoldier combat prefab",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "combat",
+          "notes": "Needs art + spawn system.",
+          "description": "Placeable enemy using Imperium soldier mesh + simple melee brain/script. Prerequisite for road-blocker waves.",
+          "dependsOn": [
+            "art_arkand_grenge_soldiers",
+            "coding_spawn_wave_system",
+            "coding_locomotion_melee_base"
+          ]
+        },
+        {
+          "id": "combat_road_blockers",
+          "title": "Road-blocker combat waves (A0-04)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "combat",
+          "notes": "Must feel fightable before fortress entry.",
+          "description": "Two clearable encounters on the Calrenoth approach. Depends on enemy prefab, weapons, and sculpt path.",
+          "dependsOn": [
+            "combat_enemy_footsoldier_prefab",
+            "art_starter_weapons",
+            "coding_calrenoth_sculpt_ready",
+            "art_siege_clutter"
+          ],
+          "refs": {
+            "storyRef": "context/story/campaign-beat-sheet.md",
+            "ticketId": "EPIC-0011"
+          }
+        },
+        {
+          "id": "combat_drawbridge_hold",
+          "title": "Drawbridge hold waves (A0-06)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "combat",
+          "notes": "Defend while chains lower.",
+          "description": "Timed hold with clear succeed/fail. Depends on drawbridge art/placement and wave system.",
+          "dependsOn": [
+            "combat_road_blockers",
+            "art_drawbridge_walls",
+            "art_fortress_prefab_placement",
+            "coding_spawn_wave_system"
+          ]
+        },
+        {
+          "id": "combat_weapon_feel",
+          "title": "Starter weapon hit-feel (sword / bow / staff)",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "combat",
+          "notes": "Distinct cadence per archetype.",
+          "description": "Simple but distinct timing/range so creation choice matters. Depends on weapon meshes + melee base.",
+          "dependsOn": [
+            "art_starter_weapons",
+            "coding_locomotion_melee_base",
+            "archetype_starter_kits_bound"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gameplay",
+      "title": "Gameplay",
+      "items": [
+        {
+          "id": "gameplay_soft_gate_corridor",
+          "title": "Calrenoth soft-gate tutorial corridor",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "gameplay",
+          "notes": "Seamless tutorial, not a chapter load.",
+          "description": "Author gates/flags so player cannot skip to Ledgeport before camp handoff.",
+          "dependsOn": [
+            "coding_soft_gate_system",
+            "coding_quest_runtime_flags",
+            "coding_calrenoth_sculpt_ready"
+          ]
+        },
+        {
+          "id": "gameplay_quest_runtime_mq",
+          "title": "mq_act0_calrenoth playable end-to-end",
+          "status": "wip",
+          "priority": "p0",
+          "workstream": "gameplay",
+          "notes": "Authored seed exists; runtime incomplete.",
+          "description": "Wire stages from Arkand rescue through camp. Depends on quest/dialogue runtime and story beats.",
+          "dependsOn": [
+            "coding_quest_runtime_flags",
+            "coding_dialogue_runtime_hooks",
+            "story_beats_a0_01_03",
+            "story_beats_a0_04_07",
+            "story_beats_a0_08_09"
+          ],
+          "refs": {
+            "questId": "mq_act0_calrenoth"
+          }
+        },
+        {
+          "id": "gameplay_interaction_volumes",
+          "title": "Act 0 interaction volumes (rescue, talk, signal)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "gameplay",
+          "notes": "Prerequisite for Arkand / Grenge / Larrell beats.",
+          "description": "Place and hook volumes that start dialogue or objectives at the right locations.",
+          "dependsOn": [
+            "coding_dialogue_runtime_hooks",
+            "coding_calrenoth_sculpt_ready"
+          ]
+        },
+        {
+          "id": "gameplay_camp_travel",
+          "title": "Anywhere-camp travel / rest (A0-09)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "gameplay",
+          "notes": "DEC-0033 camp handoff.",
+          "description": "After vision, wake at camp; rest; travel to destinations including Ledgeport.",
+          "dependsOn": [
+            "coding_camp_instance",
+            "art_camp_kit",
+            "cine_camp_wake"
+          ],
+          "refs": {
+            "storyRef": "context/story/campaign-beat-sheet.md"
+          }
+        },
+        {
+          "id": "gameplay_act0_loot_slice",
+          "title": "Act 0 Landfall lootables (small slice)",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "gameplay",
+          "notes": "Not a full item pool — ~4–8 defs. DEC-0048 / TICKET-0237.",
+          "description": "Players obtain some items during Landfall: starter kit weapon, 1–2 approach finds, low-rate footsoldier commons, one story-grant reward, optional single obscure nook rare. Place pickups/grants on the siege → camp path. Does not block boot→camp goal until inventory thin path exists.",
+          "dependsOn": [
+            "coding_inventory_thin_act0",
+            "gameplay_interaction_volumes",
+            "combat_enemy_footsoldier_prefab",
+            "archetype_starter_kits_bound"
+          ],
+          "refs": {
+            "ticketId": "TICKET-0237",
+            "storyRef": "context/features/gearing-system.md"
+          }
+        },
+        {
+          "id": "gameplay_ruin_revisit",
+          "title": "Calrenoth ruined revisit state",
+          "status": "todo",
+          "priority": "p2",
+          "workstream": "gameplay",
+          "notes": "After tutorial loop ships.",
+          "description": "Post-fall ruined location on the seamless map. Depends on fortress art + quest completion flags.",
+          "dependsOn": [
+            "gameplay_quest_runtime_mq",
+            "art_fortress_prefab_placement"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "storyline",
+      "title": "Storyline",
+      "items": [
+        {
+          "id": "story_beat_sheet_lock_act0",
+          "title": "Act 0 beat sheet reviewed (A0-01…A0-09)",
+          "status": "wip",
+          "priority": "p0",
+          "workstream": "storyline",
+          "notes": "Prerequisite for dialogue + cinematic copy.",
+          "description": "Owner/Dom review of Landfall beats so art/cinematics do not chase moving targets. Mark done when beat statuses are accepted for MVP.",
+          "refs": {
+            "storyRef": "context/story/campaign-beat-sheet.md"
+          }
+        },
+        {
+          "id": "story_beats_a0_01_03",
+          "title": "Beats A0-01…A0-03 playable copy",
+          "status": "wip",
+          "priority": "p0",
+          "workstream": "storyline",
+          "notes": "Prologue → creation → Arkand.",
+          "description": "Lock and stage prologue, creation handoff, Arkand intro branches.",
+          "dependsOn": [
+            "story_beat_sheet_lock_act0",
+            "coding_dialogue_runtime_hooks"
+          ]
+        },
+        {
+          "id": "story_beats_a0_04_07",
+          "title": "Beats A0-04…A0-07 playable copy",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "storyline",
+          "notes": "Siege → Larrell → Luceran.",
+          "description": "Objective copy + flags for approach, Grenge, drawbridge, Larrell choice.",
+          "dependsOn": [
+            "story_beat_sheet_lock_act0",
+            "story_beats_a0_01_03"
+          ]
+        },
+        {
+          "id": "story_beats_a0_08_09",
+          "title": "Beats A0-08…A0-09 playable copy",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "storyline",
+          "notes": "Fill Twine stubs; camp handoff.",
+          "description": "Creotar vision dialogue filled enough to play; camp handoff lines locked.",
+          "dependsOn": [
+            "story_beats_a0_04_07"
+          ]
+        },
+        {
+          "id": "story_dialogue_cast",
+          "title": "Key dialogue trees playable",
+          "status": "wip",
+          "priority": "p0",
+          "workstream": "storyline",
+          "notes": "Prologue, Arkand, Grenge, Larrell, Creotar.",
+          "description": "Keep Twine import current; each speaker completable and quest-hooked.",
+          "dependsOn": [
+            "coding_dialogue_runtime_hooks",
+            "story_beats_a0_01_03"
+          ],
+          "refs": {
+            "storyRef": "context/story/sources/wrathful-conquest-act0.twee",
+            "dialogueId": "dlg_act0_wrathful_conquest"
+          }
+        },
+        {
+          "id": "story_cast_continuity_flags",
+          "title": "Grenge / Larrell / Damius continuity flags",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "storyline",
+          "notes": "D-P0-12 survive-by-default.",
+          "description": "Author flags so supporting cast can reappear in Act 1; optional hostage choice tracked.",
+          "dependsOn": [
+            "story_beats_a0_04_07",
+            "coding_quest_runtime_flags"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cinematics",
+      "title": "Cinematics",
+      "items": [
+        {
+          "id": "cine_event_timeline_ready",
+          "title": "Event timeline usable for Act 0 beats",
+          "status": "done",
+          "priority": "p0",
+          "workstream": "cinematics",
+          "notes": "Tooling prerequisite for all theatrical scenes. TICKET-0222 gate shipped.",
+          "description": "Confirm coding_event_timeline can drive camera + dialogue + VFX + control lock for Landfall. Content work waits on this.",
+          "dependsOn": [
+            "coding_event_timeline",
+            "coding_camera_path"
+          ],
+          "refs": {
+            "ticketId": "TICKET-0222"
+          }
+        },
+        {
+          "id": "cine_prologue_throne",
+          "title": "Prologue throne cinematic (A0-01)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "cinematics",
+          "notes": "Players watch, then create.",
+          "description": "Throne zoom, Frangitur address, Shroud beat, handoff to creation.",
+          "dependsOn": [
+            "cine_event_timeline_ready",
+            "story_beats_a0_01_03",
+            "coding_dialogue_runtime_hooks"
+          ]
+        },
+        {
+          "id": "cine_siege_backdrop",
+          "title": "Siege backdrop event (approach under fire)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "cinematics",
+          "notes": "Staged spectacle behind combat.",
+          "description": "Timed catapult/impact/ash events while player fights. Depends on clutter art + particles + timeline.",
+          "dependsOn": [
+            "cine_event_timeline_ready",
+            "art_siege_clutter",
+            "effects_siege_particles"
+          ]
+        },
+        {
+          "id": "cine_grenge_briefing",
+          "title": "Grenge courtyard briefing staging (A0-05)",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "cinematics",
+          "notes": "Short interruptible camera beat.",
+          "description": "Frame Grenge/Damius then return control to dialogue.",
+          "dependsOn": [
+            "cine_event_timeline_ready",
+            "art_arkand_grenge_soldiers",
+            "story_dialogue_cast"
+          ]
+        },
+        {
+          "id": "cine_luceran_shadow",
+          "title": "Luceran shadow / black fog event (A0-07)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "cinematics",
+          "notes": "Theatrical collapse into vision.",
+          "description": "Fog, dread, pale rider silhouette, collapse. Depends on fog VFX + timeline + story beat.",
+          "dependsOn": [
+            "cine_event_timeline_ready",
+            "effects_siege_particles",
+            "story_beats_a0_04_07"
+          ]
+        },
+        {
+          "id": "cine_creotar_vision",
+          "title": "Realm of Darkness / Creotar vision (A0-08)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "cinematics",
+          "notes": "Vision instance or overlay.",
+          "description": "Full theatrical vision with lighting + dialogue. Depends on filled story stubs and timeline.",
+          "dependsOn": [
+            "cine_event_timeline_ready",
+            "story_beats_a0_08_09",
+            "coding_dialogue_runtime_hooks"
+          ]
+        },
+        {
+          "id": "cine_camp_wake",
+          "title": "Camp wake handoff beat (A0-09)",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "cinematics",
+          "notes": "Soft land into camp tutorial.",
+          "description": "Short wake staging onto camp kit then return control.",
+          "dependsOn": [
+            "cine_event_timeline_ready",
+            "art_camp_kit",
+            "coding_camp_instance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ui_ux",
+      "title": "UI / UX",
+      "items": [
+        {
+          "id": "ui_play_hud_chrome",
+          "title": "Play HUD chrome (HP / objective / prompts)",
+          "status": "done",
+          "priority": "p0",
+          "workstream": "ui_ux",
+          "notes": "Screen HUD: HP + class stamina/magic + objective. World billboards for prompts; Lua world_ui_*.",
+          "description": "Ship a coherent play HUD: health (and stamina if used), current quest objective text, and contextual interaction prompts. Layout should stay legible at 1080p+ and not fight cinematic letterboxing. Uses canvas/HUD toolkit — polish presentation here even when bind plumbing lives under coding.",
+          "dependsOn": [
+            "coding_quest_runtime_flags"
+          ],
+          "refs": {
+            "ticketId": "TICKET-0153",
+            "storyRef": "context/features/hud-toolkit.md"
+          }
+        },
+        {
+          "id": "ui_dialogue_presentation",
+          "title": "Player dialogue presentation canvas",
+          "status": "wip",
+          "priority": "p0",
+          "workstream": "ui_ux",
+          "notes": "Pencil dialogue-ui.pen guideline: chips, prompt strip, portrait, keys 1–4 shipped in canvas/runtime.",
+          "description": "In-play dialogue UI: speaker name, body text, choice list, advance/back affordances, focus capture while open. Distinct from World Forge dialogue graph editing. Required for Grenge/Larrell/Arkand/Creotar beats to feel playable.",
+          "dependsOn": [
+            "story_dialogue_cast",
+            "coding_dialogue_runtime_hooks"
+          ],
+          "refs": {
+            "ticketId": "TICKET-0163"
+          }
+        },
+        {
+          "id": "ui_character_creation_screen",
+          "title": "Character creation screen UX",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "ui_ux",
+          "notes": "A0-02 — readable options + preview.",
+          "description": "Creation flow presentation: archetype cards, hair/skin/outfit pickers, difficulty, confirm. Preview must read on the Player_V2 body. Coding owns persist/slots; this row tracks layout, copy, and feel.",
+          "dependsOn": [
+            "coding_character_creation",
+            "art_hair_styles",
+            "art_face_skin_variants",
+            "archetype_starter_kits_bound"
+          ],
+          "refs": {
+            "storyRef": "context/story/character-creation.md"
+          }
+        },
+        {
+          "id": "ui_interaction_prompts",
+          "title": "World interaction prompt UX",
+          "status": "done",
+          "priority": "p0",
+          "workstream": "ui_ux",
+          "notes": "Talk / rest / investigate Press-E billboards on sample volumes.",
+          "description": "Consistent on-screen prompts when volumes or interactables are available (talk, pick up, signal pyre, rest/travel). Avoid buried keybinds-only discovery for Act 0 tutorial beats.",
+          "dependsOn": [
+            "gameplay_interaction_volumes",
+            "ui_play_hud_chrome"
+          ],
+          "refs": {
+            "storyRef": "context/features/interaction-volumes.md"
+          }
+        },
+        {
+          "id": "ui_boot_to_creation_handoff",
+          "title": "Boot → prologue → creation handoff UX",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "ui_ux",
+          "notes": "Cold start path clarity.",
+          "description": "First-run flow from engine boot through prologue watch into character creation without dead ends or editor chrome leaking into play. Skip/continue affordances must be obvious.",
+          "dependsOn": [
+            "cine_prologue_throne",
+            "ui_character_creation_screen"
+          ]
+        },
+        {
+          "id": "ui_pause_system_menu",
+          "title": "Pause / system menu (resume, settings stub)",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "ui_ux",
+          "notes": "Esc stack — canvas push/pop.",
+          "description": "Pause canvas with Resume and a minimal settings stub (sensitivity/volume placeholders ok). Must pop cleanly and restore play HUD. Proves DEC-0025 stack for Act 0 demos.",
+          "dependsOn": [
+            "ui_play_hud_chrome"
+          ]
+        },
+        {
+          "id": "ui_quest_journal",
+          "title": "Quest journal / objective list screen",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "ui_ux",
+          "notes": "Beyond single HUD objective line.",
+          "description": "Openable journal showing Act 0 main quest stages and current objective. HUD line remains; journal is for reorienting after long fights or cutscenes.",
+          "dependsOn": [
+            "coding_quest_runtime_flags",
+            "ui_pause_system_menu"
+          ]
+        },
+        {
+          "id": "ui_combat_feedback",
+          "title": "Combat hit / damage feedback UI",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "ui_ux",
+          "notes": "Readability over spectacle.",
+          "description": "Player-readable hit feedback: HP bar reaction, optional floating numbers or screen edge flash. Enough for road-blocker and drawbridge fights to feel fair without final VFX polish.",
+          "dependsOn": [
+            "ui_play_hud_chrome",
+            "combat_enemy_footsoldier_prefab"
+          ]
+        },
+        {
+          "id": "ui_soft_gate_cues",
+          "title": "Soft-gate / region pressure UI cues",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "ui_ux",
+          "notes": "Tutorial corridor messaging.",
+          "description": "When Calrenoth soft-gates block skipping ahead, surface a short on-screen reason (direction, blocked path, talk-to-NPC) instead of silent collision. Ties to standing/pressure plumbing.",
+          "dependsOn": [
+            "gameplay_soft_gate_corridor",
+            "ui_play_hud_chrome"
+          ]
+        },
+        {
+          "id": "ui_camp_screens",
+          "title": "Camp UI (rest / travel / companion talk)",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "ui_ux",
+          "notes": "A0-09 handoff loop.",
+          "description": "Camp instance screens: rest HP, travel to map destinations, talk-to-companion entry points. Keep layout simple; story copy can stay stubbed if dialogue trees exist.",
+          "dependsOn": [
+            "gameplay_camp_travel",
+            "ui_dialogue_presentation"
+          ]
+        },
+        {
+          "id": "ui_cinematic_chrome",
+          "title": "Cinematic letterbox + skip affordance",
+          "status": "todo",
+          "priority": "p2",
+          "workstream": "ui_ux",
+          "notes": "Watch beats without fighting HUD.",
+          "description": "During prologue/siege/vision events: letterbox or HUD hide, clear Skip/Continue control, restore play chrome afterward. Presentation only — timeline content stays under Cinematics.",
+          "dependsOn": [
+            "cine_event_timeline_ready",
+            "ui_play_hud_chrome"
+          ]
+        },
+        {
+          "id": "ui_accessibility_baseline",
+          "title": "Accessibility baseline (type, contrast, remap hooks)",
+          "status": "todo",
+          "priority": "p2",
+          "workstream": "ui_ux",
+          "notes": "Demo-safe readability.",
+          "description": "Minimum Act 0 bar: readable type size, contrast on HUD/dialogue, and documented input remap hooks (even if full remapping UI is thin). Do not block demo on full a11y IA.",
+          "dependsOn": [
+            "ui_play_hud_chrome",
+            "ui_dialogue_presentation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "project",
+      "title": "Project",
+      "items": [
+        {
+          "id": "project_overview_tracker",
+          "title": "Act Zero Overview readiness tracker",
+          "status": "wip",
+          "priority": "p1",
+          "workstream": "project",
+          "notes": "This pane — keep statuses and deps honest.",
+          "description": "Curated checklist with priorities, workstreams, descriptions, images, and dependsOn. Owners update after real progress — not World Forge field %."
+        },
+        {
+          "id": "project_vertical_slice_gate",
+          "title": "Playable demo exit met (boot → camp)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "project",
+          "goal": true,
+          "notes": "Verifiable Act 0 acceptance sink.",
+          "description": "Mark done when cold boot → creation → fight approach → Grenge → drawbridge → vision → camp plays in one sitting. Anything else is P2+. Overview ranks open work by progress toward this goal.",
+          "dependsOn": [
+            "ui_boot_to_creation_handoff",
+            "combat_road_blockers",
+            "gameplay_quest_runtime_mq",
+            "combat_drawbridge_hold",
+            "gameplay_camp_travel"
+          ]
+        },
+        {
+          "id": "project_art_pipeline_review",
+          "title": "Art pipeline review (Blockbench → glTF → prefab)",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "project",
+          "notes": "Unblocks Tier 1–3 throughput.",
+          "description": "Confirm bake scripts, slot naming, and prefab swap steps so hair/outfits/weapons land consistently. Prerequisite for parallel art work.",
+          "dependsOn": [
+            "art_shipped_player_body"
+          ]
+        },
+        {
+          "id": "project_dependency_triage",
+          "title": "Triage P0 deps weekly (art vs coding vs story)",
+          "status": "todo",
+          "priority": "p1",
+          "workstream": "project",
+          "notes": "Keep blocked items honest.",
+          "description": "Use Overview dependsOn: if character creation is blocked on hair/kits, mark creation blocked and schedule art first. Repeat for combat/cinematics.",
+          "dependsOn": [
+            "project_overview_tracker"
+          ]
+        },
+        {
+          "id": "project_twine_sync",
+          "title": "Twine ↔ World Forge sync habit",
+          "status": "wip",
+          "priority": "p2",
+          "workstream": "project",
+          "notes": "Import after story edits.",
+          "description": "Re-import Act 0 Twine and spot-check entry nodes before calling story beats done.",
+          "dependsOn": [
+            "story_dialogue_cast"
+          ]
+        }
+      ]
+    }
+  ]
+}

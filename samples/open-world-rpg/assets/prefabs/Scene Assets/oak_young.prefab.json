@@ -1,30 +1,58 @@
 {
-  "schemaVersion": 2,
-  "entities": [
+  "collision": [
     {
-      "name": "Oak Young",
+      "halfHeight": 1.1,
+      "id": "collision-0",
+      "layer": "staticWorld",
+      "radius": 0.3,
+      "shape": "capsule",
       "transform": {
         "position": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          1.4,
+          0
         ],
         "rotation": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
-      "parent": null,
+      "trigger": false
+    }
+  ],
+  "entities": [
+    {
       "mesh": {
         "asset": "assets/models/oak_young.gltf"
+      },
+      "name": "Oak Young",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.4,
+          2.4,
+          2.4
+        ]
       }
     }
-  ]
+  ],
+  "schemaVersion": 2
 }

@@ -39,6 +39,26 @@ Prefabs may include a warm local light for landmarks and atmosphere tests:
 }
 ```
 
+### Optional particle emitters
+
+Prefabs may attach one or more Roblox-shaped particle emitters (TICKET-0122):
+
+```json
+{
+  "particles": [
+    { "asset": "assets/vfx/campfire_core.particle.json", "offset": [0.0, 0.32, 0.0], "enabled": true },
+    { "asset": "assets/vfx/campfire_flame.particle.json", "offset": [0.0, 0.4, 0.0], "enabled": true },
+    { "asset": "assets/vfx/campfire_embers.particle.json", "offset": [0.0, 0.5, 0.0], "enabled": true },
+    { "asset": "assets/vfx/campfire_smoke.particle.json", "offset": [0.0, 0.9, 0.0], "enabled": true }
+  ]
+}
+```
+
+Legacy single `particle` objects still load and merge into `particles`.
+
+`offset` is **prefab-local** (scaled then rotated by the placement transform). The Prefab Editor lists emitters with asset dropdown, local offset, and enabled; **Save Prefab** writes the JSON and reloads particle assets.
+
+Format: [`particle-emitter-assets.md`](particle-emitter-assets.md).
 - `color`: linear RGB multipliers
 - `radius`: attenuation radius in meters
 - `strength`: brightness scale

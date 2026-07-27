@@ -10,6 +10,7 @@
 - `RigidbodyLocomotion::move(wish, yaw, dt)` sets target horizontal velocity on the body (accel/friction from `CharacterControllerConfig`); idle ground friction zeroes horizontal slide.
 - Gravity comes from the dynamic body (`useGravity`); jump sets upward linear velocity when grounded (feet overlap).
 - Facing / feet visuals: entity write-back from the motion body, then yaw from horizontal velocity (+π model offset for `player.gltf`).
+- Physics integration is **variable-dt** (frame clamp ≤ 0.25 s). `CollisionWorld::step` substeps toward ~1/60 s and dynamic bodies use Jolt **LinearCast** CCD so hitch-sized steps do not tunnel through floors (see `context/testing/findings.md`).
 
 ## CharacterVirtual (transitional / fallback)
 
@@ -19,7 +20,7 @@
 
 ## Partition ownership
 
-Placement motion bodies are owned by the placement partition cell and unload with `CollisionWorld::unload_cell()`. The controller/locomotion handle is session-local.
+Placement motion bodies are owned by the placement partition cell and unload with `CollisionWorld::unload_cell()` (world-partition streaming). **Terrain heightfields** are tracked per streamed cell and removed by body id — `StreamedTerrainField` must not call `unload_cell`, or it would destroy player/placement bodies that share the same `CellCoord` key (40 m terrain vs 128 m partition). Local co-op streams terrain around every avatar focus, not only the possessed camera.
 
 ## Debug integration
 
@@ -41,7 +42,7 @@ Placement motion bodies are owned by the placement partition cell and unload wit
 
 - Stair stepping is weaker than CharacterVirtual `ExtendedUpdate` (deferred polish).
 - No coyote time / double jump yet.
-- Visual in-place root stripping for skinned meshes is not yet applied (capsule sync only).
+- Visual in-place root stripping for skinned meshes is not yet applied (capsule sync only). Playtest runs **GPU LBS skinning** for the spawn player mesh (CPU pose/matrices → bone CB → lit/shadow VS) so looping Idle (and other active clips) deform the visual.
 - No nav-grid snap yet.
 - Character-vs-character collision is not registered.
 - Navigation grid queries are not yet used for pathing or snap-to-walkable.

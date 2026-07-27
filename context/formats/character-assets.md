@@ -21,3 +21,7 @@ Select a placed **player spawn** in the scene to edit movement and visual settin
 When nothing is selected, the Inspector only shows default test-session asset bindings (`play.session.json`). Use Asset Browser **Inspect** to edit the underlying `.character.json` or `.camera.json` files directly.
 
 Changes apply on the next test session start.
+
+## NPC test stand-in
+
+`assets/characters/npc_test.character.json` + `assets/prefabs/NPC/npc_test.prefab.json` reuse the Player_V2 `player.gltf` mesh (finger/thumb joints included) for temporary NPC placement. The NPC prefab omits `characterAsset` so it does not register as a player spawn. Editor sync only reverse-matches the play-session character’s `visualPrefab` (not every `.character.json`), so NPC stand-ins stay non-spawn.

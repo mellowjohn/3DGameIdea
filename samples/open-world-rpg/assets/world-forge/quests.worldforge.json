@@ -14,29 +14,29 @@
       "starts": "Campaign start / character creation exit into Act 0 tutorial.",
       "dialogue": {
         "abandonId": "",
-        "completeId": "dlg_act0_wrathful_conquest",
-        "startId": "dlg_act0_wrathful_conquest"
+        "completeId": "dlg_act0_creotar_vision",
+        "startId": "dlg_act0_meet_arkand"
       },
       "objectives": [
         {
           "id": "meet_arkand",
           "summary": "Meet Arkand at the siege and learn the keep is under attack.",
-          "dialogueId": "dlg_act0_wrathful_conquest"
+          "dialogueId": "dlg_act0_meet_arkand"
         },
         {
           "id": "enter_calrenoth",
           "summary": "Reach Calrenoth and report to Commander Grenge.",
-          "dialogueId": ""
+          "dialogueId": "dlg_act0_report_to_grenge"
         },
         {
           "id": "lower_drawbridge",
           "summary": "Secure Larrell’s rear drawbridge and signal the retreat.",
-          "dialogueId": ""
+          "dialogueId": "dlg_act0_drawbridge_retreat"
         },
         {
           "id": "creotar_vision",
           "summary": "Survive the Realm of Darkness vision and wake toward the next hub.",
-          "dialogueId": ""
+          "dialogueId": "dlg_act0_creotar_vision"
         }
       ],
       "forks": [
@@ -47,7 +47,7 @@
             "act0.helped_larrell",
             "act0.fled_drawbridge"
           ],
-          "dialogueId": "dlg_act0_wrathful_conquest"
+          "dialogueId": "dlg_act0_drawbridge_retreat"
         }
       ],
       "standingRequirements": [],

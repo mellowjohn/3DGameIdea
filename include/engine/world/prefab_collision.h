@@ -9,6 +9,7 @@
 #include "engine/world/scene.h"
 
 #include <cstdint>
+#include <limits>
 #include <map>
 #include <optional>
 #include <string>
@@ -26,7 +27,11 @@ public:
      * do not fall during edit. When true (play/test running or runtime), use authored motion type.
      */
     [[nodiscard]] Result<void> sync(CollisionWorld& world, const Scene& scene,
-        const std::map<std::string, PrefabAsset>& catalog, bool simulate_dynamics = true);
+        const std::map<std::string, PrefabAsset>& catalog, bool simulate_dynamics = true,
+        std::size_t max_rebuilds = std::numeric_limits<std::size_t>::max(),
+        const EntityId* priority_entity = nullptr);
+    /** True when the last sync hit max_rebuilds before finishing (call again next frame). */
+    [[nodiscard]] bool sync_incomplete() const { return sync_incomplete_; }
     /** Copy motion-body poses into scene transforms for physics-driven placements. */
     void write_back_transforms(Scene& scene, CollisionWorld& world);
     void clear(CollisionWorld& world);
@@ -36,6 +41,7 @@ public:
 
 private:
     struct TrackedPlacement {
+        EntityId entity_id;
         std::string prefab_path;
         TransformComponent transform;
         CellCoord cell{};
@@ -50,6 +56,9 @@ private:
     std::map<std::string, TrackedPlacement> tracked_;
     InteractionVolumeRegistry interaction_registry_;
     CombatVolumeRegistry combat_registry_;
+    std::uint64_t last_scene_edit_revision_ = std::numeric_limits<std::uint64_t>::max();
+    bool last_simulate_dynamics_ = true;
+    bool sync_incomplete_ = false;
     void remove_bodies(CollisionWorld& world, TrackedPlacement& placement);
 };
 

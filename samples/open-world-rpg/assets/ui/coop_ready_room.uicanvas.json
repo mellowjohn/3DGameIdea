@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "id": "coop_ready_room",
+  "designResolution": [1920, 1080],
+  "widgets": [
+    {
+      "id": "ready_dim",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [1920, 1080],
+      "opacity": 0.72,
+      "color": [21, 23, 25, 255]
+    },
+    {
+      "id": "ready_panel",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [640, 480],
+      "color": [45, 41, 35, 250]
+    },
+    {
+      "id": "ready_title",
+      "type": "text",
+      "anchor": "center",
+      "offset": [0, -180],
+      "size": [560, 48],
+      "bind": "coop_ready_room.title",
+      "text": "Ready Room",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 40,
+      "color": [241, 238, 232, 255]
+    },
+    {
+      "id": "ready_host_summary",
+      "type": "text",
+      "anchor": "center",
+      "offset": [-140, -90],
+      "size": [260, 72],
+      "bind": "coop_ready_room.host_summary",
+      "text": "Host\nSquire",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 24,
+      "color": [220, 220, 220, 255]
+    },
+    {
+      "id": "ready_guest_summary",
+      "type": "text",
+      "anchor": "center",
+      "offset": [140, -90],
+      "size": [260, 72],
+      "bind": "coop_ready_room.guest_summary",
+      "text": "Guest\nArcher",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 24,
+      "color": [220, 220, 220, 255]
+    },
+    {
+      "id": "ready_host_toggle",
+      "type": "button",
+      "anchor": "center",
+      "offset": [-140, 0],
+      "size": [240, 44],
+      "bind": "coop_ready_room.host_ready",
+      "text": "Host: Not Ready",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 22,
+      "color": [41, 45, 48, 255]
+    },
+    {
+      "id": "ready_guest_toggle",
+      "type": "button",
+      "anchor": "center",
+      "offset": [140, 0],
+      "size": [240, 44],
+      "bind": "coop_ready_room.guest_ready",
+      "text": "Guest: Not Ready",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 22,
+      "color": [41, 45, 48, 255]
+    },
+    {
+      "id": "ready_start",
+      "type": "button",
+      "anchor": "center",
+      "offset": [0, 80],
+      "size": [360, 48],
+      "bind": "coop_ready_room.start",
+      "text": "Start",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 28,
+      "color": [213, 185, 120, 255],
+      "enabled": false
+    },
+    {
+      "id": "ready_leave",
+      "type": "button",
+      "anchor": "center",
+      "offset": [0, 150],
+      "size": [360, 48],
+      "bind": "coop_ready_room.leave",
+      "text": "Leave Lobby",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 28,
+      "color": [41, 45, 48, 255]
+    }
+  ]
+}

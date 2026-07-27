@@ -32,10 +32,15 @@ public:
     /** Zoom in/out; positive delta pulls closer (scroll-up convention). */
     void adjust_distance(float delta_meters);
     void set_orientation(float yaw, float pitch);
+    void set_desired_distance(float distance_meters);
     void set_config(const OrbitCameraConfig& config);
     void set_sensitivity(float sensitivity);
     [[nodiscard]] const OrbitCameraConfig& config() const { return config_; }
-    [[nodiscard]] Result<void> update(WorldPosition pivot, const CollisionWorld& world);
+    /**
+     * @param delta_seconds Frame dt for collision-distance / pivot smoothing. Use (0, 0.25];
+     *        values outside that range fall back to a 1/60s step so hitch frames do not overshoot.
+     */
+    [[nodiscard]] Result<void> update(WorldPosition pivot, const CollisionWorld& world, float delta_seconds = 1.0f / 60.0f);
     [[nodiscard]] Result<void> set_perspective(float vertical_fov_radians, float aspect, float near_plane,
         float far_plane);
     [[nodiscard]] std::array<float, 3> position() const { return position_; }
@@ -55,14 +60,17 @@ private:
     [[nodiscard]] std::array<float, 3> shoulder_right() const;
     [[nodiscard]] WorldPosition look_target() const;
     void clamp_pitch();
+    void write_eye(float distance, float shoulder_scale);
 
     OrbitCameraConfig config_;
     WorldPosition pivot_{};
+    bool pivot_initialized_ = false;
     std::array<float, 3> position_{0, 3, -5};
     float yaw_ = 0.0f;
     float pitch_ = 0.32f;
     float desired_distance_ = 10.5f;
     float resolved_distance_ = 10.5f;
+    float shoulder_scale_ = 1.0f;
     bool collision_shortened_ = false;
     float fov_ = 1.134464f;
     float aspect_ = 16.0f / 9.0f;

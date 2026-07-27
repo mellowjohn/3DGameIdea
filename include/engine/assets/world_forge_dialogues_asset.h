@@ -13,12 +13,21 @@ namespace engine {
 enum class WorldForgeDialogueCanonStatus : std::uint8_t { Established, Draft, Proposal, Open };
 enum class WorldForgeDialogueSpeakerTarget : std::uint8_t { Node, Faction, Narrator };
 
+struct WorldForgeDialogueStandingAdjust {
+    std::string faction_id;
+    double delta = 0.0;
+};
+
 struct WorldForgeDialogueChoice {
     std::string id;
     std::string text;
     /// Empty nextNodeId ends the conversation after this choice.
     std::string next_node_id;
     std::vector<std::string> set_flags;
+    /// Optional short option-type hint shown on the choices page (e.g. Honest, Blunt).
+    std::string tone;
+    /// Optional standing deltas applied when the player selects this choice.
+    std::vector<WorldForgeDialogueStandingAdjust> standing_adjust;
 };
 
 struct WorldForgeDialogueNode {

@@ -10,7 +10,8 @@ This repository builds a from-scratch 3D game engine designed for effective coll
 4. Use `skills/grill-me/SKILL.md` when the user wants aggressive ambiguity pressure-testing ("grill me"); use `skills/teach/SKILL.md` when they need a question explained before answering; use `skills/evaluate/SKILL.md` when reviewing `needs-approval` tickets or PRs for approve/defer/rework; use `skills/desktop-qa/SKILL.md` when the owner runs a Windows session to clear the approval backlog.
 5. For assigned backlog work (`TICKET-####`, Ready/Active board, agent queue), use `skills/engine-ticket-workflow/SKILL.md` and the Priority ladder in `context/planning/epics.md`.
 6. When creating or updating epics/tickets, follow `.cursor/rules/epic-ticket-population.mdc` (full `epics.md` + Notion bodies; `needs-approval` before owner `done`). When **authoring** or promoting tickets to `ready`, use `skills/write-engine-ticket/SKILL.md` for testable acceptance criteria and verification.
-7. Inspect existing code and tests before proposing new abstractions.
+7. When importing Blockbench/glTF props into `open-world-rpg`, use `skills/import-blockbench-models/SKILL.md` (bake → prefab → place → verify).
+8. Inspect existing code and tests before proposing new abstractions.
 
 ## Content vs Engine Workflow
 
@@ -19,6 +20,7 @@ This repository builds a from-scratch 3D game engine designed for effective coll
 - Use MCP tools for scene, prefab, material, and Lua handler edits that existing commands already support.
 - Call `engine_scene_plan` when the correct target is unclear; do not write open world JSON while the live editor owns the scene.
 - Rebuild `engine` after C++ changes; validate project data after content batches.
+- **Shared rebuild lease (TICKET-0228):** on this Windows checkout, agents must acquire/wait via `engine build-coordination` / MCP `engine_build_coordination` before MSBuild, then release after the kill → rebuild → restart loop. See `context/features/agent-build-coordination.md` and Diagnostics → Coordination.
 
 ## Engineering Rules
 

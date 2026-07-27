@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "wall_torch_smoke",
+  "texture": "assets/vfx/smoke_flipbook_4x4.png",
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [0.48, 0.22, 0.26] },
+      { "t": 0.3, "color": [0.34, 0.2, 0.28] },
+      { "t": 0.65, "color": [0.28, 0.24, 0.3] },
+      { "t": 1.0, "color": [0.26, 0.26, 0.28] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.18 },
+      { "t": 0.25, "value": 0.38 },
+      { "t": 0.65, "value": 0.6 },
+      { "t": 1.0, "value": 0.85 }
+    ]
+  },
+  "aspectRatio": 1.15,
+  "rotationStartRandom": true,
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.68 },
+      { "t": 0.15, "value": 0.38 },
+      { "t": 0.5, "value": 0.48 },
+      { "t": 0.85, "value": 0.78 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 1.1, "max": 2.2 },
+  "speed": { "min": 0.22, "max": 0.6 },
+  "rate": 14,
+  "spreadAngle": [24, 45],
+  "shape": "disc",
+  "shapeStyle": "volume",
+  "shapeSize": [0.05, 0.03, 0.05],
+  "orientation": "FacingCamera",
+  "lightEmission": 0.02,
+  "blend": "alpha",
+  "acceleration": [0.03, 0.55, 0.01],
+  "drag": 0.18,
+  "maxParticles": 40,
+  "enabled": true,
+  "emissionDirection": [0.0, 1.0, 0.0],
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "Loop",
+  "flipbookFramerate": 8,
+  "flipbookStartRandom": true
+}

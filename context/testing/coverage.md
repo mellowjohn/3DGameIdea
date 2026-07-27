@@ -27,12 +27,14 @@
 | Navigation grid | active | `navigation` validates grid build, streaming, nearest-walkable, and cross-cell line-of-walk queries |
 | Character controller | active | `character` validates capsule creation, terrain landing/walking, slope limits, streamed terrain coexistence, cell ownership, and debug body metadata; `debug_world_smoke` exercises GPU integration |
 | Interaction volumes | active | `interaction` validates overlap enter/exit, prefab-authored bindings, and placement spawn integration |
+| Dialogue play pipeline + sandbox | active | `automation` covers `dialogue_call` + `talk_act0` + `flag_call` / `resolve_fork`; sandbox world + MCP Scenarios A–D in `dialogue-sandbox-mcp.md`; CLI `--world` override |
 | Combat hit/hurt volumes | active | `combat` validates hurt overlap queries, hit-body queries, prefab-authored bindings, and placement spawn integration |
 | Viewport mesh picking | active | `world` validates ray/AABB picking helpers and compositional prefab part bounds |
 | Physics visual bridge | active | `debug_world_smoke` steps Jolt and feeds live body transforms into D3D12 |
 | Free debug camera and 3D bridge | tested and visually captured | `camera` validates free and orbit cameras; `debug_world_smoke` validates depth-buffered D3D12/Jolt integration |
 | Runtime diagnostics | tested | `diagnostics` validates error counts, bounded feed, and JSONL persistence |
 | Editor MVP | active | `editor_smoke` validates SDL3/ImGui/ImGuizmo/D3D12 initialization and offscreen rendering; `editor_responsive_smoke` covers a 900×600 layout; deterministic captures verify panels, terrain, proxy, and gizmo composition; collision debug overlay shows placement volumes and recent trigger contacts |
+| Visual regression (dark-fantasy Game RT) | needs-approval | `visual_regression` / `engine visual-regression` captures Game RT PNGs (default + look-around) vs `context/testing/baselines/visual-regression/`; mean-abs RGB threshold; intentional fail via `--threshold 0.001` |
 | Navigation, animation, dialogue, VFX, gameplay | partial | `navigation` covers walkability grids; `character` covers capsule traversal; `assets` covers animation clip import/hot reload; `animator` covers controller graphs / blend trees / Lua drive / root-motion capsule sync; dialogue, VFX, and gameplay remain untested |
 
 CTest entries represent suites or integrations. Each named unit suite prints JSON containing assertion, pass, and failure counts. `regression_all` remains a broad backstop while assertions migrate into focused suites.

@@ -37,13 +37,18 @@ std::optional<entt::entity> Scene::handle(const EntityId& id) const {
 bool Scene::contains(const EntityId& id) const { return handle(id).has_value(); }
 
 Scene::Scene() : registry_(std::make_unique<entt::registry>()) {}
-Scene::Scene(Scene&& other) noexcept : registry_(std::move(other.registry_)), entities_(std::move(other.entities_)), world_id_(std::move(other.world_id_)), document_name_(std::move(other.document_name_)), world_size_meters_(other.world_size_meters_), cell_size_meters_(other.cell_size_meters_) {
+Scene::Scene(Scene&& other) noexcept
+    : registry_(std::move(other.registry_)), entities_(std::move(other.entities_)),
+      edit_revision_(other.edit_revision_), world_id_(std::move(other.world_id_)),
+      document_name_(std::move(other.document_name_)), world_size_meters_(other.world_size_meters_),
+      cell_size_meters_(other.cell_size_meters_) {
     if (!registry_) registry_ = std::make_unique<entt::registry>();
 }
 Scene& Scene::operator=(Scene&& other) noexcept {
     if (this != &other) {
         registry_ = std::move(other.registry_);
         entities_ = std::move(other.entities_);
+        edit_revision_ = other.edit_revision_;
         world_id_=std::move(other.world_id_);document_name_=std::move(other.document_name_);world_size_meters_=other.world_size_meters_;cell_size_meters_=other.cell_size_meters_;
         if (!registry_) registry_ = std::make_unique<entt::registry>();
     }
@@ -60,6 +65,7 @@ Result<EntityId> Scene::create_entity(std::string name, std::optional<EntityId> 
     registry_->emplace<TransformComponent>(entity);
     registry_->emplace<HierarchyComponent>(entity);
     entities_.emplace(id.str(), entity);
+    bump_edit_revision();
     return Result<EntityId>::success(id);
 }
 
@@ -72,6 +78,7 @@ Result<void> Scene::destroy_entity(const EntityId& id) {
     }
     registry_->destroy(*value);
     entities_.erase(id.str());
+    bump_edit_revision();
     return Result<void>::success();
 }
 
@@ -95,16 +102,18 @@ Result<void> Scene::set_parent(const EntityId& child, std::optional<EntityId> pa
         cursor = parent(*cursor);
     }
     registry_->get<HierarchyComponent>(*child_handle).parent = std::move(parent_value);
+    bump_edit_revision();
     return Result<void>::success();
 }
 
-Result<void> Scene::set_transform(const EntityId& id, const TransformComponent& transform) {
+Result<void> Scene::set_transform(const EntityId& id, const TransformComponent& transform, bool bump_edit_revision) {
     const auto value = handle(id);
     if (!value) return Result<void>::failure(world_error("WORLD-ENTITY-NOT-FOUND", "Cannot transform missing entity: " + id.str()));
     if (!finite(transform)) return Result<void>::failure(world_error("WORLD-TRANSFORM-NONFINITE", "Transform contains NaN or infinity"));
     for (const float scale : transform.scale)
         if (std::abs(scale) < 0.000001f) return Result<void>::failure(world_error("WORLD-TRANSFORM-ZERO-SCALE", "Transform scale cannot be zero"));
     registry_->replace<TransformComponent>(*value, transform);
+    if (bump_edit_revision) this->bump_edit_revision();
     return Result<void>::success();
 }
 
@@ -136,16 +145,23 @@ Result<void> Scene::set_authored_components(const EntityId& id, AuthoredComponen
     }
     ++components.generation;
     registry_->emplace_or_replace<AuthoredComponentsComponent>(*value, std::move(components));
+    bump_edit_revision();
     return Result<void>::success();
 }
 
 Result<bool> Scene::ensure_authored_components_seeded(const EntityId& id, const PrefabAsset& prefab) {
     const auto value = handle(id);
     if (!value) return Result<bool>::failure(world_error("WORLD-ENTITY-NOT-FOUND", "Cannot seed components on missing entity: " + id.str()));
-    if (registry_->all_of<AuthoredComponentsComponent>(*value) &&
-        !registry_->get<AuthoredComponentsComponent>(*value).entries.empty())
+    const bool has_component = registry_->all_of<AuthoredComponentsComponent>(*value);
+    if (has_component && !registry_->get<AuthoredComponentsComponent>(*value).entries.empty())
         return Result<bool>::success(false);
-    registry_->emplace_or_replace<AuthoredComponentsComponent>(*value, seed_authored_components_from_prefab(prefab));
+    auto seeded = seed_authored_components_from_prefab(prefab);
+    // The editor Inspector polls this every frame for the selected entity. An entity that already carries an
+    // empty component set plus a prefab with nothing to seed must report "unchanged", or the poll bumps the
+    // edit revision forever and re-dirties the static render cache each frame.
+    if (has_component && seeded.entries.empty()) return Result<bool>::success(false);
+    registry_->emplace_or_replace<AuthoredComponentsComponent>(*value, std::move(seeded));
+    bump_edit_revision();
     return Result<bool>::success(true);
 }
 
@@ -181,6 +197,7 @@ Result<void> Scene::add_authored_component(const EntityId& id, AuthoredComponent
     }
     components.entries.push_back(std::move(entry));
     ++components.generation;
+    bump_edit_revision();
     return Result<void>::success();
 }
 
@@ -196,6 +213,7 @@ Result<void> Scene::remove_authored_component(const EntityId& id, const std::str
     if (components.entries.size() == before)
         return Result<void>::failure(world_error("WORLD-COMPONENT-NOT-FOUND", "Component id not found: " + component_id));
     ++components.generation;
+    bump_edit_revision();
     return Result<void>::success();
 }
 
@@ -215,6 +233,7 @@ Result<void> Scene::set_authored_component(const EntityId& id, AuthoredComponent
         }
         existing = std::move(entry);
         ++components.generation;
+        bump_edit_revision();
         return Result<void>::success();
     }
     if (mark_override) {
@@ -223,6 +242,7 @@ Result<void> Scene::set_authored_component(const EntityId& id, AuthoredComponent
     }
     components.entries.push_back(std::move(entry));
     ++components.generation;
+    bump_edit_revision();
     return Result<void>::success();
 }
 
@@ -249,6 +269,7 @@ std::size_t Scene::propagate_prefab_components(const std::string& prefab_asset, 
         }
         total += propagate_prefab_components_into_entries(registry_->get<AuthoredComponentsComponent>(entry.second), prefab);
     }
+    if (total > 0) bump_edit_revision();
     return total;
 }
 
@@ -303,6 +324,7 @@ Result<void> Scene::remap_asset_path_prefix(const std::string& old_prefix, const
         if (placement.character_asset)
             *placement.character_asset = remap_asset_path_prefix_value(*placement.character_asset, old_prefix, new_prefix);
     }
+    bump_edit_revision();
     return Result<void>::success();
 }
 
@@ -313,6 +335,7 @@ Result<void> Scene::repair_prefab_paths(const std::map<std::string, PrefabAsset>
         const auto resolved = resolve_prefab_catalog_path(catalog, placement.prefab_asset);
         if (catalog.find(resolved) != catalog.end()) placement.prefab_asset = resolved;
     }
+    bump_edit_revision();
     return Result<void>::success();
 }
 
@@ -382,10 +405,7 @@ bool Scene::has_children(const EntityId& id) const { for(const auto& entry:entit
 std::vector<EntityId> Scene::entity_ids() const {
     std::vector<EntityId> ids;
     ids.reserve(entities_.size());
-    for (const auto& entry : entities_) {
-        auto parsed = EntityId::parse(entry.first);
-        if (parsed) ids.push_back(parsed.value());
-    }
+    for (const auto& entry : entities_) ids.push_back(registry_->get<IdComponent>(entry.second).id);
     return ids;
 }
 

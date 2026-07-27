@@ -21,12 +21,14 @@ Kanban (drag Status columns): **[Work Board](https://app.notion.com/p/39ad3efc56
 
 | Priority | Meaning | Typical work |
 | --- | --- | --- |
-| P0 | Engineering critical path — do first when Ready | **M5 exit** (TICKET-0110); close milestone with suites + CLI previews |
-| P1 | Parallel now — remaining M5 gap | TICKET-0107 miniaudio; headless-verifiable follow-ons |
-| P2 | Ready or next, but not ahead of P0 | Animation tools (0135), visual regression (0145), decision gates (0041) |
+| P0 | Engineering critical path — do first when Ready | **M5 exit** (TICKET-0110); **Act 0 event timeline** (TICKET-0221/0222, owner override 2026-07-24) |
+| P1 | Parallel now — remaining M5 gap | TICKET-0107 miniaudio; WF Events pane (0223) after 0221; headless-verifiable follow-ons |
+| P2 | Ready or next, but not ahead of P0 | Animation tools (0135), decision gates (0041) |
 | P3 | Held / later — do not start without owner override | M6–M11 runtime, World Forge/UI polish, water, deferred items |
 
 **Owner QA (2026-07-22):** The large `needs-approval` backlog (~65 tickets) requires **desktop editor/viewport** verification. Owner is not reviewing that queue from mobile — statuses stay as-is; **do not treat approval as blocking new agent work**. Prefer new tickets that close M5 with **automated suites / CLI evidence** so review can happen later in one desktop session.
+
+**Owner override (2026-07-23):** Quality/perf gap track from competitive audit → **active P1**: TICKET-0139 (1440p/60 gate), TICKET-0219 (CSM shadows), TICKET-0220 (foliage cull + mesh LOD), TICKET-0145 (visual regression). Prefer these over new World Forge UI until measured. (0139/0219/0220/0145 → needs-approval as landed.)
 
 **Agent pickup (2026-07-22):** Do **not** start more World Forge UI, cartography chrome, UI canvas, water, or rigidbody chains until owner clears the existing `needs-approval` pile on desktop. Pick among `ready` tickets below.
 
@@ -34,10 +36,10 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 
 ## EPIC-0001: Project tracking integration
 
-- Status: done
-- Goal: Hybrid tracking — in-repo backlog plus Notion Wrathful Conquest board.
+- Status: active
+- Goal: Hybrid tracking — in-repo backlog plus Notion Wrathful Conquest board; same-machine agent coordination over the shared rebuild slot.
 - Roadmap home: Planning / DEC-0015 (not a runtime milestone).
-- Priority guidance: Complete; keep sync rules current when board properties change.
+- Priority guidance: Sync rules complete; TICKET-0228 (owner ask 2026-07-26) adds the multi-agent build lease + Coordination dashboard at P1.
 - External board: [Engine Planning Board](https://app.notion.com/p/39ad3efc569581309306e0d8e84cb026)
 
 | ID | Title | Status | Priority | Notes |
@@ -45,6 +47,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0001 | Choose external board (Notion or Jira) | done | P3 | Notion Wrathful Conquest |
 | TICKET-0002 | Create board structure matching EPIC/TICKET IDs | done | P3 | Epics + Tickets DBs seeded under Engine Planning Board |
 | TICKET-0003 | Document sync checklist for agents and humans | done | P3 | [`notion-sync.md`](notion-sync.md) |
+| TICKET-0228 | Agent build coordination lease + editor dashboard | needs-approval | P1 | `.engine/build-coordinator.json` lease queue + Diagnostics Coordination tab; [`tickets/TICKET-0228.md`](tickets/TICKET-0228.md) |
 
 ## EPIC-0002: World Forge
 
@@ -76,6 +79,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0206 | Official world map detail regenerate (five-act reference) | needs-approval | P2 | Richer unlabeled Tessera reference with road hierarchy; [`tickets/TICKET-0206.md`](tickets/TICKET-0206.md) |
 | TICKET-0207 | Map Canvas dual view + borders + travel routes | needs-approval | P2 | Cartography\|Top-down, region.border, travelRoutes; [`tickets/TICKET-0207.md`](tickets/TICKET-0207.md) |
 | TICKET-0208 | World Forge Pencil Map Canvas chrome revamp | needs-approval | P2 | Header + left nav + map tools/inspector/overlays from `.pen`; [`tickets/TICKET-0208.md`](tickets/TICKET-0208.md); [`../design/world-forge-map-canvas.pen`](../design/world-forge-map-canvas.pen) |
+| TICKET-0223 | World Forge Events pane + MCP kind | needs-approval | P1 | Events pane + MCP `kind=events`; world_forge 244/244; DEC-0045; [`tickets/TICKET-0223.md`](tickets/TICKET-0223.md) |
 
 ## EPIC-0003: Narrative content (storyline, factions, side quests)
 
@@ -109,7 +113,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 - Status: ready
 - Goal: Shader/material authoring path and post-process effects (including ambient occlusion).
 - Roadmap home: extends active material assets; visual polish toward M8/M11.
-- Priority guidance: **P0 owner override 2026-07-17:** TICKET-0191 (glTF UV/albedo). Otherwise P2 — not ahead of M5 P0 (TICKET-0102).
+- Priority guidance: **P0 owner override 2026-07-17:** TICKET-0191 (glTF UV/albedo). **P1 owner override 2026-07-23:** TICKET-0219 (CSM shadows) on quality/perf track. Otherwise P2 — not ahead of M5 P0 (TICKET-0102).
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
@@ -117,6 +121,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0041 | Shader authoring strategy (graphs vs code-first) | proposed | P2 | Decision interview before large investment |
 | TICKET-0042 | Post-process stack with ambient occlusion | done | P2 | SSAO v1 shipped (owner approved); [`tickets/TICKET-0042.md`](tickets/TICKET-0042.md) |
 | TICKET-0191 | glTF mesh UV + albedo texture import/render | needs-approval | P0 | Owner override; sample `baseColorTexture` for player mesh; [`tickets/TICKET-0191.md`](tickets/TICKET-0191.md) |
+| TICKET-0219 | Cascaded directional sun shadows (CSM v1) | needs-approval | P1 | Outdoor CSM landed; [`tickets/TICKET-0219.md`](tickets/TICKET-0219.md); [`../features/csm-shadows.md`](../features/csm-shadows.md) |
 
 ## EPIC-0016: Water and hydrology
 
@@ -140,15 +145,18 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 - Goal: Quest creator and dialogue system for immersion and RPG vertical slice.
 - Roadmap home: **M6** quests/RPG data; **M7** dialogue tools.
 - Product home: **World Forge** ([DEC-0020](../decisions/index.md#dec-0020-world-forge-narrative-tooling-umbrella)) — editors/schemas live under World Forge panels; milestone hold still applies.
-- Hold: do not pull ahead of M5 animation (EPIC-0008) without an explicit decision. **TICKET-0050** started under owner override 2026-07-15 ([DEC-0026](../decisions/index.md#dec-0026-quest-owned-dialogue-hooks-multi-stage)).
+- Hold: do not pull ahead of M5 animation (EPIC-0008) without an explicit decision. **TICKET-0050** started under owner override 2026-07-15 ([DEC-0026](../decisions/index.md#dec-0026-quest-owned-dialogue-hooks-multi-stage)). **Owner override 2026-07-24:** Act 0 event timeline chain TICKET-0221 → 0222 is **P0** ([DEC-0045](../decisions/index.md#dec-0045-json-event-timelines-with-c-sequencer-world-forge-home)); World Forge Events pane is TICKET-0223 (EPIC-0002).
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
+| TICKET-0221 | Event timeline asset + C++ sequencer MVP | needs-approval | P0 | Act 0 MVP `coding_event_timeline`; DEC-0045; [`tickets/TICKET-0221.md`](tickets/TICKET-0221.md) |
+| TICKET-0222 | Camera path + control lock for timelines | needs-approval | P0 | `coding_camera_path` + `cine_event_timeline_ready`; [`tickets/TICKET-0222.md`](tickets/TICKET-0222.md) |
 | TICKET-0050 | Quest data model and validation | needs-approval | P2 | Owner override; `quests.worldforge.json` + multi-stage dialogue hooks; [`tickets/TICKET-0050.md`](tickets/TICKET-0050.md); [`../formats/world-forge-quests.md`](../formats/world-forge-quests.md) |
 | TICKET-0051 | Quest creator tooling (command-backed) | needs-approval | P2 | Owner override; Quests pane + MCP kind=quests; Twine Act 0 seed; [`tickets/TICKET-0051.md`](tickets/TICKET-0051.md) |
 | TICKET-0052 | Branching dialogue runtime | needs-approval | P2 | Owner override; Twine import + DialogueRuntime; [`tickets/TICKET-0052.md`](tickets/TICKET-0052.md); [`../formats/world-forge-dialogues.md`](../formats/world-forge-dialogues.md) |
 | TICKET-0053 | Dialogue graph editor and headless tests | needs-approval | P2 | Owner override; Dialogues→Graph canvas + headless edit helpers; [`tickets/TICKET-0053.md`](tickets/TICKET-0053.md) |
 | TICKET-0054 | Twine → World Forge dialogue import | needs-approval | P2 | Owner override; `import_twee` MCP/editor + C++ parser; Act 0 lore draft sync; [`tickets/TICKET-0054.md`](tickets/TICKET-0054.md) |
+| TICKET-0224 | Split Act 0 dialogue into per-event trees | ready | P2 | Break `dlg_act0_wrathful_conquest` mega-tree into beat/event trees; [`tickets/TICKET-0224.md`](tickets/TICKET-0224.md) |
 | TICKET-0165 | Shared World Forge graph camera + minimap helpers | needs-approval | P2 | Owner override; extract pan/zoom/fit/minimap for rel+dlg; [`tickets/TICKET-0165.md`](tickets/TICKET-0165.md); [DEC-0027](../decisions/index.md#dec-0027-shared-world-forge-graph-camera) |
 | TICKET-0166 | Dialogue node readability + display modes | needs-approval | P2 | Owner override; Compact/Standard/Expanded; speaker/lines/type/icons; [`tickets/TICKET-0166.md`](tickets/TICKET-0166.md) |
 | TICKET-0167 | Dialogue graph navigation | needs-approval | P2 | Owner override; search, history, bookmarks, frame/zoom; [`tickets/TICKET-0167.md`](tickets/TICKET-0167.md) |
@@ -166,6 +174,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0179 | Large dialogue graph performance | proposed | P3 | Phase 6; 500–2000 nodes |
 | TICKET-0180 | Quest progression runtime (API + Lua + MCP) | needs-approval | P2 | Owner override of M6 hold; [DEC-0028](../decisions/index.md#dec-0028-explicit-quest-progression-runtime); [`tickets/TICKET-0180.md`](tickets/TICKET-0180.md) |
 | TICKET-0181 | Faction standing / reputation (schema + runtime) | needs-approval | P2 | Owner override; [DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer); [`tickets/TICKET-0181.md`](tickets/TICKET-0181.md) |
+| TICKET-0225 | Session FlagRuntime (Act 0 quest/stage flags) | needs-approval | P0 | Owner override Act 0 MVP `coding_quest_runtime_flags`; [DEC-0046](../decisions/index.md#dec-0046-session-story-flag-runtime); [`tickets/TICKET-0225.md`](tickets/TICKET-0225.md) |
 
 ## EPIC-0007: Gameplay UI and accessibility
 
@@ -241,13 +250,14 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 
 ## EPIC-0010: Particles and visual effects
 
-- Status: proposed
+- Status: active
 - Goal: CPU/GPU emitters, effect graphs, budgets, and integration with gameplay events.
 - Roadmap home: **M8**. Hold behind M5 animation unless needed earlier for foliage disturb hooks.
+- Priority guidance: **Owner override 2026-07-27:** TICKET-0122 → **P1** for Act 0 campfire/torch flame + low-poly Roblox-shaped emitters ([ParticleEmitter docs](https://create.roblox.com/docs/effects/particle-emitters)).
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
-| TICKET-0122 | CPU/GPU emitter foundation + pooling | proposed | P3 | |
+| TICKET-0122 | CPU/GPU emitter foundation + pooling | needs-approval | P1 | Roblox-shaped MVP; campfire wire-up; [`tickets/TICKET-0122.md`](tickets/TICKET-0122.md) |
 | TICKET-0123 | Effect graph assets + deterministic seeds | proposed | P3 | |
 | TICKET-0124 | VFX collision hooks, LOD, bounds, budgets | proposed | P3 | |
 | TICKET-0125 | VFX hot reload + CLI capture + editor preview | proposed | P3 | |
@@ -268,13 +278,14 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 
 ## EPIC-0012: Profiling, packaging, and ship gate
 
-- Status: proposed
+- Status: ready
 - Goal: Meet performance target, harden failures, package playable slice.
 - Roadmap home: **M11**.
+- Priority guidance: **P1 owner override 2026-07-23:** TICKET-0139 (1440p/60 gate). Remaining ship/package tickets stay P3 until gate lands.
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
-| TICKET-0139 | 1440p/60 FPS benchmark gate + GPU budgets | proposed | P3 | |
+| TICKET-0139 | 1440p/60 FPS benchmark gate + GPU budgets | needs-approval | P1 | Capture harness + provisional budgets; [`tickets/TICKET-0139.md`](tickets/TICKET-0139.md); [`../benchmarks/open-world-1440p.md`](../benchmarks/open-world-1440p.md) |
 | TICKET-0140 | Failure-path hardening pass | proposed | P3 | |
 | TICKET-0141 | Full regression suite green + publish benchmarks | proposed | P3 | |
 | TICKET-0142 | Package playable vertical-slice build | proposed | P3 | |
@@ -284,14 +295,19 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 - Status: ready
 - Goal: Cross-cutting visual QA — PBR implementation tracking, fonts, atmosphere regression, GPU diagnostics.
 - Roadmap home: spans materials / M10 / M11.
-- Priority guidance: P2 — same PBR workstream as TICKET-0040; not ahead of M5 P0.
+- Priority guidance: **P1 owner override 2026-07-23:** TICKET-0145 (visual regression), TICKET-0220 (foliage cull + mesh LOD). Otherwise P2 — same PBR workstream as TICKET-0040; not ahead of M5 P0.
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
 | TICKET-0143 | PBR + transparency rendering slice | done | P2 | With 0040; masked/blended deferred fail-closed; [`tickets/TICKET-0143.md`](tickets/TICKET-0143.md) |
 | TICKET-0144 | Typography/font roles + fallback + licenses | needs-approval | P2 | Roboto engine + Cinzel scene; [`tickets/TICKET-0144.md`](tickets/TICKET-0144.md) |
-| TICKET-0145 | Dark-fantasy visual regression screenshot tests | proposed | P2 | |
+| TICKET-0145 | Dark-fantasy visual regression screenshot tests | needs-approval | P1 | Game RT mean-abs gate; [`tickets/TICKET-0145.md`](tickets/TICKET-0145.md); [`../features/visual-regression.md`](../features/visual-regression.md) |
 | TICKET-0146 | GPU context in structured diagnostics/crash bundles | needs-approval | P2 | Adapter/driver/VRAM/feature-level/device-removal context in JSONL + crash bundles; diagnostics 9/9; [`tickets/TICKET-0146.md`](tickets/TICKET-0146.md) |
+| TICKET-0220 | Foliage frustum cull + mesh distance LOD ladder | needs-approval | P1 | Cell×mesh foliage frustum + 160/210 m placed LOD; [`tickets/TICKET-0220.md`](tickets/TICKET-0220.md) |
+| TICKET-0229 | Stylized grass blade mesh + lean/trample/wind | needs-approval | P2 | Multi-segment `grass_blade`, tip lean/trample, tip flutter; DEC-0013 evolution; [`tickets/TICKET-0229.md`](tickets/TICKET-0229.md) |
+| TICKET-0230 | Wind trails + vegetation response | needs-approval | P2 | Gust bands + tree canopy sway + camera wind streaks; [`tickets/TICKET-0230.md`](tickets/TICKET-0230.md) |
+| TICKET-0226 | Per-frame CB upload ring (drop Present drain) | needs-approval | P1 | 2-slot frame/water/shadow/ssao/composite CB ring; [DEC-0047](../decisions/index.md#dec-0047-frame-upload-ring-and-gpu-lbs-skinning); [`tickets/TICKET-0226.md`](tickets/TICKET-0226.md) |
+| TICKET-0227 | GPU LBS skinning for play-test player | needs-approval | P1 | Bind-pose VB + CPU matrices + VS LBS; MAX_BONES 64; [DEC-0047](../decisions/index.md#dec-0047-frame-upload-ring-and-gpu-lbs-skinning); [`tickets/TICKET-0227.md`](tickets/TICKET-0227.md) |
 
 ## M6 engineering (under EPIC-0006 hold)
 
@@ -302,7 +318,7 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 | TICKET-0111 | Stats/items/inventory data models + validation | proposed | P3 | M6 |
 | TICKET-0112 | Quest asset schema + validation CLI | proposed | P3 | Soft-aligned with TICKET-0050 (schema shipped); runtime is TICKET-0180 |
 | TICKET-0113 | Abilities schema + Lua bindings (safe subset) | proposed | P3 | |
-| TICKET-0114 | Versioned RPG save format + migrations | proposed | P3 | Persist QuestRuntime + StandingRuntime session state (follow-on to TICKET-0180/0181) |
+| TICKET-0114 | Versioned RPG save format + migrations | needs-approval | P3 | EPIC-0017 + M6; co-op profiles + sharedCampaign; [`tickets/TICKET-0114.md`](tickets/TICKET-0114.md); [`../formats/rpg-save.md`](../formats/rpg-save.md) |
 | TICKET-0115 | Sandboxed Lua collision-query bindings | proposed | P3 | |
 | TICKET-0116 | Extend Lua beyond interaction/combat hurt handlers | proposed | P3 | |
 | TICKET-0152 | Lua host API v1 (log / json_decode / blackboard) | needs-approval | P2 | Owner override of M6 hold; [DEC-0023](../decisions/index.md#dec-0023-live-lua-host-api-agent-iteration-path); [`tickets/TICKET-0152.md`](tickets/TICKET-0152.md) |
@@ -346,6 +362,43 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 | TICKET-0197 | Spawn/sync dynamic bodies from Rigidbody + Collider | needs-approval | P2 | PlacementCollision + CollisionBodySettings + write-back; collision 567/567; [`tickets/TICKET-0197.md`](tickets/TICKET-0197.md) |
 | TICKET-0198 | Player locomotion on dynamic Rigidbody | needs-approval | P2 | RigidbodyLocomotion + capsule prefab; character 1212/1212; [`tickets/TICKET-0198.md`](tickets/TICKET-0198.md) |
 | TICKET-0199 | Root-motion retarget + sample physics prefabs | needs-approval | P2 | sync_rigidbody_root_motion + crate; camera 8m; animator 354/354; [`tickets/TICKET-0199.md`](tickets/TICKET-0199.md) |
+
+## EPIC-0017: Online co-op sessions
+
+- Status: proposed
+- Goal: Ship mode-locked solo vs online 2-player co-op per [DEC-0042](../decisions/index.md#dec-0042-online-co-op-session-model-mode-locked-saves): host lobby → guest join → dual ready → host-authoritative play; untimed reconnect pause; no solo fallback on co-op saves.
+- Roadmap home: Post–vertical-slice online feature; **SP ship first** — layer session/save before netcode ([`../features/co-op-sessions.md`](../features/co-op-sessions.md)).
+- Priority guidance: **P3** until owner pull-forward. Implement in order: **0212** → **0114** → **0213** → **0214** → **0215** → **0216**. Do not start net tickets before GameSession + save format land.
+- Scope boundary: [DEC-0042](../decisions/index.md#dec-0042-online-co-op-session-model-mode-locked-saves); save [`../formats/rpg-save.md`](../formats/rpg-save.md); replication phases R0–R6 in feature doc.
+
+| ID | Title | Status | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| TICKET-0212 | GameSession runtime + solo/co-op mode fork | needs-approval | P3 | `sessionMode`, state machine, local dual-slot play test; [`tickets/TICKET-0212.md`](tickets/TICKET-0212.md) |
+| TICKET-0114 | Versioned RPG save format + migrations | needs-approval | P3 | EPIC-0017 + M6; co-op profiles + sharedCampaign; [`tickets/TICKET-0114.md`](tickets/TICKET-0114.md); [`../formats/rpg-save.md`](../formats/rpg-save.md) |
+| TICKET-0213 | PartyRuntime companion caps by session mode | needs-approval | P3 | Solo 1+3 / co-op 2+2; [`tickets/TICKET-0213.md`](tickets/TICKET-0213.md) |
+| TICKET-0214 | Co-op lobby UI canvases (host/join/ready/reconnect) | needs-approval | P3 | DEC-0025 canvases; dual ready + host start; [`tickets/TICKET-0214.md`](tickets/TICKET-0214.md) |
+| TICKET-0215 | Online session handshake R0 (lobby sync) | proposed | P3 | create/join/ready/start; loopback tests; [`tickets/TICKET-0215.md`](tickets/TICKET-0215.md) |
+| TICKET-0216 | Player body replication R1 (host sim + guest input) | proposed | P3 | Two avatars; host authority; [`tickets/TICKET-0216.md`](tickets/TICKET-0216.md) |
+| TICKET-0217 | Session delta replication R2 + unanimous fork confirm | proposed | P3 | Quest/standing/morality patches; dual confirm UI hook; follow-on |
+| TICKET-0218 | Co-op reconnect snapshot R6 | proposed | P3 | `paused_waiting_guest` + resume; follow-on |
+
+## EPIC-0018: Terraria-shaped gearing + simple action combat
+
+- Status: ready
+- Goal: Ship item-driven gear depth (soft archetype affinity, act-tier + obscure rares, acquisition loops) on a Souls-lite three-chain combat baseline per [DEC-0048](../decisions/index.md#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity); seed Thrator Act 1–2 easter-egg warlord content.
+- Roadmap home: **M6–M9** RPG systems + combat slice (design first; runtime after inventory / melee foundations).
+- Priority guidance: **P3** for runtime children until inventory (TICKET-0111) and combat slice (EPIC-0011) move; **TICKET-0231** design lock is **needs-approval**. **TICKET-0237** Act 0 loot slice is **P2 ready** (thin inventory + Landfall finds). Story Thrator stub may proceed as docs without runtime mounts.
+- Scope boundary: [`../features/gearing-system.md`](../features/gearing-system.md); soft-extends DEC-0032 mounts when glad mount ships.
+
+| ID | Title | Status | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| TICKET-0231 | Gearing design + DEC-0048 recorded | needs-approval | P2 | Feature note + decision + epic seed; [`tickets/TICKET-0231.md`](tickets/TICKET-0231.md) |
+| TICKET-0232 | Item equip model + soft lane multipliers | proposed | P3 | Extends TICKET-0111; no hard class locks; [`tickets/TICKET-0232.md`](tickets/TICKET-0232.md) |
+| TICKET-0233 | Three weapon chains + universal ability use | proposed | P3 | Souls-lite action; ability caveats OK; aligns EPIC-0011; [`tickets/TICKET-0233.md`](tickets/TICKET-0233.md) |
+| TICKET-0234 | Act-tier loot + obscure rare chase schema | proposed | P3 | Power bands + hard-to-find OP rares; [`tickets/TICKET-0234.md`](tickets/TICKET-0234.md) |
+| TICKET-0235 | Mining/materials stub (craft loop later) | proposed | P3 | Ores/crystals materials only in v1; [`tickets/TICKET-0235.md`](tickets/TICKET-0235.md) |
+| TICKET-0236 | Thrator warlord SQ-13 + glad mount reward draft | ready | P3 | Act 1–2 easter egg; Orgrimmar-flavored; [`tickets/TICKET-0236.md`](tickets/TICKET-0236.md) |
+| TICKET-0237 | Act 0 Landfall loot slice (thin inventory + finds) | ready | P2 | ~4–8 items on siege→camp path; MVP readiness `coding_inventory_thin_act0` / `gameplay_act0_loot_slice`; [`tickets/TICKET-0237.md`](tickets/TICKET-0237.md) |
 
 ## Suggested work order
 

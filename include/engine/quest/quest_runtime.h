@@ -10,6 +10,8 @@
 
 namespace engine {
 
+class FlagRuntime;
+
 enum class QuestInstanceStatus : std::uint8_t { Inactive, Active, Completed, Abandoned };
 
 enum class QuestDialogueStage : std::uint8_t { Start, CurrentObjective, Complete, Abandon };
@@ -32,6 +34,10 @@ public:
     [[nodiscard]] Result<void> start(const std::string& quest_id);
     [[nodiscard]] Result<void> complete_objective(const std::string& quest_id, const std::string& objective_id);
     [[nodiscard]] Result<void> abandon(const std::string& quest_id);
+    /// Explicit fork resolution: validates `outcome_flag` is authored on the fork, clears sibling
+    /// outcome flags from that fork, then sets the chosen flag on `flags` (DEC-0046).
+    [[nodiscard]] Result<void> resolve_fork(const std::string& quest_id, const std::string& fork_id,
+        const std::string& outcome_flag, FlagRuntime& flags);
     [[nodiscard]] Result<QuestProgressStatus> status(const std::string& quest_id) const;
     [[nodiscard]] std::vector<QuestProgressStatus> list_active() const;
     /// Returns the hooked dialogue tree id for a stage (may be empty). Does not mutate progress.
@@ -41,6 +47,12 @@ public:
     [[nodiscard]] bool is_bound() const noexcept { return asset_ != nullptr; }
     /// Summary text for HUD bind `quest.objectiveText` (empty when no active current objective).
     [[nodiscard]] std::string primary_objective_text() const;
+
+    /// All non-inactive instances for RPG save export (TICKET-0114).
+    [[nodiscard]] std::vector<QuestProgressStatus> list_instances() const;
+    /// Restore a saved instance without replaying objective order (save hydrate).
+    [[nodiscard]] Result<void> restore_instance(const std::string& quest_id, QuestInstanceStatus status,
+        std::vector<std::string> completed_objective_ids);
 
 private:
     struct Instance {

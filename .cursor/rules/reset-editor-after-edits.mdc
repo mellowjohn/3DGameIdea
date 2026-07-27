@@ -7,15 +7,18 @@ alwaysApply: true
 
 When changing editor or runtime code that affects a running `engine.exe` (including MCP `engine.exe mcp --project ...`), do not leave a stale process:
 
-1. **Kill** any running `engine.exe` that locks the build output (Debug path under `build/windows-msvc-debug/Debug/`).
-2. **Rebuild** the `engine` target (see `rebuild-after-code-changes.mdc`).
-3. **Reload** by restarting the same command that was running — typically:
-   `build/windows-msvc-debug/Debug/engine.exe mcp --project samples/open-world-rpg`
+1. **Acquire** the shared rebuild lease first when other agents may be rebuilding (`engine build-coordination` / `engine_build_coordination` — see `rebuild-after-code-changes.mdc` and `context/features/agent-build-coordination.md`). Do not start MSBuild while queued.
+2. **Kill** any running `engine.exe` that locks the build output (`build/windows-msvc-debug/dev-next/engine.exe` or legacy `Debug/`).
+3. **Rebuild** the `engine` target (see `rebuild-after-code-changes.mdc`).
+4. **Reload** by restarting the same command that was running — typically:
+   `build/windows-msvc-debug/dev-next/engine.exe mcp --project samples/open-world-rpg`
    (or the editor launch command if that was the active session).
-4. Prefer this kill → rebuild → restart loop over asking the user to close the editor, unless the process cannot be identified safely.
-5. Mention in the final response that the editor/MCP process was reset.
+5. **Release** the rebuild lease with the granted token.
+6. Prefer this acquire → kill → rebuild → restart → release loop over asking the user to close the editor, unless the process cannot be identified safely.
+7. Mention in the final response that the editor/MCP process was reset (and that the lease was released).
 
 ```text
 ❌ BAD: Leave LNK1168 / locked engine.exe and ask the user to close it
-✅ GOOD: Stop-Process engine → MSBuild engine → relaunch mcp/editor
+❌ BAD: Start MSBuild while another agent holds the build lease
+✅ GOOD: acquire lease → Stop-Process engine → MSBuild engine → relaunch mcp/editor → release lease
 ```

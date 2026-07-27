@@ -13,7 +13,7 @@ The art style and comedy should reinforce one another. Dark player choices may p
 
 Supernatural power is **deliberately limited**. Ordinary people and rank-and-file faction members are not wizards. Meaningful magical capability is **rare** and usually comes from:
 
-- **Major artifacts** — chief among them the **Nefarium Shroud** (primary story contention) and a separate Creator-origin crystal/relic associated with Cristallo / Creotar that polarizes against the Shroud but is intentionally weaker than it.
+- **Major artifacts** — chief among them the **Nefarium Shroud** (primary story contention) and a separate Creator-origin crystal/relic associated with Cristallo / Creotar that **cleanses Nefarium corruption** on contact (inverse of the Shroud) but is intentionally weaker than it. Guarded by the Cristallo **White Lotus** order (draft lock 2026-07-22).
 - **Minor relics** — tribal / regional attunements (e.g. Thalassar **Anál Muir** under a Muirthalia water-deity rite) that grant distinct but lesser abilities to a rite-passed leader, not to an entire culture as a racial kit. Minor relics stay ≪ **Nefarium Shroud**.
 
 Do not treat faction flavor (pirates, druids, knights) as blanket magic classes. Attunement rules and whether proposed coastal abilities (water-walking, enhanced breath) are literal or abstracted remain **open** — see [factions.md](factions.md#design-session-2026-07-20-coastal-arrotrebae--relics--act-1-draft).
@@ -24,7 +24,11 @@ Tessera exists independently of the player; the protagonist is native to the set
 
 The player's choices influence two initially neutral factions, potentially turning them toward good or evil. Relationships and companions give those choices personal consequences in addition to political ones.
 
-Character creation at new-game start is defined in [DEC-0009](../decisions/index.md#dec-0009-starting-archetype-character-creation). The player customizes a Tessera-native protagonist and selects a starting archetype—**Squire**, **Archer**, or **Acolyte**—rather than always playing a Squire.
+Character creation at new-game start is defined in [DEC-0009](../decisions/index.md#dec-0009-starting-archetype-character-creation) and [DEC-0044](../decisions/index.md#dec-0044-starting-archetype-lane-orgs-and-rename). The player customizes a Tessera-native protagonist and selects a starting archetype—**Ashfell Blade**, **Outrider**, or **Runecaster**—each with a lane home org that later binds into major faction politics.
+
+**Playable peoples (draft lock, 2026-07-22):** campaign focus stays on **humans and orcs only** for v1 — deliberate scope; no elves, dwarves, or other fantasy races in the core cast/faction contrast.
+
+**Co-op ([DEC-0042](../decisions/index.md#dec-0042-online-co-op-session-model-mode-locked-saves)):** primary experience is **single-player** (Skyrim-like), with optional **online 2-player co-op** (Fable-like). **Solo and co-op are separate save modes** — co-op requires both players for the session; no solo fallback mid co-op save. Shared **campaign progression**, **faction standing**, and **morality**; party up to **four** (solo: 1 human + 3 companions; co-op: 2 humans + 2 companions). Host creates lobby → guest joins → both **ready** to start; guest disconnect → untimed reconnect pause; host may end session; **major story forks need both players' agreement**.
 
 ## Morality and Allegiance
 
@@ -43,7 +47,7 @@ Superseded for structure by the [Campaign Beat Sheet](campaign-beat-sheet.md) ([
 Historical imported outline (kept for provenance):
 
 1. Start a new game and watch the opening cutscene.
-2. Customize the protagonist, select a starting archetype (Squire, Archer, or Acolyte), and select difficulty.
+2. Customize the protagonist, select a starting archetype (Ashfell Blade, Outrider, or Runecaster), and select difficulty.
 3. Enter a tutorial battlefield through a second cutscene.
 4. Meet major antagonists and an initial companion.
 5. Learn basic combat, turret, and battlefield mechanics.

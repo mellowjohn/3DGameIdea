@@ -21,7 +21,7 @@ The runtime mesh path accepts glTF 2.0 `.gltf` and `.glb` assets through fastglt
 
 ## Skeletal / skin subset (TICKET-0101)
 
-The importer also reads a documented glTF skinning subset into engine-owned structures on `ImportedMesh`. This proves the M5 skeletal import path. Animation clips are a separate import: see [`animation-clip-assets.md`](animation-clip-assets.md) (TICKET-0102). GPU skinning playback remains a follow-on.
+The importer also reads a documented glTF skinning subset into engine-owned structures on `ImportedMesh`. This proves the M5 skeletal import path. Animation clips are a separate import: see [`animation-clip-assets.md`](animation-clip-assets.md) (TICKET-0102). Play-test **GPU LBS skinning** (TICKET-0227 / [DEC-0047](../decisions/index.md#dec-0047-frame-upload-ring-and-gpu-lbs-skinning)) uploads bind-pose JOINTS/WEIGHTS into the shared VB and skins in the lit/shadow VS from a CPU-built bone palette (`MAX_BONES = 64`).
 
 ### Supported
 
@@ -53,7 +53,7 @@ The importer also reads a documented glTF skinning subset into engine-owned stru
 - Sparse accessors for skinning attributes.
 - Animation clip **formats** are documented in [`animation-clip-assets.md`](animation-clip-assets.md); this mesh subset still does not import clips into `ImportedMesh`.
 - Node hierarchy bake into a runtime skeleton pose beyond storing joint node indices / names / IBMs.
-- GPU skinning upload.
+- Catalog-wide NPC/prop GPU skinning (player play-test path is live; general enablement is follow-on).
 
 Retargeting metadata and IK hooks ship as authorable `*.rig.json` ([`rig-assets.md`](rig-assets.md), TICKET-0106 / DEC-0041) — not embedded in the glTF importer.
 
@@ -63,18 +63,26 @@ Normals, tangents, full node-transform baking for static meshes, mesh optimizati
 
 The sample `dead-tree.gltf` was authored for this project, has no external source content, and may be modified and used commercially with the project.
 
-`campfire.gltf` is a registry path for the project-owned procedural campfire mesh (stone ring, crossed logs, and flame) generated at import time.
+`campfire.gltf` is the Blockbench campfire bake (**stone ring + cylindrical logs** — no flame mesh). Source: `tools/art/campfire/Campfire_New.gltf`. Rebake with `python tools/bake_tier1_props_gltf.py` (feet at y=0, ~1.3 m ring diameter, atlas `campfire.png`). Bake flips inside-out primitives and snaps transparent UVs to opaque atlas texels so prop albedo sampling matches Blockbench’s shaded view. Prefab keeps warm point light, solid staticWorld sphere, and `use_campfire` trigger. Flame deferred to particles (`effects_campfire_flame`).
 
-`player.gltf` is the open-world RPG starting player visual (Blockbench v1 bake). Source export: `tools/art/player/player.blockbench.gltf`. Rebake with `tools/bake_player_gltf.py`, which flattens node transforms, emits `TEXCOORD_0`, writes the atlas to `player.png` next to the glTF (referenced via a `baseColorTexture` material), also bakes a `COLOR_0` fallback, and normalizes feet at y=0 / height ≈ 1.8 m. The GPU now samples `player.png` (point/clamp) so eyes/clothing atlas detail shows in Scene/playtest. No locomotion clips yet — static mesh only until animation authoring.
+`player.gltf` is the open-world RPG starting player visual (**Player_V2** Blockbench bake: skinned mesh + `Idle`/`HandGrip` clips + `player.png` atlas + **37 joints** including per-digit hand bones). Prefer a fresh Blockbench glTF export at `Documents/Models/Player_V2_rigged.gltf` (fallback: `Documents/Player_V2_rigged.gltf` or `tools/art/player/Player_V2_rigged.gltf`). Atlas: `Documents/Player_V2.png`. Rebake with `python tools/bake_player_v2_gltf.py` (clears atlas backdrop, pads UV islands, normalizes feet at y=0 / height ≈ 2.75 m; keeps Blockbench UV V as-is for D3D). Optional custom path: `python tools/export_player_v2_bbmodel_gltf.py` then bake. Hand bones: `Left`/`Right` + `Thumb`/`Index`/`Middle`/`Ring`/`Pinky` + `1`/`2` under each hand. Joint names match `assets/characters/player.rig.json`. Animator idle pulls `Idle` from this file; walk/attack stubs remain in `player_clips.gltf` until authored. **NPC test stand-in:** `assets/prefabs/NPC/npc_test.prefab.json` (+ optional `assets/characters/npc_test.character.json`) reuses the same `player.gltf` mesh without a player-spawn binding. **Playtest GPU skinning** samples animator clips, builds skin matrices on CPU, and deforms in the VS (bind-pose VB). Legacy static v1 bake: `tools/bake_player_gltf.py` + `tools/art/player/player.blockbench.gltf`.
 
-`tree.gltf` is the open-world RPG scene tree visual (Blockbench free-mesh bake). Source: `tools/art/tree/Tree.bbmodel`. Rebake with `tools/bake_tree_bbmodel.py`, which triangulates mesh elements, emits `TEXCOORD_0`, writes the atlas to `tree.png`, bakes a `COLOR_0` fallback, and normalizes feet at y=0 / height ≈ 3.0 m. The `tree.prefab.json` Scene Asset references this mesh.
+`tree.gltf` is the open-world RPG scene tree visual (Blockbench free-mesh bake). Source: `tools/art/tree/Tree.bbmodel`. Rebake with `tools/bake_tree_bbmodel.py`, which triangulates mesh elements, emits `TEXCOORD_0`, writes the atlas to `tree.png`, bakes a `COLOR_0` fallback, and normalizes feet at y=0 / height ≈ 3.0 m. The `tree.prefab.json` Scene Asset references this mesh with a trunk capsule collider (prefab-local; mesh entity scale is typically 3×).
 
-Oak silhouette variants derived from the same Blockbench oak (shared `tree.png` atlas): `oak_wide.gltf`, `oak_tall.gltf`, `oak_lean.gltf`, `oak_asymmetric.gltf`, `oak_young.gltf`. Sources under `tools/art/tree/variants/`. Regenerate with `python tools/generate_oak_variants.py`. Matching Scene Asset prefabs: `oak_wide`, `oak_tall`, `oak_lean`, `oak_asymmetric`, `oak_young`.
+Oak silhouette variants derived from the same Blockbench oak (shared `tree.png` atlas): `oak_wide.gltf`, `oak_tall.gltf`, `oak_lean.gltf`, `oak_asymmetric.gltf`, `oak_young.gltf`. Sources under `tools/art/tree/variants/`. Regenerate with `python tools/generate_oak_variants.py`. Matching Scene Asset prefabs: `oak_wide`, `oak_tall`, `oak_lean`, `oak_asymmetric`, `oak_young` (each with a staticWorld trunk capsule sized for its mesh scale).
 
-`stones.gltf` is a small Blockbench rock cluster bake. Source: `tools/art/stones/Stones.gltf`. Rebake with `tools/bake_stones_gltf.py` (feet at y=0, height ≈ 0.45 m, atlas `stones.png`). Prefab: `assets/prefabs/Scene Assets/stones.prefab.json`.
+`stones.gltf` is a small Blockbench rock cluster bake. Source: `tools/art/stones/Stones.gltf`. Rebake with `tools/bake_stones_gltf.py` (feet at y=0, height ≈ 0.45 m, atlas `stones.png`). Prefab: `assets/prefabs/Scene Assets/stones.prefab.json` (staticWorld box).
 
-`dead_log.gltf` is a fallen Blockbench log bake. Source: `tools/art/dead-log/DeadLog.gltf` (`.bbmodel` alongside). Rebake with `tools/bake_dead_log_gltf.py` (feet at y=0, thickness ≈ 0.45 m, atlas `dead_log.png`). Prefab: `assets/prefabs/Scene Assets/dead_log.prefab.json`.
+`dead_log.gltf` is a fallen Blockbench log bake. Source: `tools/art/dead-log/DeadLog.gltf` (`.bbmodel` alongside). Rebake with `tools/bake_dead_log_gltf.py` (feet at y=0, thickness ≈ 0.45 m, atlas `dead_log.png`). Prefab: `assets/prefabs/Scene Assets/dead_log.prefab.json` (staticWorld box).
 
-`stump.gltf` is a cut Blockbench stump bake. Source: `tools/art/stump/Stump.gltf` (`.bbmodel` alongside). Rebake with `tools/bake_stump_gltf.py` (feet at y=0, height ≈ 0.55 m, atlas `stump.png`). Prefab: `assets/prefabs/Scene Assets/stump.prefab.json`.
+`stump.gltf` is a cut Blockbench stump bake. Source: `tools/art/stump/Stump.gltf` (`.bbmodel` alongside). Rebake with `tools/bake_stump_gltf.py` (feet at y=0, height ≈ 0.55 m, atlas `stump.png`). Prefab: `assets/prefabs/Scene Assets/stump.prefab.json` (staticWorld capsule).
+
+`crate.gltf` is a Blockbench supply-crate bake. Source: `tools/art/crate/Crate.gltf` (also mirrored from `Documents/Models/Crate.gltf`). Rebake with `python tools/bake_tier1_props_gltf.py` (generator `v2-uv-snap`; feet at y=0, height ≈ 1.0 m, atlas `crate.png`). Prefab: `assets/prefabs/Scene Assets/crate.prefab.json` (staticWorld box collider). Atlas paint is very dark brown — if it reads as black in-engine, check lighting before assuming a missing texture.
+
+`bush.gltf` / `bush_tall.gltf` are Blockbench shrub bakes. Sources: `tools/art/bush/Bush.gltf`, `tools/art/tall-bush/Tall_Bush.gltf` (tall also mirrored from `Documents/Models/Tall_Bush.gltf`). Rebake with `python tools/bake_tier1_props_gltf.py` / `... bush_tall` (tall generator `v2-uv-snap`; feet at y=0; heights ≈ 1.25 m / 1.9 m; atlases `bush.png` / `bush_tall.png`). Prefabs: `bush.prefab.json`, `bush_tall.prefab.json` (staticWorld sphere colliders). `bush_wide` remains primitive-composed until a wide mesh ships (also has a static sphere collider; do not place new instances — see no-bush-wide rule).
+
+`barrel.gltf` is a Blockbench barrel bake. Source: `tools/art/barrel/Barrel.gltf`. Rebake with `python tools/bake_tier1_props_gltf.py barrel` (feet at y=0, height ≈ 1.0 m, atlas `barrel.png`). Prefab: `assets/prefabs/Scene Assets/barrel.prefab.json` (staticWorld capsule).
+
+`lantern.gltf` / `wall_torch.gltf` are Blockbench light props. Sources: `tools/art/lantern/Lantern.gltf`, `tools/art/wall-torch/Wall_Torch.gltf` (torch also mirrored from `Documents/Models/Wall Torch.gltf`). Rebake with `python tools/bake_tier1_props_gltf.py lantern wall_torch` (torch generator `v2-uv-snap`; feet at y=0; heights ≈ 0.55 m / 0.7 m; atlases `lantern.png` / `wall_torch.png`). Bake clears Blockbench near-white / pale UV-editor backdrop texels before UV snap. Prefabs include warm point lights; wall torch ships layered particles (`wall_torch_{core,flame,embers,smoke}`).
 
 Planned Blockbench props, character kits, and set pieces (not yet authored) are tracked in [`context/art/blockbench-asset-list.md`](../art/blockbench-asset-list.md).

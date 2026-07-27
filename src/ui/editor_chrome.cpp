@@ -3,6 +3,7 @@
 #include "imgui.h"
 
 #include <algorithm>
+#include <cstdio>
 
 namespace engine {
 namespace EditorChrome {
@@ -110,7 +111,8 @@ void push_panel_colors() {
 void pop_panel_colors() { ImGui::PopStyleColor(11); }
 
 void draw_app_header(const std::filesystem::path& project_root, const char* active_area, bool scene_dirty,
-    bool world_forge_dirty, const std::string& status_line, bool* request_save, EditorUiHotspotRegistry* hotspots) {
+    bool world_forge_dirty, const std::string& status_line, bool* request_save, EditorUiHotspotRegistry* hotspots,
+    const char* world_stem, std::uint64_t app_icon_tex) {
     const auto* main = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(main->WorkPos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(main->WorkSize.x, kHeaderHeight), ImGuiCond_Always);
@@ -130,12 +132,24 @@ void draw_app_header(const std::filesystem::path& project_root, const char* acti
             ImGui::ColorConvertFloat4ToU32(kBronze), 2.0f);
     }
 
-    ImGui::SetCursorPosY((kHeaderHeight - ImGui::GetTextLineHeight()) * 0.5f);
+    constexpr float kIconSize = 36.0f;
+    ImGui::SetCursorPosY((kHeaderHeight - (app_icon_tex != 0 ? kIconSize : ImGui::GetTextLineHeight())) * 0.5f);
+    if (app_icon_tex != 0) {
+        ImGui::Image(static_cast<ImTextureID>(app_icon_tex), ImVec2(kIconSize, kIconSize));
+        ImGui::SameLine(0.0f, 12.0f);
+        ImGui::SetCursorPosY((kHeaderHeight - ImGui::GetTextLineHeight()) * 0.5f);
+    }
     ImGui::TextColored(kGold, "RPG ENGINE");
     ImGui::SameLine(0.0f, 16.0f);
     ImGui::TextColored(kMuted, "%s /", project_display_name(project_root).c_str());
     ImGui::SameLine(0.0f, 6.0f);
     ImGui::TextUnformatted(active_area && active_area[0] ? active_area : "Scene");
+    if (world_stem && world_stem[0]) {
+        ImGui::SameLine(0.0f, 6.0f);
+        ImGui::TextColored(kMuted, "·");
+        ImGui::SameLine(0.0f, 6.0f);
+        ImGui::TextColored(kText, "%s", world_stem);
+    }
 
     const bool dirty = scene_dirty || world_forge_dirty;
     const float right_reserve = 220.0f;
@@ -161,6 +175,52 @@ void draw_app_header(const std::filesystem::path& project_root, const char* acti
     ImGui::End();
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor(2);
+}
+
+void draw_boot_overlay(const char* stage, const char* detail, float progress01, std::uint64_t app_icon_tex) {
+    const auto* main = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(main->Pos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(main->Size, ImGuiCond_Always);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, kChrome);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(48.0f, 48.0f));
+    ImGui::Begin("##EditorBootOverlay", nullptr,
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoNav |
+            ImGuiWindowFlags_NoBringToFrontOnFocus);
+    const float content_w = std::min(520.0f, main->Size.x - 96.0f);
+    const float icon_block = app_icon_tex != 0 ? 104.0f : 0.0f;
+    const float block_h = 160.0f + icon_block;
+    ImGui::SetCursorPos(ImVec2((main->Size.x - content_w) * 0.5f, (main->Size.y - block_h) * 0.5f));
+    ImGui::BeginChild("##EditorBootContent", ImVec2(content_w, block_h), false,
+        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    if (app_icon_tex != 0) {
+        constexpr float kBootIcon = 88.0f;
+        ImGui::SetCursorPosX((content_w - kBootIcon) * 0.5f);
+        ImGui::Image(static_cast<ImTextureID>(app_icon_tex), ImVec2(kBootIcon, kBootIcon));
+        ImGui::Spacing();
+        ImGui::Spacing();
+    }
+    ImGui::TextColored(kGold, "RPG ENGINE");
+    ImGui::Spacing();
+    ImGui::TextColored(kText, "%s", stage && stage[0] ? stage : "Loading");
+    if (detail && detail[0]) {
+        ImGui::TextColored(kMuted, "%s", detail);
+    } else {
+        ImGui::TextUnformatted(" ");
+    }
+    ImGui::Spacing();
+    const float clamped = std::clamp(progress01, 0.0f, 1.0f);
+    char pct[32];
+    std::snprintf(pct, sizeof(pct), "%.0f%%", clamped * 100.0f);
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, kGold);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, kPanel2);
+    ImGui::ProgressBar(clamped, ImVec2(-1.0f, 18.0f), pct);
+    ImGui::PopStyleColor(2);
+    ImGui::EndChild();
+    ImGui::End();
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(1);
 }
 
 } // namespace EditorChrome

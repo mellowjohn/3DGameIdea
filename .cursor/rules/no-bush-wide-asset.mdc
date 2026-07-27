@@ -1,0 +1,35 @@
+---
+description: Do not place or scatter the legacy bush_wide prefab/foliage; use bush or bush_tall
+alwaysApply: true
+---
+
+# No Legacy Wide Bush Asset
+
+Do **not** use the old wide bush asset for scene placement or new foliage authoring.
+
+## Banned
+
+- Prefab: `assets/prefabs/Scene Assets/bush_wide.prefab.json` (any path casing)
+- Foliage layer / meshKind: `bush_wide` for new paint or scatter work
+
+## Prefer
+
+- `assets/prefabs/Scene Assets/bush.prefab.json` (Blockbench bake)
+- `assets/prefabs/Scene Assets/bush_tall.prefab.json` (Blockbench bake)
+- Foliage layers `bush` or `bush_tall` when painting GPU undergrowth
+
+## Rules
+
+1. New forest, meadow, and prop placements must never instantiate `bush_wide`.
+2. When densifying or expanding foliage, replace any encountered `bush_wide` prefab instances with `bush` or `bush_tall` (or remove them) in the same edit.
+3. Do not add new `bush_wide` entries to foliage layer palettes or sample worlds.
+
+## Examples
+
+```text
+❌ BAD: place bush_wide.prefab.json for undergrowth fill
+✅ GOOD: place bush.prefab.json or bush_tall.prefab.json
+
+❌ BAD: paint_foliage layer=bush_wide
+✅ GOOD: paint_foliage layer=bush or bush_tall
+```

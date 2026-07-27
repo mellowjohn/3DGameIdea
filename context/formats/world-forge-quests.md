@@ -95,15 +95,27 @@ Error codes: `WORLD-FORGE-QUEST-*` (see `WorldForgeQuestsAsset`).
 
 ## Runtime (TICKET-0180 / DEC-0028)
 
-Session-only `QuestRuntime` (`bind` → `start` / `complete_objective` / `abandon` / `status` / `list_active`).
+Session-only `QuestRuntime` (`bind` → `start` / `complete_objective` / `abandon` / `resolve_fork` / `status` / `list_active`).
 
 - **Explicit completion only** — dialogue, collect/kill scripts, and MCP all call the same API; `DialogueRuntime` does not auto-advance quests.
 - Objectives complete **in catalog order** (current = first incomplete).
 - `dialogue_for_stage` returns hooked tree ids (`start` / current objective / `complete` / `abandon`) without mutating progress.
-- Live surfaces: Lua `engine.quest_*`; MCP `engine_quest_call`; HUD bind `quest.objectiveText`.
-- Persistence is **not** in this format — see TICKET-0114.
+- `resolve_fork(questId, forkId, outcomeFlag, FlagRuntime&)` validates an authored fork outcome, clears sibling `outcomeFlags`, then sets the chosen flag ([DEC-0046](../decisions/index.md#dec-0046-session-story-flag-runtime)).
+- Live surfaces: Lua `engine.quest_*` (+ `quest_resolve_fork`); MCP `engine_quest_call` (incl. `resolve_fork`); HUD bind `quest.objectiveText`.
+- Persistence is **not** in this format — see TICKET-0114 / FlagRuntime `outcomeFlags`.
 
 Error codes: `QUEST-RUNTIME-*`.
+
+## Flag runtime (TICKET-0225 / DEC-0046)
+
+Session `FlagRuntime` (`set` / `clear` / `has` / `list` / `restore`).
+
+- Dialogue choice `setFlags` apply into the session store on choose (does not advance quests).
+- Soft-gate / journal consumers read `has` later; not part of this runtime ticket.
+- Live surfaces: Lua `engine.flag_*`; MCP `engine_flag_call`.
+- Save: `sharedCampaign.outcomeFlags` via `RpgSaveDocument::capture_from` / `hydrate_into`.
+
+Error codes: `FLAG-RUNTIME-*`.
 
 ## Standing runtime (TICKET-0181 / DEC-0029)
 

@@ -1,0 +1,113 @@
+{
+  "collision": [
+    {
+      "halfExtent": [
+        0.12,
+        0.32,
+        0.18
+      ],
+      "id": "collision-0",
+      "layer": "staticWorld",
+      "shape": "box",
+      "transform": {
+        "position": [
+          0,
+          0.35,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    }
+  ],
+  "entities": [
+    {
+      "mesh": {
+        "asset": "assets/models/wall_torch.gltf"
+      },
+      "name": "WallTorch",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "light": {
+    "color": [
+      1,
+      0.55,
+      0.2
+    ],
+    "offset": [
+      0,
+      0.68,
+      0.1
+    ],
+    "radius": 18,
+    "strength": 1.55
+  },
+  "particles": [
+    {
+      "asset": "assets/vfx/wall_torch_core.particle.json",
+      "enabled": true,
+      "offset": [
+        0,
+        0.68,
+        0.1
+      ]
+    },
+    {
+      "asset": "assets/vfx/wall_torch_flame.particle.json",
+      "enabled": true,
+      "offset": [
+        0,
+        0.7,
+        0.1
+      ]
+    },
+    {
+      "asset": "assets/vfx/wall_torch_embers.particle.json",
+      "enabled": true,
+      "offset": [
+        0,
+        0.74,
+        0.1
+      ]
+    },
+    {
+      "asset": "assets/vfx/wall_torch_smoke.particle.json",
+      "enabled": true,
+      "offset": [
+        0,
+        0.9,
+        0.1
+      ]
+    }
+  ],
+  "schemaVersion": 2
+}

@@ -11,14 +11,14 @@ Command-backed read/validate/write for World Forge narrative assets. Shares one 
 | Param | Required | Notes |
 | --- | --- | --- |
 | `action` | yes | `get` (alias `read`), `validate`, `apply` (alias `write`), `import_twee` (alias `import-twee`) |
-| `kind` | usually | `factions` \| `pantheon` \| `archetypes` \| `relationships` \| `map` \| `quests` \| `dialogues` |
+| `kind` | usually | `factions` \| `pantheon` \| `archetypes` \| `resources` \| `relationships` \| `map` \| `quests` \| `dialogues` \| `events` |
 | `path` | optional | Relative `*.worldforge.json`; used to infer kind if omitted |
 | `json` / `source` | for apply | Full asset JSON object or string |
 | `tweePath` | for `import_twee` | Path to Harlowe `.twee` (absolute or relative to project) |
 | `treeId` | for `import_twee` | Dialogue tree id to create or replace |
 | `displayName` / `parentQuestId` / `entryNodeId` / `storyRef` | optional | Twine import metadata |
 
-Default paths when `path` omitted: `assets/world-forge/factions.worldforge.json`, `pantheon.worldforge.json`, `archetypes.worldforge.json`, `relationships.worldforge.json`, `map.worldforge.json`, `quests.worldforge.json`, `dialogues.worldforge.json`.
+Default paths when `path` omitted: `assets/world-forge/factions.worldforge.json`, `pantheon.worldforge.json`, `archetypes.worldforge.json`, `resources.worldforge.json`, `relationships.worldforge.json`, `map.worldforge.json`, `quests.worldforge.json`, `dialogues.worldforge.json`, `events.worldforge.json`.
 
 ## Behavior
 
@@ -27,6 +27,7 @@ Default paths when `path` omitted: `assets/world-forge/factions.worldforge.json`
 - Relationships/map/archetypes apply/validate cross-check faction ids against the factions asset when present (`unlock.factionId` for archetypes).
 - Quests apply/validate soft-check `regionId` against the map asset when present.
 - Dialogues apply/validate soft-check `parentQuestId` against the quests asset when present.
+- Events apply/validate soft-check `start_dialogue.dialogueId` against the dialogues asset when present (TICKET-0223).
 - `import_twee` (dialogues only): parse a Twine `.twee` into one tree and upsert into the dialogues asset (TICKET-0054).
 - Not Scene/Sculpt: do not place meshes here.
 
@@ -36,6 +37,6 @@ Default paths when `path` omitted: `assets/world-forge/factions.worldforge.json`
 
 ## Related
 
-- Formats: factions / pantheon / archetypes / relationships / map / quests / dialogues under `context/formats/`
+- Formats: factions / pantheon / archetypes / resources / relationships / map / quests / dialogues / events under `context/formats/`
 - Implementation: `include/engine/automation/world_forge_commands.h`
 - Workflow: `context/architecture/content-vs-engine-workflows.md`

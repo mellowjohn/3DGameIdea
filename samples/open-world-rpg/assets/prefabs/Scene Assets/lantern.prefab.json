@@ -1,0 +1,71 @@
+{
+  "collision": [
+    {
+      "id": "collision-0",
+      "layer": "staticWorld",
+      "radius": 0.18,
+      "shape": "sphere",
+      "transform": {
+        "position": [
+          0,
+          0.28,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    }
+  ],
+  "entities": [
+    {
+      "mesh": {
+        "asset": "assets/models/lantern.gltf"
+      },
+      "name": "Lantern",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "light": {
+    "color": [
+      1,
+      0.72,
+      0.35
+    ],
+    "offset": [
+      0,
+      0.28,
+      0
+    ],
+    "radius": 14,
+    "strength": 1.15
+  },
+  "schemaVersion": 2
+}

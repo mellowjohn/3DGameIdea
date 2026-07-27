@@ -15,12 +15,19 @@ namespace engine {
 struct InteractionEvent;
 struct CombatContactEvent;
 struct AnimatorFiredEvent;
+struct EventTimelineEmitEvent;
 class HudRuntime;
 class UiCanvasStack;
+class WorldUiBillboardRuntime;
 class QuestRuntime;
 class StandingRuntime;
+class FlagRuntime;
 class AnimatorRuntime;
+class EventTimelineRuntime;
+class DialogueRuntime;
 class AudioEngine;
+class GameSession;
+struct DialogueUiSession;
 
 struct ScriptBindingEntry {
     std::string id;
@@ -51,21 +58,33 @@ public:
     [[nodiscard]] Result<void> validate_script(const std::filesystem::path& absolute_path) const;
 
     void dispatch_interaction(const InteractionEvent& event);
+    /// Explicit interact (e.g. Press E) for a currently prompted interaction id.
+    void dispatch_interaction_use(const std::string& interaction_id);
     void dispatch_combat_hit(const CombatContactEvent& event);
     void dispatch_ui_button(const std::string& bind_id, const std::string& canvas_id, const std::string& widget_id);
     void dispatch_animation_event(const AnimatorFiredEvent& event);
+    void dispatch_event_timeline_emit(const EventTimelineEmitEvent& event);
 
     [[nodiscard]] Result<void> call_handler(const std::string& handler_name, const std::string& payload_json);
 
     [[nodiscard]] std::optional<ScriptBlackboardEntry> blackboard_get(const std::string& key) const;
+    void blackboard_set_bool(const std::string& key, bool value);
     void blackboard_clear();
 
     void set_hud_runtime(HudRuntime* hud) noexcept;
     void set_ui_canvas_stack(UiCanvasStack* stack) noexcept;
+    void set_world_ui_billboards(WorldUiBillboardRuntime* billboards) noexcept;
     void set_quest_runtime(QuestRuntime* quest) noexcept;
     void set_standing_runtime(StandingRuntime* standing) noexcept;
+    void set_flag_runtime(FlagRuntime* flags) noexcept;
     void set_animator_runtime(AnimatorRuntime* animator) noexcept;
+    void set_event_timeline_runtime(EventTimelineRuntime* timeline) noexcept;
+    void set_dialogue_runtime(DialogueRuntime* dialogue) noexcept;
     void set_audio_engine(AudioEngine* audio) noexcept;
+    void set_game_session(GameSession* session) noexcept;
+
+    [[nodiscard]] DialogueUiSession& dialogue_ui_session() noexcept;
+    [[nodiscard]] const DialogueUiSession& dialogue_ui_session() const noexcept;
 
     [[nodiscard]] const std::vector<EngineError>& recent_errors() const noexcept { return recent_errors_; }
     void clear_recent_errors() { recent_errors_.clear(); }

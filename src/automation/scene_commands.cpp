@@ -196,4 +196,11 @@ Result<void> CommandHistory::redo(Scene& scene) {
     return Result<void>::success();
 }
 
+void CommandHistory::clear() noexcept {
+    undo_.clear();
+    redo_.clear();
+    last_summary_.clear();
+    last_changed_object_ids_.clear();
+}
+
 } // namespace engine

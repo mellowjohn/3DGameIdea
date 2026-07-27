@@ -8,6 +8,8 @@ Status: draft — anchored to the Blockbench `tree.gltf` bake (`tools/art/tree/T
 
 Muted dark-fantasy forest that reads with the low-poly tree: warm olive canopy, dusty mauve-brown bark, cooler ground values so trunks and characters stay readable. Saturated color stays reserved for Nefarium / supernatural beats (see [visual-direction.md](visual-direction.md)).
 
+In-game UI chrome (HUD, dialogue, menus) uses a related iron / gold / parchment token set — see [ui-chrome-direction.md](ui-chrome-direction.md). Do not paint combat HUD panels with canopy olive.
+
 ## Core swatches
 
 | Role | Hex | RGB 0–1 | Use |

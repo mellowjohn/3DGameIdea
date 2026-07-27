@@ -4,7 +4,7 @@
 
 The game targets an Unturned-inspired blocky stylized look with a dark-fantasy atmosphere. Terrain is smooth low-poly heightfield geometry rather than stepped voxel blocks. Characters, buildings, trees, rocks, weapons, and other props use simple modular forms, readable proportions, and strong silhouettes.
 
-Player-character proportions, starter kits, and turnaround presentation are defined in [Character Art Direction](character-direction.md), anchored by the starting Squire concept reference. Prioritized Blockbench props, kits, and set pieces for Act 0 → early Act 1 live in [blockbench-asset-list.md](blockbench-asset-list.md).
+Player-character proportions, starter kits, and turnaround presentation are defined in [Character Art Direction](character-direction.md), anchored by the Ashfell Blade (legacy Squire) concept reference. Prioritized Blockbench props, kits, and set pieces for Act 0 → early Act 1 live in [blockbench-asset-list.md](blockbench-asset-list.md). Act 0 Landfall **scene** level-design concepts (approach → camp handoff) live in [concepts/README.md](concepts/README.md).
 
 ## Palette and atmosphere
 
@@ -30,6 +30,10 @@ Player-character proportions, starter kits, and turnaround presentation are defi
 ## Production constraint
 
 The pipeline must remain practical for a developer without advanced modeling or texturing experience. Modular kits, reusable palettes, procedural placement, validation tools, and AI-assisted asset workflows are first-class requirements.
+
+## In-game UI chrome
+
+Player-facing game UI (HUD, dialogue, pause, inventory, menus, world billboards) shares one iron / gold / parchment language documented in [ui-chrome-direction.md](ui-chrome-direction.md). Layout may reference classic RPG combat HUDs; art stays low-poly and blocky. Cartography uses a related but separate map chrome — [cartography-design.md](cartography-design.md).
 
 ## Typography
 
@@ -63,5 +67,5 @@ Typography should reinforce dark fantasy without reducing usability. Ornamental 
 
 - Flat shading versus softened normals on terrain and props.
 - Degree of texture use versus palette-driven materials.
-- Archer and Acolyte starting-kit concept references.
+- Outrider and Runecaster starting-kit concept references.
 - Final licensed font files and fallback coverage — **approved 2026-07-15** (TICKET-0144): Cinzel for in-scene game UI; Roboto for engine chrome; JetBrains Mono for diagnostics; ImGui fallback if files missing.

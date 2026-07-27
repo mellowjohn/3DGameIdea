@@ -46,4 +46,5 @@ Unknown act ids → `WORLD-FORGE-ACT-ID`.
 ## Related
 
 - [`campaign-beat-sheet.md`](../story/campaign-beat-sheet.md)
+- [`world-forge-mvp-readiness.md`](world-forge-mvp-readiness.md) — Act Zero Overview MVP checklist
 - Format notes in quests / dialogues / map / relationships docs

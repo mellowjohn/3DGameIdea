@@ -5,6 +5,21 @@
       "id": "use_campfire",
       "handler": "on_use_campfire",
       "script": "assets/scripts/campfire_interaction.lua"
+    },
+    {
+      "id": "talk_act0",
+      "handler": "on_talk_act0",
+      "script": "assets/scripts/talk_act0_interaction.lua"
+    },
+    {
+      "id": "talk_sandbox",
+      "handler": "on_talk_sandbox",
+      "script": "assets/scripts/talk_sandbox_interaction.lua"
+    },
+    {
+      "id": "event_sandbox",
+      "handler": "on_event_sandbox",
+      "script": "assets/scripts/event_zone_sandbox_interaction.lua"
     }
   ],
   "combatHits": [],

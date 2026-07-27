@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
 #include <sstream>
 #include <unordered_set>
@@ -55,12 +56,32 @@ WorldForgeDialogueChoice read_choice(const nlohmann::json& node) {
     choice.text = node.value("text", std::string{});
     choice.next_node_id = node.value("nextNodeId", std::string{});
     choice.set_flags = read_string_array(node.value("setFlags", nlohmann::json::array()));
+    choice.tone = node.value("tone", std::string{});
+    const auto standing = node.value("standingAdjust", nlohmann::json::array());
+    if (standing.is_array()) {
+        for (const auto& entry : standing) {
+            if (!entry.is_object()) continue;
+            WorldForgeDialogueStandingAdjust adjust;
+            adjust.faction_id = entry.value("factionId", std::string{});
+            adjust.delta = entry.value("delta", 0.0);
+            choice.standing_adjust.push_back(std::move(adjust));
+        }
+    }
     return choice;
 }
 
 nlohmann::ordered_json write_choice(const WorldForgeDialogueChoice& choice) {
-    return nlohmann::ordered_json{{"id", choice.id}, {"text", choice.text}, {"nextNodeId", choice.next_node_id},
+    nlohmann::ordered_json out{{"id", choice.id}, {"text", choice.text}, {"nextNodeId", choice.next_node_id},
         {"setFlags", write_string_array(choice.set_flags)}};
+    if (!choice.tone.empty()) out["tone"] = choice.tone;
+    if (!choice.standing_adjust.empty()) {
+        auto standing = nlohmann::ordered_json::array();
+        for (const auto& adjust : choice.standing_adjust) {
+            standing.push_back(nlohmann::ordered_json{{"factionId", adjust.faction_id}, {"delta", adjust.delta}});
+        }
+        out["standingAdjust"] = std::move(standing);
+    }
+    return out;
 }
 
 WorldForgeDialogueNode read_node(const nlohmann::json& node) {
@@ -131,6 +152,18 @@ Result<void> validate_tree(const WorldForgeDialogueTree& tree) {
                     return Result<void>::failure(dlg_error("WORLD-FORGE-DLG-FLAG", ErrorCategory::Validation,
                         "setFlags entries must be non-empty on tree '" + tree.id + "'",
                         "Remove empty strings from setFlags or omit the array."));
+                }
+            }
+            for (const auto& adjust : choice.standing_adjust) {
+                if (adjust.faction_id.empty()) {
+                    return Result<void>::failure(dlg_error("WORLD-FORGE-DLG-STANDING", ErrorCategory::Validation,
+                        "standingAdjust factionId is required on tree '" + tree.id + "'",
+                        "Set factionId on each standingAdjust entry or omit the array."));
+                }
+                if (!std::isfinite(adjust.delta) || adjust.delta == 0.0) {
+                    return Result<void>::failure(dlg_error("WORLD-FORGE-DLG-STANDING-DELTA", ErrorCategory::Validation,
+                        "standingAdjust delta must be a non-zero finite number on tree '" + tree.id + "'",
+                        "Use a non-zero delta or omit the standingAdjust entry."));
                 }
             }
         }

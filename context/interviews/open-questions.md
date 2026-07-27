@@ -2,7 +2,7 @@
 
 No question blocks milestones 1 or 2. Re-run the project interview skill before decisions that expand shipping platforms, online services, world scale, mod support, or multiplayer.
 
-**World design (Dom):** open P0/P1/P2 items in [`../design/dom-open-questions.md`](../design/dom-open-questions.md); answered locks in [`../design/dom-answered-questions.md`](../design/dom-answered-questions.md). This file keeps the full cross-cutting engine + story backlog.
+**World design (Dom):** open P0/P1/P2 items + Act 0+ **persons / relationships / quests / dialogues** create backlog in [`../design/dom-open-questions.md`](../design/dom-open-questions.md); answered locks in [`../design/dom-answered-questions.md`](../design/dom-answered-questions.md). This file keeps the full cross-cutting engine + story backlog.
 
 ## Entity component authoring
 
@@ -20,32 +20,45 @@ These do not block starting v2 compositional prefab work under [DEC-0008](../dec
 
 Filed from TICKET-0021 review. Full gap list: [`context/story/factions.md`](../story/factions.md#gaps-blocking-world-forge-schema-ticket-0011-and-mid-campaign-beats). Do not invent answers in schema or beat docs.
 
-- Luceran–Frangitur–Shroud: what grants Chaotic Imperium command, and how much agency Luceran retains?
-- Cristallo: faith, hierarchy, politics, and relationship to Creo before the fall?
-- Arrotrebae: ~~council structure~~ (**draft lock:** tribal-leaders council, rite-passed seats only). Still open: **decision rules** when chieftains disagree; named tribes incl. 1–2 Luceran-lost; **The Thalassar** (`thalassar`) locked as first clan — [`factions.md`](../story/factions.md#the-thalassar).
+- ~~Luceran–Frangitur–Shroud: what grants Chaotic Imperium command, and how much agency Luceran retains?~~ — **draft lock 2026-07-22:** Frangitur trapped in Shroud; Luceran commands binding; Act 3 “free Creotar” frees Frangitur.
+- Cristallo: ~~faith, hierarchy, politics~~ — **partial lock 2026-07-22** (Old/New Testament split, White Lotus, crystal cleanses Nefarium). Still open: hierarchy titles, crystal name/location, puppet sub-faction name.
+- Arrotrebae: ~~council structure~~ (**draft lock:** tribal-leaders council, rite-passed seats only). ~~Decision rules~~ **locked 2026-07-22:** majority consensus + champion duel. Still open: council seat roster; Luceran-lost tribe **names**. **The Thalassar** (`thalassar`) locked — not Luceran-fallen; **Underflow** Luceran-influenced.
 - **The Thalassar (locked 2026-07-20):** succession shape + powers locked; council seat vs others open. Liturgy mask **Muirthalia**. Minor relic **Anál Muir** (`anal_muir`). False patron **The Sea of Whispers** — [`factions.md`](../story/factions.md#the-sea-of-whispers).
-- **The Underflow (locked 2026-07-20):** Act 0 inland orc warband (`underflow`); liturgy mask **Grakk-Maren**; A1 usurper path draft — [`factions.md`](../story/factions.md#the-underflow).
+- **The Underflow (locked 2026-07-20):** Act 0 inland orc warband (`underflow`); liturgy mask **Grakk-Maren**; war-chief **Drul’gath** (`drul_gath`); A1 usurper path draft — [`factions.md`](../story/factions.md#the-underflow).
 - ~~Calrenoth pair public liturgy names (D-P0-04)~~ — **locked:** **Muirthalia** / **Grakk-Maren**.
-- ~~**Neutral coastal trade port display name**~~ — **Ledgeport** (`ledgeport`) **confirmed**. Still open: ferry wiring to Cristallo (Dom **D-P0-09**); world coords (D-P2-08).
-- ~~Exact placement evergreen wake vs Ledgeport vs Calrenoth (D-P0-05)~~ — Calrenoth keep; evergreen wake **deprecated** as competing Act 1 geography; focus = **Ledgeport**. Reconcile DEC-0032 wake/camp → Dom **D-P0-10**.
-- **Relic hierarchy (draft):** minor tribal relics ≪ Nefarium Shroud confirmed for **Anál Muir**; name/locate Cristallo Creator-origin crystal.
-- Orc warbands: which warband held the Nefarium Shroud and why; name of the slain great leader? (**2026-07-20:** **The Underflow** locked as Act 0 minor warband — same **Sea of Whispers** cult as Thalassar.)
+- ~~**Neutral coastal trade port display name**~~ — **Ledgeport** (`ledgeport`) **confirmed**. ~~Ferry wiring to Cristallo~~ **yes** to **Porto Lucente** (`porto_lucente`) U-bay (2026-07-22); world coords (D-P2-08).
+- ~~Exact placement evergreen wake vs Ledgeport vs Calrenoth (D-P0-05)~~ — Calrenoth keep; evergreen wake **deprecated** as competing Act 1 geography; focus = **Ledgeport**. ~~DEC-0032 wake/camp~~ → **DA campsite post–Act 0** locked (D-P0-10, 2026-07-22).
+- **Relic hierarchy (draft):** minor tribal relics ≪ Nefarium Shroud confirmed for **Anál Muir**; Cristallo Creator crystal **cleanses Nefarium** (White Lotus guardians) — name/location open.
+- Orc warbands: ~~which warband held the Nefarium Shroud~~ — **The Black Howl** (first war); **Grul’thaz** prior bearer (2026-07-22). **The Underflow** = Act 0 minor warband + Luceran-influenced.
 - Player influence: **model** resolved as [DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer). **Numeric thresholds** remain open.
 - Kingdom of Tessera: playable faction choice vs political arena around other factions?
 - ~~Campaign structure~~ — **resolved** [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances).
 - **Faction theaters / Act 0–1 geography (draft 2026-07-20):** Cristallo = central island; Tessera = west; Imperium = south; Calrenoth tip **confirmed**; Act 0 **Landfall**; **The Thalassar** + **The Underflow**; Act 1 hub **Ledgeport** (focus region). Exact coordinates, borders, 4×4 km footprint still open — [`official-world-map.md`](../story/official-world-map.md#draft-faction-theaters-2026-07-20).
 - Imperium heraldry: dark-crusade / fractured-creator art shipped (`heraldry-chaotic_imperium.png`); owner lock vs revise.
 - **Act 1 dual-path intro (locked draft):** Arrotrebae/Thalassar path ↔ Cristallo path by travel; light standing in Act 1.
-- **Act 1 assassination / succession (draft locks):** lieutenant boss leads plot; trials + champion path + Underflow usurper; person names **TBD**; quest id + standing rewards open — [`campaign-beat-sheet.md`](../story/campaign-beat-sheet.md).
+- **Act 1 assassination / succession (draft locks):** lieutenant boss leads plot; trials + champion path + Underflow usurper; person names **TBD**; quest id + standing rewards open — Dom rows **D-P1-12** / **D-P1-15** / **D-P1-16** in [`dom-open-questions.md`](../design/dom-open-questions.md); beat sheet [`campaign-beat-sheet.md`](../story/campaign-beat-sheet.md).
+- **Act 0+ cast / hub authoring (queued 2026-07-22):** ~~Underflow war-chief~~ **Drul’gath** locked; ~~Grenge/Larrell/Damius fates~~ survive-by-default + optional hostage (D-P0-12); ~~Asher–Luceran kinship~~ **established** half-brothers (D-P0-13). Remaining: Ledgeport faces, Vanessa intro, camp tutorial beats, White Lotus contacts — see Dom **D-P1-13…20** + create backlog in [`dom-open-questions.md`](../design/dom-open-questions.md#story-authoring-priority-create-backlog).
 
 **Update 2026-07-15:** Open-world vs chapter-lock **resolved** as [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances). Beat sheet: [`campaign-beat-sheet.md`](../story/campaign-beat-sheet.md). Remaining story opens from Act 0 Twine:
 
 - ~~Creotar vs Creo/Frangitur~~ — **resolved 2026-07-20:** Creotar = Creo (short); Frangitur = fallen form. Destroy-Shroud guidance vs Frangitur “rip Tessera apart” irony still open.
-- Crystal location (Twine stubs empty); who holds it
-- ~~Wake-up / O’hlundian evergreens vs first hub~~ — first hub = **Ledgeport** (confirmed). Named evergreen wake deprecated as Act 1 geography competitor (D-P0-05); DEC-0032 wake/camp reconcile still open (Dom D-P0-10)
+- Crystal **name/location** (Twine stubs empty); **White Lotus** guardians + cleanse behavior locked 2026-07-22
+- ~~Wake-up / O’hlundian evergreens vs first hub~~ — first hub = **Ledgeport** (confirmed). Named evergreen wake deprecated; **DA campsite post–Act 0** locked (D-P0-10, 2026-07-22)
 - ~~Wild God revival chronology vs Calrenoth Act 0 spine~~ — **resolved** for default spine: Calrenoth / **Landfall** (Wild God remains alternate/open)
 - Acts 1–4 not yet in Twine (planning beats only)
 - Which consequential side quests ([side-quest-catalog.md](../story/side-quest-catalog.md)) can flip faction lock-in vs only nudge standing (blocked on morality thresholds)
+
+## Starting archetypes / lane orgs (DEC-0044)
+
+**Resolved 2026-07-24** as [DEC-0044](../decisions/index.md#dec-0044-starting-archetype-lane-orgs-and-rename): starters are **Ashfell Blade** / **Outrider** / **Runecaster** with home orgs House Ashfell / Outrider Lodge / Runecaster Guild; hybrid bind into major factions; Runecaster ≠ crystal-guardian order.
+
+Still open:
+
+- Combat **systems** and party/build **comps** per lane (readiness `archetype_systems_comps_pass`)
+- Dom confirm/rename House Ashfell + name Lodge/Guild/house faces (D-P1-21 / D-P1-22)
+- First home-org quest seeds (`archetype_lane_org_quests`)
+- Outrider + Runecaster kit turnarounds
+- Advanced specialization lists (post-demo)
 
 ## Campaign gating (TICKET-0020)
 

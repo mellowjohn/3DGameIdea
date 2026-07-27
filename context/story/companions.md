@@ -48,7 +48,7 @@ Early class-level concepts also mention:
 
 - A ranger: a well-rounded warrior from distant lands.
 - A mistress-sage: a magic user and support character.
-- Starting archetype player kits for Squire, Archer, and Acolyte ([DEC-0009](../decisions/index.md#dec-0009-starting-archetype-character-creation)).
+- Starting archetype player kits for Ashfell Blade, Outrider, and Runecaster ([DEC-0044](../decisions/index.md#dec-0044-starting-archetype-lane-orgs-and-rename)).
 
 These concepts do not yet have established identities or confirmed companion status.
 

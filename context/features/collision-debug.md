@@ -33,6 +33,8 @@ Diagnostics panel toggle **Show collision debug** draws collision bounds in the 
 - Orange wireframes: dynamic bodies (including Rigidbody motion bodies from TICKET-0197)
 - Red crosses: recent contact points (when physics events are available)
 
+Separate Diagnostics toggle **Show event zones** (default on) draws only authored interaction/event volumes in violet with interaction-id labels, without enabling full collision debug.
+
 Toggle state is session-local and not persisted. When placement collision is active, the editor steps physics each frame and records recent trigger enter contact points for the overlay. During play/test, `PlacementCollisionTracker` writes Rigidbody motion-body poses back to entity transforms; outside play/test, authored dynamic Rigidbodies spawn as kinematic so they do not fall while editing.
 
 ## Prefab collision
@@ -40,6 +42,7 @@ Toggle state is session-local and not persisted. When placement collision is act
 Versioned prefab JSON may include a `collision` array (see `context/formats/prefab-assets.md`). Each volume specifies shape, layer, optional trigger flag, local transform, and size.
 
 - Editor **Show collision debug** draws prefab placement volumes alongside streamed terrain physics.
+- Editor **Show event zones** draws interaction volumes (with labels) without the full collision dump.
 - Bodies are owned by the placement partition cell and unload with `CollisionWorld::unload_cell()`.
 - With an authored **Rigidbody**, the first solid collider becomes a Dynamic-layer motion body (`CollisionBodySettings`); remaining sensors stay triggers. Multi-solid compounds are deferred (first solid only).
 - Rotated box debug wireframes remain axis-aligned approximations; physics uses the authored orientation.

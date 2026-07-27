@@ -1,37 +1,745 @@
 {
-  "designResolution": [1920.0, 1080.0],
+  "designResolution": [
+    1920.0,
+    1080.0
+  ],
   "id": "player_hud",
   "schemaVersion": 1,
   "widgets": [
     {
-      "anchor": "top_left",
-      "id": "player_health_panel",
-      "offset": [24.0, 24.0],
-      "size": [280.0, 88.0],
-      "type": "panel",
-      "color": [201, 184, 150, 240]
+      "anchor": "bottom_left",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "hud_face_mid",
+      "offset": [
+        56.0,
+        56.0
+      ],
+      "size": [
+        128.0,
+        128.0
+      ],
+      "type": "panel"
     },
     {
-      "anchor": "top_left",
+      "anchor": "bottom_left",
+      "color": [
+        92.0,
+        78.0,
+        58.0,
+        255.0
+      ],
+      "id": "hud_face_viewport",
+      "offset": [
+        68.0,
+        68.0
+      ],
+      "size": [
+        104.0,
+        104.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        42.0,
+        40.0,
+        38.0,
+        255.0
+      ],
+      "id": "hud_face_outer",
+      "image": "assets/ui/hud/hud-portrait-ring-hollow.png",
+      "imageMode": "contain",
+      "offset": [
+        40.0,
+        40.0
+      ],
+      "size": [
+        160.0,
+        160.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "hud.faceLabel",
+      "color": [
+        201.0,
+        184.0,
+        150.0,
+        255.0
+      ],
+      "fontSize": 16.0,
+      "id": "hud_face_label",
+      "offset": [
+        68.0,
+        68.0
+      ],
+      "size": [
+        104.0,
+        104.0
+      ],
+      "text": "FACE",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "player.name",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 26.0,
+      "id": "player_name",
+      "offset": [
+        224.0,
+        161.0
+      ],
+      "size": [
+        340.0,
+        26.0
+      ],
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "hud.healthLabel",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "player_health_label",
+      "offset": [
+        224.0,
+        139.0
+      ],
+      "size": [
+        120.0,
+        16.0
+      ],
+      "text": "Health",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        255.0
+      ],
+      "id": "player_health_frame",
+      "image": "assets/ui/hud/hud-resource-bar.png",
+      "offset": [
+        224.0,
+        107.0
+      ],
+      "size": [
+        340.0,
+        28.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
       "bind": "player.health",
+      "color": [
+        139.0,
+        46.0,
+        46.0,
+        255.0
+      ],
       "id": "player_health",
-      "label": "Health",
       "maxBind": "player.healthMax",
-      "offset": [40.0, 52.0],
-      "size": [248.0, 14.0],
-      "type": "bar",
-      "color": [139, 58, 58, 255],
-      "fontSize": 16.0
+      "offset": [
+        242.0,
+        113.0
+      ],
+      "size": [
+        304.0,
+        16.0
+      ],
+      "type": "bar"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "player.healthText",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "player_health_text",
+      "offset": [
+        252.0,
+        137.0
+      ],
+      "size": [
+        300.0,
+        18.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "player.resourceLabel",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "player_resource_label",
+      "offset": [
+        224.0,
+        83.0
+      ],
+      "size": [
+        120.0,
+        16.0
+      ],
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        255.0
+      ],
+      "id": "player_resource_frame",
+      "image": "assets/ui/hud/hud-resource-bar.png",
+      "offset": [
+        224.0,
+        51.0
+      ],
+      "size": [
+        340.0,
+        28.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "player.resource",
+      "color": [
+        196.0,
+        162.0,
+        74.0,
+        255.0
+      ],
+      "id": "player_resource",
+      "maxBind": "player.resourceMax",
+      "offset": [
+        242.0,
+        57.0
+      ],
+      "size": [
+        304.0,
+        16.0
+      ],
+      "type": "bar"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "player.resourceText",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "player_resource_text",
+      "offset": [
+        252.0,
+        81.0
+      ],
+      "size": [
+        300.0,
+        18.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        240.0
+      ],
+      "id": "hud_hotbar_1",
+      "image": "assets/ui/hud/hud-ability-slot.png",
+      "imageMode": "contain",
+      "offset": [
+        738.0,
+        60.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        255.0,
+        255.0,
+        255.0,
+        255.0
+      ],
+      "id": "hud_hotbar_1_icon",
+      "image": "assets/ui/hud/hud-icon-sword.png",
+      "imageMode": "contain",
+      "offset": [
+        750.0,
+        72.0
+      ],
+      "size": [
+        40.0,
+        40.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "hud.hotbar.1",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 18.0,
+      "id": "hud_hotbar_1_key",
+      "offset": [
+        738.0,
+        40.0
+      ],
+      "size": [
+        64.0,
+        18.0
+      ],
+      "text": "1",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        240.0
+      ],
+      "id": "hud_hotbar_2",
+      "image": "assets/ui/hud/hud-ability-slot.png",
+      "imageMode": "contain",
+      "offset": [
+        814.0,
+        60.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        255.0,
+        255.0,
+        255.0,
+        255.0
+      ],
+      "id": "hud_hotbar_2_icon",
+      "image": "assets/ui/hud/hud-icon-shield.png",
+      "imageMode": "contain",
+      "offset": [
+        826.0,
+        72.0
+      ],
+      "size": [
+        40.0,
+        40.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "hud.hotbar.2",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 18.0,
+      "id": "hud_hotbar_2_key",
+      "offset": [
+        814.0,
+        40.0
+      ],
+      "size": [
+        64.0,
+        18.0
+      ],
+      "text": "2",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        240.0
+      ],
+      "id": "hud_hotbar_3",
+      "image": "assets/ui/hud/hud-ability-slot.png",
+      "imageMode": "contain",
+      "offset": [
+        890.0,
+        60.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        255.0,
+        255.0,
+        255.0,
+        255.0
+      ],
+      "id": "hud_hotbar_3_icon",
+      "image": "assets/ui/hud/hud-icon-sprint.png",
+      "imageMode": "contain",
+      "offset": [
+        902.0,
+        72.0
+      ],
+      "size": [
+        40.0,
+        40.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "hud.hotbar.3",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 18.0,
+      "id": "hud_hotbar_3_key",
+      "offset": [
+        890.0,
+        40.0
+      ],
+      "size": [
+        64.0,
+        18.0
+      ],
+      "text": "3",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        240.0
+      ],
+      "id": "hud_hotbar_4",
+      "image": "assets/ui/hud/hud-ability-slot.png",
+      "imageMode": "contain",
+      "offset": [
+        966.0,
+        60.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "hud.hotbar.4",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 18.0,
+      "id": "hud_hotbar_4_key",
+      "offset": [
+        966.0,
+        40.0
+      ],
+      "size": [
+        64.0,
+        18.0
+      ],
+      "text": "4",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        240.0
+      ],
+      "id": "hud_hotbar_5",
+      "image": "assets/ui/hud/hud-ability-slot.png",
+      "imageMode": "contain",
+      "offset": [
+        1042.0,
+        60.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "hud.hotbar.5",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 18.0,
+      "id": "hud_hotbar_5_key",
+      "offset": [
+        1042.0,
+        40.0
+      ],
+      "size": [
+        64.0,
+        18.0
+      ],
+      "text": "5",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        240.0
+      ],
+      "id": "hud_hotbar_6",
+      "image": "assets/ui/hud/hud-ability-slot.png",
+      "imageMode": "contain",
+      "offset": [
+        1118.0,
+        60.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "hud.hotbar.6",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 18.0,
+      "id": "hud_hotbar_6_key",
+      "offset": [
+        1118.0,
+        40.0
+      ],
+      "size": [
+        64.0,
+        18.0
+      ],
+      "text": "6",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "top_right",
+      "color": [
+        58.0,
+        64.0,
+        40.0,
+        255.0
+      ],
+      "id": "hud_minimap_feed",
+      "offset": [
+        62.0,
+        62.0
+      ],
+      "size": [
+        124.0,
+        124.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "top_right",
+      "color": [
+        42.0,
+        40.0,
+        38.0,
+        255.0
+      ],
+      "id": "hud_minimap_outer",
+      "image": "assets/ui/hud/hud-minimap-frame.png",
+      "imageMode": "contain",
+      "offset": [
+        40.0,
+        40.0
+      ],
+      "size": [
+        168.0,
+        168.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "top_right",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "id": "hud_minimap_dot",
+      "offset": [
+        118.0,
+        118.0
+      ],
+      "size": [
+        12.0,
+        12.0
+      ],
+      "type": "panel"
     },
     {
       "anchor": "top_left",
-      "bind": "player.healthText",
-      "id": "player_health_text",
-      "offset": [40.0, 72.0],
-      "size": [248.0, 24.0],
-      "type": "text",
-      "color": [42, 36, 32, 255],
-      "fontSize": 18.0
+      "color": [
+        45.0,
+        41.0,
+        35.0,
+        220.0
+      ],
+      "id": "quest_objective_panel",
+      "image": "assets/ui/hud/hud-quest-panel.png",
+      "offset": [
+        40.0,
+        40.0
+      ],
+      "size": [
+        360.0,
+        84.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "top_left",
+      "bind": "hud.questEyebrow",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 13.0,
+      "id": "quest_objective_eyebrow",
+      "offset": [
+        60.0,
+        54.0
+      ],
+      "size": [
+        120.0,
+        14.0
+      ],
+      "text": "ACTIVE",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "top_left",
+      "bind": "quest.objectiveText",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 18.0,
+      "id": "quest_objective_text",
+      "offset": [
+        60.0,
+        74.0
+      ],
+      "size": [
+        320.0,
+        36.0
+      ],
+      "textVAlign": "middle",
+      "type": "text"
     }
   ]
 }

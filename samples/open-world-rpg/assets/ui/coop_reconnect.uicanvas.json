@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "id": "coop_reconnect",
+  "designResolution": [1920, 1080],
+  "widgets": [
+    {
+      "id": "reconnect_dim",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [1920, 1080],
+      "opacity": 0.78,
+      "color": [21, 23, 25, 255]
+    },
+    {
+      "id": "reconnect_panel",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [520, 280],
+      "color": [45, 41, 35, 250]
+    },
+    {
+      "id": "reconnect_title",
+      "type": "text",
+      "anchor": "center",
+      "offset": [0, -70],
+      "size": [460, 48],
+      "bind": "coop_reconnect.title",
+      "text": "Waiting for partner…",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 36,
+      "color": [241, 238, 232, 255]
+    },
+    {
+      "id": "reconnect_hint",
+      "type": "text",
+      "anchor": "center",
+      "offset": [0, -10],
+      "size": [440, 40],
+      "bind": "coop_reconnect.hint",
+      "text": "World paused until guest reconnects",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 22,
+      "color": [200, 200, 200, 255]
+    },
+    {
+      "id": "reconnect_end",
+      "type": "button",
+      "anchor": "center",
+      "offset": [0, 70],
+      "size": [360, 48],
+      "bind": "coop_reconnect.end_session",
+      "text": "End Session",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 28,
+      "color": [180, 80, 70, 255]
+    }
+  ]
+}

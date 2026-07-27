@@ -53,7 +53,8 @@ Status: **draft** — owner + Dom world-design session. Rough theaters on this a
 | Calrenoth (Act 0 — **Landfall**) | **Western peninsula tip** (confirmed) facing Imperium pressure from the **south** | Tessera-built landing / fortress **outside** the western core; **landlocked** player approach + **moat-scale drawbridge** to another land spur (not a long sea bridge) |
 | Arrotrebae presence (Act 0 vicinity) | Hugging the **south of that peninsula** | **The Thalassar** (`thalassar`) — regional clan under Arrotrebae umbrella, not a painted kingdom border |
 | Minor orc warband (Act 0 vicinity) | Near **mountains** inland / east of the peninsula corridor | **The Underflow** (`underflow`) — minor warband; subsurface-water holds; same false **Sea of Whispers** cult as Thalassar |
-| **Ledgeport** (Act 1 hub) | Nearby coastal marker on the Act 0 retreat path from Calrenoth — **Act 1 focus region** (confirmed) | Market **free town** (`ledgeport`) — mayor/market politics; merchant guild + undermarket; **neutral**; ferry toward Cristallo (wiring open); A1-05 coastal politics contact — named evergreen wake deprecated as competing geography |
+| **Ledgeport** (Act 1 hub) | Nearby coastal marker on the Act 0 retreat path from Calrenoth — **Act 1 focus region** (confirmed) | Market **free town** (`ledgeport`) — mayor/market politics; merchant guild + undermarket; **neutral**; **ferry yes** to **Porto Lucente** U-bay (2026-07-22); A1-05 coastal politics contact — named evergreen wake deprecated as competing geography |
+| **Porto Lucente** (Cristallo ferry) | **U-shaped channel bay** on central island | Landing settlement (`porto_lucente`) + dock POI `porto_lucente_dock` for Ledgeport ferry; Cristallo-owned; world coords open (D-P2-08) |
 | Coastal Arrotrebae tribe (Act 1) | Coastal / seafarer presence near that trade port and southwest theater | **The Thalassar** — same clan as Act 0 south-of-peninsula marker; soft heraldry callout via `heraldry-thalassar.png` |
 
 **Authoring rules for this draft:**
@@ -71,4 +72,4 @@ Status: **draft** — owner + Dom world-design session. Rough theaters on this a
 - ~~Where O’hlundian evergreens (wake) sit relative to Calrenoth / Ledgeport~~ — named evergreen wake deprecated as Act 1 geography competitor; DEC-0032 camp/wake reconcile still open
 - Exact footprint of the v1 4×4 km slice on this map
 - Whether the reddish southeast is canonically Imperium heartland, corrupted fringe, or other
-- Locked political borders; ferry wiring from **Ledgeport** to Cristallo (**Ledgeport** name confirmed + **The Thalassar** + **The Underflow** + Calrenoth tip locked)
+- Locked political borders; ~~ferry wiring from **Ledgeport** to Cristallo~~ **yes** to **Porto Lucente** U-bay (2026-07-22); world coords still open (**Ledgeport** + **Porto Lucente** + **The Thalassar** + **The Underflow** + Calrenoth tip locked as names)

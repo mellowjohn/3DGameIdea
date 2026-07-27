@@ -39,7 +39,8 @@ Sample: `samples/open-world-rpg/assets/world-forge/dialogues.worldforge.json`.
           "speakerId": "narrator",
           "line": "…",
           "choices": [
-            { "id": "prologue_c1", "text": "Tutorial", "nextNodeId": "tutorial", "setFlags": [] }
+            { "id": "prologue_c1", "text": "Tutorial", "nextNodeId": "tutorial", "setFlags": [], "tone": "Curious",
+              "standingAdjust": [{ "factionId": "arrotrebae", "delta": 5 }] }
           ]
         }
       ],
@@ -51,6 +52,13 @@ Sample: `samples/open-world-rpg/assets/world-forge/dialogues.worldforge.json`.
 ```
 
 Empty `nextNodeId` ends the conversation after that choice. Nodes with no choices are terminal leaves (runtime marks complete on arrival).
+
+Optional choice fields (omit when unused; still schemaVersion 1):
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `tone` | string | Short option-type hint on the choices page (e.g. `Honest`, `Blunt`) |
+| `standingAdjust` | `{ factionId, delta }[]` | Applied via `StandingRuntime::adjust` when the player selects the choice |
 
 ## Graph editor (TICKET-0053 / 0165–0168)
 
@@ -87,13 +95,26 @@ World Forge **Dialogues** pane: **Add dialogue tree** (display name → slug id,
 
 ## Runtime
 
-Headless walker: `DialogueRuntime` (`bind` → `start(treeId)` → `present` / `choose`). Choice `setFlags` accumulate on the session.
+Headless walker: `DialogueRuntime` (`bind` → `start(treeId)` → `present` / `choose`). Choice `setFlags` accumulate on the session. Choice `standingAdjust` entries apply through `StandingRuntime::adjust` when choosing (missing / non-tracked factions log a warning).
+
+Play pipeline (Act 0 `coding_dialogue_runtime_hooks`):
+
+- Lua: `engine.dialogue_start` / `dialogue_present` / `dialogue_choose` / `dialogue_active` / `dialogue_reset`
+- MCP: `engine_dialogue_call` kinds `start` | `present` | `status` | `continue` | `choose` | `reset` (allowed during play test)
+- Quest hooks remain lookups via `quest_dialogue_hook` / `dialogue_for_stage` — scripts start trees explicitly (DEC-0028)
+- Event timelines inject the same session `DialogueRuntime` for `start_dialogue` steps
+- Sample volume: interaction `talk_sandbox` → `dlg_sandbox_sample`; campaign `talk_act0` → Act 0 trees
+- UI: line page (portrait initials + display speaker + role + typed body + Continue) then choices page (truncated prompt strip + up to four rows with keycaps 1–4, act label, AA tone/standing chips). Keys `1`–`4` activate slots; Esc closes and resets dialogue. Button hover uses engine easing; focus ring on keyboard/gamepad nav. Design target: [`../design/dialogue-ui.pen`](../design/dialogue-ui.pen).
+- Diagnostics shows active tree/node
+
+Does not auto-complete quests when a tree finishes.
 
 ## Seed (v1 sample)
 
 | id | parentQuestId | Notes |
 | --- | --- | --- |
 | `dlg_act0_wrathful_conquest` | `mq_act0_calrenoth` | Imported from Twine Act 0 via `tools/twee_to_world_forge_dialogues.py` |
+| `dlg_sandbox_sample` | _(none)_ | Sandbox talk tree with tone + standing + `setFlags` (`sandbox.peace_kept` on `greeting_c2`); MCP Scenario D |
 
 Side-quest dialogue trees are intentionally absent until authored; SQ quest hooks stay empty soft refs.
 

@@ -45,4 +45,8 @@ struct TerrainMesh {
 [[nodiscard]] CellCoord terrain_cell_for_position(float x, float z, float cell_size = k_default_terrain_cell_size);
 [[nodiscard]] std::vector<CellCoord> terrain_cells_in_radius(CellCoord center, std::uint32_t radius);
 
+/** Camera-forward biased neighborhood: full disc through `support_radius`, outer ring only toward `forward_xz`. */
+[[nodiscard]] std::vector<CellCoord> terrain_cells_in_view_bias(CellCoord center, std::uint32_t radius,
+    std::uint32_t support_radius, float forward_x, float forward_z);
+
 } // namespace engine

@@ -28,6 +28,8 @@ class LuaRuntime;
 class UiCanvasStack;
 class QuestRuntime;
 class StandingRuntime;
+class FlagRuntime;
+class DialogueRuntime;
 class HudRuntime;
 
 struct EditorSessionContext {
@@ -35,6 +37,8 @@ struct EditorSessionContext {
     LuaRuntime* lua_runtime = nullptr;
     QuestRuntime* quest_runtime = nullptr;
     StandingRuntime* standing_runtime = nullptr;
+    FlagRuntime* flag_runtime = nullptr;
+    DialogueRuntime* dialogue_runtime = nullptr;
     HudRuntime* hud_runtime = nullptr;
     UiCanvasStack* ui_canvas_stack = nullptr;
     CommandHistory* history = nullptr;
@@ -45,6 +49,7 @@ struct EditorSessionContext {
     std::map<std::string, PrefabAsset>* prefab_catalog = nullptr;
     bool* scene_dirty = nullptr;
     bool* prefab_meshes_dirty = nullptr;
+    bool* static_render_cache_dirty = nullptr;
     std::set<std::string>* pending_mesh_reloads = nullptr;
     TerrainEditStore* terrain_edits = nullptr;
     TerrainEditHistory* terrain_history = nullptr;

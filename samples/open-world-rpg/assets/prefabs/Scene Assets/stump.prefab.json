@@ -1,17 +1,58 @@
 {
-  "schemaVersion": 2,
+  "collision": [
+    {
+      "halfHeight": 0.08,
+      "id": "collision-0",
+      "layer": "staticWorld",
+      "radius": 0.38,
+      "shape": "capsule",
+      "transform": {
+        "position": [
+          0,
+          0.46,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    }
+  ],
   "entities": [
     {
-      "name": "Stump",
-      "transform": {
-        "position": [0.0, 0.0, 0.0],
-        "rotation": [0.0, 0.0, 0.0, 1.0],
-        "scale": [1.0, 1.0, 1.0]
-      },
-      "parent": null,
       "mesh": {
         "asset": "assets/models/stump.gltf"
+      },
+      "name": "Stump",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
       }
     }
-  ]
+  ],
+  "schemaVersion": 2
 }

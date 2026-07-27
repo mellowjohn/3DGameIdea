@@ -6,6 +6,7 @@
 #include "engine/assets/prefab_asset.h"
 
 #include <entt/entity/registry.hpp>
+#include <cstdint>
 #include <filesystem>
 #include <map>
 #include <memory>
@@ -27,7 +28,13 @@ public:
     [[nodiscard]] Result<void> destroy_entity(const EntityId& id);
     [[nodiscard]] Result<void> rename_entity(const EntityId& id, std::string name);
     [[nodiscard]] Result<void> set_parent(const EntityId& child, std::optional<EntityId> parent);
-    [[nodiscard]] Result<void> set_transform(const EntityId& id, const TransformComponent& transform);
+    /**
+     * @param bump_edit_revision When false, updates the pose without invalidating placement-collision sync
+     * (physics write-back, play-test player visual follow). Editor/gizmo/MCP transforms keep the default so
+     * collision bodies stay in sync.
+     */
+    [[nodiscard]] Result<void> set_transform(const EntityId& id, const TransformComponent& transform,
+        bool bump_edit_revision = true);
     [[nodiscard]] Result<EntityId> place_world_object(std::string name, std::string prefab_asset,
         const TransformComponent& transform, std::optional<EntityId> requested_id = std::nullopt,
         std::optional<std::string> character_asset = std::nullopt, const PrefabAsset* seed_prefab = nullptr);
@@ -56,6 +63,8 @@ public:
     [[nodiscard]] std::optional<AuthoredComponentsComponent> authored_components(const EntityId& id) const;
     [[nodiscard]] bool has_children(const EntityId& id) const;
     [[nodiscard]] std::size_t size() const noexcept { return entities_.size(); }
+    /** Monotonic counter bumped by authoring edits that can change collision bodies. */
+    [[nodiscard]] std::uint64_t edit_revision() const noexcept { return edit_revision_; }
     [[nodiscard]] std::vector<EntityId> entity_ids() const;
     [[nodiscard]] std::vector<EngineError> validate() const;
     [[nodiscard]] std::string to_json() const;
@@ -66,8 +75,10 @@ public:
 
 private:
     [[nodiscard]] std::optional<entt::entity> handle(const EntityId& id) const;
+    void bump_edit_revision() noexcept { ++edit_revision_; }
     std::unique_ptr<entt::registry> registry_;
     std::map<std::string, entt::entity> entities_;
+    std::uint64_t edit_revision_ = 0;
     std::optional<std::string> world_id_;
     std::optional<std::string> document_name_;
     std::optional<std::array<double, 2>> world_size_meters_;

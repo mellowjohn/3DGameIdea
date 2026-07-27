@@ -6,6 +6,8 @@
 #include <cctype>
 #include <chrono>
 #include <cstdio>
+#include <filesystem>
+#include <system_error>
 #include <vector>
 
 #ifndef NOMINMAX
@@ -124,6 +126,15 @@ Result<std::filesystem::path> write_rgba_png(const std::filesystem::path& projec
     const std::string& filename_stem, std::uint32_t width, std::uint32_t height,
     std::span<const std::uint8_t> rgba_bytes) {
     return encode_rgba_png(make_out_path(project_root, filename_stem), width, height, rgba_bytes);
+}
+
+Result<std::filesystem::path> write_rgba_png_path(const std::filesystem::path& out_path, std::uint32_t width,
+    std::uint32_t height, std::span<const std::uint8_t> rgba_bytes) {
+    if (out_path.has_parent_path()) {
+        std::error_code ec;
+        std::filesystem::create_directories(out_path.parent_path(), ec);
+    }
+    return encode_rgba_png(out_path, width, height, rgba_bytes);
 }
 
 Result<std::filesystem::path> capture_window_png(void* hwnd_void, const std::filesystem::path& project_root,

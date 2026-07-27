@@ -29,7 +29,7 @@ struct HudWidget {
     std::string text;
     /// Optional project-relative image path (PNG). Empty = no image / solid fill.
     std::string image;
-    /// How `image` fits the widget rect (GPU texture draw is follow-on; placeholder until then).
+    /// How `image` fits the widget rect (`stretch` fills; `contain` letterboxes).
     HudImageMode image_mode = HudImageMode::Stretch;
     /// Optional RGBA 0–255. Alpha 0 means "use draw defaults".
     std::array<float, 4> color{{0.0f, 0.0f, 0.0f, 0.0f}};

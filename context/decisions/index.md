@@ -101,10 +101,11 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Status: accepted
 - Date: 2026-07-03
 - Context: Story context treated the protagonist as always being “the Squire,” with Squire, Archer, and Acolyte listed as separate progression paths. That left character creation ambiguous and blocked defining appearance, class kits, and tutorial framing.
-- Decision: Add character customization at new-game start. The player creates a protagonist by choosing a starting archetype (base class) and customizing their character. **Squire** is one starting archetype among others—not the fixed player identity. The initial archetype set is **Squire**, **Archer**, and **Acolyte**; later morality and allegiance milestones unlock advanced archetypes as already proposed in story context.
-- Rationale: A named starting class preserves the drafted-war premise for every path while giving players distinct combat roles and progression from the first session. Separating the job title “squire” from “the protagonist” removes a long-standing story ambiguity.
-- Consequences: Character creation must support archetype selection and player customization (appearance details remain to be defined). Narrative, companions, and tutorial copy should address “the protagonist” rather than assuming a Squire player. Engine and RPG vertical-slice work need a character-creation flow, per-archetype starter kits, and tests for invalid or incomplete creation input. Exact customization fields, pronoun options, and noble-house/tribe obligation at creation remain open.
+- Decision: Add character customization at new-game start. The player creates a protagonist by choosing a starting archetype (base class) and customizing their character. The melee starter is one archetype among others—not the fixed player identity. The initial **three-lane** set (melee / ranged / magic) remains; **display names and home orgs** are defined by [DEC-0044](#dec-0044-starting-archetype-lane-orgs-and-rename) (**Ashfell Blade**, **Outrider**, **Runecaster**). Later morality and allegiance milestones unlock advanced archetypes as already proposed in story context.
+- Rationale: A named starting class preserves the drafted-war premise for every path while giving players distinct combat roles and progression from the first session. Separating a job title from “the protagonist” removes a long-standing story ambiguity.
+- Consequences: Character creation must support archetype selection and player customization (appearance details remain to be defined). Narrative, companions, and tutorial copy should address “the protagonist” rather than assuming one melee fantasy. Engine and RPG vertical-slice work need a character-creation flow, per-archetype starter kits, and tests for invalid or incomplete creation input. Exact customization fields, pronoun options, and creation-time obligations remain open (lane orgs: DEC-0044).
 - Supersedes: none
+- Amended by: [DEC-0044](#dec-0044-starting-archetype-lane-orgs-and-rename) (display names, ids, lane home orgs)
 
 ### DEC-0010: Live editor MCP bridge
 
@@ -144,6 +145,8 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Decision: Extend ground-cover foliage v2 as **GPU-instanced blades** with a shared **`WorldInfluenceBus`** (position, velocity, radius, strength) consumed by a dedicated foliage vertex shader for height-weighted bend. Keep painted density and streaming unchanged. Add optional per-layer `disturbVfxId` as a forward hook for future footstep/dust effects; do not render grass as particles in v2.
 - Rationale: Instancing preserves deterministic authoring, streaming, and draw-call budget. Shader-only bend avoids Jolt collision and scatter rebuilds. `WorldInfluenceBus` gives the future particle system a shared input without blocking foliage on VFX MVP.
 - Consequences: `grass_blade` primitive, layer bend fields, foliage-only PS/root constants, character feeds influence during play test, `world_influence` test suite, updated format docs. Bend is visual-only; fly camera has no influence. `disturbVfxId` is inert until particle milestone.
+- Evolution (2026-07-27): `grass_blade` is a 4-segment crossed tapered strip (~0.7 height). Foliage VS bend is tip-squared lean + trample (not flat XZ push); cheap tip wind flutter uses existing `time_seconds`. No skeletal bones; Tsushima-style Bézier compute blades remain deferred.
+- Evolution (2026-07-27, TICKET-0230): Shared `WindFieldParams` drives traveling gust tip lean on foliage layers, height-weighted canopy sway on `tree` / `dead-tree` prop meshes, and a camera-local ambient wind particle emitter (`wind_trail.particle.json` + `wind_streak.png`). Particle `texture` path is wired for that streak; campfire keeps the procedural soft disc.
 - Supersedes: none
 
 ### DEC-0014: Discrete foliage layers for bushes
@@ -519,4 +522,117 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Rationale: Unblocks retarget/IK authoring and MCP-friendly data without committing to a solver API; matches the literal ticket title and mesh-assets pending note.
 - Consequences: Format [`../formats/rig-assets.md`](../formats/rig-assets.md); sample `player.rig.json`. Solver + Animation panel are separate tickets.
 - Supersedes: none
+
+### DEC-0042: Online co-op session model (mode-locked saves)
+
+- Status: accepted
+- Date: 2026-07-22
+- Context: Story draft lock (2026-07-22) calls for single-player primary plus optional up-to-2-player online co-op with shared campaign progression, shared faction standing, and party size up to four (two humans + up to two companions). D-P2-11 left networking, host authority, companion slots, and session rules open. Owner clarified engine/product rules in design sessions the same day.
+- Decision:
+  1. **Two campaign modes, chosen at new game or load — never mixed on one save.** `sessionMode` is **`solo`** or **`coop`**. Solo saves run with one human and never accept a guest. Co-op saves require **two connected human players** for the full session; do **not** fall back to solo play when the guest disconnects or leaves.
+  2. **Online drop-in only** (no couch split-screen v1 path). **Host-authoritative** simulation: host owns world sim, quests, NPCs, companions, physics for AI, and shared campaign state; guest sends input and receives replicated state/effects.
+  3. **Shared campaign tracks on both modes (where applicable):** quest progression, faction standing ([DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer)), **morality**, act/world flags, discovery/fog, camp persistence. Per-player: archetype, appearance, inventory, gear, HUD, input device.
+  4. **Party caps:** solo — **1 human + up to 3 companions** (≤4 total); co-op — **2 humans + up to 2 companions** (≤4 total). Companion slots remain active in co-op; recruitment blocked when at mode cap.
+  5. **Lobby flow:** host creates a co-op lobby (new co-op game or load co-op save); guest joins; **both players ready** before the session starts. Character creation for co-op happens in lobby (host and guest each configure their protagonist before ready/start).
+  6. **Major story forks** (allegiance lock-in, act gates, and similar high-impact choices): **both players must agree** (unanimous confirm) before the choice applies.
+  7. **Guest disconnect:** enter **`paused_waiting_guest`** — **untimed** reconnect pause (world frozen). Host may **end session** if the other player cannot rejoin. Do not downgrade `sessionMode` to solo or continue co-op save alone. On end, return to menu with co-op save intact for a future paired session.
+  8. **Save blob** (TICKET-0114): root **`sessionMode`**, **`hostProfile`**, **`guestProfile`** (absent in solo), and **`sharedCampaign`** (quests, standing, morality, flags, discovery, camp, …). Refuse load/start when mode requirements are unmet (co-op without guest connected).
+  9. **Replication scope (implementation):** replicate player entity state and reliable session deltas; host runs Lua/handlers and companion AI — guests receive effects/UI, not a second sim. No wholesale blackboard replication.
+- Rationale: Matches Fable-like shared-campaign co-op while honoring owner intent that co-op is a committed paired experience, not optional drop-out solo. Host authority fits quest/standing/morality spine already centralized in C++ runtimes. Lobby + dual ready avoids starting co-op saves in a broken one-player state. Unanimous major forks preserve shared morality/allegiance as one campaign voice.
+- Consequences: Partially supersedes DEC-0001 multiplayer-out-of-v1 for **product intent** — shipping may still SP-first, but session/save/party layers must be co-op-shaped before netcode. Resolve D-P2-11. Implement in dependency order: `GameSession` + mode fork → multi-profile save → `PartyRuntime` companion caps → online lobby/reconnect → co-op UI gates (ready, unanimous forks). Feature doc [`../features/co-op-sessions.md`](../features/co-op-sessions.md); save sketch [`../formats/rpg-save.md`](../formats/rpg-save.md). Networking library, NAT, and invite UX remain implementation tickets — not chosen here.
+- Supersedes: DEC-0001 (partial — co-op is in-scope product/engine design; offline SP ship path retained)
+
+### DEC-0043: NVIDIA reference GPU, multi-vendor D3D12 support
+
+- Status: accepted
+- Date: 2026-07-23
+- Context: Owner asked whether the product should have NVIDIA support for graphics cards. DEC-0001/0002 already lock Windows + Direct3D 12; DEC-0004 already names an RTX 4070–class PC as the 1440p/60 performance contract machine.
+- Decision:
+  1. **NVIDIA mid/high desktop (RTX 4070–class)** remains the **reference / acceptance GPU** for ship budgets, benchmarks, and visual QA ([DEC-0004](#dec-0004-diagnostics-and-performance-contract)).
+  2. The runtime **must not require NVIDIA**. Ship for any GPU that meets the documented Direct3D 12 feature level and minimum VRAM/driver bar (NVIDIA, AMD, Intel).
+  3. Store/marketing copy may list NVIDIA as **recommended**, not required.
+  4. Vendor-exclusive features (DLSS, Reflex, etc.) stay **optional follow-ons** — not v1 blockers and not gatekeepers for playability on other vendors.
+- Rationale: Keeps a measurable quality bar on the machine class already used for TICKET-0139 without cutting Windows AMD/Intel players or forcing a partnership for v1.
+- Consequences: Continue capturing benchmarks and visual regressions primarily on NVIDIA reference hardware; add multi-vendor smoke when machines are available. Do not add NVIDIA-only `#ifdef` paths for core rendering. Update ship-requirements language when a public min-spec page lands.
+- Supersedes: none
+
+### DEC-0044: Starting archetype lane orgs and rename
+
+- Status: accepted
+- Date: 2026-07-24
+- Context: Starting archetypes were labeled **Squire / Archer / Acolyte** — generic class tags with thin play fantasy. Owner locked a rename plus per-lane **home orgs** that carry their own mid-game story, then bind into major faction politics. Magic must stay boon/relic/item-native (runes/sigils), not a wizard seminary, and must not be conflated with the Cristallo crystal-guardian order (White Lotus draft label).
+- Decision:
+  1. Keep **three starting lanes** (melee / ranged / magic) under [DEC-0009](#dec-0009-starting-archetype-character-creation).
+  2. **Display names + stable ids:** **Ashfell Blade** (`ashfell_blade`), **Outrider** (`outrider`), **Runecaster** (`runecaster`). Former Squire / Archer / Acolyte labels are legacy only.
+  3. **Hybrid org model (C):** each starter begins in a **lane home org** with its own quests/ranks/NPCs; later that org **binds** into major faction politics (Cristallo / Arrotrebae / Kingdom). Not three fully separate campaigns; not org-less kits.
+  4. **Home orgs + sub-themes:**
+     - Melee — **House Ashfell** (draft name; Dom may confirm/rename) → Fighter / Brawler
+     - Ranged — **Outrider Lodge** → Ranger / Forager / Nomad
+     - Magic — **Runecaster Guild** → Rune / Sigil (create runes / draft sigils; caster fantasy, item/rune-sourced)
+  5. Crystal-guardian order (White Lotus draft) stays a **separate, mostly non-magic** custodian path — not the Runecaster starter.
+  6. Advanced specialization lists and full combat **systems/comps** remain open; this decision locks naming + org spine only.
+- Rationale: Tessera-specific titles and org homes make starters readable and authorable without exploding Act 0 into three unrelated openings. Rune/sigil casting respects the low-fantasy magic boundary.
+- Consequences: Update story canon, World Forge `archetypes.worldforge.json` ids, Act 0 archetype/art readiness labels, save/profile examples, and tests. Seed House Ashfell / Lodge / Guild faces as Dom+owner authoring. Do not invent Dom-owned person names here.
+- Supersedes: DEC-0009 starting archetype **display names** and implied generic class tags only (creation flow retained)
+
+### DEC-0045: JSON event timelines with C++ sequencer (World Forge home)
+
+- Status: accepted
+- Date: 2026-07-24
+- Context: Act Zero Landfall MVP readiness (`coding_event_timeline` / `cine_event_timeline_ready`) needs theatrical beats (prologue, siege backdrop, Luceran, Creotar, camp wake) driven by camera, wait, dialogue, VFX hooks, and control lock. Animation controller `timelineEvents` (DEC-0031) are clip hit-frames, not campaign cinematics. Owner chose data-driven JSON + C++ sequencer, then World Forge authoring integration — not Lua-only sequence scripts.
+- Decision:
+  1. **Authored timelines** are versioned JSON under World Forge product home (`events.worldforge.json` or equivalent; format ticket owns path). Sequences are ordered typed **steps**, not free-form Lua graphs.
+  2. **C++ `EventTimelineRuntime`** (name may match ticket) owns load/bind/start/tick/cancel, step advancement, and fail-closed validation. Lua / quest / interaction scripts may **start** or **cancel** a sequence by id and react to step hooks — they do not author the step list.
+  3. **MVP step kinds** (Landfall): `wait`, `lock_control` / `unlock_control`, `start_dialogue` (tree id → existing `DialogueRuntime`), `emit` (named signal / Lua hook for VFX or content), and camera steps once camera helpers land (`look_at` / path blend — TICKET-0222). Unknown step kinds fail closed at validate/load.
+  4. **World Forge integration** (TICKET-0223): Events list/detail (and MCP `kind=events`) under the World Forge umbrella ([DEC-0020](../decisions/index.md#dec-0020-world-forge-narrative-tooling-umbrella)); runtime schema ships first (TICKET-0221) so content is not blocked on editor chrome.
+  5. Distinct from **animator** `timelineEvents` ([DEC-0031](../decisions/index.md#dec-0031-controller-authored-animation-timeline-events)).
+- Rationale: Matches quest/dialogue/animator patterns (diffable data + C++ backend + thin Lua drive), unlocks Act 0 cinematic content with headless suites, and keeps story-event product home on World Forge without requiring the Events pane on day one.
+- Consequences: Implement TICKET-0221 (asset + runtime + sample), TICKET-0222 (camera path / play input lock wiring), TICKET-0223 (WF Events pane + MCP). Particle draw remains on `coding_particle_system_mvp`; timeline only emits hooks until that lands. Do not invent a parallel Lua DSL for the same beats.
+- Supersedes: none
+
+### DEC-0046: Session story flag runtime
+
+- Status: accepted
+- Date: 2026-07-24
+- Context: Act 0 MVP readiness `coding_quest_runtime_flags` needs session flags to gate corridors and record forks. `QuestRuntime` (TICKET-0180 / DEC-0028) already advances objectives; dialogue can author `setFlags` and quests author fork `outcomeFlags`, but nothing persisted them in a queryable session store. Soft-gates and journal UI are separate readiness rows.
+- Decision:
+  1. **`FlagRuntime` owns session story/outcome flags** as a set of freeform string ids (`act0.helped_larrell`, …). API: set / clear / has / list; empty ids fail closed (`FLAG-RUNTIME-*`).
+  2. **Dialogue choice `setFlags` apply into `FlagRuntime`** on choose (same explicit path as standing adjust) — does not auto-advance quests.
+  3. **Quest fork outcomes** are applied by explicit `QuestRuntime::resolve_fork(questId, forkId, outcomeFlag, FlagRuntime&)`: validates the flag is authored on that fork, clears sibling `outcomeFlags`, then sets the chosen flag.
+  4. **Lua + MCP** mirror the API (`flag_*`, `quest_resolve_fork`, `engine_flag_call`, `quest_call` kind `resolve_fork`).
+  5. **Save**: `sharedCampaign.outcomeFlags` capture/hydrate through `FlagRuntime` (TICKET-0114 shape already reserved the field).
+  6. **Out of this decision:** soft-gate region pressure, quest journal UI, co-op flag replication (later tickets).
+- Rationale: Completes the missing half of Act 0 quest/stage runtime without expanding into presentation or corridor systems; keeps fork resolution explicit like quest objective completion.
+- Consequences: Implement under **TICKET-0225** (owner Act 0 P0). Soft-gate and journal remain separate checklist rows / tickets.
+- Supersedes: none
+
+### DEC-0047: Frame upload ring and GPU LBS skinning
+
+- Status: accepted
+- Date: 2026-07-24
+- Context: Debug play-tests were CPU-bound (~20–30 ms prep) with ~1–3 ms GPU. Shared permanently mapped upload CBs forced a full fence drain after Present. Player deformation used CPU LBS + `patch_mesh_vertices` each pose change. Owner asked to offload visual work toward the GPU (skinning + multi-buffered uploads); GPU-driven culling/LOD deferred.
+- Decision:
+  1. **2-slot UPLOAD CB ring** keyed to swapchain `frame_index_` for frame, water-frame, shadow, SSAO, composite, and bone palette CBs (`frame_count = 2`). Steady-state render must not drain the fence after successful Present; allocator reuse still waits `frame_fence_values_[frame_index_]` at frame start.
+  2. **GPU linear-blend skinning** for the play-test player: bind-pose vertex buffer stores JOINTS (`R8G8B8A8_UINT`) + WEIGHTS (`R8G8B8A8_UNORM`); CPU keeps `sample_skinned_local_poses` + `build_skin_matrices`; VS skins position/normal when weight sum > 0 (lit + shadow). **`MAX_BONES = 64`**.
+  3. Do **not** reintroduce per-pose CPU vertex patch for the player path; skins above the bone cap leave bind pose / fail closed.
+  4. Culling and mesh distance LOD remain CPU-side this pass.
+- Rationale: Removes the Present serialize and the expensive mesh Map rewrite while keeping pose composition on CPU (cheap vs per-vertex LBS). Matches existing 2-frame swapchain/allocator ring without triple-buffer complexity.
+- Consequences: Implement under **TICKET-0226** (upload ring) and **TICKET-0227** (GPU skinning). Catalog-wide NPC skinning and GPU-driven culling remain follow-ons. Update mesh/debug-world/character-controller docs when shipping.
+- Supersedes: none
+
+### DEC-0048: Terraria-shaped gearing with soft archetype affinity
+
+- Status: accepted
+- Date: 2026-07-27
+- Context: Design session (John + Dom, 2026-07-27) locked a Terraria-inspired item/trinket fantasy for Wrathful Conquest: depth from unique item effects, not complex combat animation trees. Follow-up chat clarified cross-archetype use, rare chase loot, and Thrator mount reward. Existing lanes are Ashfell Blade / Outrider / Runecaster ([DEC-0009](#dec-0009-starting-archetype-character-creation), [DEC-0044](#dec-0044-starting-archetype-lane-orgs-and-rename)). Inventory foundation remains TICKET-0111.
+- Decision:
+  1. **Combat feel:** simple **action combat** (Souls-lite), not tab-target WoW and not Black Desert–complexity animation. Baseline = **three weapon chains** (melee / ranged / magic) plus item-driven procs/on-use/passives. **Ability caveats** allowed (resource costs, cooldowns, situational gates) without abandoning the simple-chain core.
+  2. **No hard gear locks:** any archetype may equip and use any weapon/item and its weapon ability. **Soft affinity:** the matching lane benefits more via **stat allocation / efficiency multipliers** (off-lane underperforms, still usable). Co-op item gifting between players is expected.
+  3. **Act-tier scaling:** item power bands track campaign acts (Act 0 weakest commons → later acts stronger). **Obscure rare chase items** may punch above their act band (including early-act rares that stay relevant later); first-playthrough discovery should be hard without external knowledge / deep exploration — not required for story completion.
+  4. **Acquisition loops:** world finds, vendors (incl. Ledgeport undermarket), mining ores/crystals → craft materials, boss common + rare tables with optional farm replay. Full craft loop after inventory basics. **Act 0 Landfall ships a small playable loot slice** (starter kit + a handful of finds/rewards along the siege → camp path)—not a full Terraria catalog and not Thrator/Ledgeport vendor depth.
+  5. **Thrator:** draft easter-egg **orc warlord** champion (Act **1 or 2**, not Act 0). Side quest with a warband, Orgrimmar-flavored set piece; kill reward includes a **glad mount**. Carriage-post **fast travel remains** ([DEC-0032](#dec-0032-open-world-travel-discovery-map-and-dual-soft-gates)); ground mounts are traversal toys/rewards. Exotic mounts (glad mount) **soft-extend** DEC-0032’s near-term “horses only” when that content ships.
+  6. **Animation budget:** prefer unique **item effects** over unique attack animations per weapon.
+- Rationale: Matches Dom/John intent (item-driven depth, soft lanes, replayable rares) without exploding animation scope or contradicting FT policy.
+- Consequences: Feature note [`../features/gearing-system.md`](../features/gearing-system.md); epic **EPIC-0018**; extend TICKET-0111 / combat slice tickets; seed **SQ-13 Thrator** in side-quest catalog. Do not invent full exotic mount roster in Act 0.
+- Supersedes: none (soft-extends DEC-0032 mount near-term when glad mount lands)
 

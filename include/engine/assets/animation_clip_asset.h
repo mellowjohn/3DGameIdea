@@ -84,6 +84,14 @@ private:
 [[nodiscard]] Result<std::array<float, 3>> sample_translation_channel(
     const AnimationClipChannel& channel, float time_seconds);
 
+/** CPU sample of a rotation channel (xyzw quaternion). Linear slerp / step hold. */
+[[nodiscard]] Result<std::array<float, 4>> sample_rotation_channel(
+    const AnimationClipChannel& channel, float time_seconds);
+
+/** CPU sample of a scale channel at time `t` (seconds). Linear lerp / step hold. */
+[[nodiscard]] Result<std::array<float, 3>> sample_scale_channel(
+    const AnimationClipChannel& channel, float time_seconds);
+
 struct RootMotionDelta {
     std::array<float, 3> translation{0.0f, 0.0f, 0.0f}; // clip-space meters
     bool found_root_channel = false;

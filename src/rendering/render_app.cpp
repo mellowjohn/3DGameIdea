@@ -14,6 +14,8 @@
 #include "engine/rendering/debug_camera.h"
 #include "engine/rendering/orbit_camera.h"
 #include "engine/rendering/pbr_lighting.h"
+#include "engine/rendering/csm_shadows.h"
+#include "engine/rendering/mesh_distance_lod.h"
 #include "engine/rendering/viewport_picking.h"
 #include "engine/world/terrain.h"
 #include "engine/world/terrain_field.h"
@@ -26,9 +28,13 @@
 #include "engine/world/combat_volumes.h"
 #include "engine/editor/editor_fonts.h"
 #include "engine/editor/editor_icons.h"
+#include "engine/ui/app_branding.h"
 #include "engine/ui/game_fonts.h"
 #include "engine/assets/asset_registry.h"
 #include "engine/assets/animator_controller_asset.h"
+#include "engine/assets/animation_clip_asset.h"
+#include "engine/animation/animator_runtime.h"
+#include "engine/animation/cpu_skinning.h"
 #include "engine/automation/scene_commands.h"
 #include "engine/automation/editor_bridge.h"
 #include "engine/automation/automation_trace.h"
@@ -36,6 +42,8 @@
 #include "engine/automation/editor_screenshot.h"
 #include "engine/automation/live_automation_control.h"
 #include "engine/automation/project_git_commands.h"
+#include "engine/automation/build_coordination.h"
+#include "engine/automation/planning_backlog.h"
 #include "engine/automation/terrain_edit_commands.h"
 #include "engine/assets/script_bindings_asset.h"
 #include "engine/scripting/lua_runtime.h"
@@ -43,7 +51,14 @@
 #include "engine/scripting/script_file_monitor.h"
 #include "engine/quest/quest_runtime.h"
 #include "engine/standing/standing_runtime.h"
+#include "engine/flag/flag_runtime.h"
+#include "engine/session/game_session.h"
+#include "engine/dialogue/dialogue_runtime.h"
+#include "engine/dialogue/dialogue_ui.h"
+#include "engine/event/event_timeline_runtime.h"
 #include "engine/assets/world_forge_quests_asset.h"
+#include "engine/assets/world_forge_dialogues_asset.h"
+#include "engine/assets/world_forge_events_asset.h"
 #include "engine/assets/world_forge_factions_asset.h"
 #include "engine/assets/world_forge_relationships_asset.h"
 #include "engine/assets/world_forge_map_asset.h"
@@ -52,11 +67,18 @@
 #include "engine/ui/ui_canvas_editor.h"
 #include "engine/ui/editor_ui_hotspots.h"
 #include "engine/ui/editor_chrome.h"
+#include "engine/ui/world_ui_billboard.h"
 #include "engine/ui/world_forge_editor.h"
+#include "engine/rendering/viewport_math.h"
 #include "engine/assets/world_forge_acts.h"
 #include "engine/ui/imgui_png_texture.h"
 #include "engine/ui/ui_canvas_stack.h"
+#include "engine/ui/ui_texture_cache.h"
 #include "engine/assets/ui_canvas_asset.h"
+#include "engine/assets/particle_emitter_asset.h"
+#include "engine/assets/png_decode.h"
+#include "engine/vfx/particle_system.h"
+#include "engine/world/wind_field.h"
 #include "engine/world/terrain_edits.h"
 #include "engine/world/terrain_paint.h"
 #include "engine/world/foliage_layers.h"
@@ -82,6 +104,7 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <windows.h>
+#include <psapi.h>
 #include <shellapi.h>
 
 #include <algorithm>
@@ -94,8 +117,11 @@
 #include <deque>
 #include <filesystem>
 #include <fstream>
+#include <functional>
+#include <future>
 #include <sstream>
 #include <iomanip>
+#include <limits>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -106,6 +132,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 namespace engine {
@@ -143,11 +170,66 @@ void hot_reload_ui_canvas_file(UiCanvasStack& stack, const std::filesystem::path
 }
 
 constexpr UINT frame_count = 2;
-struct Vertex { float x,y,z,r,g,b,u=0,v=0; };
+constexpr UINT k_max_particle_textures = 8;
+constexpr UINT k_particle_depth_slot = k_max_particle_textures; // after texture slots
+constexpr UINT k_particle_srv_count = k_max_particle_textures + 1;
+/** GPU skin palette size (DEC-0047). Player_V2 is 37 joints. */
+constexpr UINT k_max_bones = 64;
+constexpr UINT k_bone_cb_bytes =
+    ((k_max_bones * 64u) + (D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1u))
+    & ~(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1u);
+
+struct Vertex {
+    float x = 0, y = 0, z = 0;
+    float r = 0, g = 0, b = 0;
+    float u = 0, v = 0;
+    float nx = 0, ny = 1, nz = 0;
+    std::uint8_t joints[4]{0, 0, 0, 0};
+    std::uint8_t weights[4]{0, 0, 0, 0}; // R8G8B8A8_UNORM
+};
+static_assert(sizeof(Vertex) == 52, "Vertex stride must match InputLayout (pos/color/uv/n/joints/weights)");
+
+// Flat-shaded face normals for triangle lists (verts are not shared across faces).
+void assign_triangle_face_normals(Vertex* vertices, std::size_t count) {
+    if (!vertices || count < 3) return;
+    for (std::size_t i = 0; i + 2 < count; i += 3) {
+        Vertex& a = vertices[i];
+        Vertex& b = vertices[i + 1];
+        Vertex& c = vertices[i + 2];
+        if (a.r < -0.5f) continue; // fullscreen sky sentinel
+        const float e1x = b.x - a.x, e1y = b.y - a.y, e1z = b.z - a.z;
+        const float e2x = c.x - a.x, e2y = c.y - a.y, e2z = c.z - a.z;
+        float nx = e1y * e2z - e1z * e2y;
+        float ny = e1z * e2x - e1x * e2z;
+        float nz = e1x * e2y - e1y * e2x;
+        const float len_sq = nx * nx + ny * ny + nz * nz;
+        if (len_sq > 1e-12f) {
+            const float inv = 1.0f / std::sqrt(len_sq);
+            nx *= inv;
+            ny *= inv;
+            nz *= inv;
+        } else {
+            nx = 0.0f;
+            ny = 1.0f;
+            nz = 0.0f;
+        }
+        a.nx = b.nx = c.nx = nx;
+        a.ny = b.ny = c.ny = ny;
+        a.nz = b.nz = c.nz = nz;
+    }
+}
+
+void assign_triangle_face_normals(std::vector<Vertex>& vertices) {
+    assign_triangle_face_normals(vertices.data(), vertices.size());
+}
 struct RenderInstance {
     TransformComponent transform;
     std::string mesh_asset;
     PbrSurfaceParams pbr = PbrSurfaceParams::dielectric_default();
+    // World-space AABB for frustum culling in draw_world_pass(); unset (no mesh_bounds available) always draws.
+    std::optional<WorldBounds> bounds;
+    // Precomputed at expand time so draw/LOD paths avoid hashing std::string every frame.
+    std::uint64_t mesh_key_hash = 0;
 };
 
 std::array<float, 24> pack_object_constants(const std::array<float, 16>& model, const PbrSurfaceParams& pbr,
@@ -163,6 +245,32 @@ std::array<float, 24> pack_object_constants(const std::array<float, 16>& model, 
     constants[22] = pbr.emissive[2];
     constants[23] = 0.0f;
     return constants;
+}
+
+std::array<float, 16> transform_model_matrix(const TransformComponent& transform) {
+    using namespace DirectX;
+    const auto scale = XMMatrixScaling(transform.scale[0], transform.scale[1], transform.scale[2]);
+    const auto rotation =
+        XMMatrixRotationQuaternion(XMLoadFloat4(reinterpret_cast<const XMFLOAT4*>(transform.rotation.data())));
+    const auto translation =
+        XMMatrixTranslation(transform.position[0], transform.position[1], transform.position[2]);
+    std::array<float, 16> model{};
+    XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4*>(model.data()), scale * rotation * translation);
+    return model;
+}
+
+/** Pack one prop instance as 6 float4 rows: model (same layout as foliage) + material + emissive. */
+void append_prop_instance_rows(std::vector<float>& rows, const std::array<float, 16>& model,
+    const PbrSurfaceParams& pbr, float use_albedo) {
+    for (float value : model) rows.push_back(value);
+    rows.push_back(pbr.roughness);
+    rows.push_back(pbr.metallic);
+    rows.push_back(use_albedo);
+    rows.push_back(0.0f);
+    rows.push_back(pbr.emissive[0]);
+    rows.push_back(pbr.emissive[1]);
+    rows.push_back(pbr.emissive[2]);
+    rows.push_back(0.0f);
 }
 
 const char* k_pbr_hlsl_helpers = R"(
@@ -218,7 +326,25 @@ struct FoliageGpuDraw {
     float blade_height = 0.55f;
     float center_x = 0.0f;
     float center_z = 0.0f;
+    WorldBounds bounds{};
+    bool has_bounds = false;
 };
+
+/** CPU-side foliage instance pack (may run off the render thread). */
+struct PackedFoliageGpu {
+    std::vector<float> instance_rows;
+    std::vector<FoliageGpuDraw> draws;
+};
+
+/** One GPU draw of N identical-mesh props. Instance records are 6 float4s (model + material + emissive). */
+struct PropGpuDraw {
+    std::string mesh_key;
+    UINT instance_offset = 0;
+    UINT instance_count = 0;
+    D3D12_GPU_DESCRIPTOR_HANDLE albedo{};
+    float use_albedo = 0.0f;
+};
+static constexpr UINT k_prop_instance_float4s = 6;
 
 EngineError graphics_error(std::string code, std::string message, HRESULT result = S_OK) {
     std::vector<std::string> causes;
@@ -239,12 +365,107 @@ std::string normalize_asset_path(std::string path) {
     return path;
 }
 
+PackedFoliageGpu pack_foliage_gpu_instances(
+    const std::map<CellCoord, std::vector<FoliageInstance>>& cell_instances, const FoliageLayerPalette* palette,
+    const std::unordered_set<std::string>& known_meshes) {
+    PackedFoliageGpu packed;
+    packed.instance_rows.reserve(1024);
+    UINT instance_offset = 0;
+    constexpr float k_cell = k_default_terrain_cell_size;
+    for (const auto& cell_entry : cell_instances) {
+        if (cell_entry.second.empty()) continue;
+        std::map<std::string, std::vector<const FoliageInstance*>> by_mesh;
+        for (const auto& instance : cell_entry.second) {
+            if (!palette) continue;
+            const auto mesh_key = palette->mesh_key_for_layer(instance.layer_index);
+            if (mesh_key.empty()) continue;
+            const auto normalized = normalize_asset_path(mesh_key);
+            if (!known_meshes.empty() && known_meshes.find(normalized) == known_meshes.end()) continue;
+            by_mesh[normalized].push_back(&instance);
+        }
+        const float cell_min_x = static_cast<float>(cell_entry.first.x) * k_cell - 0.5f * k_cell;
+        const float cell_min_z = static_cast<float>(cell_entry.first.z) * k_cell - 0.5f * k_cell;
+        for (const auto& mesh_batch : by_mesh) {
+            if (mesh_batch.second.empty()) continue;
+            FoliageGpuDraw draw{mesh_batch.first, instance_offset, static_cast<UINT>(mesh_batch.second.size())};
+            float min_y = mesh_batch.second.front()->model[13];
+            float max_y = min_y;
+            float sum_x = 0.0f;
+            float sum_z = 0.0f;
+            for (const auto* instance : mesh_batch.second) {
+                const float y = instance->model[13];
+                min_y = (std::min)(min_y, y);
+                max_y = (std::max)(max_y, y);
+                sum_x += instance->model[12];
+                sum_z += instance->model[14];
+                for (float value : instance->model) packed.instance_rows.push_back(value);
+            }
+            draw.center_x = sum_x / static_cast<float>(mesh_batch.second.size());
+            draw.center_z = sum_z / static_cast<float>(mesh_batch.second.size());
+            if (palette) {
+                if (const auto* layer = palette->find_by_index(mesh_batch.second.front()->layer_index)) {
+                    draw.bend_strength = layer->bend_strength;
+                    draw.bend_radius = layer->bend_radius;
+                    draw.blade_height = layer->blade_height;
+                    max_y += layer->blade_height;
+                }
+            }
+            draw.bounds = {cell_min_x, min_y - 0.5f, cell_min_z, cell_min_x + k_cell, max_y + 0.5f,
+                cell_min_z + k_cell};
+            draw.has_bounds = true;
+            instance_offset += draw.instance_count;
+            packed.draws.push_back(std::move(draw));
+        }
+    }
+    return packed;
+}
+
 constexpr std::size_t k_max_point_lights = 2;
 
 // SSAO v1 tuning defaults (world-space depth-based AO); see context/planning/tickets/TICKET-0042.md.
-constexpr float k_ssao_radius = 0.65f;
-constexpr float k_ssao_bias = 0.035f;
-constexpr float k_ssao_intensity = 0.55f;
+constexpr float k_ssao_radius = 0.55f;
+constexpr float k_ssao_bias = 0.04f;
+// Soft enough that residual crawl without temporal history stays quiet under look-around.
+constexpr float k_ssao_intensity = 0.30f;
+
+// CSM v1 (TICKET-0219) — see include/engine/rendering/csm_shadows.h for cascade splits / bias.
+const char* k_shadow_hlsl_helpers = R"(
+            cbuffer Shadow : register(b3) {
+                float4x4 cascadeViewProj0;
+                float4x4 cascadeViewProj1;
+                float4x4 cascadeViewProj2;
+                float4 cascadeSplits;
+                float4 shadowParams;
+            };
+            Texture2DArray shadowMap : register(t1);
+            SamplerComparisonState shadowSampler : register(s1);
+            float sampleSunShadow(float3 worldPos, float3 N, float3 L) {
+                float camDist = distance(worldPos, cameraAndFogStart.xyz);
+                int cascade = 2;
+                if (camDist < cascadeSplits.x) cascade = 0;
+                else if (camDist < cascadeSplits.y) cascade = 1;
+                float4x4 cascadeVP = cascade == 0 ? cascadeViewProj0 : (cascade == 1 ? cascadeViewProj1 : cascadeViewProj2);
+                float3 offsetPos = worldPos + N * shadowParams.y;
+                float4 lightClip = mul(cascadeVP, float4(offsetPos, 1.0));
+                float3 ndc = lightClip.xyz / max(lightClip.w, 1e-5);
+                float2 uv = ndc.xy * float2(0.5, -0.5) + 0.5;
+                float depth = ndc.z;
+                if (uv.x <= 0.0 || uv.x >= 1.0 || uv.y <= 0.0 || uv.y >= 1.0 || depth <= 0.0 || depth >= 1.0)
+                    return 1.0;
+                float ndotl = saturate(dot(N, L));
+                float bias = shadowParams.x + shadowParams.y * 0.02 * (1.0 - ndotl);
+                float texel = shadowParams.z / max(shadowParams.w, 1.0);
+                float shadow = 0.0;
+                [unroll] for (int y = -1; y <= 1; ++y) {
+                    [unroll] for (int x = -1; x <= 1; ++x) {
+                        float2 offset = float2(x, y) * texel;
+                        shadow += shadowMap.SampleCmpLevelZero(shadowSampler, float3(uv + offset, cascade), depth - bias);
+                    }
+                }
+                return shadow / 9.0;
+            }
+)";
+
 
 struct ActivePointLight {
     float x = 0.0f;
@@ -263,13 +484,32 @@ void append_fullscreen_sky_triangle(std::vector<Vertex>& vertices) {
     vertices.push_back({-1.0f, 3.0f, 0.99999f, -1.0f, 0.0f, 0.0f});
 }
 
+// Vertex positions are already world-space (terrain/prop generation bakes world coordinates in), so the AABB is a
+// plain min/max over the batch. Used to frustum-cull whole terrain cells before issuing their draw call.
+WorldBounds compute_vertex_world_bounds(const std::vector<Vertex>& vertices) {
+    WorldBounds bounds{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(), std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
+    for (const auto& vertex : vertices) {
+        bounds.min_x = std::min(bounds.min_x, vertex.x);
+        bounds.min_y = std::min(bounds.min_y, vertex.y);
+        bounds.min_z = std::min(bounds.min_z, vertex.z);
+        bounds.max_x = std::max(bounds.max_x, vertex.x);
+        bounds.max_y = std::max(bounds.max_y, vertex.y);
+        bounds.max_z = std::max(bounds.max_z, vertex.z);
+    }
+    return bounds;
+}
+
 void append_debug_ground_quad(std::vector<Vertex>& vertices) {
+    const std::size_t start = vertices.size();
     vertices.push_back({-20, 0, -20, .12f, .18f, .22f});
     vertices.push_back({-20, 0, 20, .12f, .18f, .22f});
     vertices.push_back({20, 0, 20, .12f, .18f, .22f});
     vertices.push_back({-20, 0, -20, .12f, .18f, .22f});
     vertices.push_back({20, 0, 20, .12f, .18f, .22f});
     vertices.push_back({20, 0, -20, .12f, .18f, .22f});
+    assign_triangle_face_normals(vertices.data() + start, vertices.size() - start);
 }
 
 void append_physics_cube(std::vector<Vertex>& vertices) {
@@ -278,12 +518,14 @@ void append_physics_cube(std::vector<Vertex>& vertices) {
     const int faces[6][6] = {{0, 2, 1, 0, 3, 2}, {4, 5, 6, 4, 6, 7}, {0, 4, 7, 0, 7, 3}, {1, 2, 6, 1, 6, 5},
         {3, 7, 6, 3, 6, 2}, {0, 1, 5, 0, 5, 4}};
     const float colors[6][3] = {{.2f, .8f, 1}, {.8f, .2f, .9f}, {.1f, 1, .45f}, {1, .6f, .1f}, {.4f, .5f, 1}, {1, .25f, .25f}};
+    const std::size_t start = vertices.size();
     for (int face = 0; face < 6; ++face) {
         for (int vertex = 0; vertex < 6; ++vertex) {
             const auto point = p[faces[face][vertex]];
             vertices.push_back({point[0], point[1], point[2], colors[face][0], colors[face][1], colors[face][2]});
         }
     }
+    assign_triangle_face_normals(vertices.data() + start, vertices.size() - start);
 }
 
 void append_imported_mesh_vertices(std::vector<Vertex>& vertices,
@@ -291,9 +533,25 @@ void append_imported_mesh_vertices(std::vector<Vertex>& vertices,
     std::map<std::string, std::pair<UINT, UINT>>& mesh_ranges) {
     for (const auto& imported : imported_meshes) {
         const UINT offset = static_cast<UINT>(vertices.size());
-        for (const auto& vertex : imported.second.vertices)
-            vertices.push_back({vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b, vertex.u, vertex.v});
-        mesh_ranges[normalize_asset_path(imported.first)] = {offset, static_cast<UINT>(imported.second.vertices.size())};
+        const auto& mesh = imported.second;
+        const bool skinned = mesh.has_skinning() && mesh.influences.size() == mesh.vertices.size();
+        for (std::size_t i = 0; i < mesh.vertices.size(); ++i) {
+            const auto& vertex = mesh.vertices[i];
+            Vertex out{vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b, vertex.u, vertex.v};
+            if (skinned) {
+                const auto& inf = mesh.influences[i];
+                for (int k = 0; k < 4; ++k) {
+                    const auto joint = inf.joints[static_cast<std::size_t>(k)];
+                    out.joints[k] = joint < k_max_bones ? static_cast<std::uint8_t>(joint) : 0;
+                    const float w = std::clamp(inf.weights[static_cast<std::size_t>(k)], 0.0f, 1.0f);
+                    out.weights[k] = static_cast<std::uint8_t>(std::lround(w * 255.0f));
+                }
+            }
+            vertices.push_back(out);
+        }
+        const UINT count = static_cast<UINT>(mesh.vertices.size());
+        mesh_ranges[normalize_asset_path(imported.first)] = {offset, count};
+        assign_triangle_face_normals(vertices.data() + offset, count);
     }
 }
 
@@ -318,26 +576,78 @@ PbrSurfaceParams resolve_part_pbr(const PrefabMeshSource& mesh, const PrefabAsse
     return PbrSurfaceParams::from_material(*material);
 }
 
+// `mesh_bounds`, when provided, populates a world-space AABB per instance so draw_world_pass() can frustum-cull
+// it; omit (nullptr) for callers that do not have a mesh-bounds catalog handy (instance always draws then).
 void expand_prefab_render_instances(const PrefabAsset& prefab, const TransformComponent& placement_transform,
-    std::vector<RenderInstance>& instances, const PrefabAsset::MaterialLookup& lookup_material = {}) {
+    std::vector<RenderInstance>& instances, const PrefabAsset::MaterialLookup& lookup_material = {},
+    const std::map<std::string, MeshBounds>* mesh_bounds = nullptr) {
+    const auto bounds_for = [&](const std::string& key,
+                                 const TransformComponent& transform) -> std::optional<WorldBounds> {
+        if (!mesh_bounds) return std::nullopt;
+        const auto found = mesh_bounds->find(key);
+        if (found == mesh_bounds->end()) return std::nullopt;
+        return transform_mesh_bounds(found->second, transform);
+    };
+    const auto push_instance = [&](const TransformComponent& transform, const std::string& key,
+                                    const PbrSurfaceParams& pbr) {
+        RenderInstance instance;
+        instance.transform = transform;
+        instance.mesh_asset = key;
+        instance.pbr = pbr;
+        instance.bounds = bounds_for(key, transform);
+        instance.mesh_key_hash = static_cast<std::uint64_t>(std::hash<std::string>{}(key));
+        instances.push_back(std::move(instance));
+    };
     if (!prefab.is_compositional()) {
-        if (!prefab.mesh.empty())
-            instances.push_back({placement_transform, normalize_asset_path(prefab.mesh),
-                PbrSurfaceParams::dielectric_default()});
+        if (!prefab.mesh.empty()) {
+            const auto key = normalize_asset_path(prefab.mesh);
+            push_instance(placement_transform, key, PbrSurfaceParams::dielectric_default());
+        }
         return;
     }
     for (const auto& part : prefab.parts) {
         bool skip_draw = false;
         const auto pbr = resolve_part_pbr(part.mesh, lookup_material, skip_draw);
         if (skip_draw) continue;
-        const auto mesh_key = prefab.mesh_key_for_part(part, lookup_material);
+        const auto mesh_key = normalize_asset_path(prefab.mesh_key_for_part(part, lookup_material));
         if (mesh_key.empty()) continue;
-        instances.push_back({engine::multiply_transforms(placement_transform, part.transform), mesh_key, pbr});
+        const auto part_transform = engine::multiply_transforms(placement_transform, part.transform);
+        push_instance(part_transform, mesh_key, pbr);
     }
 }
 
 const PrefabAsset* find_prefab(const std::map<std::string, PrefabAsset>& prefab_catalog, const std::string& prefab_asset) {
     return find_prefab_in_catalog(prefab_catalog, prefab_asset);
+}
+
+std::array<float, 3> rotate_offset_by_quat(const std::array<float, 4>& q, const std::array<float, 3>& v) {
+    const float qx = q[0], qy = q[1], qz = q[2], qw = q[3];
+    const float tx = 2.0f * (qy * v[2] - qz * v[1]);
+    const float ty = 2.0f * (qz * v[0] - qx * v[2]);
+    const float tz = 2.0f * (qx * v[1] - qy * v[0]);
+    return {v[0] + qw * tx + (qy * tz - qz * ty), v[1] + qw * ty + (qz * tx - qx * tz),
+        v[2] + qw * tz + (qx * ty - qy * tx)};
+}
+
+std::array<float, 3> particle_world_from_local(const TransformComponent& transform,
+    const std::array<float, 3>& local_offset) {
+    const std::array<float, 3> scaled{local_offset[0] * transform.scale[0], local_offset[1] * transform.scale[1],
+        local_offset[2] * transform.scale[2]};
+    const auto world = rotate_offset_by_quat(transform.rotation, scaled);
+    return {transform.position[0] + world[0], transform.position[1] + world[1], transform.position[2] + world[2]};
+}
+
+std::array<float, 3> particle_local_from_world(const TransformComponent& transform,
+    const std::array<float, 3>& world_position) {
+    const std::array<float, 3> delta{world_position[0] - transform.position[0],
+        world_position[1] - transform.position[1], world_position[2] - transform.position[2]};
+    const std::array<float, 4> inv{-transform.rotation[0], -transform.rotation[1], -transform.rotation[2],
+        transform.rotation[3]};
+    const auto unrotated = rotate_offset_by_quat(inv, delta);
+    const float sx = std::fabs(transform.scale[0]) > 1e-6f ? transform.scale[0] : 1.0f;
+    const float sy = std::fabs(transform.scale[1]) > 1e-6f ? transform.scale[1] : 1.0f;
+    const float sz = std::fabs(transform.scale[2]) > 1e-6f ? transform.scale[2] : 1.0f;
+    return {unrotated[0] / sx, unrotated[1] / sy, unrotated[2] / sz};
 }
 
 std::vector<ActivePointLight> collect_point_lights(const std::map<std::string, PrefabAsset>& prefab_catalog,
@@ -350,12 +660,47 @@ std::vector<ActivePointLight> collect_point_lights(const std::map<std::string, P
         if (found == prefab_catalog.end() || !found->second.light) continue;
         const auto& spec = *found->second.light;
         const auto& transform = placement.second;
-        lights.push_back({transform.position[0] + spec.offset[0] * transform.scale[0],
-                          transform.position[1] + spec.offset[1] * transform.scale[1],
-                          transform.position[2] + spec.offset[2] * transform.scale[2], spec.radius, spec.color[0],
-                          spec.color[1], spec.color[2], spec.strength});
+        const auto world = particle_world_from_local(transform, spec.offset);
+        lights.push_back({world[0], world[1], world[2], spec.radius, spec.color[0], spec.color[1], spec.color[2],
+            spec.strength});
     }
     return lights;
+}
+
+// Immutable snapshot handed to the static-prop expansion worker. Everything the expansion reads is copied so the
+// main thread stays free to mutate the scene, catalog, and material cache while the job runs.
+struct StaticRenderCacheInput {
+    std::map<std::string, PrefabAsset> prefab_catalog;
+    std::map<std::string, MeshBounds> mesh_bounds;
+    std::map<std::string, MaterialAsset> materials;
+    // Raw (unnormalized) prefab asset path plus the world transform to expand it at.
+    std::vector<std::pair<std::string, TransformComponent>> placements;
+};
+
+struct StaticRenderCacheResult {
+    std::vector<RenderInstance> instances;
+    std::vector<ActivePointLight> lights;
+    double build_ms = 0.0;
+};
+
+// Runs on a worker thread; touches only `input`.
+StaticRenderCacheResult build_static_render_cache(const StaticRenderCacheInput& input) {
+    const auto started = std::chrono::steady_clock::now();
+    StaticRenderCacheResult result;
+    const auto lookup_material = make_material_lookup(&input.materials);
+    std::vector<std::pair<std::string, TransformComponent>> light_placements;
+    light_placements.reserve(input.placements.size());
+    for (const auto& placement : input.placements) {
+        if (const auto* prefab = find_prefab_in_catalog(input.prefab_catalog, placement.first)) {
+            expand_prefab_render_instances(*prefab, placement.second, result.instances, lookup_material,
+                &input.mesh_bounds);
+        }
+        light_placements.emplace_back(normalize_asset_path(placement.first), placement.second);
+    }
+    result.lights = collect_point_lights(input.prefab_catalog, light_placements);
+    result.build_ms =
+        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+    return result;
 }
 
 void pack_point_lights(std::array<float, 48>& frame_constants, const std::vector<ActivePointLight>& lights,
@@ -398,13 +743,46 @@ std::string utf8(const wchar_t* value) {
     return output;
 }
 
+std::uint64_t file_time_ticks(const FILETIME& time) {
+    ULARGE_INTEGER value{};
+    value.LowPart = time.dwLowDateTime;
+    value.HighPart = time.dwHighDateTime;
+    return value.QuadPart;
+}
+
+struct ProcessCpuMeter {
+    std::uint64_t wall_ticks = 0;
+    std::uint64_t process_ticks = 0;
+};
+
+double sample_process_cpu_percent(ProcessCpuMeter& meter) {
+    FILETIME wall{}, created{}, exited{}, kernel{}, user{};
+    GetSystemTimeAsFileTime(&wall);
+    if (!GetProcessTimes(GetCurrentProcess(), &created, &exited, &kernel, &user)) return 0.0;
+    const std::uint64_t wall_ticks = file_time_ticks(wall);
+    const std::uint64_t process_ticks = file_time_ticks(kernel) + file_time_ticks(user);
+    if (meter.wall_ticks == 0 || wall_ticks <= meter.wall_ticks) {
+        meter.wall_ticks = wall_ticks;
+        meter.process_ticks = process_ticks;
+        return 0.0;
+    }
+    const std::uint64_t wall_delta = wall_ticks - meter.wall_ticks;
+    const std::uint64_t process_delta = process_ticks - meter.process_ticks;
+    meter.wall_ticks = wall_ticks;
+    meter.process_ticks = process_ticks;
+    const DWORD processors = (std::max)(DWORD{1}, GetActiveProcessorCount(ALL_PROCESSOR_GROUPS));
+    return 100.0 * static_cast<double>(process_delta) /
+        (static_cast<double>(wall_delta) * static_cast<double>(processors));
+}
+
 class Renderer final {
 public:
     ~Renderer() { shutdown(); }
+    void release() { shutdown(); }
 
-    Result<void> initialize(SDL_Window* window, bool debug_layer, bool debug_world, bool editor, bool hidden, const MaterialAsset& terrain_material, const std::vector<std::pair<std::string,ImportedMesh>>& imported_meshes) {
-        editor_requested_=editor;
-        debug_world_=debug_world;
+    /// Device, swapchain, targets, fence, and ImGui — enough to Present a boot splash before assets load.
+    Result<void> initialize_device_and_imgui(SDL_Window* window, bool debug_layer, bool editor, bool hidden) {
+        editor_requested_ = editor;
         const auto properties = SDL_GetWindowProperties(window);
         hwnd_ = static_cast<HWND>(SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
         if (!hwnd_) return Result<void>::failure(graphics_error("GFX-WINDOW-HANDLE", "SDL did not provide a Win32 window handle"));
@@ -440,6 +818,7 @@ public:
                 return Result<void>::failure(graphics_error("GFX-DEVICE", "No Direct3D 12 device is available", hr));
             adapter_name_ = "Microsoft WARP";
         }
+        (void)adapter.As(&adapter3_);
         set_process_gpu_diagnostics(GpuDiagnostics::from_device(adapter.Get(), device_.Get()));
 
         D3D12_COMMAND_QUEUE_DESC queue_desc{};
@@ -460,15 +839,32 @@ public:
         hr = device_->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&rtv_heap_));
         if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-RTV-HEAP", "Could not create render-target heap", hr));
         rtv_stride_ = device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        D3D12_DESCRIPTOR_HEAP_DESC dsv_desc{}; dsv_desc.NumDescriptors=1; dsv_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-        hr=device_->CreateDescriptorHeap(&dsv_desc,IID_PPV_ARGS(&dsv_heap_));
-        if(FAILED(hr)) return Result<void>::failure(graphics_error("GFX-DSV-HEAP","Could not create depth heap",hr));
-        srv_stride_=device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        if(editor){D3D12_DESCRIPTOR_HEAP_DESC imgui_desc{};imgui_desc.NumDescriptors=256;imgui_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;imgui_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;hr=device_->CreateDescriptorHeap(&imgui_desc,IID_PPV_ARGS(&imgui_heap_));if(FAILED(hr))return Result<void>::failure(graphics_error("EDITOR-DESCRIPTOR-HEAP","Could not create editor descriptor heap",hr));}
+        D3D12_DESCRIPTOR_HEAP_DESC dsv_desc{};
+        dsv_desc.NumDescriptors = 1;
+        dsv_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+        hr = device_->CreateDescriptorHeap(&dsv_desc, IID_PPV_ARGS(&dsv_heap_));
+        if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-DSV-HEAP", "Could not create depth heap", hr));
+        srv_stride_ = device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        if (editor) {
+            D3D12_DESCRIPTOR_HEAP_DESC imgui_desc{};
+            // 0 font, 1–2 viewports, 3–239 cartography/WF, 240–255 MVP overview, 256–511 UI canvas images.
+            imgui_desc.NumDescriptors = 512;
+            imgui_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            imgui_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+            hr = device_->CreateDescriptorHeap(&imgui_desc, IID_PPV_ARGS(&imgui_heap_));
+            if (FAILED(hr))
+                return Result<void>::failure(
+                    graphics_error("EDITOR-DESCRIPTOR-HEAP", "Could not create editor descriptor heap", hr));
+        }
         // Post-process descriptor heap: depth, lit, AO, water scene-color copy.
-        D3D12_DESCRIPTOR_HEAP_DESC post_desc{};post_desc.NumDescriptors=4;post_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;post_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        hr=device_->CreateDescriptorHeap(&post_desc,IID_PPV_ARGS(&post_srv_heap_));
-        if(FAILED(hr)) return Result<void>::failure(graphics_error("GFX-POST-DESCRIPTOR-HEAP","Could not create post-process descriptor heap",hr));
+        D3D12_DESCRIPTOR_HEAP_DESC post_desc{};
+        post_desc.NumDescriptors = 4;
+        post_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        post_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        hr = device_->CreateDescriptorHeap(&post_desc, IID_PPV_ARGS(&post_srv_heap_));
+        if (FAILED(hr))
+            return Result<void>::failure(
+                graphics_error("GFX-POST-DESCRIPTOR-HEAP", "Could not create post-process descriptor heap", hr));
 
         for (UINT i = 0; i < frame_count; ++i) {
             hr = device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&allocators_[i]));
@@ -480,14 +876,91 @@ public:
 
         auto targets = recreate_targets();
         if (!targets) return targets;
+
+        hr = device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence_));
+        if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-FENCE", "Could not create GPU fence", hr));
+        fence_event_ = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+        if (!fence_event_)
+            return Result<void>::failure(
+                graphics_error("GFX-FENCE-EVENT", "Could not create fence event", HRESULT_FROM_WIN32(GetLastError())));
+        // Hidden/benchmark windows are not composed by DWM; Present(1) can stall for minutes.
+        // Uncapped present also matches throughput measurement for the 1440p gate (TICKET-0139).
+        present_sync_interval_ = hidden ? 0u : 1u;
+        if (editor) {
+            IMGUI_CHECKVERSION();
+            ImGui::CreateContext();
+            auto& io = ImGui::GetIO();
+            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+            if (hidden) io.IniFilename = nullptr;
+            else {
+                std::filesystem::create_directories("out/editor");
+                io.IniFilename = "out/editor/imgui.ini";
+            }
+            ImGui::StyleColorsDark();
+            EditorChrome::apply_style(ImGui::GetStyle());
+            (void)EditorFonts::load(io);
+            if (!ImGui_ImplSDL3_InitForD3D(window) ||
+                !ImGui_ImplDX12_Init(device_.Get(), frame_count, DXGI_FORMAT_R8G8B8A8_UNORM, imgui_heap_.Get(),
+                    imgui_heap_->GetCPUDescriptorHandleForHeapStart(),
+                    imgui_heap_->GetGPUDescriptorHandleForHeapStart())) {
+                return Result<void>::failure(
+                    graphics_error("EDITOR-IMGUI-INIT", "Could not initialize Dear ImGui SDL3/D3D12 backends"));
+            }
+            editor_initialized_ = true;
+            ensure_app_branding_texture();
+        }
+        device_ready_ = true;
+        return Result<void>::success();
+    }
+
+    void ensure_app_branding_texture() {
+        if (app_icon_tex_id_ != 0 || !imgui_heap_ || !device_ || !queue_) return;
+        const auto path = resolve_app_icon_png(true);
+        if (path.empty()) {
+            Logger::instance().write(Severity::Warning, "branding",
+                "App icon PNG missing under assets/editor/branding/");
+            return;
+        }
+        // SRV 239 reserved for editor app branding (before MVP overview pool at 240).
+        constexpr UINT k_app_icon_srv = 239u;
+        ID3D12Resource* raw = nullptr;
+        auto loaded = load_png_imgui_srv(device_.Get(), queue_.Get(), imgui_heap_.Get(), srv_stride_, k_app_icon_srv,
+            path, &raw, [this]() { wait_for_gpu(); });
+        if (!loaded || !raw) {
+            Logger::instance().write(Severity::Warning, "branding",
+                "Failed to upload app icon for editor chrome: " + path.generic_string());
+            return;
+        }
+        app_icon_texture_.Attach(raw);
+        app_icon_tex_id_ = loaded.value();
+    }
+
+    [[nodiscard]] std::uint64_t app_icon_tex_id() const noexcept { return app_icon_tex_id_; }
+
+    /// Pipelines, constant buffers, and uploaded mesh geometry (after project meshes are imported).
+    Result<void> initialize_graphics(bool debug_world, const MaterialAsset& terrain_material,
+        const std::vector<std::pair<std::string, ImportedMesh>>& imported_meshes) {
+        if (!device_ready_) {
+            return Result<void>::failure(
+                graphics_error("GFX-NOT-READY", "initialize_device_and_imgui must run before initialize_graphics"));
+        }
+        debug_world_ = debug_world;
         auto pipeline = create_pipeline();
         if (!pipeline) return pipeline;
+        auto shadow_resources = create_shadow_resources();
+        if (!shadow_resources) return shadow_resources;
+        auto shadow_pipeline = create_shadow_pipeline();
+        if (!shadow_pipeline) return shadow_pipeline;
         auto water_pipeline = create_water_pipeline();
         if (!water_pipeline) return water_pipeline;
+        auto particle_pipeline = create_particle_pipeline();
+        if (!particle_pipeline) return particle_pipeline;
         auto ssao_pipelines = create_ssao_pipelines();
         if (!ssao_pipelines) return ssao_pipelines;
         auto frame_cb = create_frame_constant_buffer();
         if (!frame_cb) return frame_cb;
+        auto bone_cb = create_bone_constant_buffers();
+        if (!bone_cb) return bone_cb;
         auto post_cb = create_post_constant_buffers();
         if (!post_cb) return post_cb;
         auto geometry = create_geometry(debug_world, terrain_material, imported_meshes);
@@ -496,7 +969,7 @@ public:
         D3D12_QUERY_HEAP_DESC query_desc{};
         query_desc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
         query_desc.Count = 2;
-        hr = device_->CreateQueryHeap(&query_desc, IID_PPV_ARGS(&timestamp_heap_));
+        HRESULT hr = device_->CreateQueryHeap(&query_desc, IID_PPV_ARGS(&timestamp_heap_));
         if (SUCCEEDED(hr) && SUCCEEDED(queue_->GetTimestampFrequency(&timestamp_frequency_))) {
             D3D12_HEAP_PROPERTIES readback_heap{};
             readback_heap.Type = D3D12_HEAP_TYPE_READBACK;
@@ -509,16 +982,85 @@ public:
             timestamp_buffer.SampleDesc.Count = 1;
             timestamp_buffer.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
             hr = device_->CreateCommittedResource(&readback_heap, D3D12_HEAP_FLAG_NONE, &timestamp_buffer,
-                                                  D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-                                                  IID_PPV_ARGS(&timestamp_readback_));
+                D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&timestamp_readback_));
         }
         if (FAILED(hr)) Logger::instance().write(Severity::Warning, "rendering", "GPU timestamp queries are unavailable");
+        graphics_ready_ = true;
+        return Result<void>::success();
+    }
 
-        hr = device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence_));
-        if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-FENCE", "Could not create GPU fence", hr));
-        fence_event_ = CreateEventW(nullptr, FALSE, FALSE, nullptr);
-        if (!fence_event_) return Result<void>::failure(graphics_error("GFX-FENCE-EVENT", "Could not create fence event", HRESULT_FROM_WIN32(GetLastError())));
-        if(editor){IMGUI_CHECKVERSION();ImGui::CreateContext();auto& io=ImGui::GetIO();io.ConfigFlags|=ImGuiConfigFlags_DockingEnable;if(hidden)io.IniFilename=nullptr;else{std::filesystem::create_directories("out/editor");io.IniFilename="out/editor/imgui.ini";}ImGui::StyleColorsDark();EditorChrome::apply_style(ImGui::GetStyle());(void)EditorFonts::load(io);if(!ImGui_ImplSDL3_InitForD3D(window)||!ImGui_ImplDX12_Init(device_.Get(),frame_count,DXGI_FORMAT_R8G8B8A8_UNORM,imgui_heap_.Get(),imgui_heap_->GetCPUDescriptorHandleForHeapStart(),imgui_heap_->GetGPUDescriptorHandleForHeapStart()))return Result<void>::failure(graphics_error("EDITOR-IMGUI-INIT","Could not initialize Dear ImGui SDL3/D3D12 backends"));editor_initialized_=true;}
+    Result<void> initialize(SDL_Window* window, bool debug_layer, bool debug_world, bool editor, bool hidden,
+        const MaterialAsset& terrain_material, const std::vector<std::pair<std::string, ImportedMesh>>& imported_meshes) {
+        auto device = initialize_device_and_imgui(window, debug_layer, editor, hidden);
+        if (!device) return device;
+        return initialize_graphics(debug_world, terrain_material, imported_meshes);
+    }
+
+    /// Clear + ImGui boot splash Present (no world pipelines required).
+    Result<void> present_boot_frame(const char* stage, const char* detail, float progress01) {
+        if (!editor_initialized_ || !swap_chain_) {
+            return Result<void>::failure(graphics_error("EDITOR-BOOT-PRESENT", "Boot present requires editor ImGui"));
+        }
+        HRESULT hr = allocators_[frame_index_]->Reset();
+        if (FAILED(hr))
+            return Result<void>::failure(device_error("GFX-ALLOCATOR-RESET", "Could not reset command allocator", hr));
+        hr = command_list_->Reset(allocators_[frame_index_].Get(), nullptr);
+        if (FAILED(hr))
+            return Result<void>::failure(device_error("GFX-LIST-RESET", "Could not reset command list", hr));
+
+        auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(targets_[frame_index_].Get(),
+            backbuffer_was_presented_[frame_index_] ? D3D12_RESOURCE_STATE_PRESENT
+                                                   : D3D12_RESOURCE_STATE_COMMON,
+            D3D12_RESOURCE_STATE_RENDER_TARGET);
+        command_list_->ResourceBarrier(1, &barrier);
+        D3D12_CPU_DESCRIPTOR_HANDLE backbuffer_rtv = rtv_heap_->GetCPUDescriptorHandleForHeapStart();
+        backbuffer_rtv.ptr += static_cast<SIZE_T>(frame_index_) * rtv_stride_;
+        const float clear[] = {0.082f, 0.090f, 0.098f, 1.0f}; // EditorChrome kChrome
+        command_list_->OMSetRenderTargets(1, &backbuffer_rtv, FALSE, nullptr);
+        command_list_->ClearRenderTargetView(backbuffer_rtv, clear, 0, nullptr);
+
+        ImGui_ImplDX12_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
+        ImGui::NewFrame();
+        EditorChrome::draw_boot_overlay(stage, detail, progress01, app_icon_tex_id_);
+        ImGui::Render();
+
+        ID3D12DescriptorHeap* imgui_heaps[] = {imgui_heap_.Get()};
+        command_list_->SetDescriptorHeaps(1, imgui_heaps);
+        command_list_->OMSetRenderTargets(1, &backbuffer_rtv, FALSE, nullptr);
+        const D3D12_VIEWPORT imgui_viewport{0.0f, 0.0f, static_cast<float>(width_), static_cast<float>(height_), 0.0f,
+            1.0f};
+        const D3D12_RECT imgui_scissor{0, 0, static_cast<LONG>(width_), static_cast<LONG>(height_)};
+        command_list_->RSSetViewports(1, &imgui_viewport);
+        command_list_->RSSetScissorRects(1, &imgui_scissor);
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), command_list_.Get());
+
+        barrier = CD3DX12_RESOURCE_BARRIER_placeholder(
+            targets_[frame_index_].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+        command_list_->ResourceBarrier(1, &barrier);
+        hr = command_list_->Close();
+        if (FAILED(hr)) return Result<void>::failure(device_error("GFX-LIST-CLOSE", "Could not close command list", hr));
+        ID3D12CommandList* lists[] = {command_list_.Get()};
+        queue_->ExecuteCommandLists(1, lists);
+        const UINT presented_index = frame_index_;
+        // Boot splash uses uncapped present: Present(1) can stall for a long time when the window is
+        // not yet actively composed (same class of issue as hidden/benchmark sessions).
+        hr = swap_chain_->Present(0, 0);
+        if (FAILED(hr)) return Result<void>::failure(device_error("GFX-PRESENT", "Could not present frame", hr));
+        // Soft-sync only: a full GPU flush per stage made startup appear hung under the debug layer.
+        const UINT64 target = ++fence_value_;
+        if (FAILED(queue_->Signal(fence_.Get(), target))) {
+            return Result<void>::failure(device_error("GFX-FENCE-SIGNAL", "Could not signal boot fence", E_FAIL));
+        }
+        last_presented_index_ = presented_index;
+        has_presented_backbuffer_ = true;
+        backbuffer_was_presented_[presented_index] = true;
+        frame_index_ = swap_chain_->GetCurrentBackBufferIndex();
+        // Ensure the next frame's allocator is free before the caller continues heavy CPU work.
+        if (fence_->GetCompletedValue() < target) {
+            fence_->SetEventOnCompletion(target, fence_event_);
+            WaitForSingleObject(fence_event_, 100);
+        }
         return Result<void>::success();
     }
 
@@ -536,52 +1078,110 @@ public:
         width_ = width;
         height_ = height;
         frame_index_ = swap_chain_->GetCurrentBackBufferIndex();
+        backbuffer_was_presented_.fill(false);
+        has_presented_backbuffer_ = false;
         return recreate_targets();
     }
 
-    Result<void> create_frame_constant_buffer() {
-        frame_cb_.Reset();
-        water_frame_cb_.Reset();
-        frame_cb_mapped_ = nullptr;
-        water_frame_cb_mapped_ = nullptr;
-        D3D12_HEAP_PROPERTIES heap{};
-        heap.Type = D3D12_HEAP_TYPE_UPLOAD;
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        desc.Width = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT; // 256 bytes covers 48 floats
-        desc.Height = 1;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        HRESULT hr = device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc,
-            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&frame_cb_));
-        if (FAILED(hr))
-            return Result<void>::failure(graphics_error("GFX-FRAME-CB", "Could not create frame constant buffer", hr));
-        hr = frame_cb_->Map(0, nullptr, &frame_cb_mapped_);
-        if (FAILED(hr) || !frame_cb_mapped_)
-            return Result<void>::failure(graphics_error("GFX-FRAME-CB-MAP", "Could not map frame constant buffer", hr));
-        // Separate upload CB for water: overwriting the world frame CB before ExecuteCommandLists was
-        // zeroing fog/lighting for every mesh draw (black terrain/trees, blue sky only).
-        hr = device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc,
-            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&water_frame_cb_));
-        if (FAILED(hr))
-            return Result<void>::failure(graphics_error("GFX-WATER-FRAME-CB", "Could not create water frame constant buffer", hr));
-        hr = water_frame_cb_->Map(0, nullptr, &water_frame_cb_mapped_);
-        if (FAILED(hr) || !water_frame_cb_mapped_)
-            return Result<void>::failure(
-                graphics_error("GFX-WATER-FRAME-CB-MAP", "Could not map water frame constant buffer", hr));
+    Result<void> create_upload_cb_ring(std::array<ComPtr<ID3D12Resource>, frame_count>& cbs,
+        std::array<void*, frame_count>& mapped, UINT64 width, const char* create_code, const char* map_code,
+        const char* create_message, const char* map_message) {
+        for (UINT i = 0; i < frame_count; ++i) {
+            if (cbs[i] && mapped[i]) {
+                cbs[i]->Unmap(0, nullptr);
+                mapped[i] = nullptr;
+            }
+            cbs[i].Reset();
+            mapped[i] = nullptr;
+            D3D12_HEAP_PROPERTIES heap{};
+            heap.Type = D3D12_HEAP_TYPE_UPLOAD;
+            D3D12_RESOURCE_DESC desc{};
+            desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+            desc.Width = width;
+            desc.Height = 1;
+            desc.DepthOrArraySize = 1;
+            desc.MipLevels = 1;
+            desc.SampleDesc.Count = 1;
+            desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+            HRESULT hr = device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc,
+                D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&cbs[i]));
+            if (FAILED(hr)) return Result<void>::failure(graphics_error(create_code, create_message, hr));
+            hr = cbs[i]->Map(0, nullptr, &mapped[i]);
+            if (FAILED(hr) || !mapped[i])
+                return Result<void>::failure(graphics_error(map_code, map_message, hr));
+        }
         return Result<void>::success();
     }
 
+    Result<void> create_frame_constant_buffer() {
+        auto frame = create_upload_cb_ring(frame_cb_, frame_cb_mapped_,
+            D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, "GFX-FRAME-CB", "GFX-FRAME-CB-MAP",
+            "Could not create frame constant buffer", "Could not map frame constant buffer");
+        if (!frame) return frame;
+        // Separate upload CB for water: overwriting the world frame CB before ExecuteCommandLists was
+        // zeroing fog/lighting for every mesh draw (black terrain/trees, blue sky only).
+        auto water = create_upload_cb_ring(water_frame_cb_, water_frame_cb_mapped_,
+            D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, "GFX-WATER-FRAME-CB", "GFX-WATER-FRAME-CB-MAP",
+            "Could not create water frame constant buffer", "Could not map water frame constant buffer");
+        if (!water) return water;
+        // Same trap for particles (TICKET-0122): must not clobber world frame_cb_ after mesh draws are recorded.
+        return create_upload_cb_ring(particle_frame_cb_, particle_frame_cb_mapped_,
+            D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, "GFX-PARTICLE-FRAME-CB", "GFX-PARTICLE-FRAME-CB-MAP",
+            "Could not create particle frame constant buffer", "Could not map particle frame constant buffer");
+    }
+
     void bind_frame_constants(const std::array<float, 48>& frame_constants) {
-        std::memcpy(frame_cb_mapped_, frame_constants.data(), sizeof(frame_constants));
-        command_list_->SetGraphicsRootConstantBufferView(0, frame_cb_->GetGPUVirtualAddress());
+        std::memcpy(frame_cb_mapped_[frame_index_], frame_constants.data(), sizeof(frame_constants));
+        command_list_->SetGraphicsRootConstantBufferView(0, frame_cb_[frame_index_]->GetGPUVirtualAddress());
     }
 
     void bind_water_frame_constants(const std::array<float, 48>& frame_constants) {
-        std::memcpy(water_frame_cb_mapped_, frame_constants.data(), sizeof(frame_constants));
-        command_list_->SetGraphicsRootConstantBufferView(0, water_frame_cb_->GetGPUVirtualAddress());
+        std::memcpy(water_frame_cb_mapped_[frame_index_], frame_constants.data(), sizeof(frame_constants));
+        command_list_->SetGraphicsRootConstantBufferView(0, water_frame_cb_[frame_index_]->GetGPUVirtualAddress());
+    }
+
+    void bind_particle_frame_constants(const std::array<float, 48>& frame_constants) {
+        std::memcpy(particle_frame_cb_mapped_[frame_index_], frame_constants.data(), sizeof(frame_constants));
+        command_list_->SetGraphicsRootConstantBufferView(0, particle_frame_cb_[frame_index_]->GetGPUVirtualAddress());
+    }
+
+    Result<void> create_bone_constant_buffers() {
+        auto created = create_upload_cb_ring(bone_cb_, bone_cb_mapped_, k_bone_cb_bytes, "GFX-BONE-CB",
+            "GFX-BONE-CB-MAP", "Could not create bone constant buffer", "Could not map bone constant buffer");
+        if (!created) return created;
+        // Identity palette so static meshes (zero weights) and unbound frames stay safe.
+        std::array<float, 16> identity{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+        for (UINT i = 0; i < frame_count; ++i) {
+            auto* dst = static_cast<float*>(bone_cb_mapped_[i]);
+            for (UINT b = 0; b < k_max_bones; ++b)
+                std::memcpy(dst + b * 16, identity.data(), sizeof(identity));
+        }
+        pending_skin_matrix_count_ = 0;
+        return Result<void>::success();
+    }
+
+    void set_pending_skin_matrices(const std::vector<std::array<float, 16>>& matrices) {
+        pending_skin_matrix_count_ = 0;
+        if (matrices.empty()) return;
+        if (matrices.size() > k_max_bones) return; // fail closed — leave identity / prior bind pose
+        for (std::size_t i = 0; i < matrices.size(); ++i) pending_skin_matrices_[i] = matrices[i];
+        pending_skin_matrix_count_ = static_cast<UINT>(matrices.size());
+    }
+
+    void flush_pending_skin_matrices() {
+        if (!bone_cb_mapped_[frame_index_]) return;
+        auto* dst = static_cast<float*>(bone_cb_mapped_[frame_index_]);
+        std::array<float, 16> identity{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+        for (UINT b = 0; b < k_max_bones; ++b) {
+            const float* src = (b < pending_skin_matrix_count_) ? pending_skin_matrices_[b].data() : identity.data();
+            std::memcpy(dst + b * 16, src, sizeof(identity));
+        }
+    }
+
+    void bind_bone_constants(UINT root_parameter_index) {
+        if (!bone_cb_[frame_index_]) return;
+        command_list_->SetGraphicsRootConstantBufferView(root_parameter_index,
+            bone_cb_[frame_index_]->GetGPUVirtualAddress());
     }
 
     Result<void> upload_prop_vertices(const std::vector<Vertex>& vertices) {
@@ -629,6 +1229,30 @@ public:
         auto uploaded = upload_prop_vertices(vertices);
         if (!uploaded) return uploaded;
         return sync_mesh_albedos(imported_meshes);
+    }
+
+    Result<void> patch_mesh_vertices(const std::string& mesh_asset, const Vertex* vertices, UINT count) {
+        if (!vertex_buffer_ || !vertices || count == 0) {
+            return Result<void>::failure(
+                graphics_error("GFX-MESH-PATCH", "Cannot patch mesh vertices without a vertex buffer"));
+        }
+        const auto found = mesh_ranges_.find(normalize_asset_path(mesh_asset));
+        if (found == mesh_ranges_.end()) {
+            return Result<void>::failure(
+                graphics_error("GFX-MESH-PATCH-MISSING", "Mesh range not found for " + mesh_asset));
+        }
+        if (count != found->second.second) {
+            return Result<void>::failure(
+                graphics_error("GFX-MESH-PATCH-COUNT", "Patched vertex count must match uploaded mesh range"));
+        }
+        void* mapped = nullptr;
+        if (FAILED(vertex_buffer_->Map(0, nullptr, &mapped)) || !mapped) {
+            return Result<void>::failure(graphics_error("GFX-MESH-PATCH-MAP", "Could not map vertex buffer"));
+        }
+        auto* dst = static_cast<Vertex*>(mapped) + found->second.first;
+        std::memcpy(dst, vertices, static_cast<std::size_t>(count) * sizeof(Vertex));
+        vertex_buffer_->Unmap(0, nullptr);
+        return Result<void>::success();
     }
 
     // Decode-free RGBA8 upload into a committed texture + SRV. Self-contained fence keeps it usable during
@@ -736,7 +1360,7 @@ public:
         mesh_albedo_gpu_.clear();
         mesh_albedo_textures_.clear();
         mesh_white_gpu_ = {};
-        const UINT descriptor_count = 1u + static_cast<UINT>(imported_meshes.size());
+        const UINT descriptor_count = 2u + static_cast<UINT>(imported_meshes.size()); // +1 white, +meshes, +1 shadow
         D3D12_DESCRIPTOR_HEAP_DESC heap_desc{};
         heap_desc.NumDescriptors = descriptor_count;
         heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -767,11 +1391,18 @@ public:
             cpu.ptr += srv_stride_;
             gpu.ptr += srv_stride_;
         }
+        // Final slot reserved for the CSM shadow map array SRV (TICKET-0219).
+        mesh_shadow_srv_cpu_ = cpu;
+        mesh_shadow_srv_gpu_ = gpu;
+        refresh_shadow_srvs();
         return Result<void>::success();
     }
 
     Result<void> upload_terrain_vertices(const std::vector<Vertex>& vertices) {
+        // Legacy full-mesh path kept for callers that still rebuild everything at once.
         wait_for_gpu();
+        terrain_cell_buffers_.clear();
+        terrain_cell_bounds_.clear();
         terrain_vertex_buffer_.Reset();
         terrain_vertex_count_ = static_cast<UINT>(vertices.size());
         terrain_vertex_view_ = {};
@@ -799,9 +1430,123 @@ public:
         return Result<void>::success();
     }
 
+    Result<void> upload_terrain_cell(CellCoord cell, const std::vector<Vertex>& vertices) {
+        purge_retired_terrain_buffers();
+        auto existing = terrain_cell_buffers_.find(cell);
+        if (existing != terrain_cell_buffers_.end()) {
+            retire_terrain_buffer(std::move(existing->second.buffer));
+            terrain_cell_buffers_.erase(existing);
+        }
+        if (vertices.empty()) return Result<void>::success();
+        TerrainCellGpu gpu;
+        D3D12_HEAP_PROPERTIES heap{};
+        heap.Type = D3D12_HEAP_TYPE_UPLOAD;
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        desc.Width = vertices.size() * sizeof(Vertex);
+        desc.Height = 1;
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = 1;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        auto hr = device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr, IID_PPV_ARGS(&gpu.buffer));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-TERRAIN-BUFFER", "Could not create terrain cell buffer", hr));
+        void* mapped = nullptr;
+        gpu.buffer->Map(0, nullptr, &mapped);
+        std::memcpy(mapped, vertices.data(), vertices.size() * sizeof(Vertex));
+        gpu.buffer->Unmap(0, nullptr);
+        gpu.vertex_count = static_cast<UINT>(vertices.size());
+        gpu.view = {gpu.buffer->GetGPUVirtualAddress(), static_cast<UINT>(vertices.size() * sizeof(Vertex)),
+            sizeof(Vertex)};
+        terrain_cell_buffers_[cell] = std::move(gpu);
+        terrain_cell_bounds_[cell] = compute_vertex_world_bounds(vertices);
+        // Prefer per-cell draws once any cell buffer exists.
+        terrain_vertex_buffer_.Reset();
+        terrain_vertex_count_ = 0;
+        terrain_vertex_view_ = {};
+        return Result<void>::success();
+    }
+
+    void remove_terrain_cell(CellCoord cell) {
+        auto found = terrain_cell_buffers_.find(cell);
+        if (found == terrain_cell_buffers_.end()) return;
+        retire_terrain_buffer(std::move(found->second.buffer));
+        terrain_cell_buffers_.erase(found);
+        terrain_cell_bounds_.erase(cell);
+    }
+
+    void remove_terrain_cells(const std::set<CellCoord>& cells) {
+        purge_retired_terrain_buffers();
+        for (const auto& cell : cells) {
+            auto found = terrain_cell_buffers_.find(cell);
+            if (found == terrain_cell_buffers_.end()) continue;
+            retire_terrain_buffer(std::move(found->second.buffer));
+            terrain_cell_buffers_.erase(found);
+            terrain_cell_bounds_.erase(cell);
+        }
+    }
+
+    void retire_terrain_buffer(ComPtr<ID3D12Resource> buffer) {
+        if (!buffer || !queue_ || !fence_) return;
+        const UINT64 target = ++fence_value_;
+        if (FAILED(queue_->Signal(fence_.Get(), target))) {
+            wait_for_gpu();
+            buffer.Reset();
+            return;
+        }
+        terrain_retire_buffers_.push_back({std::move(buffer), target});
+    }
+
+    void purge_retired_terrain_buffers() {
+        if (!fence_ || terrain_retire_buffers_.empty()) return;
+        const UINT64 completed = fence_->GetCompletedValue();
+        std::size_t keep = 0;
+        for (std::size_t i = 0; i < terrain_retire_buffers_.size(); ++i) {
+            if (terrain_retire_buffers_[i].fence_value > completed) {
+                if (keep != i) terrain_retire_buffers_[keep] = std::move(terrain_retire_buffers_[i]);
+                ++keep;
+            } else {
+                terrain_retire_buffers_[i].buffer.Reset();
+            }
+        }
+        terrain_retire_buffers_.resize(keep);
+    }
+
+    void retire_water_buffer(ComPtr<ID3D12Resource> buffer) {
+        if (!buffer || !queue_ || !fence_) return;
+        const UINT64 target = ++fence_value_;
+        if (FAILED(queue_->Signal(fence_.Get(), target))) {
+            // Device failure fallback: preserve the conservative lifetime rule.
+            wait_for_gpu();
+            buffer.Reset();
+            return;
+        }
+        water_retire_buffers_.push_back({std::move(buffer), target});
+    }
+
+    void purge_retired_water_buffers() {
+        if (!fence_ || water_retire_buffers_.empty()) return;
+        const UINT64 completed = fence_->GetCompletedValue();
+        std::size_t keep = 0;
+        for (std::size_t i = 0; i < water_retire_buffers_.size(); ++i) {
+            if (water_retire_buffers_[i].fence_value > completed) {
+                if (keep != i) water_retire_buffers_[keep] = std::move(water_retire_buffers_[i]);
+                ++keep;
+            } else {
+                water_retire_buffers_[i].buffer.Reset();
+            }
+        }
+        water_retire_buffers_.resize(keep);
+    }
+
     Result<void> upload_water_vertices(const std::vector<Vertex>& vertices) {
-        wait_for_gpu();
-        water_vertex_buffer_.Reset();
+        // Legacy full-mesh path: clear per-cell buffers and replace the monolithic upload buffer.
+        purge_retired_water_buffers();
+        for (auto& entry : water_cell_buffers_) retire_water_buffer(std::move(entry.second.buffer));
+        water_cell_buffers_.clear();
+        retire_water_buffer(std::move(water_vertex_buffer_));
         water_vertex_count_ = static_cast<UINT>(vertices.size());
         water_vertex_view_ = {};
         if (vertices.empty()) return Result<void>::success();
@@ -828,6 +1573,59 @@ public:
         return Result<void>::success();
     }
 
+    Result<void> upload_water_cell(CellCoord cell, const std::vector<Vertex>& vertices) {
+        purge_retired_water_buffers();
+        auto existing = water_cell_buffers_.find(cell);
+        if (existing != water_cell_buffers_.end()) {
+            retire_water_buffer(std::move(existing->second.buffer));
+            water_cell_buffers_.erase(existing);
+        }
+        if (vertices.empty()) {
+            // Prefer per-cell draws once any cell buffer exists; drop the legacy full mesh.
+            water_vertex_buffer_.Reset();
+            water_vertex_count_ = 0;
+            water_vertex_view_ = {};
+            return Result<void>::success();
+        }
+        WaterCellGpu gpu;
+        D3D12_HEAP_PROPERTIES heap{};
+        heap.Type = D3D12_HEAP_TYPE_UPLOAD;
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        desc.Width = vertices.size() * sizeof(Vertex);
+        desc.Height = 1;
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = 1;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        auto hr = device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr, IID_PPV_ARGS(&gpu.buffer));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-WATER-BUFFER", "Could not create water cell buffer", hr));
+        void* mapped = nullptr;
+        gpu.buffer->Map(0, nullptr, &mapped);
+        std::memcpy(mapped, vertices.data(), vertices.size() * sizeof(Vertex));
+        gpu.buffer->Unmap(0, nullptr);
+        gpu.vertex_count = static_cast<UINT>(vertices.size());
+        gpu.view = {gpu.buffer->GetGPUVirtualAddress(), static_cast<UINT>(vertices.size() * sizeof(Vertex)),
+            sizeof(Vertex)};
+        water_cell_buffers_[cell] = std::move(gpu);
+        water_vertex_buffer_.Reset();
+        water_vertex_count_ = 0;
+        water_vertex_view_ = {};
+        return Result<void>::success();
+    }
+
+    void remove_water_cells(const std::set<CellCoord>& cells) {
+        purge_retired_water_buffers();
+        for (const auto& cell : cells) {
+            auto found = water_cell_buffers_.find(cell);
+            if (found == water_cell_buffers_.end()) continue;
+            retire_water_buffer(std::move(found->second.buffer));
+            water_cell_buffers_.erase(found);
+        }
+    }
+
     struct WorldPassParams {
         std::array<float, 16> view_projection{};
         std::array<float, 3> camera_position{};
@@ -840,9 +1638,293 @@ public:
         float water_roughness = 0.05f;
     };
 
+    void refresh_shadow_srvs() {
+        if (!device_ || !shadow_map_) return;
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+        srv.Format = DXGI_FORMAT_R32_FLOAT;
+        srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+        srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srv.Texture2DArray.MostDetailedMip = 0;
+        srv.Texture2DArray.MipLevels = 1;
+        srv.Texture2DArray.FirstArraySlice = 0;
+        srv.Texture2DArray.ArraySize = csm::k_cascade_count;
+        if (mesh_shadow_srv_cpu_.ptr)
+            device_->CreateShaderResourceView(shadow_map_.Get(), &srv, mesh_shadow_srv_cpu_);
+        if (foliage_shadow_srv_cpu_.ptr)
+            device_->CreateShaderResourceView(shadow_map_.Get(), &srv, foliage_shadow_srv_cpu_);
+    }
+
+    Result<void> create_shadow_resources() {
+        shadow_map_.Reset();
+        shadow_dsv_heap_.Reset();
+        for (UINT i = 0; i < frame_count; ++i) {
+            if (shadow_cb_[i] && shadow_cb_mapped_[i]) {
+                shadow_cb_[i]->Unmap(0, nullptr);
+                shadow_cb_mapped_[i] = nullptr;
+            }
+            shadow_cb_[i].Reset();
+        }
+        D3D12_DESCRIPTOR_HEAP_DESC dsv_desc{};
+        dsv_desc.NumDescriptors = csm::k_cascade_count;
+        dsv_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+        HRESULT hr = device_->CreateDescriptorHeap(&dsv_desc, IID_PPV_ARGS(&shadow_dsv_heap_));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-SHADOW-DSV-HEAP", "Could not create shadow DSV heap", hr));
+        D3D12_HEAP_PROPERTIES heap{};
+        heap.Type = D3D12_HEAP_TYPE_DEFAULT;
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        desc.Width = csm::k_map_resolution;
+        desc.Height = csm::k_map_resolution;
+        desc.DepthOrArraySize = static_cast<UINT16>(csm::k_cascade_count);
+        desc.MipLevels = 1;
+        desc.Format = DXGI_FORMAT_R32_TYPELESS;
+        desc.SampleDesc.Count = 1;
+        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+        D3D12_CLEAR_VALUE clear{};
+        clear.Format = DXGI_FORMAT_D32_FLOAT;
+        clear.DepthStencil.Depth = 1.0f;
+        hr = device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            &clear, IID_PPV_ARGS(&shadow_map_));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-SHADOW-MAP", "Could not create cascaded shadow map", hr));
+        auto dsv = shadow_dsv_heap_->GetCPUDescriptorHandleForHeapStart();
+        const UINT dsv_stride = device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+        for (UINT i = 0; i < csm::k_cascade_count; ++i) {
+            D3D12_DEPTH_STENCIL_VIEW_DESC view{};
+            view.Format = DXGI_FORMAT_D32_FLOAT;
+            view.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+            view.Texture2DArray.MipSlice = 0;
+            view.Texture2DArray.FirstArraySlice = i;
+            view.Texture2DArray.ArraySize = 1;
+            device_->CreateDepthStencilView(shadow_map_.Get(), &view, dsv);
+            shadow_dsv_[i] = dsv;
+            dsv.ptr += dsv_stride;
+        }
+        D3D12_HEAP_PROPERTIES upload{};
+        upload.Type = D3D12_HEAP_TYPE_UPLOAD;
+        D3D12_RESOURCE_DESC cb_desc{};
+        cb_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        cb_desc.Width = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+        cb_desc.Height = 1;
+        cb_desc.DepthOrArraySize = 1;
+        cb_desc.MipLevels = 1;
+        cb_desc.SampleDesc.Count = 1;
+        cb_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        for (UINT i = 0; i < frame_count; ++i) {
+            hr = device_->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &cb_desc,
+                D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&shadow_cb_[i]));
+            if (FAILED(hr))
+                return Result<void>::failure(
+                    graphics_error("GFX-SHADOW-CB", "Could not create shadow constant buffer", hr));
+            hr = shadow_cb_[i]->Map(0, nullptr, &shadow_cb_mapped_[i]);
+            if (FAILED(hr) || !shadow_cb_mapped_[i])
+                return Result<void>::failure(
+                    graphics_error("GFX-SHADOW-CB-MAP", "Could not map shadow constant buffer", hr));
+        }
+        refresh_shadow_srvs();
+        return Result<void>::success();
+    }
+
+    Result<void> create_shadow_pipeline() {
+        const char* shader = R"(
+            cbuffer ShadowPass : register(b0) {
+                float4x4 lightViewProj;
+            };
+            cbuffer Object : register(b1) {
+                float4x4 model;
+                float4 materialParams;
+                float4 emissive;
+            };
+            cbuffer Bones : register(b2) {
+                float4x4 boneMatrices[64];
+            };
+            struct In {
+                float3 position:POSITION;
+                float3 color:COLOR;
+                float2 uv:TEXCOORD;
+                float3 normal:NORMAL;
+                uint4 joints:BLENDINDICES;
+                float4 weights:BLENDWEIGHT;
+            };
+            float3 skinPosition(float3 position, uint4 joints, float4 weights) {
+                float wsum = weights.x + weights.y + weights.z + weights.w;
+                if (wsum < 1e-5) return position;
+                float4 hp = float4(position, 1.0);
+                float4 skinned =
+                    mul(boneMatrices[joints.x], hp) * weights.x +
+                    mul(boneMatrices[joints.y], hp) * weights.y +
+                    mul(boneMatrices[joints.z], hp) * weights.z +
+                    mul(boneMatrices[joints.w], hp) * weights.w;
+                return skinned.xyz;
+            }
+            float4 vs(In input) : SV_POSITION {
+                if (input.color.r < -0.5) return float4(0, 0, 2, 1);
+                float3 skinned = skinPosition(input.position, input.joints, input.weights);
+                float4 world = mul(model, float4(skinned, 1.0));
+                return mul(lightViewProj, world);
+            }
+        )";
+        ComPtr<ID3DBlob> vs, errors;
+        UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
+#ifndef NDEBUG
+        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+        HRESULT hr = D3DCompile(shader, std::strlen(shader), "shadow_depth", nullptr, nullptr, "vs", "vs_5_1", flags, 0,
+            &vs, &errors);
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-SHADOW-VS",
+                errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Shadow VS compile failed", hr));
+        D3D12_ROOT_PARAMETER parameters[3]{};
+        parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        parameters[0].Constants.ShaderRegister = 0;
+        parameters[0].Constants.Num32BitValues = 16;
+        parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        parameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        parameters[1].Constants.ShaderRegister = 1;
+        parameters[1].Constants.Num32BitValues = 24;
+        parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        parameters[2].Descriptor.ShaderRegister = 2;
+        parameters[2].Descriptor.RegisterSpace = 0;
+        parameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        D3D12_ROOT_SIGNATURE_DESC root{};
+        root.NumParameters = 3;
+        root.pParameters = parameters;
+        root.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+        ComPtr<ID3DBlob> signature;
+        hr = D3D12SerializeRootSignature(&root, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &errors);
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-SHADOW-ROOT-SERIALIZE",
+                errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Shadow root serialize failed", hr));
+        hr = device_->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(),
+            IID_PPV_ARGS(&shadow_root_signature_));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-SHADOW-ROOT", "Could not create shadow root signature", hr));
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC state{};
+        state.pRootSignature = shadow_root_signature_.Get();
+        state.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
+        D3D12_INPUT_ELEMENT_DESC input[] = {
+            {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"BLENDINDICES", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"BLENDWEIGHT", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+        state.InputLayout = {input, 6};
+        state.BlendState.RenderTarget[0].RenderTargetWriteMask = 0;
+        state.SampleMask = UINT_MAX;
+        state.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+        state.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+        state.RasterizerState.DepthClipEnable = TRUE;
+        state.RasterizerState.DepthBias = csm::k_raster_depth_bias;
+        state.RasterizerState.SlopeScaledDepthBias = csm::k_raster_slope_scaled_depth_bias;
+        state.DepthStencilState.DepthEnable = TRUE;
+        state.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+        state.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        state.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        state.NumRenderTargets = 0;
+        state.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+        state.SampleDesc.Count = 1;
+        hr = device_->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(&shadow_pipeline_));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-SHADOW-PIPELINE", "Could not create shadow pipeline", hr));
+        return Result<void>::success();
+    }
+
+    void bind_shadow_constants() {
+        if (!shadow_cb_[frame_index_] || !shadow_cb_mapped_[frame_index_]) return;
+        command_list_->SetGraphicsRootConstantBufferView(3, shadow_cb_[frame_index_]->GetGPUVirtualAddress());
+    }
+
+    void draw_shadow_cascades(const WorldPassParams& params, const std::vector<RenderInstance>* static_placed,
+        const std::vector<RenderInstance>& dynamic_placed) {
+        if (!shadow_pipeline_ || !shadow_map_ || !shadow_cb_mapped_[frame_index_]) return;
+        const auto block = csm::build_cascades(params.camera_position);
+        std::memcpy(shadow_cb_mapped_[frame_index_], &block, sizeof(block));
+
+        D3D12_RESOURCE_BARRIER to_depth = CD3DX12_RESOURCE_BARRIER_placeholder(shadow_map_.Get(),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        command_list_->ResourceBarrier(1, &to_depth);
+        command_list_->SetPipelineState(shadow_pipeline_.Get());
+        command_list_->SetGraphicsRootSignature(shadow_root_signature_.Get());
+        bind_bone_constants(2);
+        command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        const std::array<float, 16> identity{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+        const auto bind_model = [&](const std::array<float, 16>& model) {
+            const auto constants = pack_object_constants(model, PbrSurfaceParams::dielectric_default(), 0.0f);
+            command_list_->SetGraphicsRoot32BitConstants(1, 24, constants.data(), 0);
+        };
+        const auto draw_placed_shadow = [&](const RenderInstance& instance, const Frustum& cascade_frustum) {
+            if (instance.mesh_asset.empty()) return;
+            if (instance.bounds && !frustum_intersects_aabb(cascade_frustum, *instance.bounds)) return;
+            const auto found = mesh_ranges_.find(instance.mesh_asset);
+            if (found == mesh_ranges_.end()) return;
+            using namespace DirectX;
+            const auto& transform = instance.transform;
+            const auto scale = XMMatrixScaling(transform.scale[0], transform.scale[1], transform.scale[2]);
+            const auto rotation = XMMatrixRotationQuaternion(
+                XMLoadFloat4(reinterpret_cast<const XMFLOAT4*>(transform.rotation.data())));
+            const auto translation =
+                XMMatrixTranslation(transform.position[0], transform.position[1], transform.position[2]);
+            std::array<float, 16> placed_model{};
+            XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4*>(placed_model.data()), scale * rotation * translation);
+            bind_model(placed_model);
+            command_list_->DrawInstanced(found->second.second, 1, found->second.first, 0);
+        };
+        for (UINT cascade = 0; cascade < csm::k_cascade_count; ++cascade) {
+            const Frustum cascade_frustum = frustum_from_view_projection(block.cascade_view_proj[cascade]);
+            command_list_->OMSetRenderTargets(0, nullptr, FALSE, &shadow_dsv_[cascade]);
+            command_list_->ClearDepthStencilView(shadow_dsv_[cascade], D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+            D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(csm::k_map_resolution),
+                static_cast<float>(csm::k_map_resolution), 0.0f, 1.0f};
+            D3D12_RECT scissor{0, 0, static_cast<LONG>(csm::k_map_resolution), static_cast<LONG>(csm::k_map_resolution)};
+            command_list_->RSSetViewports(1, &viewport);
+            command_list_->RSSetScissorRects(1, &scissor);
+            command_list_->SetGraphicsRoot32BitConstants(0, 16, block.cascade_view_proj[cascade].data(), 0);
+            bind_model(identity);
+            if (!terrain_cell_buffers_.empty()) {
+                for (const auto& entry : terrain_cell_buffers_) {
+                    if (entry.second.vertex_count == 0) continue;
+                    const auto bounds = terrain_cell_bounds_.find(entry.first);
+                    if (bounds != terrain_cell_bounds_.end() &&
+                        !frustum_intersects_aabb(cascade_frustum, bounds->second))
+                        continue;
+                    command_list_->IASetVertexBuffers(0, 1, &entry.second.view);
+                    command_list_->DrawInstanced(entry.second.vertex_count, 1, 0, 0);
+                }
+            } else if (terrain_vertex_count_ > 0) {
+                command_list_->IASetVertexBuffers(0, 1, &terrain_vertex_view_);
+                command_list_->DrawInstanced(terrain_vertex_count_, 1, 0, 0);
+            }
+            command_list_->IASetVertexBuffers(0, 1, &vertex_view_);
+            if (static_placed) {
+                for (const auto& instance : *static_placed) draw_placed_shadow(instance, cascade_frustum);
+            }
+            for (const auto& instance : dynamic_placed) draw_placed_shadow(instance, cascade_frustum);
+            // Foliage as casters (static pose — bend is view-side only for v1).
+            for (const auto& draw : foliage_draws_) {
+                const auto found = mesh_ranges_.find(normalize_asset_path(draw.mesh_key));
+                if (found == mesh_ranges_.end() || draw.instance_count == 0) continue;
+                // Instance buffer is only bound on foliage root — for shadow v1, skip instanced foliage casters
+                // when we don't have a shadow foliage path; opaque trees still cast via placed_objects.
+                (void)found;
+            }
+        }
+        D3D12_RESOURCE_BARRIER to_srv = CD3DX12_RESOURCE_BARRIER_placeholder(shadow_map_.Get(),
+            D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        command_list_->ResourceBarrier(1, &to_srv);
+    }
+
     void draw_world_pass(ID3D12Resource* color_target, D3D12_CPU_DESCRIPTOR_HANDLE rtv, const WorldPassParams& params,
-        const std::vector<RenderInstance>& placed_objects, const std::vector<ActivePointLight>& point_lights,
-        bool record_gpu_timestamp) {
+        const std::vector<RenderInstance>* static_placed, const std::vector<RenderInstance>& dynamic_placed,
+        const std::vector<ActivePointLight>& point_lights, bool record_gpu_timestamp) {
+        if (record_gpu_timestamp) {
+            // Primary world pass owns the per-frame draw counters (editor game pass adds on top).
+            frame_draw_calls_ = 0;
+            frame_instances_drawn_ = 0;
+        }
+        draw_shadow_cascades(params, static_placed, dynamic_placed);
         auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
             D3D12_RESOURCE_STATE_RENDER_TARGET);
         command_list_->ResourceBarrier(1, &barrier);
@@ -851,14 +1933,15 @@ public:
         command_list_->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
         command_list_->ClearRenderTargetView(rtv, clear, 0, nullptr);
         command_list_->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        // Timestamp after shadows so a failed cascade setup cannot leave an open query around resource barriers.
         if (record_gpu_timestamp && timestamp_heap_ && timestamp_readback_)
             command_list_->EndQuery(timestamp_heap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0);
-
         D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(width_), static_cast<float>(height_), 0.0f, 1.0f};
         D3D12_RECT scissor{0, 0, static_cast<LONG>(width_), static_cast<LONG>(height_)};
         command_list_->RSSetViewports(1, &viewport);
         command_list_->RSSetScissorRects(1, &scissor);
         command_list_->SetGraphicsRootSignature(root_signature_.Get());
+        bind_bone_constants(5);
         if (mesh_albedo_heap_) {
             ID3D12DescriptorHeap* albedo_heaps[] = {mesh_albedo_heap_.Get()};
             command_list_->SetDescriptorHeaps(1, albedo_heaps);
@@ -873,15 +1956,20 @@ public:
         frame_constants[21] = 0.36f;
         frame_constants[22] = 0.48f;
         frame_constants[23] = 640.0f;
-        // Daytime sun direction (world → light) and ambient fill.
-        frame_constants[24] = -0.40f;
-        frame_constants[25] = -0.85f;
-        frame_constants[26] = -0.30f;
+        // Daytime sun direction (world → light) and ambient fill — keep in sync with csm::k_sun_travel.
+        frame_constants[24] = csm::k_sun_travel[0];
+        frame_constants[25] = csm::k_sun_travel[1];
+        frame_constants[26] = csm::k_sun_travel[2];
         frame_constants[27] = 0.42f;
         pack_point_lights(frame_constants, point_lights, params.camera_position);
         frame_constants[44] = static_cast<float>(width_);
         frame_constants[45] = static_cast<float>(height_);
         bind_frame_constants(frame_constants);
+        bind_shadow_constants();
+        if (mesh_shadow_srv_gpu_.ptr) command_list_->SetGraphicsRootDescriptorTable(4, mesh_shadow_srv_gpu_);
+        // Frustum culling (TICKET perf follow-up): skip terrain cells / placed-object draw calls whose world AABB
+        // is fully outside this pass's camera. Conservative test — never culls something still partially visible.
+        const auto frustum = frustum_from_view_projection(params.view_projection);
         const std::array<float, 16> identity{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
         const auto bind_object = [&](const std::array<float, 16>& model, const PbrSurfaceParams& pbr,
             D3D12_GPU_DESCRIPTOR_HANDLE albedo, float use_albedo) {
@@ -898,10 +1986,24 @@ public:
             command_list_->SetPipelineState(pipeline_.Get());
         }
         bind_object(identity, params.terrain_pbr, mesh_white_gpu_, 0.0f);
-        if (terrain_vertex_count_ > 0) {
+        if (!terrain_cell_buffers_.empty()) {
+            command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            for (const auto& entry : terrain_cell_buffers_) {
+                if (entry.second.vertex_count == 0) continue;
+                const auto bounds_it = terrain_cell_bounds_.find(entry.first);
+                if (bounds_it != terrain_cell_bounds_.end() && !frustum_intersects_aabb(frustum, bounds_it->second))
+                    continue;
+                command_list_->IASetVertexBuffers(0, 1, &entry.second.view);
+                command_list_->DrawInstanced(entry.second.vertex_count, 1, 0, 0);
+                ++frame_draw_calls_;
+                ++frame_instances_drawn_;
+            }
+        } else if (terrain_vertex_count_ > 0) {
             command_list_->IASetVertexBuffers(0, 1, &terrain_vertex_view_);
             command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             command_list_->DrawInstanced(terrain_vertex_count_, 1, 0, 0);
+            ++frame_draw_calls_;
+            ++frame_instances_drawn_;
         }
         command_list_->IASetVertexBuffers(0, 1, &vertex_view_);
         command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -912,38 +2014,24 @@ public:
             model[14] = static_cast<float>(params.body_position.z);
             bind_object(model, PbrSurfaceParams::dielectric_default(), mesh_white_gpu_, 0.0f);
             command_list_->DrawInstanced(36, 1, 0, 0);
+            ++frame_draw_calls_;
+            ++frame_instances_drawn_;
         }
-        for (const auto& instance : placed_objects) {
-            if (instance.mesh_asset.empty()) continue;
-            const auto found = mesh_ranges_.find(normalize_asset_path(instance.mesh_asset));
-            if (found == mesh_ranges_.end()) continue;
-            const auto& transform = instance.transform;
-            using namespace DirectX;
-            const auto scale = XMMatrixScaling(transform.scale[0], transform.scale[1], transform.scale[2]);
-            const auto rotation =
-                XMMatrixRotationQuaternion(XMLoadFloat4(reinterpret_cast<const XMFLOAT4*>(transform.rotation.data())));
-            const auto translation = XMMatrixTranslation(transform.position[0], transform.position[1],
-                transform.position[2]);
-            std::array<float, 16> placed_model{};
-            XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4*>(placed_model.data()), scale * rotation * translation);
-            D3D12_GPU_DESCRIPTOR_HANDLE albedo = mesh_white_gpu_;
-            float use_albedo = 0.0f;
-            const auto albedo_it = mesh_albedo_gpu_.find(normalize_asset_path(instance.mesh_asset));
-            if (albedo_it != mesh_albedo_gpu_.end()) {
-                albedo = albedo_it->second;
-                use_albedo = 1.0f;
-            }
-            bind_object(placed_model, instance.pbr, albedo, use_albedo);
-            command_list_->DrawInstanced(found->second.second, 1, found->second.first, 0);
-        }
-        draw_foliage_instances(frame_constants, params.influence, params.time_seconds);
+        // Hardware-instanced props: one DrawInstanced per mesh key after CPU frustum/LOD cull.
+        draw_prop_instances(frame_constants, frustum, params.camera_position, static_placed, dynamic_placed);
+        // Do not frustum-cull foliage batches here. Cell AABBs (even centered) still false-cull dense bush
+        // paint under the Game orbit camera while Scene free-cam looks fine — play-test "forest vanishes".
+        // Resident set is already limited by terrain streaming + scatter distance falloff (120–220 m).
+        draw_foliage_instances(frame_constants, params.influence, params.time_seconds, nullptr);
         barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_RENDER_TARGET,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         command_list_->ResourceBarrier(1, &barrier);
     }
 
     void draw_water_pass(ID3D12Resource* color_target, D3D12_CPU_DESCRIPTOR_HANDLE rtv, const WorldPassParams& params) {
-        if (water_vertex_count_ == 0 || !water_pipeline_ || !water_scene_color_) return;
+        const bool have_cell_water = !water_cell_buffers_.empty();
+        const bool have_legacy_water = water_vertex_count_ > 0;
+        if ((!have_cell_water && !have_legacy_water) || !water_pipeline_ || !water_scene_color_) return;
 
         // Snapshot the opaque lit scene before water writes it — sampling lit_color_ while blending
         // into it caused shoreline fuzz / highlight feedback.
@@ -997,9 +2085,17 @@ public:
         water_constants[7] = params.water_color[3];
         command_list_->SetGraphicsRoot32BitConstants(1, 8, water_constants.data(), 0);
         command_list_->SetGraphicsRootDescriptorTable(2, post_water_gpu_);
-        command_list_->IASetVertexBuffers(0, 1, &water_vertex_view_);
         command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        command_list_->DrawInstanced(water_vertex_count_, 1, 0, 0);
+        if (have_cell_water) {
+            for (const auto& entry : water_cell_buffers_) {
+                if (entry.second.vertex_count == 0) continue;
+                command_list_->IASetVertexBuffers(0, 1, &entry.second.view);
+                command_list_->DrawInstanced(entry.second.vertex_count, 1, 0, 0);
+            }
+        } else {
+            command_list_->IASetVertexBuffers(0, 1, &water_vertex_view_);
+            command_list_->DrawInstanced(water_vertex_count_, 1, 0, 0);
+        }
         auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_RENDER_TARGET,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         command_list_->ResourceBarrier(1, &barrier);
@@ -1049,8 +2145,8 @@ public:
         // Full-res depth texel size for stable finite-difference normals (not AO half-res).
         ssao_constants[38] = 1.0f / static_cast<float>(width_);
         ssao_constants[39] = 1.0f / static_cast<float>(height_);
-        std::memcpy(ssao_cb_mapped_, ssao_constants.data(), sizeof(ssao_constants));
-        command_list_->SetGraphicsRootConstantBufferView(0, ssao_cb_->GetGPUVirtualAddress());
+        std::memcpy(ssao_cb_mapped_[frame_index_], ssao_constants.data(), sizeof(ssao_constants));
+        command_list_->SetGraphicsRootConstantBufferView(0, ssao_cb_[frame_index_]->GetGPUVirtualAddress());
         command_list_->SetGraphicsRootDescriptorTable(1, post_depth_gpu_);
         command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         command_list_->DrawInstanced(3, 1, 0, 0);
@@ -1077,8 +2173,8 @@ public:
         command_list_->SetPipelineState(composite_pipeline_.Get());
         const std::array<float, 4> composite_constants{k_ssao_intensity, 1.0f / static_cast<float>(ao_width_),
             1.0f / static_cast<float>(ao_height_), 0.0f};
-        std::memcpy(composite_cb_mapped_, composite_constants.data(), sizeof(composite_constants));
-        command_list_->SetGraphicsRootConstantBufferView(0, composite_cb_->GetGPUVirtualAddress());
+        std::memcpy(composite_cb_mapped_[frame_index_], composite_constants.data(), sizeof(composite_constants));
+        command_list_->SetGraphicsRootConstantBufferView(0, composite_cb_[frame_index_]->GetGPUVirtualAddress());
         command_list_->SetGraphicsRootDescriptorTable(1, post_lit_gpu_);
         command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         command_list_->DrawInstanced(3, 1, 0, 0);
@@ -1090,14 +2186,21 @@ public:
     }
 
     Result<void> render(const std::filesystem::path& capture_path, const WorldPassParams& world,
-        const std::vector<RenderInstance>& placed_objects, const std::vector<ActivePointLight>& point_lights,
-        const WorldPassParams* game_world = nullptr) {
+        const std::vector<RenderInstance>* static_placed, const std::vector<RenderInstance>& dynamic_placed,
+        const std::vector<ActivePointLight>& point_lights, const WorldPassParams* game_world = nullptr,
+        bool capture_game_rt = false, bool primary_is_game = false) {
+        wait_for_current_frame();
+        update_gpu_timestamp_if_ready();
+        flush_pending_skin_matrices();
         HRESULT hr = allocators_[frame_index_]->Reset();
         if (FAILED(hr)) return Result<void>::failure(device_error("GFX-ALLOCATOR-RESET", "Could not reset command allocator", hr));
         hr = command_list_->Reset(allocators_[frame_index_].Get(), pipeline_.Get());
         if (FAILED(hr)) return Result<void>::failure(device_error("GFX-LIST-RESET", "Could not reset command list", hr));
 
-        auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(targets_[frame_index_].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(targets_[frame_index_].Get(),
+            backbuffer_was_presented_[frame_index_] ? D3D12_RESOURCE_STATE_PRESENT
+                                                   : D3D12_RESOURCE_STATE_COMMON,
+            D3D12_RESOURCE_STATE_RENDER_TARGET);
         command_list_->ResourceBarrier(1, &barrier);
         D3D12_CPU_DESCRIPTOR_HANDLE backbuffer_rtv = rtv_heap_->GetCPUDescriptorHandleForHeapStart();
         backbuffer_rtv.ptr += static_cast<SIZE_T>(frame_index_) * rtv_stride_;
@@ -1105,14 +2208,24 @@ public:
         command_list_->OMSetRenderTargets(1, &backbuffer_rtv, FALSE, nullptr);
         command_list_->ClearRenderTargetView(backbuffer_rtv, clear, 0, nullptr);
         if (editor_initialized_) {
-            draw_world_pass(lit_color_.Get(), lit_rtv_, world, placed_objects, point_lights, true);
+            draw_world_pass(lit_color_.Get(), lit_rtv_, world, static_placed, dynamic_placed, point_lights, true);
             draw_water_pass(lit_color_.Get(), lit_rtv_, world);
-            apply_ssao(viewport_target_.Get(), viewport_rtv_, /*destination_returns_to_srv=*/true, world);
+            if (primary_is_game) {
+                apply_ssao(game_viewport_target_.Get(), game_viewport_rtv_, /*destination_returns_to_srv=*/true, world);
+                draw_particles_pass(game_viewport_target_.Get(), game_viewport_rtv_, world,
+                    /*color_starts_as_srv=*/true);
+            } else {
+                apply_ssao(viewport_target_.Get(), viewport_rtv_, /*destination_returns_to_srv=*/true, world);
+                draw_particles_pass(viewport_target_.Get(), viewport_rtv_, world, /*color_starts_as_srv=*/true);
+            }
             if (game_world) {
-                draw_world_pass(lit_color_.Get(), lit_rtv_, *game_world, placed_objects, point_lights, false);
+                draw_world_pass(lit_color_.Get(), lit_rtv_, *game_world, static_placed, dynamic_placed, point_lights,
+                    false);
                 draw_water_pass(lit_color_.Get(), lit_rtv_, *game_world);
                 apply_ssao(game_viewport_target_.Get(), game_viewport_rtv_, /*destination_returns_to_srv=*/true,
                     *game_world);
+                draw_particles_pass(game_viewport_target_.Get(), game_viewport_rtv_, *game_world,
+                    /*color_starts_as_srv=*/true);
             }
             // Offscreen passes leave the post-process descriptor heap and viewport RTV/DSV bound; ImGui must draw to
             // the swap-chain target using its own descriptor heap.
@@ -1125,9 +2238,10 @@ public:
             command_list_->RSSetViewports(1, &imgui_viewport);
             command_list_->RSSetScissorRects(1, &imgui_scissor);
         } else {
-            draw_world_pass(lit_color_.Get(), lit_rtv_, world, placed_objects, point_lights, true);
+            draw_world_pass(lit_color_.Get(), lit_rtv_, world, static_placed, dynamic_placed, point_lights, true);
             draw_water_pass(lit_color_.Get(), lit_rtv_, world);
             apply_ssao(targets_[frame_index_].Get(), backbuffer_rtv, /*destination_returns_to_srv=*/false, world);
+            draw_particles_pass(targets_[frame_index_].Get(), backbuffer_rtv, world, /*color_starts_as_srv=*/false);
         }
         if(editor_initialized_){ImGui::Render();ID3D12DescriptorHeap* heaps[]={imgui_heap_.Get()};command_list_->SetDescriptorHeaps(1,heaps);ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(),command_list_.Get());}
         if (timestamp_heap_ && timestamp_readback_) {
@@ -1140,9 +2254,13 @@ public:
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
         UINT64 readback_size = 0;
         // Prefer the composited scene viewport (editor) or backbuffer (runtime) so captures are not an empty clear.
+        // Game play-test captures read game_viewport_target_ (chrome-free; TICKET-0145).
         ID3D12Resource* capture_source = targets_[frame_index_].Get();
         D3D12_RESOURCE_STATES capture_state = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        if (editor_initialized_ && viewport_target_) {
+        if (editor_initialized_ && capture_game_rt && (primary_is_game || game_world) && game_viewport_target_) {
+            capture_source = game_viewport_target_.Get();
+            capture_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        } else if (editor_initialized_ && viewport_target_) {
             capture_source = viewport_target_.Get();
             capture_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         }
@@ -1191,23 +2309,24 @@ public:
         ID3D12CommandList* lists[] = {command_list_.Get()};
         queue_->ExecuteCommandLists(1, lists);
         const UINT presented_index = frame_index_;
-        hr = swap_chain_->Present(1, 0);
-        if (FAILED(hr)) return Result<void>::failure(device_error("GFX-PRESENT", "Could not present frame", hr));
-        wait_for_gpu();
+        const UINT64 submitted_fence = signal_frame_complete();
+        frame_fence_values_[presented_index] = submitted_fence;
+        timestamp_fence_value_ = submitted_fence;
+        const auto present_started = std::chrono::steady_clock::now();
+        hr = swap_chain_->Present(present_sync_interval_, 0);
+        last_present_ms_ =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - present_started).count();
+        if (FAILED(hr)) {
+            // Drain so a subsequent retry/teardown does not touch in-flight upload heaps.
+            (void)wait_for_fence(submitted_fence, 2000);
+            return Result<void>::failure(device_error("GFX-PRESENT", "Could not present frame", hr));
+        }
         last_presented_index_ = presented_index;
         has_presented_backbuffer_ = true;
-
-        if (timestamp_readback_ && timestamp_frequency_ > 0) {
-            UINT64* timestamps = nullptr;
-            D3D12_RANGE query_range{0, sizeof(UINT64) * 2};
-            if (SUCCEEDED(timestamp_readback_->Map(0, &query_range, reinterpret_cast<void**>(&timestamps)))) {
-                last_gpu_ms_ = timestamps[1] >= timestamps[0]
-                    ? static_cast<double>(timestamps[1] - timestamps[0]) * 1000.0 / static_cast<double>(timestamp_frequency_)
-                    : 0.0;
-                D3D12_RANGE written{0, 0};
-                timestamp_readback_->Unmap(0, &written);
-            }
-        }
+        backbuffer_was_presented_[presented_index] = true;
+        // Upload CBs are 2-slot rings keyed to frame_index_ (DEC-0047 / TICKET-0226). Allocator reuse is gated by
+        // wait_for_current_frame() at the next use of this backbuffer — no post-Present drain.
+        update_gpu_timestamp_if_ready();
 
         if (capture) {
             void* mapped = nullptr;
@@ -1215,15 +2334,43 @@ public:
             hr = readback->Map(0, &range, &mapped);
             if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-CAPTURE-MAP", "Could not map capture data", hr));
             if (capture_path.has_parent_path()) std::filesystem::create_directories(capture_path.parent_path());
-            std::ofstream output(capture_path, std::ios::binary | std::ios::trunc);
-            output << "P6\n" << width_ << ' ' << height_ << "\n255\n";
             const auto* bytes = static_cast<const unsigned char*>(mapped) + footprint.Offset;
-            for (UINT y = 0; y < height_; ++y) {
-                const auto* row = bytes + static_cast<std::size_t>(y) * footprint.Footprint.RowPitch;
-                for (UINT x = 0; x < width_; ++x) output.write(reinterpret_cast<const char*>(row + x * 4), 3);
+            const UINT capture_w = footprint.Footprint.Width;
+            const UINT capture_h = footprint.Footprint.Height;
+            const std::string ext = capture_path.extension().string();
+            std::string ext_lower = ext;
+            for (char& c : ext_lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (ext_lower == ".png") {
+                std::vector<std::uint8_t> rgba(static_cast<std::size_t>(capture_w) * static_cast<std::size_t>(capture_h) * 4u);
+                for (UINT y = 0; y < capture_h; ++y) {
+                    const auto* row = bytes + static_cast<std::size_t>(y) * footprint.Footprint.RowPitch;
+                    for (UINT x = 0; x < capture_w; ++x) {
+                        const std::size_t dst = (static_cast<std::size_t>(y) * capture_w + x) * 4u;
+                        // D3D12 RT typically BGRA8_UNORM.
+                        rgba[dst + 0] = row[x * 4 + 2];
+                        rgba[dst + 1] = row[x * 4 + 1];
+                        rgba[dst + 2] = row[x * 4 + 0];
+                        rgba[dst + 3] = 255;
+                    }
+                }
+                readback->Unmap(0, nullptr);
+                const auto written = write_rgba_png_path(capture_path, capture_w, capture_h, rgba);
+                if (!written) return Result<void>::failure(written.error());
+            } else {
+                std::ofstream output(capture_path, std::ios::binary | std::ios::trunc);
+                output << "P6\n" << capture_w << ' ' << capture_h << "\n255\n";
+                for (UINT y = 0; y < capture_h; ++y) {
+                    const auto* row = bytes + static_cast<std::size_t>(y) * footprint.Footprint.RowPitch;
+                    for (UINT x = 0; x < capture_w; ++x) {
+                        // PPM expects RGB; RT is BGRA.
+                        const char rgb[3] = {static_cast<char>(row[x * 4 + 2]), static_cast<char>(row[x * 4 + 1]),
+                            static_cast<char>(row[x * 4 + 0])};
+                        output.write(rgb, 3);
+                    }
+                }
+                readback->Unmap(0, nullptr);
+                if (!output) return Result<void>::failure(graphics_error("GFX-CAPTURE-WRITE", "Could not write PPM capture"));
             }
-            readback->Unmap(0, nullptr);
-            if (!output) return Result<void>::failure(graphics_error("GFX-CAPTURE-WRITE", "Could not write PPM capture"));
         }
         frame_index_ = swap_chain_->GetCurrentBackBufferIndex();
         return Result<void>::success();
@@ -1231,8 +2378,41 @@ public:
 
     const std::string& adapter_name() const { return adapter_name_; }
     double last_gpu_ms() const { return last_gpu_ms_; }
+    double last_gpu_wait_ms() const { return last_gpu_wait_ms_; }
+    double last_present_ms() const { return last_present_ms_; }
+    [[nodiscard]] bool gpu_timestamps_ok() const {
+        return timestamp_heap_ && timestamp_readback_ && timestamp_frequency_ > 0;
+    }
+    [[nodiscard]] std::uint64_t last_draw_calls() const { return frame_draw_calls_; }
+    [[nodiscard]] std::uint64_t last_instances_drawn() const { return frame_instances_drawn_; }
+    struct MemoryStats {
+        std::uint64_t process_working_set_bytes = 0;
+        std::uint64_t gpu_local_usage_bytes = 0;
+        std::uint64_t gpu_local_budget_bytes = 0;
+    };
+    [[nodiscard]] MemoryStats memory_stats() const {
+        MemoryStats stats;
+        PROCESS_MEMORY_COUNTERS_EX memory{};
+        if (GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory),
+                sizeof(memory)))
+            stats.process_working_set_bytes = memory.WorkingSetSize;
+        DXGI_QUERY_VIDEO_MEMORY_INFO local{};
+        if (adapter3_ && SUCCEEDED(adapter3_->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &local))) {
+            stats.gpu_local_usage_bytes = local.CurrentUsage;
+            stats.gpu_local_budget_bytes = local.Budget;
+        }
+        return stats;
+    }
     [[nodiscard]] ImTextureID scene_viewport_texture() const { return static_cast<ImTextureID>(viewport_gpu_.ptr); }
     [[nodiscard]] ImTextureID game_viewport_texture() const { return static_cast<ImTextureID>(game_viewport_gpu_.ptr); }
+
+    void bind_ui_texture_cache(UiTextureCache& cache) {
+        if (!imgui_heap_ || !device_ || !queue_) return;
+        constexpr unsigned k_ui_srv_base = 256u;
+        constexpr unsigned k_ui_srv_count = 256u;
+        cache.bind_device(device_.Get(), queue_.Get(), imgui_heap_.Get(), srv_stride_, k_ui_srv_base, k_ui_srv_count,
+            [this]() { wait_for_gpu(); });
+    }
 
     void ensure_world_forge_placeholder_textures(WorldForgeEditorSession& session) {
         if (!editor_requested_ || !imgui_heap_ || !device_ || !queue_) return;
@@ -1533,6 +2713,49 @@ public:
                 }
             }
         }
+
+        // Lazy-load Overview concept images for the selected MVP checklist item (SRV 240+).
+        if (session.pane == WorldForgeEditorPane::Overview) {
+            const WorldForgeMvpChecklistItem* selected =
+                session.mvp_readiness.find_item(session.overview_selected_item_id);
+            if (selected && !selected->image_paths.empty()) {
+                constexpr UINT k_mvp_srv_base = 240u;
+                constexpr UINT k_mvp_srv_end = 255u;
+                for (const auto& relative : selected->image_paths) {
+                    if (session.mvp_image_tex.find(relative) != session.mvp_image_tex.end()) continue;
+                    const UINT srv_index =
+                        k_mvp_srv_base + static_cast<UINT>(mvp_overview_textures_.size());
+                    if (srv_index > k_mvp_srv_end) {
+                        Logger::instance().write(Severity::Warning, "world-forge",
+                            "MVP overview image SRV pool exhausted");
+                        break;
+                    }
+                    std::filesystem::path path = relative;
+#ifdef ENGINE_REPOSITORY_ROOT
+                    if (!std::filesystem::exists(path))
+                        path = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / relative;
+#endif
+                    if (!std::filesystem::exists(path)) {
+                        session.mvp_image_tex[relative] = 0;
+                        Logger::instance().write(Severity::Warning, "world-forge",
+                            "MVP overview image missing: " + relative);
+                        continue;
+                    }
+                    ID3D12Resource* raw = nullptr;
+                    auto loaded = load_png_imgui_srv(device_.Get(), queue_.Get(), imgui_heap_.Get(), srv_stride_,
+                        srv_index, path, &raw, [this]() { wait_for_gpu(); });
+                    if (!loaded || !raw) {
+                        session.mvp_image_tex[relative] = 0;
+                        Logger::instance().write(Severity::Warning, "world-forge",
+                            "MVP overview image failed: " + relative);
+                        continue;
+                    }
+                    mvp_overview_textures_.push_back({});
+                    mvp_overview_textures_.back().Attach(raw);
+                    session.mvp_image_tex[relative] = loaded.value();
+                }
+            }
+        }
     }
 
 private:
@@ -1622,6 +2845,13 @@ private:
         D3D12_SHADER_RESOURCE_VIEW_DESC depth_srv{};depth_srv.Format=DXGI_FORMAT_R32_FLOAT;depth_srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;depth_srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;depth_srv.Texture2D.MipLevels=1;
         device_->CreateShaderResourceView(depth_.Get(),&depth_srv,post_cpu);
         post_depth_gpu_=post_gpu;
+        if (particle_srv_heap_ && particle_srv_descriptor_size_ != 0) {
+            D3D12_CPU_DESCRIPTOR_HANDLE particle_depth = particle_srv_heap_->GetCPUDescriptorHandleForHeapStart();
+            particle_depth.ptr += static_cast<SIZE_T>(k_particle_depth_slot) * particle_srv_descriptor_size_;
+            device_->CreateShaderResourceView(depth_.Get(), &depth_srv, particle_depth);
+            particle_depth_gpu_ = particle_srv_gpu_base_;
+            particle_depth_gpu_.ptr += static_cast<UINT64>(k_particle_depth_slot) * particle_srv_descriptor_size_;
+        }
         post_cpu.ptr+=srv_stride_;post_gpu.ptr+=srv_stride_;
         D3D12_SHADER_RESOURCE_VIEW_DESC lit_srv{};lit_srv.Format=lit_desc.Format;lit_srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;lit_srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;lit_srv.Texture2D.MipLevels=1;
         device_->CreateShaderResourceView(lit_color_.Get(),&lit_srv,post_cpu);
@@ -1673,26 +2903,60 @@ private:
                 float4 materialParams;
                 float4 emissive;
             };
+            cbuffer Bones : register(b2) {
+                float4x4 boneMatrices[64];
+            };
             Texture2D<float4> albedoTex : register(t0);
             SamplerState albedoSampler : register(s0);
-            struct In { float3 position:POSITION; float3 color:COLOR; float2 uv:TEXCOORD; };
-            struct Out { float4 position : SV_POSITION; float3 color : COLOR; float3 worldPos : TEXCOORD0; float2 uv : TEXCOORD1; };
+            struct In {
+                float3 position:POSITION;
+                float3 color:COLOR;
+                float2 uv:TEXCOORD;
+                float3 normal:NORMAL;
+                uint4 joints:BLENDINDICES;
+                float4 weights:BLENDWEIGHT;
+            };
+            struct Out { float4 position : SV_POSITION; float3 color : COLOR; float3 worldPos : TEXCOORD0; float2 uv : TEXCOORD1; float3 normal : TEXCOORD2; };
+            float3 skinPosition(float3 position, uint4 joints, float4 weights) {
+                float wsum = weights.x + weights.y + weights.z + weights.w;
+                if (wsum < 1e-5) return position;
+                float4 hp = float4(position, 1.0);
+                float4 skinned =
+                    mul(boneMatrices[joints.x], hp) * weights.x +
+                    mul(boneMatrices[joints.y], hp) * weights.y +
+                    mul(boneMatrices[joints.z], hp) * weights.z +
+                    mul(boneMatrices[joints.w], hp) * weights.w;
+                return skinned.xyz;
+            }
+            float3 skinNormal(float3 normal, uint4 joints, float4 weights) {
+                float wsum = weights.x + weights.y + weights.z + weights.w;
+                if (wsum < 1e-5) return normal;
+                float3 n =
+                    mul((float3x3)boneMatrices[joints.x], normal) * weights.x +
+                    mul((float3x3)boneMatrices[joints.y], normal) * weights.y +
+                    mul((float3x3)boneMatrices[joints.z], normal) * weights.z +
+                    mul((float3x3)boneMatrices[joints.w], normal) * weights.w;
+                return n;
+            }
             Out vs(In input) {
                 Out o;
                 o.uv = input.uv;
+                float3 skinned_n = skinNormal(input.normal, input.joints, input.weights);
+                o.normal = mul((float3x3)model, skinned_n);
                 if (input.color.r < -0.5) {
                     o.position = float4(input.position.xy, input.position.z, 1.0);
                     o.worldPos = cameraAndFogStart.xyz;
                     o.color = input.color;
                     return o;
                 }
-                float4 world = mul(model, float4(input.position, 1.0));
+                float3 skinned = skinPosition(input.position, input.joints, input.weights);
+                float4 world = mul(model, float4(skinned, 1.0));
                 o.worldPos = world.xyz;
                 o.position = mul(viewProjection, world);
                 o.color = input.color;
                 return o;
             }
-)") + k_pbr_hlsl_helpers + R"(
+)") + k_pbr_hlsl_helpers + k_shadow_hlsl_helpers + R"(
             float4 ps(Out input) : SV_TARGET {
                 if (input.color.r < -0.5) {
                     float t = 1.0 - (input.position.y / max(viewportSize.y, 1.0));
@@ -1701,20 +2965,20 @@ private:
                     return float4(lerp(horizon, zenith, saturate(t)), 1.0);
                 }
                 float3 albedo = (materialParams.z > 0.5) ? albedoTex.Sample(albedoSampler, input.uv).rgb : input.color;
-                if (dot(albedo, albedo) < 1e-6) albedo = float3(0.35, 0.45, 0.28);
+                // Only substitute empty vertex colors — textured black (eyes/mouth) must stay black.
+                if (materialParams.z <= 0.5 && dot(albedo, albedo) < 1e-6) albedo = float3(0.35, 0.45, 0.28);
                 float dist = distance(input.worldPos, cameraAndFogStart.xyz);
                 float fogRange = max(fogColorAndEnd.w - cameraAndFogStart.w, 0.001);
                 float fogFactor = saturate((fogColorAndEnd.w - dist) / fogRange);
-                float3 dpdx = ddx(input.worldPos);
-                float3 dpdy = ddy(input.worldPos);
-                float3 nrm = cross(dpdx, dpdy);
-                float3 normal = (dot(nrm, nrm) > 1e-12) ? normalize(nrm) : float3(0, 1, 0);
+                // Vertex face normals stay stable under camera motion (ddx/ddy normals flicker at tri edges).
+                float3 normal = (dot(input.normal, input.normal) > 1e-12) ? normalize(input.normal) : float3(0, 1, 0);
                 float3 V = normalize(cameraAndFogStart.xyz - input.worldPos);
                 float3 L = normalize(-lightAndAmbient.xyz);
                 if (dot(normal, V) < 0.0) normal = -normal;
                 float3 lit = albedo * lightAndAmbient.w + emissive.rgb;
+                float sunShadow = sampleSunShadow(input.worldPos, normal, L);
                 float3 direct = shadePbr(albedo, materialParams.x, materialParams.y, normal, V, L, float3(1.35, 1.25, 1.1));
-                if (all(isfinite(direct))) lit += direct;
+                if (all(isfinite(direct))) lit += direct * sunShadow;
                 float3 p0 = applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
                     pointLight0PosRadius, pointLight0ColorStrength);
                 float3 p1 = applyPointLightPbr(input.worldPos, albedo, materialParams.x, materialParams.y, normal, V,
@@ -1735,7 +2999,7 @@ private:
         hr = D3DCompile(shader.c_str(), shader.size(), "debug_triangle", nullptr, nullptr, "ps", "ps_5_1", flags, 0, &ps, &errors);
         if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-PIXEL-SHADER", errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Pixel shader compilation failed", hr));
 
-        D3D12_ROOT_PARAMETER parameters[3]{};
+        D3D12_ROOT_PARAMETER parameters[6]{};
         parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         parameters[0].Descriptor.ShaderRegister = 0;
         parameters[0].Descriptor.RegisterSpace = 0;
@@ -1755,25 +3019,49 @@ private:
         parameters[2].DescriptorTable.NumDescriptorRanges = 1;
         parameters[2].DescriptorTable.pDescriptorRanges = &albedo_range;
         parameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-        D3D12_STATIC_SAMPLER_DESC albedo_sampler{};
-        albedo_sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-        albedo_sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-        albedo_sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-        albedo_sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-        albedo_sampler.MipLODBias = 0.0f;
-        albedo_sampler.MaxAnisotropy = 1;
-        albedo_sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-        albedo_sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
-        albedo_sampler.MinLOD = 0.0f;
-        albedo_sampler.MaxLOD = D3D12_FLOAT32_MAX;
-        albedo_sampler.ShaderRegister = 0; // s0
-        albedo_sampler.RegisterSpace = 0;
-        albedo_sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        parameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        parameters[3].Descriptor.ShaderRegister = 3;
+        parameters[3].Descriptor.RegisterSpace = 0;
+        parameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        D3D12_DESCRIPTOR_RANGE shadow_range{};
+        shadow_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        shadow_range.NumDescriptors = 1;
+        shadow_range.BaseShaderRegister = 1; // t1
+        shadow_range.RegisterSpace = 0;
+        shadow_range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        parameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        parameters[4].DescriptorTable.NumDescriptorRanges = 1;
+        parameters[4].DescriptorTable.pDescriptorRanges = &shadow_range;
+        parameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        parameters[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        parameters[5].Descriptor.ShaderRegister = 2;
+        parameters[5].Descriptor.RegisterSpace = 0;
+        parameters[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        D3D12_STATIC_SAMPLER_DESC samplers[2]{};
+        samplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+        samplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        samplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        samplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        samplers[0].MaxAnisotropy = 1;
+        samplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+        samplers[0].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+        samplers[0].MaxLOD = D3D12_FLOAT32_MAX;
+        samplers[0].ShaderRegister = 0; // s0
+        samplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        samplers[1].Filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+        samplers[1].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        samplers[1].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        samplers[1].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        samplers[1].ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        samplers[1].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+        samplers[1].MaxLOD = D3D12_FLOAT32_MAX;
+        samplers[1].ShaderRegister = 1; // s1
+        samplers[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
         D3D12_ROOT_SIGNATURE_DESC root{};
-        root.NumParameters = 3;
+        root.NumParameters = 6;
         root.pParameters = parameters;
-        root.NumStaticSamplers = 1;
-        root.pStaticSamplers = &albedo_sampler;
+        root.NumStaticSamplers = 2;
+        root.pStaticSamplers = samplers;
         root.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
         ComPtr<ID3DBlob> signature;
         hr = D3D12SerializeRootSignature(&root, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &errors);
@@ -1785,7 +3073,14 @@ private:
         state.pRootSignature = root_signature_.Get();
         state.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
         state.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
-        D3D12_INPUT_ELEMENT_DESC input[]={{"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},{"COLOR",0,DXGI_FORMAT_R32G32B32_FLOAT,0,12,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},{"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,24,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0}};state.InputLayout={input,3};
+        D3D12_INPUT_ELEMENT_DESC input[]={
+            {"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+            {"COLOR",0,DXGI_FORMAT_R32G32B32_FLOAT,0,12,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+            {"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,24,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+            {"NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,32,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+            {"BLENDINDICES",0,DXGI_FORMAT_R8G8B8A8_UINT,0,44,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+            {"BLENDWEIGHT",0,DXGI_FORMAT_R8G8B8A8_UNORM,0,48,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0}};
+        state.InputLayout={input,6};
         state.BlendState.AlphaToCoverageEnable = FALSE;
         state.BlendState.IndependentBlendEnable = FALSE;
         const D3D12_RENDER_TARGET_BLEND_DESC blend{FALSE, FALSE, D3D12_BLEND_ONE, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
@@ -1809,6 +3104,8 @@ private:
         if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-SKY-PIPELINE", "Could not create sky pipeline", hr));
         const auto foliage_pipeline = create_foliage_pipeline(ps);
         if (!foliage_pipeline) return Result<void>::failure(foliage_pipeline.error());
+        const auto prop_pipeline = create_prop_instance_pipeline();
+        if (!prop_pipeline) return Result<void>::failure(prop_pipeline.error());
         return Result<void>::success();
     }
 
@@ -1972,8 +3269,9 @@ private:
         D3D12_INPUT_ELEMENT_DESC input[] = {{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
                                                 D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
             {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
-        state.InputLayout = {input, 3};
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+        state.InputLayout = {input, 4};
         D3D12_RENDER_TARGET_BLEND_DESC blend{};
         blend.BlendEnable = TRUE;
         blend.SrcBlend = D3D12_BLEND_SRC_ALPHA;
@@ -1999,6 +3297,557 @@ private:
         if (FAILED(hr))
             return Result<void>::failure(graphics_error("GFX-WATER-PIPELINE", "Could not create water pipeline", hr));
         return Result<void>::success();
+    }
+
+    Result<void> create_particle_pipeline() {
+        const char* particle_shader = R"(
+            cbuffer Frame : register(b0) {
+                float4x4 viewProjection;
+                float4 cameraAndFogStart;
+                float4 fogColorAndEnd;
+                float4 softParticleParams; // xy = viewport size, z = soft scale, w unused
+                float4 pointLight0PosRadius;
+                float4 pointLight0ColorStrength;
+                float4 pointLight1PosRadius;
+                float4 pointLight1ColorStrength;
+                float4 viewportPad;
+            };
+            Texture2D<float4> particleTex : register(t0);
+            Texture2D<float> sceneDepth : register(t1);
+            SamplerState particleSampler : register(s0);
+            SamplerState depthSampler : register(s1);
+            struct In {
+                float3 position : POSITION;
+                float4 color : COLOR;
+                float2 uv : TEXCOORD0;
+                float2 uv2 : TEXCOORD1;
+                float lightEmission : TEXCOORD2;
+                float textureIndex : TEXCOORD3;
+                float flipbookBlend : TEXCOORD4;
+            };
+            struct Out {
+                float4 position : SV_POSITION;
+                float4 color : COLOR;
+                float2 uv : TEXCOORD0;
+                float2 uv2 : TEXCOORD1;
+                float lightEmission : TEXCOORD2;
+                float3 worldPos : TEXCOORD3;
+                float textureIndex : TEXCOORD4;
+                float flipbookBlend : TEXCOORD5;
+            };
+            Out vs(In input) {
+                Out o;
+                o.worldPos = input.position;
+                o.position = mul(viewProjection, float4(input.position, 1.0));
+                o.color = input.color;
+                o.uv = input.uv;
+                o.uv2 = input.uv2;
+                o.lightEmission = input.lightEmission;
+                o.textureIndex = input.textureIndex;
+                o.flipbookBlend = input.flipbookBlend;
+                return o;
+            }
+            float4 ps(Out input) : SV_TARGET {
+                float soft = 1.0;
+                float3 texRgb = float3(1.0, 1.0, 1.0);
+                if (input.textureIndex > 0.5) {
+                    float4 a = particleTex.Sample(particleSampler, input.uv);
+                    float4 b = particleTex.Sample(particleSampler, input.uv2);
+                    float4 sampled = lerp(a, b, saturate(input.flipbookBlend));
+                    soft = sampled.a;
+                    texRgb = sampled.rgb;
+                } else {
+                    float2 d = input.uv * 2.0 - 1.0;
+                    soft = saturate(1.0 - dot(d, d));
+                    soft *= soft;
+                }
+                float alpha = saturate(input.color.a * soft);
+                // Soft particles: fade only near solid geometry. Empty sky / far-plane depth must not
+                // zero out distant particles (scene_z ≈ particle_z ≈ 1).
+                float2 screen_uv = input.position.xy / max(softParticleParams.xy, float2(1.0, 1.0));
+                float scene_z = sceneDepth.SampleLevel(depthSampler, screen_uv, 0);
+                float particle_z = input.position.z;
+                float soft_scale = max(softParticleParams.z, 1.0);
+                float depth_fade = 1.0;
+                if (scene_z < 0.999) {
+                    depth_fade = saturate((scene_z - particle_z) * soft_scale);
+                }
+                alpha *= depth_fade;
+                float3 rgb = input.color.rgb * texRgb * (0.55 + input.lightEmission * 0.85);
+                float fogStart = cameraAndFogStart.w;
+                float fogEnd = fogColorAndEnd.w;
+                float dist = length(input.worldPos - cameraAndFogStart.xyz);
+                float fog = saturate((dist - fogStart) / max(fogEnd - fogStart, 1e-3));
+                rgb = lerp(rgb, fogColorAndEnd.xyz, fog * 0.35);
+                return float4(rgb * alpha, alpha);
+            }
+        )";
+        ComPtr<ID3DBlob> vs, ps, errors;
+        UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
+#ifndef NDEBUG
+        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+        HRESULT hr = D3DCompile(particle_shader, strlen(particle_shader), "particle_shader", nullptr, nullptr, "vs",
+            "vs_5_1", flags, 0, &vs, &errors);
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-PARTICLE-VS",
+                errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Particle VS failed", hr));
+        errors.Reset();
+        hr = D3DCompile(particle_shader, strlen(particle_shader), "particle_shader", nullptr, nullptr, "ps", "ps_5_1",
+            flags, 0, &ps, &errors);
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-PARTICLE-PS",
+                errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Particle PS failed", hr));
+
+        D3D12_DESCRIPTOR_RANGE tex_range{};
+        tex_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        tex_range.NumDescriptors = 1;
+        tex_range.BaseShaderRegister = 0;
+        tex_range.RegisterSpace = 0;
+        tex_range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        D3D12_DESCRIPTOR_RANGE depth_range{};
+        depth_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        depth_range.NumDescriptors = 1;
+        depth_range.BaseShaderRegister = 1;
+        depth_range.RegisterSpace = 0;
+        depth_range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        D3D12_ROOT_PARAMETER parameters[3]{};
+        parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        parameters[0].Descriptor.ShaderRegister = 0;
+        parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        parameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        parameters[1].DescriptorTable.NumDescriptorRanges = 1;
+        parameters[1].DescriptorTable.pDescriptorRanges = &tex_range;
+        parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        parameters[2].DescriptorTable.NumDescriptorRanges = 1;
+        parameters[2].DescriptorTable.pDescriptorRanges = &depth_range;
+        parameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        D3D12_STATIC_SAMPLER_DESC samplers[2]{};
+        samplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+        samplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        samplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        samplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        samplers[0].MaxLOD = D3D12_FLOAT32_MAX;
+        samplers[0].ShaderRegister = 0;
+        samplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        samplers[1] = samplers[0];
+        samplers[1].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+        samplers[1].ShaderRegister = 1;
+
+        D3D12_ROOT_SIGNATURE_DESC root{};
+        root.NumParameters = 3;
+        root.pParameters = parameters;
+        root.NumStaticSamplers = 2;
+        root.pStaticSamplers = samplers;
+        root.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+        ComPtr<ID3DBlob> signature;
+        hr = D3D12SerializeRootSignature(&root, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &errors);
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-PARTICLE-ROOT-SERIALIZE",
+                errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Particle root serialize failed", hr));
+        hr = device_->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(),
+            IID_PPV_ARGS(&particle_root_signature_));
+        if (FAILED(hr))
+            return Result<void>::failure(
+                graphics_error("GFX-PARTICLE-ROOT", "Could not create particle root signature", hr));
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC state{};
+        state.pRootSignature = particle_root_signature_.Get();
+        state.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
+        state.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
+        D3D12_INPUT_ELEMENT_DESC input[] = {
+            {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"TEXCOORD", 2, DXGI_FORMAT_R32_FLOAT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"TEXCOORD", 3, DXGI_FORMAT_R32_FLOAT, 0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"TEXCOORD", 4, DXGI_FORMAT_R32_FLOAT, 0, 52, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+        state.InputLayout = {input, 7};
+        D3D12_RENDER_TARGET_BLEND_DESC blend{};
+        blend.BlendEnable = TRUE;
+        // SoftLight: SRC_ALPHA / ONE reads as additive fire while alpha still softens edges.
+        blend.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        blend.DestBlend = D3D12_BLEND_ONE;
+        blend.BlendOp = D3D12_BLEND_OP_ADD;
+        blend.SrcBlendAlpha = D3D12_BLEND_ONE;
+        blend.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+        blend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+        blend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+        state.BlendState.RenderTarget[0] = blend;
+        state.SampleMask = UINT_MAX;
+        state.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+        state.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+        state.RasterizerState.DepthClipEnable = TRUE;
+        // Soft particles sample scene depth as SRV; hardware depth test stays off for that bind.
+        state.DepthStencilState.DepthEnable = FALSE;
+        state.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+        state.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        state.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        state.NumRenderTargets = 1;
+        state.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        state.DSVFormat = DXGI_FORMAT_UNKNOWN;
+        state.SampleDesc.Count = 1;
+        hr = device_->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(&particle_pipeline_));
+        if (FAILED(hr))
+            return Result<void>::failure(
+                graphics_error("GFX-PARTICLE-PIPELINE", "Could not create particle pipeline", hr));
+
+        // Alpha blend variant for smoke plumes (standard over).
+        blend.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        blend.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+        blend.SrcBlendAlpha = D3D12_BLEND_ONE;
+        blend.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+        state.BlendState.RenderTarget[0] = blend;
+        hr = device_->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(&particle_alpha_pipeline_));
+        if (FAILED(hr))
+            return Result<void>::failure(
+                graphics_error("GFX-PARTICLE-PIPELINE-ALPHA", "Could not create particle alpha pipeline", hr));
+
+        D3D12_DESCRIPTOR_HEAP_DESC heap{};
+        heap.NumDescriptors = k_particle_srv_count;
+        heap.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        heap.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        hr = device_->CreateDescriptorHeap(&heap, IID_PPV_ARGS(&particle_srv_heap_));
+        if (FAILED(hr))
+            return Result<void>::failure(
+                graphics_error("GFX-PARTICLE-SRV-HEAP", "Could not create particle SRV heap", hr));
+        particle_srv_descriptor_size_ = device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        particle_srv_gpu_base_ = particle_srv_heap_->GetGPUDescriptorHandleForHeapStart();
+        // Slot 0 = 1x1 white fallback; slots 1..N-1 load authored particle textures; last = scene depth.
+        const std::uint8_t white[4] = {255, 255, 255, 255};
+        auto cpu = particle_srv_heap_->GetCPUDescriptorHandleForHeapStart();
+        auto uploaded = upload_rgba_texture(white, 1, 1, cpu, particle_textures_[0]);
+        if (!uploaded) return uploaded;
+        particle_texture_loaded_paths_[0].clear();
+        for (UINT i = 1; i < k_max_particle_textures; ++i) {
+            particle_textures_[i].Reset();
+            particle_texture_loaded_paths_[i].clear();
+            D3D12_CPU_DESCRIPTOR_HANDLE slot = particle_srv_heap_->GetCPUDescriptorHandleForHeapStart();
+            slot.ptr += static_cast<SIZE_T>(i) * particle_srv_descriptor_size_;
+            auto slot_upload = upload_rgba_texture(white, 1, 1, slot, particle_textures_[i]);
+            if (!slot_upload) return slot_upload;
+        }
+        return Result<void>::success();
+    }
+
+public:
+    void set_particle_draw_list(const std::vector<ParticleDrawInstance>* particles,
+        const std::vector<std::string>* texture_paths = nullptr) {
+        particle_draw_list_ = particles;
+        particle_texture_paths_ = texture_paths;
+    }
+    void set_wind_field(const WindFieldParams& wind) { wind_field_ = wind; }
+    [[nodiscard]] const WindFieldParams& wind_field() const noexcept { return wind_field_; }
+    void set_particle_texture_project_root(const std::filesystem::path& root) { particle_texture_project_root_ = root; }
+
+private:
+    void ensure_particle_texture_slot(UINT slot, const std::filesystem::path& absolute_path) {
+        if (slot == 0 || slot >= k_max_particle_textures || !device_ || !particle_srv_heap_) return;
+        if (!std::filesystem::exists(absolute_path)) return;
+        const auto key = absolute_path.lexically_normal().string();
+        std::error_code ec;
+        const auto mtime = std::filesystem::last_write_time(absolute_path, ec);
+        const auto cache_key = key + "|" + (ec ? "0" : std::to_string(mtime.time_since_epoch().count()));
+        if (particle_texture_loaded_paths_[slot] == cache_key && particle_textures_[slot]) return;
+        const auto decoded = decode_png_file(absolute_path);
+        if (!decoded || decoded.value().empty()) return;
+        particle_textures_[slot].Reset();
+        D3D12_CPU_DESCRIPTOR_HANDLE cpu = particle_srv_heap_->GetCPUDescriptorHandleForHeapStart();
+        cpu.ptr += static_cast<SIZE_T>(slot) * particle_srv_descriptor_size_;
+        auto uploaded = upload_rgba_texture(decoded.value().rgba.data(), decoded.value().width,
+            decoded.value().height, cpu, particle_textures_[slot]);
+        if (uploaded) particle_texture_loaded_paths_[slot] = cache_key;
+    }
+
+    void ensure_particle_textures() {
+        if (particle_texture_project_root_.empty() || !particle_texture_paths_) return;
+        const auto& paths = *particle_texture_paths_;
+        for (std::size_t i = 0; i < paths.size() && i + 1 < k_max_particle_textures; ++i) {
+            ensure_particle_texture_slot(static_cast<UINT>(i + 1), particle_texture_project_root_ / paths[i]);
+        }
+    }
+
+    // Draw additive soft billboards onto an already-composited color target (viewport/backbuffer),
+    // never into lit_color_ before SSAO — a stranded RT state there made the composite sample black.
+    void draw_particles_pass(ID3D12Resource* color_target, D3D12_CPU_DESCRIPTOR_HANDLE rtv,
+        const WorldPassParams& params, bool color_starts_as_srv) {
+        if (!particle_pipeline_ || !particle_root_signature_ || !particle_draw_list_ ||
+            particle_draw_list_->empty() || !depth_ || !color_target)
+            return;
+
+        struct ParticleVertex {
+            float px, py, pz;
+            float r, g, b, a;
+            float u, v;
+            float u2, v2;
+            float light_emission;
+            float texture_index;
+            float flipbook_blend;
+        };
+
+        ensure_particle_textures();
+
+        const auto& cam = params.camera_position;
+        std::vector<ParticleVertex> vertices;
+        vertices.reserve(particle_draw_list_->size() * 6);
+        struct TextureBatch {
+            UINT texture_index = 0;
+            UINT blend_mode = 0;
+            UINT vertex_start = 0;
+            UINT vertex_count = 0;
+        };
+        std::vector<TextureBatch> batches;
+        auto flush_batch = [&](UINT tex, UINT blend, UINT start, UINT count) {
+            if (count == 0) return;
+            batches.push_back({tex, blend, start, count});
+        };
+        UINT batch_tex = 0;
+        UINT batch_blend = 0;
+        UINT batch_start = 0;
+        bool batch_open = false;
+
+        for (const auto& particle : *particle_draw_list_) {
+            std::array<float, 3> to_cam = {cam[0] - particle.position[0], cam[1] - particle.position[1],
+                cam[2] - particle.position[2]};
+            float len = std::sqrt(to_cam[0] * to_cam[0] + to_cam[1] * to_cam[1] + to_cam[2] * to_cam[2]);
+            if (len < 1e-4f) continue;
+            to_cam = {to_cam[0] / len, to_cam[1] / len, to_cam[2] / len};
+
+            const auto orientation = static_cast<ParticleOrientation>(particle.orientation);
+            const std::array<float, 3> world_up = {0.0f, 1.0f, 0.0f};
+            std::array<float, 3> right{};
+            std::array<float, 3> up{};
+            const bool streak = orientation == ParticleOrientation::VelocityParallel;
+            const bool cylindrical = orientation == ParticleOrientation::FacingCameraWorldUp;
+            const bool world_cross = particle.cross_arm == 1 || particle.cross_arm == 2;
+
+            auto cross3 = [](const std::array<float, 3>& a, const std::array<float, 3>& b) {
+                return std::array<float, 3>{a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2],
+                    a[0] * b[1] - a[1] * b[0]};
+            };
+            auto normalize_or = [](std::array<float, 3> v, const std::array<float, 3>& fallback) {
+                const float n = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+                if (n < 1e-4f) return fallback;
+                return std::array<float, 3>{v[0] / n, v[1] / n, v[2] / n};
+            };
+
+            if (world_cross) {
+                // Classic + cross in XZ: both arms upright and world-locked so neither is
+                // permanently edge-on to a yawed camera (camera-relative 90° made that happen).
+                float yaw = particle.rotation_rad;
+                if (particle.cross_arm == 2) yaw += 1.57079637f;
+                right = {std::cos(yaw), 0.0f, std::sin(yaw)};
+                up = world_up;
+            } else if (streak || orientation == ParticleOrientation::VelocityPerpendicular) {
+                up = particle.axis;
+                right = normalize_or(cross3(up, to_cam), {1.0f, 0.0f, 0.0f});
+                if (streak) {
+                    up = particle.axis;
+                    right = normalize_or(cross3(up, to_cam), {1.0f, 0.0f, 0.0f});
+                } else {
+                    up = normalize_or(cross3(to_cam, right), world_up);
+                }
+            } else if (cylindrical) {
+                // Keep world Y so flames stay upright while yawing toward the camera.
+                right = normalize_or(cross3(to_cam, world_up), {1.0f, 0.0f, 0.0f});
+                up = world_up;
+            } else {
+                up = world_up;
+                right = normalize_or(cross3(up, to_cam), {1.0f, 0.0f, 0.0f});
+                up = normalize_or(cross3(to_cam, right), world_up);
+            }
+
+            if (!world_cross && std::abs(particle.rotation_rad) > 1e-5f) {
+                const float c = std::cos(particle.rotation_rad);
+                const float s = std::sin(particle.rotation_rad);
+                if (cylindrical) {
+                    const auto spin = cross3(world_up, right);
+                    right = {c * right[0] + s * spin[0], c * right[1] + s * spin[1], c * right[2] + s * spin[2]};
+                    right = normalize_or(right, {1.0f, 0.0f, 0.0f});
+                    up = world_up;
+                } else if (!streak) {
+                    auto rotate_around_view = [&](const std::array<float, 3>& v) {
+                        const auto kxv = cross3(to_cam, v);
+                        const float kdv = to_cam[0] * v[0] + to_cam[1] * v[1] + to_cam[2] * v[2];
+                        return std::array<float, 3>{v[0] * c + kxv[0] * s + to_cam[0] * kdv * (1.0f - c),
+                            v[1] * c + kxv[1] * s + to_cam[1] * kdv * (1.0f - c),
+                            v[2] * c + kxv[2] * s + to_cam[2] * kdv * (1.0f - c)};
+                    };
+                    right = normalize_or(rotate_around_view(right), right);
+                    up = normalize_or(rotate_around_view(up), up);
+                }
+            }
+
+            const float aspect = std::max(particle.aspect, 0.05f);
+            float size = particle.size;
+            if (particle.min_screen_size > 0.0f && height_ > 0) {
+                const float dx = particle.position[0] - cam[0];
+                const float dy = particle.position[1] - cam[1];
+                const float dz = particle.position[2] - cam[2];
+                const float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+                // ~60° vertical FOV screen-space floor: readable landmarks at range.
+                constexpr float k_tan_half_fov_y = 0.57735026919f; // tan(30°)
+                const float min_world =
+                    (particle.min_screen_size / static_cast<float>(height_)) * dist * 2.0f * k_tan_half_fov_y;
+                if (min_world > size) size = min_world;
+            }
+            const float half_along = streak ? size * 0.7f : size * 0.5f;
+            const float half_across = streak ? size * 0.11f * aspect : size * 0.5f * aspect;
+            const float hx = right[0] * half_across, hy = right[1] * half_across, hz = right[2] * half_across;
+            const float vx = up[0] * half_along, vy = up[1] * half_along, vz = up[2] * half_along;
+            const float px = particle.position[0], py = particle.position[1], pz = particle.position[2];
+            const float tex = static_cast<float>(particle.texture_index);
+            const float blend = particle.flipbook_blend;
+            const auto map_uv = [&](float u, float v) {
+                return std::array<float, 2>{particle.uv_offset_u + u * particle.uv_scale_u,
+                    particle.uv_offset_v + v * particle.uv_scale_v};
+            };
+            const auto map_uv2 = [&](float u, float v) {
+                return std::array<float, 2>{particle.uv_offset_u2 + u * particle.uv_scale_u,
+                    particle.uv_offset_v2 + v * particle.uv_scale_v};
+            };
+            auto make_vert = [&](float x, float y, float z, float u, float v) {
+                const auto uv = map_uv(u, v);
+                const auto uv2 = map_uv2(u, v);
+                return ParticleVertex{x, y, z, particle.color[0], particle.color[1], particle.color[2],
+                    particle.color[3], uv[0], uv[1], uv2[0], uv2[1], particle.light_emission, tex, blend};
+            };
+            ParticleVertex c0, c1, c2, c3;
+            if (streak) {
+                // U along wind, V across — matches wide trail PNGs.
+                c0 = make_vert(px - hx - vx, py - hy - vy, pz - hz - vz, 0.0f, 0.0f);
+                c1 = make_vert(px + hx - vx, py + hy - vy, pz + hz - vz, 0.0f, 1.0f);
+                c2 = make_vert(px + hx + vx, py + hy + vy, pz + hz + vz, 1.0f, 1.0f);
+                c3 = make_vert(px - hx + vx, py - hy + vy, pz - hz + vz, 1.0f, 0.0f);
+            } else {
+                c0 = make_vert(px - hx - vx, py - hy - vy, pz - hz - vz, 0.0f, 1.0f);
+                c1 = make_vert(px + hx - vx, py + hy - vy, pz + hz - vz, 1.0f, 1.0f);
+                c2 = make_vert(px + hx + vx, py + hy + vy, pz + hz + vz, 1.0f, 0.0f);
+                c3 = make_vert(px - hx + vx, py - hy + vy, pz - hz + vz, 0.0f, 0.0f);
+            }
+            const UINT tex_index = particle.texture_index;
+            const UINT blend_mode = particle.blend_mode;
+            if (!batch_open) {
+                batch_tex = tex_index;
+                batch_blend = blend_mode;
+                batch_start = static_cast<UINT>(vertices.size());
+                batch_open = true;
+            } else if (tex_index != batch_tex || blend_mode != batch_blend) {
+                flush_batch(batch_tex, batch_blend, batch_start, static_cast<UINT>(vertices.size()) - batch_start);
+                batch_tex = tex_index;
+                batch_blend = blend_mode;
+                batch_start = static_cast<UINT>(vertices.size());
+            }
+            vertices.push_back(c0);
+            vertices.push_back(c1);
+            vertices.push_back(c2);
+            vertices.push_back(c0);
+            vertices.push_back(c2);
+            vertices.push_back(c3);
+        }
+        if (batch_open) flush_batch(batch_tex, batch_blend, batch_start, static_cast<UINT>(vertices.size()) - batch_start);
+        if (vertices.empty()) return;
+
+        const UINT byte_size = static_cast<UINT>(vertices.size() * sizeof(ParticleVertex));
+        const UINT capacity = (std::max)(byte_size, 64u * 1024u);
+        if (!particle_vertex_buffer_ || particle_vertex_capacity_ < capacity) {
+            ComPtr<ID3D12Resource> next_buffer;
+            D3D12_HEAP_PROPERTIES upload{};
+            upload.Type = D3D12_HEAP_TYPE_UPLOAD;
+            D3D12_RESOURCE_DESC desc{};
+            desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+            desc.Width = capacity;
+            desc.Height = 1;
+            desc.DepthOrArraySize = 1;
+            desc.MipLevels = 1;
+            desc.SampleDesc.Count = 1;
+            desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+            if (FAILED(device_->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &desc,
+                    D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&next_buffer))))
+                return;
+            particle_vertex_buffer_ = std::move(next_buffer);
+            particle_vertex_capacity_ = capacity;
+        }
+        void* mapped = nullptr;
+        if (FAILED(particle_vertex_buffer_->Map(0, nullptr, &mapped)) || !mapped) return;
+        std::memcpy(mapped, vertices.data(), byte_size);
+        particle_vertex_buffer_->Unmap(0, nullptr);
+
+        if (color_starts_as_srv) {
+            auto to_rt = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                D3D12_RESOURCE_STATE_RENDER_TARGET);
+            command_list_->ResourceBarrier(1, &to_rt);
+        }
+
+        D3D12_VERTEX_BUFFER_VIEW view{};
+        view.BufferLocation = particle_vertex_buffer_->GetGPUVirtualAddress();
+        view.SizeInBytes = byte_size;
+        view.StrideInBytes = sizeof(ParticleVertex);
+
+        auto dsv = dsv_heap_->GetCPUDescriptorHandleForHeapStart();
+        (void)dsv;
+        // Soft particles sample depth as SRV — cannot keep it bound as a writable DSV.
+        auto depth_to_srv = CD3DX12_RESOURCE_BARRIER_placeholder(depth_.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        command_list_->ResourceBarrier(1, &depth_to_srv);
+
+        command_list_->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
+        D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(width_), static_cast<float>(height_), 0.0f, 1.0f};
+        D3D12_RECT scissor{0, 0, static_cast<LONG>(width_), static_cast<LONG>(height_)};
+        command_list_->RSSetViewports(1, &viewport);
+        command_list_->RSSetScissorRects(1, &scissor);
+        std::array<float, 48> frame_constants{};
+        std::memcpy(frame_constants.data(), params.view_projection.data(), sizeof(params.view_projection));
+        frame_constants[16] = params.camera_position[0];
+        frame_constants[17] = params.camera_position[1];
+        frame_constants[18] = params.camera_position[2];
+        frame_constants[19] = 40.0f;
+        frame_constants[20] = 0.55f;
+        frame_constants[21] = 0.62f;
+        frame_constants[22] = 0.72f;
+        frame_constants[23] = 180.0f;
+        frame_constants[24] = static_cast<float>(width_);
+        frame_constants[25] = static_cast<float>(height_);
+        frame_constants[26] = 220.0f; // soft particle depth scale
+        command_list_->SetGraphicsRootSignature(particle_root_signature_.Get());
+        bind_particle_frame_constants(frame_constants);
+        if (particle_srv_heap_) {
+            ID3D12DescriptorHeap* heaps[] = {particle_srv_heap_.Get()};
+            command_list_->SetDescriptorHeaps(1, heaps);
+            if (particle_depth_gpu_.ptr != 0)
+                command_list_->SetGraphicsRootDescriptorTable(2, particle_depth_gpu_);
+        }
+        command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        command_list_->IASetVertexBuffers(0, 1, &view);
+        for (const auto& batch : batches) {
+            const bool alpha_blend = batch.blend_mode == static_cast<UINT>(ParticleBlendMode::Alpha);
+            ID3D12PipelineState* pso = alpha_blend && particle_alpha_pipeline_
+                ? particle_alpha_pipeline_.Get()
+                : particle_pipeline_.Get();
+            command_list_->SetPipelineState(pso);
+            if (particle_srv_heap_) {
+                D3D12_GPU_DESCRIPTOR_HANDLE srv = particle_srv_gpu_base_;
+                const UINT slot = std::min(batch.texture_index, k_max_particle_textures - 1u);
+                srv.ptr += static_cast<UINT64>(slot) * particle_srv_descriptor_size_;
+                command_list_->SetGraphicsRootDescriptorTable(1, srv);
+            }
+            command_list_->DrawInstanced(batch.vertex_count, 1, batch.vertex_start, 0);
+        }
+
+        auto depth_to_write = CD3DX12_RESOURCE_BARRIER_placeholder(depth_.Get(),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        command_list_->ResourceBarrier(1, &depth_to_write);
+
+        if (color_starts_as_srv) {
+            auto to_srv = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_RENDER_TARGET,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            command_list_->ResourceBarrier(1, &to_srv);
+        }
     }
 
     // SSAO v1: two fullscreen-triangle passes. Root signatures use a root CBV + a single descriptor table
@@ -2038,15 +3887,41 @@ private:
                 return float2(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5));
             }
 
-            // Interleaved gradient noise — breaks coherent banding better than a simple hash.
-            float interleavedGradientNoise(float2 pixel) {
-                return frac(52.9829189 * frac(dot(pixel, float2(0.06711056, 0.00583715))));
+            float hash31(float3 p) {
+                return frac(sin(dot(p, float3(12.9898, 78.233, 37.719))) * 43758.5453);
+            }
+
+            // Smooth quantized world noise: floor cells kill depth-reconstruct FP sparkle; hermite
+            // blend across cell corners avoids hard kernel-angle pops when walking cell boundaries.
+            float worldStableNoise(float3 worldPos) {
+                const float cellsPerMeter = 4.0; // 25 cm cells
+                float3 scaled = worldPos * cellsPerMeter;
+                float3 base = floor(scaled);
+                float3 f = frac(scaled);
+                f = f * f * (3.0 - 2.0 * f);
+                float n000 = hash31(base + float3(0, 0, 0));
+                float n100 = hash31(base + float3(1, 0, 0));
+                float n010 = hash31(base + float3(0, 1, 0));
+                float n110 = hash31(base + float3(1, 1, 0));
+                float n001 = hash31(base + float3(0, 0, 1));
+                float n101 = hash31(base + float3(1, 0, 1));
+                float n011 = hash31(base + float3(0, 1, 1));
+                float n111 = hash31(base + float3(1, 1, 1));
+                float nx00 = lerp(n000, n100, f.x);
+                float nx10 = lerp(n010, n110, f.x);
+                float nx01 = lerp(n001, n101, f.x);
+                float nx11 = lerp(n011, n111, f.x);
+                return lerp(lerp(nx00, nx10, f.y), lerp(nx01, nx11, f.y), f.z);
             }
 
             float3 reconstructNormal(float2 uv, float centerDepth, float3 centerPos) {
                 float2 texel = biasIntensityTexel.zw;
                 float dR = depthTex.SampleLevel(pointClampSampler, uv + float2(texel.x, 0), 0).r;
                 float dU = depthTex.SampleLevel(pointClampSampler, uv + float2(0, -texel.y), 0).r;
+                // Reject depth discontinuities — edge pixels otherwise flip normals and crawl under camera motion.
+                float depthTol = max(1e-4, abs(centerDepth) * 0.02 + 0.002);
+                if (abs(dR - centerDepth) > depthTol || abs(dU - centerDepth) > depthTol)
+                    return float3(0, 1, 0);
                 float3 pR = reconstructWorldPos(uv + float2(texel.x, 0), dR);
                 float3 pU = reconstructWorldPos(uv + float2(0, -texel.y), dU);
                 float3 normal = normalize(cross(pR - centerPos, pU - centerPos));
@@ -2071,7 +3946,7 @@ private:
                 float3 up = (abs(normal.y) < 0.999) ? float3(0, 1, 0) : float3(1, 0, 0);
                 float3 tangent = normalize(cross(up, normal));
                 float3 bitangent = cross(normal, tangent);
-                float angle = interleavedGradientNoise(input.position.xy) * 6.2831853;
+                float angle = worldStableNoise(worldPos) * 6.2831853;
                 float ca = cos(angle), sa = sin(angle);
                 float radius = cameraPositionRadius.w;
                 float bias = biasIntensityTexel.x;
@@ -2113,15 +3988,15 @@ private:
             float4 ps(In input) : SV_TARGET {
                 float3 color = litTex.SampleLevel(linearClampSampler, input.uv, 0).rgb;
                 float2 texel = intensityTexel.yz;
-                // Wide 9-tap blur to kill half-res SSAO striping before composite.
+                // 7x7 blur to soften residual SSAO crawl before composite (no temporal history yet).
                 float ao = 0.0;
                 float weight = 0.0;
                 [unroll]
-                for (int y = -1; y <= 1; ++y) {
+                for (int y = -3; y <= 3; ++y) {
                     [unroll]
-                    for (int x = -1; x <= 1; ++x) {
-                        float w = (x == 0 && y == 0) ? 4.0 : ((x == 0 || y == 0) ? 2.0 : 1.0);
-                        ao += aoTex.SampleLevel(linearClampSampler, input.uv + float2(x, y) * 1.5 * texel, 0).r * w;
+                    for (int x = -3; x <= 3; ++x) {
+                        float w = 1.0 / (1.0 + abs((float)x) + abs((float)y));
+                        ao += aoTex.SampleLevel(linearClampSampler, input.uv + float2(x, y) * 1.35 * texel, 0).r * w;
                         weight += w;
                     }
                 }
@@ -2236,29 +4111,13 @@ private:
     }
 
     Result<void> create_post_constant_buffers() {
-        const auto make_cb = [&](ComPtr<ID3D12Resource>& resource, void*& mapped) -> HRESULT {
-            resource.Reset();
-            mapped = nullptr;
-            D3D12_HEAP_PROPERTIES heap{};
-            heap.Type = D3D12_HEAP_TYPE_UPLOAD;
-            D3D12_RESOURCE_DESC desc{};
-            desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            desc.Width = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
-            desc.Height = 1;
-            desc.DepthOrArraySize = 1;
-            desc.MipLevels = 1;
-            desc.SampleDesc.Count = 1;
-            desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-            HRESULT resource_hr = device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc,
-                D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&resource));
-            if (FAILED(resource_hr)) return resource_hr;
-            return resource->Map(0, nullptr, &mapped);
-        };
-        HRESULT hr = make_cb(ssao_cb_, ssao_cb_mapped_);
-        if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-SSAO-CB", "Could not create SSAO constant buffer", hr));
-        hr = make_cb(composite_cb_, composite_cb_mapped_);
-        if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-COMPOSITE-CB", "Could not create composite constant buffer", hr));
-        return Result<void>::success();
+        auto ssao = create_upload_cb_ring(ssao_cb_, ssao_cb_mapped_, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT,
+            "GFX-SSAO-CB", "GFX-SSAO-CB-MAP", "Could not create SSAO constant buffer",
+            "Could not map SSAO constant buffer");
+        if (!ssao) return ssao;
+        return create_upload_cb_ring(composite_cb_, composite_cb_mapped_,
+            D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, "GFX-COMPOSITE-CB", "GFX-COMPOSITE-CB-MAP",
+            "Could not create composite constant buffer", "Could not map composite constant buffer");
     }
 
     Result<void> create_foliage_pipeline(ComPtr<ID3DBlob> /*pixel_shader*/) {
@@ -2278,37 +4137,74 @@ private:
                 float4 influencePosRadius;
                 float4 influenceVelStrength;
                 float4 layerBladeTime;
+                float4 windDirSpeed;
+                float4 windGustParams;
             };
             StructuredBuffer<float4> instanceRows : register(t0);
-            struct In { float3 position:POSITION; float3 color:COLOR; };
-            struct Out { float4 position : SV_POSITION; float3 color : COLOR; float3 worldPos : TEXCOORD0; };
+            struct In { float3 position:POSITION; float3 color:COLOR; float2 uv:TEXCOORD; float3 normal:NORMAL; };
+            struct Out { float4 position : SV_POSITION; float3 color : COLOR; float3 worldPos : TEXCOORD0; float3 normal : TEXCOORD1; };
             Out vs(In input, uint instanceId : SV_InstanceID) {
                 Out o;
-                const uint baseIndex = instanceId * 4u;
+                // SV_InstanceID is 0-based per DrawInstanced and ignores StartInstanceLocation.
+                // layerBladeTime.z carries the instance-buffer base index for this batch.
+                const uint baseIndex = (instanceId + (uint)layerBladeTime.z) * 4u;
                 float4x4 model = transpose(float4x4(
                     instanceRows[baseIndex + 0u],
                     instanceRows[baseIndex + 1u],
                     instanceRows[baseIndex + 2u],
                     instanceRows[baseIndex + 3u]));
-                float4 world = mul(model, float4(input.position, 1.0));
-                const float bladeFactor = saturate(input.position.y / max(layerBladeTime.x, 0.001));
-                float2 deltaXZ = world.xz - influencePosRadius.xz;
+                float3 localPos = input.position;
+                const float t = saturate(localPos.y / max(layerBladeTime.x, 0.001));
+                const float tip = t * t;
+                // Tip flutter from instance world XZ phase; reduced when interaction bend dominates.
+                const float3 instanceOrigin = mul(model, float4(0, 0, 0, 1)).xyz;
+                const float windPhase = instanceOrigin.x * 1.7 + instanceOrigin.z * 2.3;
+                const float windAmp = 0.035 * tip * max(windDirSpeed.w, 0.0);
+                float3 leanDir = float3(0, 0, 0);
+                float falloff = 0;
+                float bendAmount = 0;
+                float2 deltaXZ = instanceOrigin.xz - influencePosRadius.xz;
                 float dist = length(deltaXZ);
-                const float falloff = saturate(1.0 - dist / max(influencePosRadius.w, 0.001));
-                const float bend = influenceVelStrength.w * bladeFactor * falloff;
-                if (bend > 0.0001) {
-                    float2 away = dist > 0.0001 ? deltaXZ / dist : float2(0, 0);
-                    world.x += away.x * bend * 0.45;
-                    world.z += away.y * bend * 0.45;
+                falloff = saturate(1.0 - dist / max(influencePosRadius.w, 0.001));
+                bendAmount = influenceVelStrength.w * tip * falloff;
+                if (bendAmount > 0.0001) {
+                    float2 away = dist > 0.0001 ? deltaXZ / dist : float2(1, 0);
+                    leanDir = float3(away.x, 0, away.y);
+                    // Spine lean: rotate tip around root away from player.
+                    const float leanRadians = bendAmount * 0.85;
+                    localPos.xyz += leanDir * (localPos.y * sin(leanRadians));
+                    localPos.y *= cos(leanRadians);
+                    // Trample: flatten under feet near influence center.
+                    localPos.y -= bendAmount * tip * 0.22 * layerBladeTime.x;
                     float3 vel = influenceVelStrength.xyz;
                     vel.y = 0;
                     const float velLen = length(vel);
                     if (velLen > 0.001)
-                        world.xyz += (vel / velLen) * velLen * 0.05 * bladeFactor * falloff;
+                        localPos.xyz += (vel / velLen) * velLen * 0.04 * tip * falloff;
                 }
+                const float windMute = saturate(1.0 - falloff * 1.35);
+                localPos.x += sin(layerBladeTime.y * 2.4 + windPhase) * windAmp * windMute;
+                localPos.z += cos(layerBladeTime.y * 1.9 + windPhase * 0.7) * windAmp * 0.7 * windMute;
+                // Traveling gust bands (TICKET-0230): coherent tip lean along wind direction.
+                const float2 windDir = windDirSpeed.xy;
+                const float wavelength = max(windGustParams.x, 0.5);
+                const float freq = 6.2831853 / wavelength;
+                const float gustPhase = dot(instanceOrigin.xz, windDir) * freq
+                    - layerBladeTime.y * windDirSpeed.z * freq * 0.35;
+                float gust = saturate(0.5 + 0.5 * sin(gustPhase));
+                gust = pow(gust, max(windGustParams.z, 0.5));
+                const float gustLean = gust * windGustParams.y * tip * windMute * 0.22;
+                localPos.x += windDir.x * gustLean * layerBladeTime.x;
+                localPos.z += windDir.y * gustLean * layerBladeTime.x;
+                float4 world = mul(model, float4(localPos, 1.0));
                 o.worldPos = world.xyz;
                 o.position = mul(viewProjection, world);
                 o.color = input.color;
+                float3 n = mul((float3x3)model, input.normal);
+                if (bendAmount > 0.0001)
+                    n = normalize(n + leanDir * bendAmount * 0.65);
+                n = normalize(n + float3(windDir.x, 0, windDir.y) * gustLean * 0.8);
+                o.normal = n;
                 return o;
             }
         )";
@@ -2324,25 +4220,23 @@ private:
                 float4 pointLight1ColorStrength;
                 float4 viewportSize;
             };
-            struct In { float4 position : SV_POSITION; float3 color : COLOR; float3 worldPos : TEXCOORD0; };
+            struct In { float4 position : SV_POSITION; float3 color : COLOR; float3 worldPos : TEXCOORD0; float3 normal : TEXCOORD1; };
 )";
-        const std::string foliage_ps = std::string(foliage_ps_prefix) + k_pbr_hlsl_helpers + R"(
+        const std::string foliage_ps = std::string(foliage_ps_prefix) + k_pbr_hlsl_helpers + k_shadow_hlsl_helpers + R"(
             float4 ps(In input) : SV_TARGET {
                 float dist = distance(input.worldPos, cameraAndFogStart.xyz);
                 float fogRange = max(fogColorAndEnd.w - cameraAndFogStart.w, 0.001);
                 float fogFactor = saturate((fogColorAndEnd.w - dist) / fogRange);
                 float3 albedo = input.color;
                 if (dot(albedo, albedo) < 1e-6) albedo = float3(0.30, 0.48, 0.22);
-                float3 dpdx = ddx(input.worldPos);
-                float3 dpdy = ddy(input.worldPos);
-                float3 nrm = cross(dpdx, dpdy);
-                float3 normal = (dot(nrm, nrm) > 1e-12) ? normalize(nrm) : float3(0, 1, 0);
+                float3 normal = (dot(input.normal, input.normal) > 1e-12) ? normalize(input.normal) : float3(0, 1, 0);
                 float3 V = normalize(cameraAndFogStart.xyz - input.worldPos);
                 float3 L = normalize(-lightAndAmbient.xyz);
                 if (dot(normal, V) < 0.0) normal = -normal;
                 float3 lit = albedo * lightAndAmbient.w;
+                float sunShadow = sampleSunShadow(input.worldPos, normal, L);
                 float3 direct = shadePbr(albedo, 1.0, 0.0, normal, V, L, float3(1.35, 1.25, 1.1));
-                if (all(isfinite(direct))) lit += direct;
+                if (all(isfinite(direct))) lit += direct * sunShadow;
                 float3 p0 = applyPointLightPbr(input.worldPos, albedo, 1.0, 0.0, normal, V, pointLight0PosRadius,
                     pointLight0ColorStrength);
                 float3 p1 = applyPointLightPbr(input.worldPos, albedo, 1.0, 0.0, normal, V, pointLight1PosRadius,
@@ -2371,7 +4265,7 @@ private:
                 errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Foliage pixel shader compilation failed",
                 hr));
 
-        D3D12_ROOT_PARAMETER parameters[3]{};
+        D3D12_ROOT_PARAMETER parameters[5]{};
         parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         parameters[0].Descriptor.ShaderRegister = 0;
         parameters[0].Descriptor.RegisterSpace = 0;
@@ -2389,11 +4283,37 @@ private:
         parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
         parameters[2].Constants.ShaderRegister = 2;
         parameters[2].Constants.RegisterSpace = 0;
-        parameters[2].Constants.Num32BitValues = 12;
+        parameters[2].Constants.Num32BitValues = 20;
         parameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        parameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        parameters[3].Descriptor.ShaderRegister = 3;
+        parameters[3].Descriptor.RegisterSpace = 0;
+        parameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        D3D12_DESCRIPTOR_RANGE foliage_shadow_range{};
+        foliage_shadow_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        foliage_shadow_range.NumDescriptors = 1;
+        foliage_shadow_range.BaseShaderRegister = 1;
+        foliage_shadow_range.RegisterSpace = 0;
+        foliage_shadow_range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        parameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        parameters[4].DescriptorTable.NumDescriptorRanges = 1;
+        parameters[4].DescriptorTable.pDescriptorRanges = &foliage_shadow_range;
+        parameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        D3D12_STATIC_SAMPLER_DESC foliage_shadow_sampler{};
+        foliage_shadow_sampler.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+        foliage_shadow_sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        foliage_shadow_sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        foliage_shadow_sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        foliage_shadow_sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        foliage_shadow_sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+        foliage_shadow_sampler.MaxLOD = D3D12_FLOAT32_MAX;
+        foliage_shadow_sampler.ShaderRegister = 1;
+        foliage_shadow_sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
         D3D12_ROOT_SIGNATURE_DESC root{};
-        root.NumParameters = 3;
+        root.NumParameters = 5;
         root.pParameters = parameters;
+        root.NumStaticSamplers = 1;
+        root.pStaticSamplers = &foliage_shadow_sampler;
         root.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
         ComPtr<ID3DBlob> signature;
         hr = D3D12SerializeRootSignature(&root, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &errors);
@@ -2413,8 +4333,9 @@ private:
         D3D12_INPUT_ELEMENT_DESC input[] = {{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
                                                 D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
             {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
-        state.InputLayout = {input, 3};
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+        state.InputLayout = {input, 4};
         state.BlendState.AlphaToCoverageEnable = FALSE;
         state.BlendState.IndependentBlendEnable = FALSE;
         const D3D12_RENDER_TARGET_BLEND_DESC blend{FALSE, FALSE, D3D12_BLEND_ONE, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
@@ -2437,7 +4358,7 @@ private:
         if (FAILED(hr)) return Result<void>::failure(graphics_error("GFX-FOLIAGE-PIPELINE", "Could not create foliage pipeline", hr));
         if (!foliage_srv_heap_) {
             D3D12_DESCRIPTOR_HEAP_DESC heap_desc{};
-            heap_desc.NumDescriptors = 1;
+            heap_desc.NumDescriptors = 2; // 0 = instance rows, 1 = shadow map array
             heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
             heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
             hr = device_->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&foliage_srv_heap_));
@@ -2446,7 +4367,252 @@ private:
                     graphics_error("GFX-FOLIAGE-SRV-HEAP", "Could not create foliage instance descriptor heap", hr));
             foliage_instance_srv_cpu_ = foliage_srv_heap_->GetCPUDescriptorHandleForHeapStart();
             foliage_instance_srv_gpu_ = foliage_srv_heap_->GetGPUDescriptorHandleForHeapStart();
+            foliage_shadow_srv_cpu_ = foliage_instance_srv_cpu_;
+            foliage_shadow_srv_cpu_.ptr += srv_stride_;
+            foliage_shadow_srv_gpu_ = foliage_instance_srv_gpu_;
+            foliage_shadow_srv_gpu_.ptr += srv_stride_;
         }
+        return Result<void>::success();
+    }
+
+    Result<void> create_prop_instance_pipeline() {
+        // Hardware-instanced opaque props: StructuredBuffer carries model + PBR per instance (foliage pattern).
+        const char* prop_vs = R"(
+            cbuffer Frame : register(b0) {
+                float4x4 viewProjection;
+                float4 cameraAndFogStart;
+                float4 fogColorAndEnd;
+                float4 lightAndAmbient;
+                float4 pointLight0PosRadius;
+                float4 pointLight0ColorStrength;
+                float4 pointLight1PosRadius;
+                float4 pointLight1ColorStrength;
+                float4 viewportSize;
+            };
+            cbuffer PropBatch : register(b1) {
+                float instanceBase;
+                float windEnable;
+                float meshHeight;
+                float pad0;
+                float4 windDirSpeed;
+                float4 windGustParams;
+            };
+            StructuredBuffer<float4> instanceRows : register(t2);
+            struct In {
+                float3 position:POSITION;
+                float3 color:COLOR;
+                float2 uv:TEXCOORD;
+                float3 normal:NORMAL;
+                uint4 joints:BLENDINDICES;
+                float4 weights:BLENDWEIGHT;
+            };
+            struct Out {
+                float4 position : SV_POSITION;
+                float3 color : COLOR;
+                float3 worldPos : TEXCOORD0;
+                float2 uv : TEXCOORD1;
+                float3 normal : TEXCOORD2;
+                float4 material : TEXCOORD3;
+                float3 emissive : TEXCOORD4;
+            };
+            Out vs(In input, uint instanceId : SV_InstanceID) {
+                Out o;
+                o.uv = input.uv;
+                o.color = input.color;
+                const uint baseIndex = (instanceId + (uint)instanceBase) * 6u;
+                float4x4 model = transpose(float4x4(
+                    instanceRows[baseIndex + 0u],
+                    instanceRows[baseIndex + 1u],
+                    instanceRows[baseIndex + 2u],
+                    instanceRows[baseIndex + 3u]));
+                o.material = instanceRows[baseIndex + 4u];
+                o.emissive = instanceRows[baseIndex + 5u].xyz;
+                float3 localPos = input.position;
+                if (windEnable > 0.5) {
+                    const float3 instanceOrigin = mul(model, float4(0, 0, 0, 1)).xyz;
+                    const float t = saturate(localPos.y / max(meshHeight, 0.25));
+                    const float tip = t * t;
+                    const float2 windDir = windDirSpeed.xy;
+                    const float wavelength = max(windGustParams.x, 0.5);
+                    const float freq = 6.2831853 / wavelength;
+                    const float gustPhase = dot(instanceOrigin.xz, windDir) * freq
+                        - windGustParams.w * windDirSpeed.z * freq * 0.35;
+                    float gust = saturate(0.5 + 0.5 * sin(gustPhase));
+                    gust = pow(gust, max(windGustParams.z, 0.5));
+                    const float ambient = sin(windGustParams.w * 1.7 + instanceOrigin.x * 0.4 + instanceOrigin.z * 0.55)
+                        * 0.012 * tip * windDirSpeed.w;
+                    const float lean = (gust * windGustParams.y * 0.35 + ambient) * tip;
+                    localPos.x += windDir.x * lean * meshHeight;
+                    localPos.z += windDir.y * lean * meshHeight;
+                }
+                o.normal = mul((float3x3)model, input.normal);
+                float4 world = mul(model, float4(localPos, 1.0));
+                o.worldPos = world.xyz;
+                o.position = mul(viewProjection, world);
+                return o;
+            }
+        )";
+        const std::string prop_ps = std::string(R"(
+            cbuffer Frame : register(b0) {
+                float4x4 viewProjection;
+                float4 cameraAndFogStart;
+                float4 fogColorAndEnd;
+                float4 lightAndAmbient;
+                float4 pointLight0PosRadius;
+                float4 pointLight0ColorStrength;
+                float4 pointLight1PosRadius;
+                float4 pointLight1ColorStrength;
+                float4 viewportSize;
+            };
+            Texture2D<float4> albedoTex : register(t0);
+            SamplerState albedoSampler : register(s0);
+            struct In {
+                float4 position : SV_POSITION;
+                float3 color : COLOR;
+                float3 worldPos : TEXCOORD0;
+                float2 uv : TEXCOORD1;
+                float3 normal : TEXCOORD2;
+                float4 material : TEXCOORD3;
+                float3 emissive : TEXCOORD4;
+            };
+)") + k_pbr_hlsl_helpers + k_shadow_hlsl_helpers + R"(
+            float4 ps(In input) : SV_TARGET {
+                float3 albedo = (input.material.z > 0.5) ? albedoTex.Sample(albedoSampler, input.uv).rgb : input.color;
+                if (input.material.z <= 0.5 && dot(albedo, albedo) < 1e-6) albedo = float3(0.35, 0.45, 0.28);
+                float dist = distance(input.worldPos, cameraAndFogStart.xyz);
+                float fogRange = max(fogColorAndEnd.w - cameraAndFogStart.w, 0.001);
+                float fogFactor = saturate((fogColorAndEnd.w - dist) / fogRange);
+                float3 normal = (dot(input.normal, input.normal) > 1e-12) ? normalize(input.normal) : float3(0, 1, 0);
+                float3 V = normalize(cameraAndFogStart.xyz - input.worldPos);
+                float3 L = normalize(-lightAndAmbient.xyz);
+                if (dot(normal, V) < 0.0) normal = -normal;
+                float3 lit = albedo * lightAndAmbient.w + input.emissive;
+                float sunShadow = sampleSunShadow(input.worldPos, normal, L);
+                float3 direct = shadePbr(albedo, input.material.x, input.material.y, normal, V, L, float3(1.35, 1.25, 1.1));
+                if (all(isfinite(direct))) lit += direct * sunShadow;
+                float3 p0 = applyPointLightPbr(input.worldPos, albedo, input.material.x, input.material.y, normal, V,
+                    pointLight0PosRadius, pointLight0ColorStrength);
+                float3 p1 = applyPointLightPbr(input.worldPos, albedo, input.material.x, input.material.y, normal, V,
+                    pointLight1PosRadius, pointLight1ColorStrength);
+                if (all(isfinite(p0))) lit += p0;
+                if (all(isfinite(p1))) lit += p1;
+                return float4(saturate(lerp(fogColorAndEnd.rgb, lit, fogFactor)), 1.0);
+            }
+        )";
+        ComPtr<ID3DBlob> vs, ps, errors;
+        UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
+#ifndef NDEBUG
+        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+        HRESULT hr = D3DCompile(prop_vs, std::strlen(prop_vs), "prop_instanced", nullptr, nullptr, "vs", "vs_5_1",
+            flags, 0, &vs, &errors);
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-PROP-VERTEX-SHADER",
+                errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Prop vertex shader failed", hr));
+        errors.Reset();
+        hr = D3DCompile(prop_ps.c_str(), prop_ps.size(), "prop_instanced", nullptr, nullptr, "ps", "ps_5_1", flags, 0,
+            &ps, &errors);
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-PROP-PIXEL-SHADER",
+                errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Prop pixel shader failed", hr));
+
+        D3D12_DESCRIPTOR_RANGE albedo_range{};
+        albedo_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        albedo_range.NumDescriptors = 1;
+        albedo_range.BaseShaderRegister = 0;
+        albedo_range.RegisterSpace = 0;
+        albedo_range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        D3D12_DESCRIPTOR_RANGE shadow_range{};
+        shadow_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        shadow_range.NumDescriptors = 1;
+        shadow_range.BaseShaderRegister = 1;
+        shadow_range.RegisterSpace = 0;
+        shadow_range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        D3D12_ROOT_PARAMETER parameters[6]{};
+        parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        parameters[0].Descriptor.ShaderRegister = 0;
+        parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        parameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        parameters[1].Constants.ShaderRegister = 1;
+        parameters[1].Constants.Num32BitValues = 12;
+        parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        // Root SRV so we can keep mesh_albedo_heap bound for albedo + shadow (one CBV_SRV heap at a time).
+        parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+        parameters[2].Descriptor.ShaderRegister = 2;
+        parameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        parameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        parameters[3].Descriptor.ShaderRegister = 3;
+        parameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        parameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        parameters[4].DescriptorTable.NumDescriptorRanges = 1;
+        parameters[4].DescriptorTable.pDescriptorRanges = &albedo_range;
+        parameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        parameters[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        parameters[5].DescriptorTable.NumDescriptorRanges = 1;
+        parameters[5].DescriptorTable.pDescriptorRanges = &shadow_range;
+        parameters[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        D3D12_STATIC_SAMPLER_DESC samplers[2]{};
+        samplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+        samplers[0].AddressU = samplers[0].AddressV = samplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        samplers[0].MaxLOD = D3D12_FLOAT32_MAX;
+        samplers[0].ShaderRegister = 0;
+        samplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        samplers[1].Filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+        samplers[1].AddressU = samplers[1].AddressV = samplers[1].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        samplers[1].ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        samplers[1].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+        samplers[1].MaxLOD = D3D12_FLOAT32_MAX;
+        samplers[1].ShaderRegister = 1;
+        samplers[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        D3D12_ROOT_SIGNATURE_DESC root{};
+        root.NumParameters = 6;
+        root.pParameters = parameters;
+        root.NumStaticSamplers = 2;
+        root.pStaticSamplers = samplers;
+        root.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+        ComPtr<ID3DBlob> signature;
+        hr = D3D12SerializeRootSignature(&root, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &errors);
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-PROP-ROOT-SIGNATURE-SERIALIZE",
+                errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Prop root signature serialize failed",
+                hr));
+        hr = device_->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(),
+            IID_PPV_ARGS(&prop_root_signature_));
+        if (FAILED(hr))
+            return Result<void>::failure(
+                graphics_error("GFX-PROP-ROOT-SIGNATURE", "Could not create prop root signature", hr));
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC state{};
+        state.pRootSignature = prop_root_signature_.Get();
+        state.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
+        state.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
+        D3D12_INPUT_ELEMENT_DESC input[] = {
+            {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"BLENDINDICES", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"BLENDWEIGHT", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}};
+        state.InputLayout = {input, 6};
+        state.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+        state.SampleMask = UINT_MAX;
+        state.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+        state.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+        state.RasterizerState.DepthClipEnable = TRUE;
+        state.DepthStencilState.DepthEnable = TRUE;
+        state.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+        state.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        state.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        state.NumRenderTargets = 1;
+        state.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        state.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+        state.SampleDesc.Count = 1;
+        hr = device_->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(&prop_pipeline_));
+        if (FAILED(hr))
+            return Result<void>::failure(graphics_error("GFX-PROP-PIPELINE", "Could not create prop pipeline", hr));
         return Result<void>::success();
     }
 
@@ -2463,43 +4629,49 @@ private:
         foliage_instance_float4_count_ = float4_count;
     }
 
-public:
-    Result<void> set_foliage_batches(const std::map<std::string, std::vector<FoliageInstance>>& batches,
-        const FoliageLayerPalette* palette) {
-        foliage_draws_.clear();
-        std::vector<float> instance_rows;
-        instance_rows.reserve(1024);
-        UINT instance_offset = 0;
-        for (const auto& batch : batches) {
-            if (batch.second.empty()) continue;
-            const auto found = mesh_ranges_.find(normalize_asset_path(batch.first));
-            if (found == mesh_ranges_.end()) continue;
-            FoliageGpuDraw draw{batch.first, instance_offset, static_cast<UINT>(batch.second.size())};
-            draw.center_x = batch.second.front().model[12];
-            draw.center_z = batch.second.front().model[14];
-            if (palette) {
-                if (const auto* layer = palette->find_by_index(batch.second.front().layer_index)) {
-                    draw.bend_strength = layer->bend_strength;
-                    draw.bend_radius = layer->bend_radius;
-                    draw.blade_height = layer->blade_height;
-                }
-            }
-            for (const auto& instance : batch.second) {
-                for (float value : instance.model) instance_rows.push_back(value);
-            }
-            instance_offset += draw.instance_count;
-            foliage_draws_.push_back(std::move(draw));
+    void retire_foliage_buffer(ComPtr<ID3D12Resource> buffer) {
+        if (!buffer || !queue_ || !fence_) return;
+        const UINT64 target = ++fence_value_;
+        if (FAILED(queue_->Signal(fence_.Get(), target))) {
+            // Device failure fallback: preserve the prior conservative lifetime rule.
+            wait_for_gpu();
+            buffer.Reset();
+            return;
         }
+        foliage_retire_buffers_.push_back({std::move(buffer), target});
+    }
+
+    void purge_retired_foliage_buffers() {
+        if (!fence_ || foliage_retire_buffers_.empty()) return;
+        const UINT64 completed = fence_->GetCompletedValue();
+        std::size_t keep = 0;
+        for (std::size_t i = 0; i < foliage_retire_buffers_.size(); ++i) {
+            if (foliage_retire_buffers_[i].fence_value > completed) {
+                if (keep != i) foliage_retire_buffers_[keep] = std::move(foliage_retire_buffers_[i]);
+                ++keep;
+            }
+        }
+        foliage_retire_buffers_.resize(keep);
+    }
+
+public:
+    Result<void> upload_packed_foliage(PackedFoliageGpu&& packed) {
+        purge_retired_foliage_buffers();
+        foliage_draws_ = std::move(packed.draws);
+        auto& instance_rows = packed.instance_rows;
         if (instance_rows.empty()) {
-            foliage_instance_buffer_.Reset();
+            // Retire behind the fence — Reset() while the GPU may still sample the prior SRV can
+            // blank or corrupt the next foliage draws (visible "forest vanishes" after stream/sync).
+            retire_foliage_buffer(std::move(foliage_instance_buffer_));
             foliage_instance_capacity_ = 0;
             foliage_instance_float4_count_ = 0;
             return Result<void>::success();
         }
         const UINT required_floats = static_cast<UINT>(instance_rows.size());
         if (required_floats > foliage_instance_capacity_) {
-            wait_for_gpu();
-            foliage_instance_buffer_.Reset();
+            // Streaming can grow the resident foliage set while the GPU is still drawing the prior buffer.
+            // Retire that resource behind a fence instead of stalling the gameplay frame on every growth.
+            retire_foliage_buffer(std::move(foliage_instance_buffer_));
             foliage_instance_capacity_ = std::max(required_floats, foliage_instance_capacity_ + 4096u);
             D3D12_HEAP_PROPERTIES heap{};
             heap.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -2525,22 +4697,171 @@ public:
         return Result<void>::success();
     }
 
+    std::unordered_set<std::string> foliage_known_mesh_keys() const {
+        std::unordered_set<std::string> keys;
+        keys.reserve(mesh_ranges_.size());
+        for (const auto& entry : mesh_ranges_) keys.insert(entry.first);
+        return keys;
+    }
+
+    Result<void> set_foliage_cell_instances(const std::map<CellCoord, std::vector<FoliageInstance>>& cell_instances,
+        const FoliageLayerPalette* palette) {
+        return upload_packed_foliage(pack_foliage_gpu_instances(cell_instances, palette, foliage_known_mesh_keys()));
+    }
+
+    void draw_prop_instances(const std::array<float, 48>& frame_constants, const Frustum& frustum,
+        const std::array<float, 3>& camera_position, const std::vector<RenderInstance>* static_placed,
+        const std::vector<RenderInstance>& dynamic_placed) {
+        if (!prop_pipeline_ || !prop_root_signature_) return;
+
+        std::vector<float> rows;
+        std::vector<PropGpuDraw> draws;
+        rows.reserve(4096);
+        std::map<std::string, std::vector<const RenderInstance*>> by_mesh;
+        const auto consider = [&](const RenderInstance& instance) {
+            if (instance.mesh_asset.empty()) return;
+            if (instance.bounds && !frustum_intersects_aabb(frustum, *instance.bounds)) return;
+            const float dx = instance.transform.position[0] - camera_position[0];
+            const float dy = instance.transform.position[1] - camera_position[1];
+            const float dz = instance.transform.position[2] - camera_position[2];
+            const float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+            const std::uint64_t lod_key =
+                (static_cast<std::uint64_t>(static_cast<std::int32_t>(instance.transform.position[0] * 4.0f)) << 32) ^
+                (static_cast<std::uint64_t>(static_cast<std::int32_t>(instance.transform.position[2] * 4.0f)) << 16) ^
+                instance.mesh_key_hash;
+            const bool was_far = mesh_lod_far_keys_.count(lod_key) > 0;
+            if (was_far) {
+                if (dist > mesh_lod::k_far_cull_exit_m) return;
+                mesh_lod_far_keys_.erase(lod_key);
+            } else if (dist >= mesh_lod::k_far_cull_start_m) {
+                mesh_lod_far_keys_.insert(lod_key);
+                return;
+            }
+            by_mesh[instance.mesh_asset].push_back(&instance);
+        };
+        if (static_placed) {
+            for (const auto& instance : *static_placed) consider(instance);
+        }
+        for (const auto& instance : dynamic_placed) consider(instance);
+
+        UINT instance_offset = 0;
+        for (const auto& batch : by_mesh) {
+            if (batch.second.empty() || mesh_ranges_.find(batch.first) == mesh_ranges_.end()) continue;
+            PropGpuDraw draw;
+            draw.mesh_key = batch.first;
+            draw.instance_offset = instance_offset;
+            draw.instance_count = static_cast<UINT>(batch.second.size());
+            draw.albedo = mesh_white_gpu_;
+            draw.use_albedo = 0.0f;
+            const auto albedo_it = mesh_albedo_gpu_.find(batch.first);
+            if (albedo_it != mesh_albedo_gpu_.end()) {
+                draw.albedo = albedo_it->second;
+                draw.use_albedo = 1.0f;
+            }
+            for (const auto* instance : batch.second) {
+                append_prop_instance_rows(rows, transform_model_matrix(instance->transform), instance->pbr,
+                    draw.use_albedo);
+            }
+            instance_offset += draw.instance_count;
+            draws.push_back(std::move(draw));
+        }
+        if (draws.empty()) return;
+
+        const UINT required_floats = static_cast<UINT>(rows.size());
+        if (required_floats > prop_instance_capacity_floats_) {
+            prop_instance_buffer_.Reset();
+            prop_instance_capacity_floats_ = std::max(required_floats, prop_instance_capacity_floats_ + 4096u);
+            D3D12_HEAP_PROPERTIES heap{};
+            heap.Type = D3D12_HEAP_TYPE_UPLOAD;
+            D3D12_RESOURCE_DESC desc{};
+            desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+            desc.Width = static_cast<UINT64>(prop_instance_capacity_floats_) * sizeof(float);
+            desc.Height = 1;
+            desc.DepthOrArraySize = 1;
+            desc.MipLevels = 1;
+            desc.SampleDesc.Count = 1;
+            desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+            if (FAILED(device_->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc,
+                    D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&prop_instance_buffer_)))) {
+                prop_instance_capacity_floats_ = 0;
+                return;
+            }
+        }
+        void* mapped = nullptr;
+        prop_instance_buffer_->Map(0, nullptr, &mapped);
+        std::memcpy(mapped, rows.data(), rows.size() * sizeof(float));
+        prop_instance_buffer_->Unmap(0, nullptr);
+
+        command_list_->SetPipelineState(prop_pipeline_.Get());
+        command_list_->SetGraphicsRootSignature(prop_root_signature_.Get());
+        bind_frame_constants(frame_constants);
+        bind_shadow_constants(); // still writes shadow CB; bind via root below
+        if (shadow_cb_[frame_index_])
+            command_list_->SetGraphicsRootConstantBufferView(3, shadow_cb_[frame_index_]->GetGPUVirtualAddress());
+        if (mesh_albedo_heap_) {
+            ID3D12DescriptorHeap* heaps[] = {mesh_albedo_heap_.Get()};
+            command_list_->SetDescriptorHeaps(1, heaps);
+        }
+        command_list_->SetGraphicsRootShaderResourceView(2, prop_instance_buffer_->GetGPUVirtualAddress());
+        if (mesh_shadow_srv_gpu_.ptr) command_list_->SetGraphicsRootDescriptorTable(5, mesh_shadow_srv_gpu_);
+        command_list_->IASetVertexBuffers(0, 1, &vertex_view_);
+        command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        for (const auto& draw : draws) {
+            const auto found = mesh_ranges_.find(draw.mesh_key);
+            if (found == mesh_ranges_.end()) continue;
+            float wind_pack[8]{};
+            pack_wind_constants(wind_field_, wind_pack);
+            const bool sway = mesh_uses_wind_sway(draw.mesh_key);
+            std::array<float, 12> batch{};
+            batch[0] = static_cast<float>(draw.instance_offset);
+            batch[1] = sway ? 1.0f : 0.0f;
+            batch[2] = sway ? 4.0f : 1.0f; // nominal tree local height
+            batch[3] = 0.0f;
+            batch[4] = wind_pack[0];
+            batch[5] = wind_pack[1];
+            batch[6] = wind_pack[2];
+            batch[7] = wind_pack[3];
+            batch[8] = wind_pack[4];
+            batch[9] = wind_pack[5];
+            batch[10] = wind_pack[6];
+            batch[11] = wind_pack[7];
+            command_list_->SetGraphicsRoot32BitConstants(1, 12, batch.data(), 0);
+            if (mesh_albedo_heap_) command_list_->SetGraphicsRootDescriptorTable(4, draw.albedo);
+            command_list_->DrawInstanced(found->second.second, draw.instance_count, found->second.first, 0);
+            ++frame_draw_calls_;
+            frame_instances_drawn_ += draw.instance_count;
+        }
+
+        command_list_->SetPipelineState(pipeline_.Get());
+        command_list_->SetGraphicsRootSignature(root_signature_.Get());
+        bind_bone_constants(5);
+        if (mesh_albedo_heap_) {
+            ID3D12DescriptorHeap* albedo_heaps[] = {mesh_albedo_heap_.Get()};
+            command_list_->SetDescriptorHeaps(1, albedo_heaps);
+        }
+        bind_shadow_constants();
+        if (mesh_shadow_srv_gpu_.ptr) command_list_->SetGraphicsRootDescriptorTable(4, mesh_shadow_srv_gpu_);
+    }
+
     void draw_foliage_instances(const std::array<float, 48>& frame_constants, const WorldInfluenceBus* influence,
-        float time_seconds) {
+        float time_seconds, const Frustum* frustum = nullptr) {
         if (!foliage_pipeline_ || foliage_draws_.empty() || !foliage_instance_buffer_ || foliage_instance_float4_count_ == 0)
             return;
         command_list_->SetPipelineState(foliage_pipeline_.Get());
         command_list_->SetGraphicsRootSignature(foliage_root_signature_.Get());
         bind_frame_constants(frame_constants);
+        bind_shadow_constants();
         ID3D12DescriptorHeap* heaps[] = {foliage_srv_heap_.Get()};
         command_list_->SetDescriptorHeaps(1, heaps);
         command_list_->SetGraphicsRootDescriptorTable(1, foliage_instance_srv_gpu_);
+        if (foliage_shadow_srv_gpu_.ptr) command_list_->SetGraphicsRootDescriptorTable(4, foliage_shadow_srv_gpu_);
         command_list_->IASetVertexBuffers(0, 1, &vertex_view_);
         command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         for (const auto& draw : foliage_draws_) {
             const auto found = mesh_ranges_.find(normalize_asset_path(draw.mesh_key));
             if (found == mesh_ranges_.end() || draw.instance_count == 0) continue;
-            std::array<float, 12> interaction{};
+            if (frustum && draw.has_bounds && !frustum_intersects_aabb(*frustum, draw.bounds)) continue;
+            std::array<float, 20> interaction{};
             if (influence && !influence->empty()) {
                 const WorldInfluenceSource dominant = influence->dominant_at(draw.center_x, draw.center_z);
                 interaction[0] = dominant.position[0];
@@ -2554,11 +4875,27 @@ public:
             }
             interaction[8] = draw.blade_height;
             interaction[9] = time_seconds;
-            command_list_->SetGraphicsRoot32BitConstants(2, 12, interaction.data(), 0);
-            command_list_->DrawInstanced(found->second.second, draw.instance_count, found->second.first, draw.instance_offset);
+            // Instance base for StructuredBuffer indexing (SV_InstanceID ignores StartInstanceLocation).
+            interaction[10] = static_cast<float>(draw.instance_offset);
+            float wind_pack[8]{};
+            WindFieldParams wind = wind_field_;
+            wind.time_seconds = time_seconds;
+            pack_wind_constants(wind, wind_pack);
+            for (int i = 0; i < 8; ++i) interaction[12 + i] = wind_pack[i];
+            command_list_->SetGraphicsRoot32BitConstants(2, 20, interaction.data(), 0);
+            command_list_->DrawInstanced(found->second.second, draw.instance_count, found->second.first, 0);
+            ++frame_draw_calls_;
+            frame_instances_drawn_ += draw.instance_count;
         }
         command_list_->SetPipelineState(pipeline_.Get());
         command_list_->SetGraphicsRootSignature(root_signature_.Get());
+        bind_bone_constants(5);
+        if (mesh_albedo_heap_) {
+            ID3D12DescriptorHeap* albedo_heaps[] = {mesh_albedo_heap_.Get()};
+            command_list_->SetDescriptorHeaps(1, albedo_heaps);
+        }
+        bind_shadow_constants();
+        if (mesh_shadow_srv_gpu_.ptr) command_list_->SetGraphicsRootDescriptorTable(4, mesh_shadow_srv_gpu_);
     }
 
     /// GPU readback of the last presented swap-chain buffer (includes ImGui chrome). Matches rendered colors.
@@ -2652,9 +4989,10 @@ public:
             std::uint8_t* dst = rgba.data() + static_cast<std::size_t>(y) * width * 4u;
             for (UINT x = 0; x < width; ++x) {
                 const auto* px = row + static_cast<std::size_t>(x) * 4u;
-                dst[x * 4u + 0] = px[0];
+                // Match frame-capture path: D3D12 RT / swap-chain readback is BGRA → RGBA for WIC.
+                dst[x * 4u + 0] = px[2];
                 dst[x * 4u + 1] = px[1];
-                dst[x * 4u + 2] = px[2];
+                dst[x * 4u + 2] = px[0];
                 dst[x * 4u + 3] = 255;
             }
         }
@@ -2679,34 +5017,93 @@ private:
         return error;
     }
 
-    void wait_for_gpu() {
-        if (!queue_ || !fence_) return;
+    double wait_for_fence(UINT64 target, DWORD timeout_ms = INFINITE) {
+        if (!fence_ || target == 0) return 0.0;
+        if (fence_->GetCompletedValue() >= target) return 0.0;
+        const auto started = std::chrono::steady_clock::now();
+        if (SUCCEEDED(fence_->SetEventOnCompletion(target, fence_event_))) {
+            WaitForSingleObject(fence_event_, timeout_ms);
+        } else {
+            // Fall back if the event cannot be armed so we never overwrite in-flight upload heaps.
+            while (fence_->GetCompletedValue() < target) {
+                if (timeout_ms != INFINITE) {
+                    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - started)
+                                            .count();
+                    if (elapsed >= static_cast<long long>(timeout_ms)) break;
+                }
+                Sleep(0);
+            }
+        }
+        return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+    }
+
+    UINT64 signal_frame_complete() {
+        if (!queue_ || !fence_) return 0;
         const UINT64 target = ++fence_value_;
-        if (SUCCEEDED(queue_->Signal(fence_.Get(), target)) && fence_->GetCompletedValue() < target) {
+        return SUCCEEDED(queue_->Signal(fence_.Get(), target)) ? target : 0;
+    }
+
+    void wait_for_current_frame() {
+        last_gpu_wait_ms_ = wait_for_fence(frame_fence_values_[frame_index_]);
+    }
+
+    void update_gpu_timestamp_if_ready() {
+        if (!timestamp_readback_ || timestamp_frequency_ == 0 || timestamp_fence_value_ == 0 || !fence_ ||
+            fence_->GetCompletedValue() < timestamp_fence_value_)
+            return;
+        UINT64* timestamps = nullptr;
+        D3D12_RANGE query_range{0, sizeof(UINT64) * 2};
+        if (SUCCEEDED(timestamp_readback_->Map(0, &query_range, reinterpret_cast<void**>(&timestamps)))) {
+            last_gpu_ms_ = timestamps[1] >= timestamps[0]
+                ? static_cast<double>(timestamps[1] - timestamps[0]) * 1000.0 / static_cast<double>(timestamp_frequency_)
+                : 0.0;
+            D3D12_RANGE written{0, 0};
+            timestamp_readback_->Unmap(0, &written);
+        }
+    }
+
+    void wait_for_gpu(DWORD timeout_ms = INFINITE) {
+        const UINT64 target = signal_frame_complete();
+        if (target != 0 && fence_->GetCompletedValue() < target) {
             fence_->SetEventOnCompletion(target, fence_event_);
-            WaitForSingleObject(fence_event_, INFINITE);
+            WaitForSingleObject(fence_event_, timeout_ms);
         }
     }
 
     void shutdown() {
-        wait_for_gpu();
-        if (frame_cb_ && frame_cb_mapped_) {
-            frame_cb_->Unmap(0, nullptr);
-            frame_cb_mapped_ = nullptr;
-        }
-        if (water_frame_cb_ && water_frame_cb_mapped_) {
-            water_frame_cb_->Unmap(0, nullptr);
-            water_frame_cb_mapped_ = nullptr;
-        }
-        if (ssao_cb_ && ssao_cb_mapped_) {
-            ssao_cb_->Unmap(0, nullptr);
-            ssao_cb_mapped_ = nullptr;
-        }
-        if (composite_cb_ && composite_cb_mapped_) {
-            composite_cb_->Unmap(0, nullptr);
-            composite_cb_mapped_ = nullptr;
-        }
+        if (released_) return;
+        released_ = true;
+        // Cap the drain so hidden/benchmark teardown cannot stall forever on DWM/DXGI.
+        wait_for_gpu(2000);
+        for (auto& entry : terrain_retire_buffers_) entry.buffer.Reset();
+        terrain_retire_buffers_.clear();
+        for (auto& entry : water_retire_buffers_) entry.buffer.Reset();
+        water_retire_buffers_.clear();
+        for (auto& entry : foliage_retire_buffers_) entry.buffer.Reset();
+        foliage_retire_buffers_.clear();
+        terrain_cell_buffers_.clear();
+        terrain_cell_bounds_.clear();
+        const auto unmap_ring = [](auto& cbs, auto& mapped) {
+            for (UINT i = 0; i < frame_count; ++i) {
+                if (cbs[i] && mapped[i]) {
+                    cbs[i]->Unmap(0, nullptr);
+                    mapped[i] = nullptr;
+                }
+            }
+        };
+        unmap_ring(frame_cb_, frame_cb_mapped_);
+        unmap_ring(water_frame_cb_, water_frame_cb_mapped_);
+        unmap_ring(particle_frame_cb_, particle_frame_cb_mapped_);
+        unmap_ring(ssao_cb_, ssao_cb_mapped_);
+        unmap_ring(composite_cb_, composite_cb_mapped_);
+        unmap_ring(shadow_cb_, shadow_cb_mapped_);
+        unmap_ring(bone_cb_, bone_cb_mapped_);
         if(editor_initialized_){ImGui_ImplDX12_Shutdown();ImGui_ImplSDL3_Shutdown();ImGui::DestroyContext();editor_initialized_=false;}
+        for (auto& target : targets_) target.Reset();
+        viewport_target_.Reset();
+        game_viewport_target_.Reset();
+        swap_chain_.Reset();
         if (fence_event_) CloseHandle(fence_event_);
         fence_event_ = nullptr;
     }
@@ -2714,11 +5111,18 @@ private:
     HWND hwnd_ = nullptr;
     UINT width_ = 1, height_ = 1, frame_index_ = 0, rtv_stride_ = 0, srv_stride_ = 0;
     UINT64 fence_value_ = 0;
+    std::array<UINT64, frame_count> frame_fence_values_{};
+    UINT64 timestamp_fence_value_ = 0;
     UINT64 timestamp_frequency_ = 0;
     double last_gpu_ms_ = 0.0;
+    double last_gpu_wait_ms_ = 0.0;
+    double last_present_ms_ = 0.0;
+    std::uint64_t frame_draw_calls_ = 0;
+    std::uint64_t frame_instances_drawn_ = 0;
     HANDLE fence_event_ = nullptr;
     std::string adapter_name_;
     ComPtr<IDXGIFactory6> factory_;
+    ComPtr<IDXGIAdapter3> adapter3_;
     ComPtr<ID3D12Device> device_;
     ComPtr<ID3D12CommandQueue> queue_;
     ComPtr<IDXGISwapChain3> swap_chain_;
@@ -2727,10 +5131,30 @@ private:
     ComPtr<ID3D12DescriptorHeap> imgui_heap_;
     std::vector<ComPtr<ID3D12Resource>> world_forge_placeholder_textures_;
     std::vector<ComPtr<ID3D12Resource>> cartography_textures_;
+    std::vector<ComPtr<ID3D12Resource>> mvp_overview_textures_;
+    ComPtr<ID3D12Resource> app_icon_texture_;
+    std::uint64_t app_icon_tex_id_ = 0;
     bool editor_initialized_=false;
     bool editor_requested_=false;
     bool debug_world_=false;
+    bool device_ready_ = false;
+    bool graphics_ready_ = false;
+    bool released_ = false;
+    UINT present_sync_interval_ = 1;
     ComPtr<ID3D12Resource> depth_,vertex_buffer_,terrain_vertex_buffer_,viewport_target_,game_viewport_target_;
+    struct TerrainCellGpu {
+        ComPtr<ID3D12Resource> buffer;
+        D3D12_VERTEX_BUFFER_VIEW view{};
+        UINT vertex_count = 0;
+    };
+    struct RetiredTerrainBuffer {
+        ComPtr<ID3D12Resource> buffer;
+        UINT64 fence_value = 0;
+    };
+    std::map<CellCoord, TerrainCellGpu> terrain_cell_buffers_;
+    // Per-cell world-space AABB (min/max over that cell's baked vertices) for frustum culling in draw_world_pass().
+    std::map<CellCoord, WorldBounds> terrain_cell_bounds_;
+    std::vector<RetiredTerrainBuffer> terrain_retire_buffers_;
     D3D12_CPU_DESCRIPTOR_HANDLE viewport_rtv_{};
     D3D12_GPU_DESCRIPTOR_HANDLE viewport_gpu_{};
     D3D12_CPU_DESCRIPTOR_HANDLE game_viewport_rtv_{};
@@ -2745,17 +5169,32 @@ private:
     D3D12_GPU_DESCRIPTOR_HANDLE post_depth_gpu_{}, post_lit_gpu_{}, post_water_gpu_{};
     ComPtr<ID3D12RootSignature> ssao_root_signature_, composite_root_signature_;
     ComPtr<ID3D12PipelineState> ssao_pipeline_, composite_pipeline_;
-    ComPtr<ID3D12Resource> ssao_cb_, composite_cb_;
-    void* ssao_cb_mapped_ = nullptr;
-    void* composite_cb_mapped_ = nullptr;
+    std::array<ComPtr<ID3D12Resource>, frame_count> ssao_cb_;
+    std::array<ComPtr<ID3D12Resource>, frame_count> composite_cb_;
+    std::array<void*, frame_count> ssao_cb_mapped_{};
+    std::array<void*, frame_count> composite_cb_mapped_{};
     D3D12_VERTEX_BUFFER_VIEW vertex_view_{};
     D3D12_VERTEX_BUFFER_VIEW terrain_vertex_view_{};
     UINT terrain_vertex_count_=0;
+    struct WaterCellGpu {
+        ComPtr<ID3D12Resource> buffer;
+        D3D12_VERTEX_BUFFER_VIEW view{};
+        UINT vertex_count = 0;
+    };
+    std::map<CellCoord, WaterCellGpu> water_cell_buffers_;
     ComPtr<ID3D12Resource> water_vertex_buffer_;
+    std::vector<RetiredTerrainBuffer> water_retire_buffers_;
     D3D12_VERTEX_BUFFER_VIEW water_vertex_view_{};
     UINT water_vertex_count_=0;
     ComPtr<ID3D12RootSignature> water_root_signature_;
     ComPtr<ID3D12PipelineState> water_pipeline_;
+    ComPtr<ID3D12RootSignature> particle_root_signature_;
+    ComPtr<ID3D12PipelineState> particle_pipeline_;
+    ComPtr<ID3D12PipelineState> particle_alpha_pipeline_;
+    ComPtr<ID3D12Resource> particle_vertex_buffer_;
+    UINT particle_vertex_capacity_ = 0;
+    const std::vector<ParticleDrawInstance>* particle_draw_list_ = nullptr;
+    const std::vector<std::string>* particle_texture_paths_ = nullptr;
     UINT sky_vertex_offset_=0;
     UINT sky_vertex_count_=0;
     std::map<std::string,std::pair<UINT,UINT>> mesh_ranges_;
@@ -2771,33 +5210,68 @@ private:
     ComPtr<ID3D12RootSignature> root_signature_;
     ComPtr<ID3D12PipelineState> pipeline_;
     ComPtr<ID3D12PipelineState> sky_pipeline_;
-    ComPtr<ID3D12RootSignature> foliage_root_signature_;
+        ComPtr<ID3D12RootSignature> foliage_root_signature_;
     ComPtr<ID3D12PipelineState> foliage_pipeline_;
-    ComPtr<ID3D12Resource> frame_cb_;
-    ComPtr<ID3D12Resource> water_frame_cb_;
-    void* frame_cb_mapped_ = nullptr;
-    void* water_frame_cb_mapped_ = nullptr;
+    ComPtr<ID3D12RootSignature> prop_root_signature_;
+    ComPtr<ID3D12PipelineState> prop_pipeline_;
+    ComPtr<ID3D12Resource> prop_instance_buffer_;
+    UINT prop_instance_capacity_floats_ = 0;
+    ComPtr<ID3D12RootSignature> shadow_root_signature_;
+    ComPtr<ID3D12PipelineState> shadow_pipeline_;
+    ComPtr<ID3D12Resource> shadow_map_;
+    ComPtr<ID3D12DescriptorHeap> shadow_dsv_heap_;
+    std::array<D3D12_CPU_DESCRIPTOR_HANDLE, csm::k_cascade_count> shadow_dsv_{};
+    std::array<ComPtr<ID3D12Resource>, frame_count> shadow_cb_;
+    std::array<void*, frame_count> shadow_cb_mapped_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE mesh_shadow_srv_cpu_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE mesh_shadow_srv_gpu_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE foliage_shadow_srv_cpu_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE foliage_shadow_srv_gpu_{};
+    std::array<ComPtr<ID3D12Resource>, frame_count> frame_cb_;
+    std::array<ComPtr<ID3D12Resource>, frame_count> water_frame_cb_;
+    std::array<ComPtr<ID3D12Resource>, frame_count> particle_frame_cb_;
+    std::array<void*, frame_count> frame_cb_mapped_{};
+    std::array<void*, frame_count> water_frame_cb_mapped_{};
+    std::array<void*, frame_count> particle_frame_cb_mapped_{};
+    std::array<ComPtr<ID3D12Resource>, frame_count> bone_cb_;
+    std::array<void*, frame_count> bone_cb_mapped_{};
+    std::array<std::array<float, 16>, k_max_bones> pending_skin_matrices_{};
+    UINT pending_skin_matrix_count_ = 0;
     ComPtr<ID3D12Resource> foliage_instance_buffer_;
+    std::vector<RetiredTerrainBuffer> foliage_retire_buffers_;
     ComPtr<ID3D12DescriptorHeap> foliage_srv_heap_;
     D3D12_CPU_DESCRIPTOR_HANDLE foliage_instance_srv_cpu_{};
     D3D12_GPU_DESCRIPTOR_HANDLE foliage_instance_srv_gpu_{};
     UINT foliage_instance_capacity_ = 0;
     UINT foliage_instance_float4_count_ = 0;
     std::vector<FoliageGpuDraw> foliage_draws_;
+    /// Sticky far-LOD cull keys for placed meshes (TICKET-0220 hysteresis).
+    std::unordered_set<std::uint64_t> mesh_lod_far_keys_;
+    WindFieldParams wind_field_{};
+    std::filesystem::path particle_texture_project_root_;
+    ComPtr<ID3D12DescriptorHeap> particle_srv_heap_;
+    std::array<ComPtr<ID3D12Resource>, k_max_particle_textures> particle_textures_{};
+    std::array<std::string, k_max_particle_textures> particle_texture_loaded_paths_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE particle_srv_gpu_base_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE particle_depth_gpu_{};
+    UINT particle_srv_descriptor_size_ = 0;
     ComPtr<ID3D12Fence> fence_;
     ComPtr<ID3D12QueryHeap> timestamp_heap_;
     ComPtr<ID3D12Resource> timestamp_readback_;
     UINT last_presented_index_ = 0;
     bool has_presented_backbuffer_ = false;
+    std::array<bool, frame_count> backbuffer_was_presented_{};
 };
 
 constexpr const char* k_prefab_drag_payload = "ENGINE_PREFAB";
 constexpr const char* k_asset_file_drag_payload = "ENGINE_ASSET_FILE";
 
-bool editor_icon_button(const char* id_suffix, const char* icon, const char* tooltip, bool enabled = true) {
+bool editor_icon_button(const char* id_suffix, const char* icon, const char* tooltip, bool enabled = true,
+    EditorUiHotspotRegistry* hotspots = nullptr) {
     if (!enabled) ImGui::BeginDisabled();
     const bool pressed = ImGui::SmallButton((std::string(icon) + "##" + id_suffix).c_str());
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", tooltip);
+    if (hotspots) register_ui_hotspot_last_item(hotspots, std::string("Toolbar.") + id_suffix, tooltip);
     if (!enabled) ImGui::EndDisabled();
     return pressed && enabled;
 }
@@ -2831,14 +5305,8 @@ std::optional<WorldPosition> viewport_raycast(CollisionWorld* collision, const V
 
 bool project_world_to_screen(const std::array<float, 16>& view_projection, const ViewportFrame& frame, float x, float y,
     float z, float& screen_x, float& screen_y, float& depth) {
-    using namespace DirectX;
-    const auto matrix = XMLoadFloat4x4(reinterpret_cast<const XMFLOAT4X4*>(view_projection.data()));
-    const auto ndc = XMVector3TransformCoord(XMVectorSet(x, y, z, 1.0f), matrix);
-    depth = XMVectorGetZ(ndc);
-    if (depth < 0.0f || depth > 1.0f) return false;
-    screen_x = frame.image_min.x + (XMVectorGetX(ndc) + 1.0f) * 0.5f * frame.width;
-    screen_y = frame.image_min.y + (1.0f - XMVectorGetY(ndc)) * 0.5f * frame.height;
-    return true;
+    const ViewportRect rect{frame.image_min.x, frame.image_min.y, frame.image_max.x, frame.image_max.y};
+    return engine::project_world_to_screen(view_projection, rect, x, y, z, screen_x, screen_y, depth);
 }
 
 struct PlacementScreenBounds {
@@ -2948,6 +5416,80 @@ struct EditorState {
     std::optional<EntityId> gizmo_entity;
     bool gizmo_was_using = false;
     ImGuizmo::OPERATION gizmo_operation = ImGuizmo::TRANSLATE;
+    double performance_wall_ms = 0.0;
+    double performance_cpu_work_ms = 0.0;
+    double performance_gpu_ms = 0.0;
+    double performance_present_ms = 0.0;
+    double performance_gpu_wait_ms = 0.0;
+    double performance_pre_ui_ms = 0.0;
+    double performance_simulation_ms = 0.0;
+    /// Unsmoothed last-frame simulation slice (spike hunting).
+    double performance_last_sim_ms = 0.0;
+    double performance_terrain_ms = 0.0;
+    double performance_foliage_ms = 0.0;
+    double performance_water_ms = 0.0;
+    double performance_physics_ms = 0.0;
+    double performance_collision_ms = 0.0;
+    double performance_editor_ui_ms = 0.0;
+    double performance_render_prep_ms = 0.0;
+    double performance_foliage_upload_ms = 0.0;
+    double performance_cpu_skin_ms = 0.0;
+    double performance_cache_rebuild_ms = 0.0;
+    /// Last completed off-thread static prop expansion (not charged to the frame).
+    double performance_cache_worker_ms = 0.0;
+    double performance_render_submit_ms = 0.0;
+    double performance_fps = 0.0;
+    /// Instantaneous FPS ring (from frame wall time) for Diagnostics → Performance graph.
+    static constexpr std::size_t k_performance_fps_history = 300;
+    std::array<float, k_performance_fps_history> performance_fps_history{};
+    std::size_t performance_fps_history_write = 0;
+    std::size_t performance_fps_history_count = 0;
+    /// Latest instantaneous sample (unsmoothed); graph/MCP dip hunting.
+    double performance_fps_instant = 0.0;
+    double performance_wall_instant_ms = 0.0;
+    /// Timestamped FPS dips with phase breakdown (boot/load frames ignored).
+    struct PerformanceDipRecord {
+        std::int64_t epoch_ms = 0;
+        std::string local_time; // HH:MM:SS.mmm
+        std::uint64_t frame = 0;
+        float fps = 0.0f;
+        double wall_ms = 0.0;
+        double pre_ui_ms = 0.0;
+        double sim_ms = 0.0;
+        double terrain_ms = 0.0;
+        double foliage_ms = 0.0;
+        double water_ms = 0.0;
+        double collision_ms = 0.0;
+        double physics_ms = 0.0;
+        double editor_ui_ms = 0.0;
+        double render_prep_ms = 0.0;
+        double foliage_upload_ms = 0.0;
+        double cache_rebuild_ms = 0.0;
+        double cpu_skin_ms = 0.0;
+        double submit_ms = 0.0;
+        double present_ms = 0.0;
+        double gpu_wait_ms = 0.0;
+        double gpu_ms = 0.0;
+        std::string dominant; // largest supporting phase label
+        bool play_test = false;
+    };
+    static constexpr std::size_t k_performance_dip_history = 24;
+    static constexpr float k_performance_dip_fps_threshold = 45.0f;
+    static constexpr double k_performance_dip_ignore_wall_ms = 500.0; // boot / world load
+    static constexpr std::uint64_t k_performance_dip_ignore_frames = 90;
+    static constexpr std::uint64_t k_performance_dip_min_gap_frames = 20;
+    std::deque<PerformanceDipRecord> performance_dips;
+    PerformanceDipRecord performance_worst_dip{};
+    bool performance_dip_valid = false;
+    std::uint64_t performance_last_dip_frame = 0;
+    float performance_last_logged_dip_fps = 1000.0f;
+    double performance_process_cpu_percent = 0.0;
+    double performance_working_set_mb = 0.0;
+    double performance_gpu_memory_used_mb = 0.0;
+    double performance_gpu_memory_budget_mb = 0.0;
+    std::uint64_t performance_draw_calls = 0;
+    std::uint64_t performance_instances = 0;
+    std::uint64_t performance_terrain_cells = 0;
     std::optional<TransformComponent> gizmo_preview;
     std::optional<WorldPosition> placement_cursor;
     std::optional<TransformComponent> drop_preview;
@@ -2963,12 +5505,26 @@ struct EditorState {
     std::map<std::string, PrefabAsset> prefab_catalog;
     std::map<std::string, MeshBounds> mesh_bounds;
     std::map<std::string, MeshBounds> prefab_bounds;
+    std::vector<RenderInstance> static_render_instances;
+    std::vector<ActivePointLight> static_point_lights;
+    ParticleSystem particle_system;
+    bool static_render_cache_dirty = true;
+    /// In-flight off-thread expansion; props keep drawing from the previous cache until it lands.
+    std::optional<std::future<StaticRenderCacheResult>> static_render_cache_job;
+    std::uint64_t static_render_cache_rebuilds = 0;
     std::optional<std::string> prefab_edit_path;
     std::optional<std::size_t> prefab_edit_part;
     std::array<float, 16> prefab_part_gizmo_matrix{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
     bool prefab_part_gizmo_was_using = false;
+    /// When set on a selected placement, viewport gizmo edits that prefab particle local offset.
+    std::optional<std::size_t> particle_gizmo_index;
+    std::array<float, 16> particle_gizmo_matrix{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    bool particle_gizmo_was_using = false;
+    std::optional<EntityId> particle_gizmo_entity;
     std::filesystem::path project_root;
     bool show_collision_debug = false;
+    /// Editor-only: draw all authored interaction / event volumes with labels (independent of collision debug).
+    bool show_event_zones = true;
     /// Editor-only Scene/Sculpt overlay for World Forge region/POI anchors (TICKET-0190).
     bool show_world_forge_map_markers = true;
     /// Set by UI; applied once in the editor frame after draw_editor.
@@ -3034,6 +5590,22 @@ struct EditorState {
     std::set<CellCoord> water_brush_touched;
     std::optional<EntityId> test_player_spawn_entity;
     std::optional<EntityId> inspector_player_spawn_entity;
+    AnimationClipLibrary animation_clip_library;
+    AnimatorRuntime animator_runtime;
+    EventTimelineRuntime event_timeline_runtime;
+    /// Held cinematic orbit pivot while control is locked (multi-shot look_at subject focus).
+    std::optional<WorldPosition> event_cine_pivot;
+    /// Shot-start orbit pose for stable lerp (avoids compounding current→desired each frame).
+    bool event_cine_shot_pose_valid = false;
+    std::array<float, 3> event_cine_shot_target{0.0f, 0.0f, 0.0f};
+    float event_cine_yaw0 = 0.0f;
+    float event_cine_pitch0 = 0.0f;
+    float event_cine_distance0 = 0.0f;
+    DialogueRuntime dialogue_runtime;
+    std::unique_ptr<WorldForgeDialoguesAsset> dialogue_asset;
+    std::unique_ptr<WorldForgeEventsAsset> events_asset;
+    std::string test_animator_entity_id;
+    std::string test_skinned_mesh_asset;
     bool show_movement_console = false;
     std::deque<std::string> console_lines;
     std::string asset_browser_folder;
@@ -3055,9 +5627,24 @@ struct EditorState {
     std::unique_ptr<QuestRuntime> quest_runtime;
     std::unique_ptr<WorldForgeQuestsAsset> quest_asset;
     std::unique_ptr<StandingRuntime> standing_runtime;
+    std::unique_ptr<FlagRuntime> flag_runtime;
     std::unique_ptr<WorldForgeFactionsAsset> standing_factions_asset;
     std::unique_ptr<WorldForgeRelationshipsAsset> standing_relationships_asset;
+    GameSession game_session;
+    /// When true (editor --coop-local), F5 starts a local dual-slot co-op session.
+    bool coop_local = false;
+    /// 0 = possess host (WASD + camera); 1 = possess guest. Toggle with F7 during coop_local play-test.
+    int coop_focus_slot = 0;
+    /// After lobby Start while a test is already running, End then Start with coop_local.
+    bool pending_coop_local_restart = false;
+    /// MCP `engine_coop_call` move injection (camera-relative wish; frames countdown each sim tick).
+    LocalPosition mcp_forced_wish{};
+    int mcp_forced_wish_frames = 0;
+    int mcp_forced_wish_slot = -1; // -1 = focused slot, 0 host, 1 guest
+    bool mcp_forced_jump = false;
     std::unique_ptr<UiCanvasStack> ui_canvas_stack;
+    std::unique_ptr<UiTextureCache> ui_texture_cache;
+    WorldUiBillboardRuntime world_ui_billboards;
     UiCanvasEditorSession ui_canvas_editor;
     WorldForgeEditorSession world_forge_editor;
     std::vector<DesignDocEntry> design_docs;
@@ -3087,6 +5674,13 @@ struct EditorState {
     std::string project_sync_detail;
     bool project_sync_offer_wf_reload = false;
     bool project_sync_block_scene_reload = false;
+    /// Diagnostics → Coordination (TICKET-0228): agent build-lease dashboard caches.
+    std::map<std::string, std::string> coordination_meta;
+    std::string coordination_summary = "Refreshing coordination state...";
+    double coordination_last_refresh = -1000.0;
+    PlanningBacklog coordination_backlog;
+    std::string coordination_backlog_error;
+    double coordination_backlog_refreshed = -1000.0;
     std::size_t lua_dispatched_interactions = 0;
     std::size_t lua_dispatched_combat = 0;
     std::optional<ImVec2> game_viewport_min;
@@ -3100,7 +5694,7 @@ struct EditorState {
 
     /// Queued MCP UI input (applied after ImGui NewFrame).
     struct InputEvent {
-        enum class Kind : std::uint8_t { Move, Button, Wheel, Key, Wait };
+        enum class Kind : std::uint8_t { Move, Button, Wheel, Key, Wait, Look };
         Kind kind = Kind::Wait;
         float x = 0.0f;
         float y = 0.0f;
@@ -3114,7 +5708,17 @@ struct EditorState {
     float mcp_cursor_x = -1.0f;
     float mcp_cursor_y = -1.0f;
     bool mcp_draw_cursor = false;
+    /// Accumulated orbit look deltas from MCP `action=look` (consumed once per frame).
+    float mcp_look_dx = 0.0f;
+    float mcp_look_dy = 0.0f;
     EditorUiHotspotRegistry ui_hotspots;
+
+    /// Session-only world switch: relative (`worlds/foo.world.json`) or absolute path pending open.
+    std::optional<std::filesystem::path> pending_open_world;
+    bool open_world_confirm_dirty = false;
+    bool request_repose_camera_on_spawn = false;
+    /// Editor branding icon (ImGui texture id from Renderer SRV 239); 0 if missing.
+    std::uint64_t app_icon_tex = 0;
 
     [[nodiscard]] bool game_viewport_active() const { return active_viewport_tab == ViewportTab::Game; }
     [[nodiscard]] bool sculpt_viewport_active() const { return active_viewport_tab == ViewportTab::Sculpt; }
@@ -3208,6 +5812,9 @@ void drain_mcp_input_queue(EditorState& state, SDL_Window* window) {
             state.mcp_draw_cursor = true;
             SDL_WarpMouseInWindow(window, static_cast<float>(ev.x), static_cast<float>(ev.y));
             io.AddMousePosEvent(ev.x, ev.y);
+        } else if (ev.kind == EditorState::InputEvent::Kind::Look) {
+            state.mcp_look_dx += ev.x;
+            state.mcp_look_dy += ev.y;
         } else if (ev.kind == EditorState::InputEvent::Kind::Button) {
             if (state.mcp_cursor_x >= 0.0f) io.AddMousePosEvent(state.mcp_cursor_x, state.mcp_cursor_y);
             io.AddMouseButtonEvent(ev.button, ev.down);
@@ -3245,7 +5852,10 @@ void draw_mcp_cursor_overlay(const EditorState& state) {
     draw->AddLine(ImVec2(p.x, p.y - 14.0f), ImVec2(p.x, p.y + 14.0f), IM_COL32(255, 220, 100, 180), 1.5f);
 }
 
-void mark_scene_dirty(EditorState& state) { state.scene_dirty = true; }
+void mark_scene_dirty(EditorState& state) {
+    state.scene_dirty = true;
+    state.static_render_cache_dirty = true;
+}
 
 void apply_project_sync_response(EditorState& state, const EditorBridgeResponse& response) {
     state.project_sync_summary = response.summary;
@@ -3341,6 +5951,241 @@ void draw_project_sync_panel(EditorState& state) {
         ImGui::EndChild();
     }
     ImGui::TextDisabled("Uses system git + OS credentials. Save World Forge before Commit.");
+}
+
+// --- Diagnostics → Coordination (TICKET-0228): agent build lease + backlog + Act 0 MVP claims ---
+
+void refresh_build_coordination(EditorState& state, bool force) {
+    if (state.project_root.empty()) return;
+    const double now = ImGui::GetTime();
+    if (!force && now - state.coordination_last_refresh < 2.0) return;
+    state.coordination_last_refresh = now;
+    const auto response =
+        apply_build_coordination_operation(state.project_root, nlohmann::json{{"action", "status"}});
+    state.coordination_meta = response.metadata;
+    state.coordination_summary = response.summary;
+    if (force || now - state.coordination_backlog_refreshed >= 10.0) {
+        state.coordination_backlog_refreshed = now;
+        const auto root = build_coordination_root(state.project_root);
+        auto backlog = load_planning_backlog(root / "context" / "planning" / "epics.md");
+        if (backlog) {
+            state.coordination_backlog = std::move(backlog.value());
+            state.coordination_backlog_error.clear();
+        } else {
+            state.coordination_backlog_error = backlog.error().message;
+        }
+    }
+}
+
+void run_build_coordination_clear(EditorState& state, bool force) {
+    nlohmann::json params{{"action", "clear-stale"}, {"agentId", "editor-owner"}};
+    if (force) params["force"] = true;
+    const auto response = apply_build_coordination_operation(state.project_root, params);
+    state.status = response.summary;
+    refresh_build_coordination(state, true);
+}
+
+void draw_build_coordination_tab(EditorState& state) {
+    refresh_build_coordination(state, false);
+    const auto meta = [&](const char* key) -> std::string {
+        const auto it = state.coordination_meta.find(key);
+        return it != state.coordination_meta.end() ? it->second : std::string{};
+    };
+    const auto parse_json_array = [](const std::string& text) {
+        auto doc = nlohmann::json::parse(text.empty() ? "[]" : text, nullptr, false);
+        if (doc.is_discarded() || !doc.is_array()) doc = nlohmann::json::array();
+        return doc;
+    };
+    const std::int64_t now_epoch_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch())
+        .count();
+
+    const ImVec4 gold(0.84f, 0.73f, 0.47f, 1.0f);
+    const ImVec4 green(0.55f, 0.85f, 0.55f, 1.0f);
+    const ImVec4 amber(0.95f, 0.75f, 0.35f, 1.0f);
+    const ImVec4 red(1.0f, 0.4f, 0.2f, 1.0f);
+
+    ImGui::TextColored(gold, "Rebuild lease");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Refresh##Coordination")) refresh_build_coordination(state, true);
+    const std::string lease_agent = meta("leaseAgentId");
+    if (!lease_agent.empty()) {
+        const std::string ticket = meta("leaseTicketId");
+        ImGui::TextColored(amber, "HELD by %s (%s)", lease_agent.c_str(), ticket.c_str());
+        const std::string summary = meta("leaseSummary");
+        if (!summary.empty()) ImGui::TextWrapped("Work: %s", summary.c_str());
+        std::int64_t expires_at = 0;
+        try {
+            expires_at = std::stoll(meta("leaseExpiresAtMs"));
+        } catch (...) {
+        }
+        if (expires_at > 0) {
+            const auto remaining = std::max<std::int64_t>(0, expires_at - now_epoch_ms);
+            ImGui::Text("Expires in %lld:%02lld", static_cast<long long>(remaining / 60000),
+                static_cast<long long>((remaining / 1000) % 60));
+        }
+        if (meta("leasePid") != "0") {
+            ImGui::Text("Owner pid %s (%s)", meta("leasePid").c_str(),
+                meta("leasePidAlive") == "true" ? "alive" : "not running");
+            if (meta("leasePidAlive") == "false")
+                ImGui::TextColored(red, "Owner process is gone — Clear stale will reclaim this lease.");
+        } else {
+            ImGui::TextDisabled("Not process-bound — reclaimed on expiry (or Force clear).");
+        }
+    } else {
+        ImGui::TextColored(green, "IDLE — the rebuild slot is free.");
+    }
+    if (ImGui::Button("Clear stale##Coordination")) run_build_coordination_clear(state, false);
+    ImGui::SameLine();
+    if (ImGui::Button("Force clear...##Coordination")) ImGui::OpenPopup("ForceClearLease");
+    if (ImGui::BeginPopupModal("ForceClearLease", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped(
+            "Force-clear the ACTIVE build lease? Only do this when the holding agent is stuck; its rebuild may "
+            "still be running.");
+        if (ImGui::Button("Force clear")) {
+            run_build_coordination_clear(state, true);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+    ImGui::TextDisabled(
+        "Agents: engine_build_coordination acquire/wait before MSBuild; release after restart. Direct manual "
+        "builds bypass this lease.");
+
+    ImGui::Separator();
+    ImGui::TextColored(gold, "Waiting queue");
+    const auto queue = parse_json_array(meta("queueJson"));
+    if (queue.empty()) {
+        ImGui::TextDisabled("No agents waiting.");
+    } else if (ImGui::BeginTable("CoordinationQueue", 3,
+                   ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Agent");
+        ImGui::TableSetupColumn("Ticket");
+        ImGui::TableSetupColumn("Work");
+        ImGui::TableHeadersRow();
+        for (const auto& entry : queue) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(entry.value("agentId", std::string{}).c_str());
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(entry.value("ticketId", std::string{}).c_str());
+            ImGui::TableNextColumn();
+            ImGui::TextWrapped("%s", entry.value("summary", std::string{}).c_str());
+        }
+        ImGui::EndTable();
+    }
+
+    const auto events = parse_json_array(meta("eventsJson"));
+    if (!events.empty()) {
+        ImGui::Separator();
+        ImGui::TextColored(gold, "Recent events");
+        for (auto it = events.rbegin(); it != events.rend(); ++it) {
+            ImGui::BulletText("%s — %s", it->value("kind", std::string{}).c_str(),
+                it->value("detail", std::string{}).c_str());
+        }
+    }
+
+    ImGui::Separator();
+    ImGui::TextColored(gold, "Backlog (epics.md, read-only)");
+    if (!state.coordination_backlog_error.empty()) {
+        ImGui::TextColored(red, "%s", state.coordination_backlog_error.c_str());
+    } else if (state.coordination_backlog.tickets.empty()) {
+        ImGui::TextDisabled("Backlog not loaded yet.");
+    } else {
+        const auto counts = state.coordination_backlog.status_counts();
+        std::string totals;
+        for (const char* status : {"active", "ready", "needs-approval", "proposed", "done", "deferred"}) {
+            const auto it = counts.find(status);
+            if (it == counts.end()) continue;
+            if (!totals.empty()) totals += "  ·  ";
+            totals += std::string(status) + " " + std::to_string(it->second);
+        }
+        ImGui::TextWrapped("%zu tickets: %s", state.coordination_backlog.tickets.size(), totals.c_str());
+        std::string active_line;
+        for (const auto& ticket : state.coordination_backlog.tickets) {
+            if (ticket.status != "active") continue;
+            if (!active_line.empty()) active_line += ", ";
+            active_line += ticket.id;
+        }
+        if (!active_line.empty()) ImGui::TextWrapped("Active now: %s", active_line.c_str());
+    }
+
+    ImGui::Separator();
+    ImGui::TextColored(gold, "Act 0 MVP readiness");
+    auto& wf = state.world_forge_editor;
+    if (!wf.loaded && !state.project_root.empty()) {
+        if (const auto loaded = wf.reload(state.project_root); !loaded)
+            ImGui::TextColored(red, "World Forge load failed: %s", loaded.error().message.c_str());
+    }
+    const auto& readiness = wf.mvp_readiness;
+    if (readiness.categories.empty()) {
+        ImGui::TextDisabled("No MVP readiness checklist loaded.");
+        return;
+    }
+    const int total_items = readiness.count_items();
+    const int done_items = readiness.count_done();
+    char progress_label[64];
+    std::snprintf(progress_label, sizeof(progress_label), "%d / %d done", done_items, total_items);
+    ImGui::ProgressBar(readiness.done_fraction(), ImVec2(-1.0f, 0.0f), progress_label);
+
+    const std::string lease_ticket = meta("leaseTicketId");
+    std::map<std::string, std::string> queued_agents_by_ticket;
+    for (const auto& entry : queue)
+        queued_agents_by_ticket[entry.value("ticketId", std::string{})] = entry.value("agentId", std::string{});
+
+    const float table_height = std::min(320.0f, std::max(120.0f, ImGui::GetContentRegionAvail().y - 8.0f));
+    if (ImGui::BeginChild("CoordinationMvp", ImVec2(0.0f, table_height), true)) {
+        if (ImGui::BeginTable("CoordinationMvpTable", 5,
+                ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Item", ImGuiTableColumnFlags_WidthStretch, 0.42f);
+            ImGui::TableSetupColumn("Lens", ImGuiTableColumnFlags_WidthStretch, 0.13f);
+            ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthStretch, 0.10f);
+            ImGui::TableSetupColumn("Ticket", ImGuiTableColumnFlags_WidthStretch, 0.17f);
+            ImGui::TableSetupColumn("Who", ImGuiTableColumnFlags_WidthStretch, 0.18f);
+            ImGui::TableHeadersRow();
+            for (const auto& category : readiness.categories) {
+                for (const auto& item : category.items) {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::TextWrapped("%s", item.title.c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(world_forge_mvp_workstream_label(item.workstream));
+                    ImGui::TableNextColumn();
+                    const ImVec4 status_color = item.status == WorldForgeMvpItemStatus::Done      ? green
+                                                : item.status == WorldForgeMvpItemStatus::Wip     ? amber
+                                                : item.status == WorldForgeMvpItemStatus::Blocked ? red
+                                                                                                  : ImVec4(0.7f,
+                                                                                                        0.7f, 0.7f,
+                                                                                                        1.0f);
+                    ImGui::TextColored(status_color, "%s", to_string(item.status));
+                    ImGui::TableNextColumn();
+                    if (item.refs.ticket_id.empty()) {
+                        ImGui::TextDisabled("-");
+                    } else {
+                        const auto* ticket = state.coordination_backlog.find(item.refs.ticket_id);
+                        if (ticket) {
+                            ImGui::Text("%s (%s)", item.refs.ticket_id.c_str(), ticket->status.c_str());
+                        } else {
+                            ImGui::TextUnformatted(item.refs.ticket_id.c_str());
+                        }
+                    }
+                    ImGui::TableNextColumn();
+                    if (!item.refs.ticket_id.empty() && item.refs.ticket_id == lease_ticket) {
+                        ImGui::TextColored(amber, "building now (%s)", lease_agent.c_str());
+                    } else if (const auto queued_it = queued_agents_by_ticket.find(item.refs.ticket_id);
+                               !item.refs.ticket_id.empty() && queued_it != queued_agents_by_ticket.end()) {
+                        ImGui::TextColored(gold, "queued (%s)", queued_it->second.c_str());
+                    } else {
+                        ImGui::TextDisabled("-");
+                    }
+                }
+            }
+            ImGui::EndTable();
+        }
+    }
+    ImGui::EndChild();
 }
 
 void open_script_binding(EditorState& state, const std::string& kind, const std::string& binding_id) {
@@ -3444,6 +6289,7 @@ EditorSessionContext make_editor_session_context(EditorState& state, bool editor
     context.prefab_catalog = &state.prefab_catalog;
     context.scene_dirty = &state.scene_dirty;
     context.prefab_meshes_dirty = &state.prefab_meshes_dirty;
+    context.static_render_cache_dirty = &state.static_render_cache_dirty;
     context.pending_mesh_reloads = &state.pending_mesh_reloads;
     context.terrain_edits = &state.terrain_edits;
     context.terrain_history = &state.terrain_history;
@@ -3467,6 +6313,8 @@ EditorSessionContext make_editor_session_context(EditorState& state, bool editor
     context.lua_runtime = state.lua_runtime.get();
     context.quest_runtime = state.quest_runtime.get();
     context.standing_runtime = state.standing_runtime.get();
+    context.flag_runtime = state.flag_runtime.get();
+    context.dialogue_runtime = &state.dialogue_runtime;
     context.hud_runtime = state.ui_canvas_stack ? &state.ui_canvas_stack->hud() : nullptr;
     context.ui_canvas_stack = state.ui_canvas_stack.get();
     if (state.selected) context.selected_entity_id = state.selected->str();
@@ -3481,6 +6329,47 @@ void dispatch_pending_script_events(EditorState& state) {
         state.lua_runtime->dispatch_combat_hit(state.recent_combat_events[index]);
     state.lua_dispatched_interactions = state.recent_interaction_events.size();
     state.lua_dispatched_combat = state.recent_combat_events.size();
+}
+
+void process_coop_lobby_editor_hooks(EditorState& state) {
+    if (!state.lua_runtime || !state.ui_canvas_stack) return;
+    state.lua_runtime->set_game_session(&state.game_session);
+
+    if (const auto request = state.lua_runtime->blackboard_get("coop.request_play_test");
+        request && request->type == ScriptBlackboardType::Bool && request->bool_value) {
+        state.lua_runtime->blackboard_set_bool("coop.request_play_test", false);
+        state.coop_local = true;
+        if (state.test_session == EditorState::TestSessionState::Inactive) {
+            state.test_session_command = EditorState::TestSessionCommand::Start;
+            state.status = "Co-op lobby Start — launching local dual-slot play test";
+        } else {
+            state.pending_coop_local_restart = true;
+            state.test_session_command = EditorState::TestSessionCommand::End;
+            state.status = "Co-op lobby Start — restarting play test with dual slots";
+        }
+    }
+    if (const auto request = state.lua_runtime->blackboard_get("coop.request_end_test");
+        request && request->type == ScriptBlackboardType::Bool && request->bool_value) {
+        state.lua_runtime->blackboard_set_bool("coop.request_end_test", false);
+        state.pending_coop_local_restart = false;
+        if (state.test_session_active())
+            state.test_session_command = EditorState::TestSessionCommand::End;
+    }
+
+    if (state.pending_coop_local_restart && state.test_session == EditorState::TestSessionState::Inactive) {
+        state.pending_coop_local_restart = false;
+        state.coop_local = true;
+        state.test_session_command = EditorState::TestSessionCommand::Start;
+    }
+
+    if (state.game_session.state() == GameSessionState::PausedWaitingGuest) {
+        if (state.ui_canvas_stack->top_modal() != "coop_reconnect") {
+            (void)state.ui_canvas_stack->push("coop_reconnect");
+            state.status = "Waiting for partner… (End Session on overlay)";
+        }
+    } else if (state.ui_canvas_stack->top_modal() == "coop_reconnect") {
+        (void)state.ui_canvas_stack->pop();
+    }
 }
 
 void reload_changed_lua_scripts(EditorState& state) {
@@ -3642,6 +6531,34 @@ Result<void> load_prefab_catalog(EditorState& state, const std::filesystem::path
     return Result<void>::success();
 }
 
+Result<void> load_particle_assets(EditorState& state) {
+    state.particle_system.clear();
+    state.particle_system.set_seed(0xC0FFEEu);
+    std::set<std::string> paths;
+    for (const auto& entry : state.prefab_catalog) {
+        if (entry.second.particle && !entry.second.particle->asset.empty())
+            paths.insert(normalize_asset_path(entry.second.particle->asset));
+        for (const auto& emitter : entry.second.particles) {
+            if (!emitter.asset.empty()) paths.insert(normalize_asset_path(emitter.asset));
+        }
+    }
+    for (const auto& entry : state.assets.records()) {
+        const auto relative = normalize_asset_path(entry.second.path);
+        if (relative.size() >= 14 && relative.compare(relative.size() - 14, 14, ".particle.json") == 0)
+            paths.insert(relative);
+    }
+    for (const auto& relative : paths) {
+        const auto loaded = ParticleEmitterAsset::load(state.project_root / relative);
+        if (!loaded) {
+            Logger::instance().write(Severity::Warning, "particles",
+                "Could not load particle asset " + relative + ": " + loaded.error().message);
+            continue;
+        }
+        state.particle_system.register_asset(relative, loaded.value());
+    }
+    return Result<void>::success();
+}
+
 Result<void> load_editor_play_session(EditorState& state) {
     state.play_session.character_asset = normalize_asset_path(state.play_session.character_asset);
     state.play_session.camera_asset = normalize_asset_path(state.play_session.camera_asset);
@@ -3710,11 +6627,13 @@ std::optional<std::string> resolve_character_asset_for_prefab(const EditorState&
     if (const auto* prefab = find_prefab(state.prefab_catalog, normalized)) {
         if (prefab->character_asset) return *prefab->character_asset;
     }
-    for (const auto& path : collect_asset_paths(state, ".character.json")) {
-        const auto loaded = CharacterAsset::load(state.project_root / path);
-        if (!loaded) continue;
-        if (normalize_asset_path(loaded.value().visual_prefab) == normalized) return path;
-    }
+    // Reverse-match only the play-session player character. NPC character assets also set
+    // visualPrefab for mesh reuse and must not register as player spawns (character-assets.md).
+    const auto play_character = normalize_asset_path(state.play_session.character_asset);
+    if (play_character.empty()) return std::nullopt;
+    const auto loaded = CharacterAsset::load(state.project_root / play_character);
+    if (!loaded) return std::nullopt;
+    if (normalize_asset_path(loaded.value().visual_prefab) == normalized) return play_character;
     return std::nullopt;
 }
 
@@ -3745,6 +6664,113 @@ bool draw_asset_path_combo(const char* label, std::string& path, const std::vect
         ImGui::EndCombo();
     }
     return changed;
+}
+
+/// Prefab-level particle attachments (shared by all instances). Edits mutate the catalog; call Save Prefab to persist.
+void draw_prefab_particle_attachment_editors(EditorState& state, PrefabAsset& prefab, const char* id_prefix) {
+    ImGui::Text("Particle Emitters: %zu", prefab.particles.size());
+    ImGui::SameLine();
+    ImGui::TextDisabled("(prefab)");
+    if (state.particle_gizmo_index) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Clear Gizmo")) {
+            state.particle_gizmo_index.reset();
+            state.particle_gizmo_entity.reset();
+            state.particle_gizmo_was_using = false;
+        }
+    }
+    const auto particle_paths = collect_asset_paths(state, ".particle.json");
+    for (std::size_t index = 0; index < prefab.particles.size(); ++index) {
+        auto& emitter = prefab.particles[index];
+        ImGui::PushID(id_prefix);
+        ImGui::PushID(static_cast<int>(index));
+        const std::string leaf = emitter.asset.empty() ? std::string("(none)")
+                                                       : std::filesystem::path(emitter.asset).filename().string();
+        const bool gizmo_selected = state.particle_gizmo_index && *state.particle_gizmo_index == index;
+        const std::string node_label = "particle-" + std::to_string(index) + " [" + leaf + "]";
+        const bool open = ImGui::TreeNodeEx(node_label.c_str(),
+            ImGuiTreeNodeFlags_DefaultOpen | (gizmo_selected ? ImGuiTreeNodeFlags_Selected : 0));
+        ImGui::SameLine();
+        ImGui::TextDisabled("prefab");
+        if (open) {
+            if (draw_asset_path_combo("Emitter Asset", emitter.asset, particle_paths, "(none)")) {
+                if (!emitter.asset.empty()) {
+                    const auto loaded = ParticleEmitterAsset::load(state.project_root / emitter.asset);
+                    if (loaded) state.particle_system.register_asset(emitter.asset, loaded.value());
+                }
+            }
+            ImGui::DragFloat3("Local Offset", emitter.offset.data(), 0.01f);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Offset in prefab local space (follows placement rotation)");
+            ImGui::Checkbox("Enabled", &emitter.enabled);
+            if (ImGui::SmallButton(gizmo_selected ? "Gizmo (active)" : "Move with Gizmo")) {
+                state.particle_gizmo_index = index;
+                state.particle_gizmo_entity = state.selected;
+                state.particle_gizmo_was_using = false;
+                state.gizmo_entity.reset();
+                state.status = "Particle gizmo active — drag in the viewport (Save Prefab to persist)";
+            }
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Remove##particle")) {
+                prefab.particles.erase(prefab.particles.begin() + static_cast<std::ptrdiff_t>(index));
+                prefab.particle.reset();
+                if (state.particle_gizmo_index) {
+                    if (*state.particle_gizmo_index == index) {
+                        state.particle_gizmo_index.reset();
+                        state.particle_gizmo_entity.reset();
+                        state.particle_gizmo_was_using = false;
+                    } else if (*state.particle_gizmo_index > index) {
+                        --(*state.particle_gizmo_index);
+                    }
+                }
+                ImGui::TreePop();
+                ImGui::PopID();
+                ImGui::PopID();
+                break;
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+        ImGui::PopID();
+    }
+    if (ImGui::SmallButton("Add Particle Emitter")) {
+        PrefabParticleEmitter emitter;
+        emitter.asset = particle_paths.empty() ? std::string{"assets/vfx/wall_torch_flame.particle.json"}
+                                               : particle_paths.front();
+        emitter.offset = {0.0f, 0.4f, 0.0f};
+        emitter.enabled = true;
+        if (!emitter.asset.empty()) {
+            const auto loaded = ParticleEmitterAsset::load(state.project_root / emitter.asset);
+            if (loaded) state.particle_system.register_asset(emitter.asset, loaded.value());
+        }
+        prefab.particles.push_back(std::move(emitter));
+        prefab.particle.reset();
+        state.particle_gizmo_index = prefab.particles.size() - 1;
+        state.particle_gizmo_entity = state.selected;
+        state.particle_gizmo_was_using = false;
+        state.gizmo_entity.reset();
+    }
+}
+
+bool save_prefab_catalog_entry(EditorState& state, const std::string& normalized_path, PrefabAsset& prefab) {
+    const auto saved = prefab.save(state.project_root / normalized_path);
+    if (!saved) {
+        state.status = saved.error().message;
+        Logger::instance().write(saved.error());
+        return false;
+    }
+    const auto lookup_material = make_material_lookup(&state.material_cache);
+    state.prefab_bounds[normalized_path] = prefab.bounds(state.mesh_bounds, lookup_material);
+    state.prefab_meshes_dirty = true;
+    (void)load_particle_assets(state);
+    const auto propagated = state.scene.propagate_prefab_components(normalized_path, prefab);
+    if (propagated > 0) {
+        mark_scene_dirty(state);
+        state.status = "Prefab saved; propagated to " + std::to_string(propagated) + " instance(s)";
+    } else {
+        state.status = "Prefab saved";
+    }
+    return true;
 }
 
 std::vector<std::string> collect_animator_state_names(const EditorState& state, const std::string& controller_path) {
@@ -4315,6 +7341,151 @@ void clear_editor_manipulation(EditorState& state) {
     state.gizmo_was_using = false;
 }
 
+std::string world_file_display_stem(const std::filesystem::path& world_path) {
+    const auto name = world_path.filename().generic_string();
+    constexpr std::string_view suffix = ".world.json";
+    if (name.size() > suffix.size() && name.ends_with(suffix))
+        return name.substr(0, name.size() - suffix.size());
+    return world_path.stem().generic_string();
+}
+
+std::filesystem::path resolve_project_world_path(const std::filesystem::path& project_root,
+    const std::filesystem::path& world_path) {
+    if (world_path.is_absolute()) return world_path.lexically_normal();
+    return (project_root / world_path).lexically_normal();
+}
+
+std::string normalize_world_path_key(const std::filesystem::path& project_root,
+    const std::filesystem::path& world_path) {
+    const auto resolved = resolve_project_world_path(project_root, world_path);
+    std::error_code ec;
+    const auto canonical = std::filesystem::weakly_canonical(resolved, ec);
+    return (ec ? resolved : canonical).generic_string();
+}
+
+bool same_project_world(const std::filesystem::path& project_root, const std::filesystem::path& a,
+    const std::filesystem::path& b) {
+    return normalize_world_path_key(project_root, a) == normalize_world_path_key(project_root, b);
+}
+
+std::vector<std::filesystem::path> list_project_world_files(const std::filesystem::path& project_root) {
+    std::vector<std::filesystem::path> worlds;
+    const auto dir = project_root / "worlds";
+    std::error_code ec;
+    if (!std::filesystem::is_directory(dir, ec)) return worlds;
+    for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
+        if (ec || !entry.is_regular_file(ec)) continue;
+        const auto name = entry.path().filename().generic_string();
+        constexpr std::string_view suffix = ".world.json";
+        if (name.size() <= suffix.size() || !name.ends_with(suffix)) continue;
+        worlds.push_back(std::filesystem::path("worlds") / entry.path().filename());
+    }
+    std::sort(worlds.begin(), worlds.end());
+    return worlds;
+}
+
+std::string project_relative_world_display(const std::filesystem::path& project_root,
+    const std::filesystem::path& world_path) {
+    const auto resolved = resolve_project_world_path(project_root, world_path);
+    std::error_code ec;
+    const auto relative = std::filesystem::relative(resolved, project_root, ec);
+    if (!ec) {
+        const auto gen = relative.generic_string();
+        if (!gen.empty() && gen.find("..") == std::string::npos) return gen;
+    }
+    if (resolved.filename().generic_string().ends_with(".world.json"))
+        return (std::filesystem::path("worlds") / resolved.filename()).generic_string();
+    return resolved.generic_string();
+}
+
+void frame_camera_on_unique_player_spawn(const EditorState& state, DebugCamera& camera) {
+    std::optional<EntityId> spawn_id;
+    for (const auto& id : state.scene.entity_ids()) {
+        const auto placement = state.scene.placement(id);
+        if (!placement || !placement->character_asset) continue;
+        if (spawn_id) {
+            spawn_id.reset();
+            break;
+        }
+        spawn_id = id;
+    }
+    if (!spawn_id) return;
+    const auto transform = state.scene.transform(*spawn_id);
+    if (!transform) return;
+    constexpr float k_distance = 28.0f;
+    constexpr float k_height = 16.0f;
+    const float tx = transform->position[0];
+    const float ty = transform->position[1];
+    const float tz = transform->position[2];
+    const float cam_x = tx;
+    const float cam_y = ty + k_height;
+    const float cam_z = tz - k_distance;
+    const float dx = tx - cam_x;
+    const float dy = ty - cam_y;
+    const float dz = tz - cam_z;
+    const float yaw = std::atan2(dx, dz);
+    const float horiz = std::sqrt(dx * dx + dz * dz);
+    const float pitch = std::atan2(dy, (std::max)(horiz, 0.001f));
+    camera.set_pose({cam_x, cam_y, cam_z}, yaw, pitch);
+}
+
+void request_open_project_world(EditorState& state, const std::filesystem::path& relative_or_absolute) {
+    const auto resolved = resolve_project_world_path(state.project_root, relative_or_absolute);
+    if (same_project_world(state.project_root, state.world_path, resolved)) {
+        state.status = "World already open";
+        return;
+    }
+    state.pending_open_world = resolved;
+    state.open_world_confirm_dirty = state.scene_dirty;
+    if (state.test_session_active())
+        state.test_session_command = EditorState::TestSessionCommand::End;
+}
+
+Result<void> open_project_world_now(EditorState& state, CollisionWorld* collision,
+    PlacementCollisionTracker* placement_collision) {
+    if (!state.pending_open_world) {
+        return Result<void>::failure(EngineError{"EDITOR-OPEN-WORLD-NONE", Severity::Error, ErrorCategory::Validation,
+            "editor", "No pending world to open"});
+    }
+    const auto path = *state.pending_open_world;
+    auto loaded = Scene::load(path);
+    if (!loaded) return Result<void>::failure(loaded.error());
+
+    state.scene = std::move(loaded.value());
+    state.world_path = path;
+    state.history.clear();
+    state.selected.reset();
+    state.hovered.reset();
+    state.rename_target.reset();
+    state.rename_buffer[0] = '\0';
+    state.placement_cursor.reset();
+    state.drop_preview.reset();
+    state.drop_preview_prefab.reset();
+    state.inspector_player_spawn_entity.reset();
+    state.test_player_spawn_entity.reset();
+    state.recent_contact_points.clear();
+    state.recent_interaction_events.clear();
+    state.recent_combat_events.clear();
+    state.lua_dispatched_interactions = 0;
+    state.lua_dispatched_combat = 0;
+    clear_editor_manipulation(state);
+    state.scene_dirty = false;
+    state.open_world_confirm_dirty = false;
+    state.pending_open_world.reset();
+
+    sync_player_placement_tags(state);
+    (void)state.scene.repair_prefab_paths(state.prefab_catalog);
+    if (state.scene.seed_missing_authored_components(state.prefab_catalog) > 0) state.scene_dirty = true;
+
+    const auto ids = state.scene.entity_ids();
+    if (!ids.empty()) state.selected = ids.front();
+
+    if (placement_collision && collision) placement_collision->clear(*collision);
+    state.request_repose_camera_on_spawn = true;
+    state.status = "Opened " + project_relative_world_display(state.project_root, path);
+    return Result<void>::success();
+}
+
 WorldPosition editor_test_spawn_position(const EditorState& state, const DebugCamera& camera) {
     if (state.placement_cursor) {
         const float ground = sample_terrain_height(static_cast<float>(state.placement_cursor->x),
@@ -4345,6 +7516,25 @@ TestPlayerSpawnResolution resolve_test_player_spawn(const EditorState& state, co
     if (state.selected) {
         const auto placement = state.scene.placement(*state.selected);
         if (placement && placement->character_asset) chosen = state.selected;
+    }
+    const auto play_character = normalize_asset_path(state.play_session.character_asset);
+    if (!chosen && !play_character.empty()) {
+        for (const auto& id : spawns) {
+            const auto placement = state.scene.placement(id);
+            if (placement && placement->character_asset &&
+                normalize_asset_path(*placement->character_asset) == play_character) {
+                chosen = id;
+                break;
+            }
+        }
+    }
+    if (!chosen) {
+        for (const auto& id : spawns) {
+            if (const auto name = state.scene.name(id); name && *name == "player") {
+                chosen = id;
+                break;
+            }
+        }
     }
     if (!chosen && spawns.size() == 1) chosen = spawns.front();
     if (chosen) {
@@ -4610,6 +7800,16 @@ void process_test_session_ui_input(EditorState& state) {
     event.adjust_right = ImGui::IsKeyPressed(ImGuiKey_RightArrow) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadRight);
     event.activate_pressed = ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_Space) ||
         ImGui::IsKeyPressed(ImGuiKey_GamepadFaceDown);
+    if (state.ui_canvas_stack->top_modal() && *state.ui_canvas_stack->top_modal() == "dialogue") {
+        const ImGuiKey digit_keys[4] = {ImGuiKey_1, ImGuiKey_2, ImGuiKey_3, ImGuiKey_4};
+        const ImGuiKey keypad_keys[4] = {ImGuiKey_Keypad1, ImGuiKey_Keypad2, ImGuiKey_Keypad3, ImGuiKey_Keypad4};
+        for (int i = 0; i < 4; ++i) {
+            if (ImGui::IsKeyPressed(digit_keys[i]) || ImGui::IsKeyPressed(keypad_keys[i])) {
+                event.digit_slot = i + 1;
+                break;
+            }
+        }
+    }
     if (state.game_viewport_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         event.mouse_clicked = true;
         event.mouse_pos = {io.MousePos.x, io.MousePos.y};
@@ -4617,6 +7817,10 @@ void process_test_session_ui_input(EditorState& state) {
 
     const auto result = state.ui_canvas_stack->handle_modal_input(event, state.lua_runtime.get());
     if (result.modal_popped) {
+        if (result.canvas_id == "dialogue") {
+            state.dialogue_runtime.reset();
+            if (state.lua_runtime) state.lua_runtime->dialogue_ui_session() = {};
+        }
         if (result.canvas_id == "pause" && state.test_session == EditorState::TestSessionState::Paused)
             state.test_session = EditorState::TestSessionState::Running;
         state.status = "Closed overlay: " + result.canvas_id;
@@ -4649,6 +7853,23 @@ void handle_editor_shortcuts(EditorState& state, bool camera_capture, MaterialAs
         state.test_session_command = EditorState::TestSessionCommand::Resume;
     if (state.test_session_active() && io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_F5))
         state.test_session_command = EditorState::TestSessionCommand::End;
+    if (state.test_session_active() && state.coop_local && state.game_session.is_coop()) {
+        // F8 = guest disconnect → paused_waiting_guest; F9 = reconnect + resume (TICKET-0212).
+        // F7 possess is handled in the play-test loop (SDL) so it works while the Game tab has input.
+        if (ImGui::IsKeyPressed(ImGuiKey_F8) &&
+            state.game_session.state() == GameSessionState::Playing) {
+            (void)state.game_session.set_slot_connected(1, false);
+            state.status = "Co-op: waiting for guest (F9 resume, Shift+F5 end)";
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_F9) &&
+            state.game_session.state() == GameSessionState::PausedWaitingGuest) {
+            (void)state.game_session.set_slot_connected(1, true, 1);
+            if (const auto resumed = state.game_session.resume_after_guest_reconnect(); resumed)
+                state.status = "Co-op: guest reconnected";
+            else
+                state.status = resumed.error().message;
+        }
+    }
     if (state.test_session_active()) return;
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S)) {
         const auto saved = state.scene.save_atomic(state.world_path);
@@ -4967,6 +8188,55 @@ void draw_authored_collider_overlays(EditorState& state, const ViewportFrame& fr
             for (const auto& volume : found->second.collision)
                 draw_authored_collider_volume(draw_list, view_projection, frame, preview_root, volume, k_green,
                     k_green_fill);
+        }
+    }
+}
+
+void draw_event_zone_overlays(EditorState& state, const ViewportFrame& frame,
+    const std::array<float, 16>& view_projection) {
+    if (!state.show_event_zones) return;
+    // Editor-only authoring overlay — never draw on Game (play) viewport.
+    if (state.active_viewport_tab != EditorState::ViewportTab::Scene &&
+        state.active_viewport_tab != EditorState::ViewportTab::Sculpt)
+        return;
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    constexpr ImU32 k_zone = IM_COL32(170, 120, 255, 235);
+    constexpr ImU32 k_zone_fill = IM_COL32(170, 120, 255, 36);
+    constexpr ImU32 k_label_bg = IM_COL32(18, 12, 28, 210);
+    constexpr ImU32 k_label = IM_COL32(245, 235, 255, 255);
+
+    for (const auto& id : state.scene.entity_ids()) {
+        const auto transform = state.scene.transform(id);
+        if (!transform) continue;
+        TransformComponent draw_transform = *transform;
+        if (state.selected && *state.selected == id && state.gizmo_preview &&
+            (state.gizmo_was_using || state.terrain_drag_active))
+            draw_transform = *state.gizmo_preview;
+
+        const PrefabAsset* prefab = nullptr;
+        if (const auto placement = state.scene.placement(id))
+            prefab = find_prefab(state.prefab_catalog, placement->prefab_asset);
+        const auto authored = state.scene.authored_components(id);
+        const auto volumes = effective_collision_volumes(authored ? &*authored : nullptr, prefab);
+        for (const auto& volume : volumes) {
+            if (!volume.is_interaction()) continue;
+            draw_authored_collider_volume(draw_list, view_projection, frame, draw_transform, volume, k_zone,
+                k_zone_fill);
+
+            const auto world_transform = multiply_transforms(draw_transform, volume.transform);
+            float sx = 0.0f;
+            float sy = 0.0f;
+            float depth = 0.0f;
+            if (!project_world_to_screen(view_projection, frame, world_transform.position[0],
+                    world_transform.position[1] + 0.35f, world_transform.position[2], sx, sy, depth))
+                continue;
+            const std::string label = volume.interaction_id;
+            const ImVec2 text_size = ImGui::CalcTextSize(label.c_str());
+            const ImVec2 text_pos{sx - text_size.x * 0.5f, sy - text_size.y - 6.0f};
+            draw_list->AddRectFilled({text_pos.x - 3.0f, text_pos.y - 1.0f},
+                {text_pos.x + text_size.x + 3.0f, text_pos.y + text_size.y + 1.0f}, k_label_bg, 3.0f);
+            draw_list->AddText(text_pos, k_label, label.c_str());
         }
     }
 }
@@ -5299,7 +8569,8 @@ Result<void> refresh_editor_assets(EditorState& state) {
     if (const auto scanned = state.assets.scan(state.project_root); !scanned) return scanned;
     state.prefab_catalog.clear();
     state.prefab_bounds.clear();
-    return load_prefab_catalog(state, state.project_root);
+    if (const auto prefabs = load_prefab_catalog(state, state.project_root); !prefabs) return prefabs;
+    return load_particle_assets(state);
 }
 
 void remap_editor_asset_references(EditorState& state, const std::string& old_prefix, const std::string& new_prefix) {
@@ -6773,6 +10044,124 @@ void draw_design_docs_viewport(EditorState& state) {
     ImGui::EndChild();
 }
 
+std::string format_dip_local_time(std::int64_t epoch_ms) {
+    const std::time_t seconds = static_cast<std::time_t>(epoch_ms / 1000);
+    const int millis = static_cast<int>(epoch_ms % 1000);
+    std::tm local{};
+#if defined(_WIN32)
+    localtime_s(&local, &seconds);
+#else
+    localtime_r(&seconds, &local);
+#endif
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%02d:%02d:%02d.%03d", local.tm_hour, local.tm_min, local.tm_sec, millis);
+    return buf;
+}
+
+std::string classify_performance_dip_dominant(const EditorState::PerformanceDipRecord& dip) {
+    struct Candidate {
+        const char* label;
+        double ms;
+    };
+    const Candidate candidates[] = {
+        {"terrain_stream", dip.terrain_ms},
+        {"foliage_sync", dip.foliage_ms},
+        {"water_stream", dip.water_ms},
+        {"placement_collision", dip.collision_ms},
+        {"physics_step", dip.physics_ms},
+        {"simulation_other", (std::max)(0.0,
+            dip.sim_ms - dip.terrain_ms - dip.foliage_ms - dip.water_ms - dip.collision_ms - dip.physics_ms)},
+        {"pre_ui_automation", dip.pre_ui_ms},
+        {"editor_ui", dip.editor_ui_ms},
+        {"foliage_upload", dip.foliage_upload_ms},
+        {"cache_rebuild", dip.cache_rebuild_ms},
+        {"cpu_skin", dip.cpu_skin_ms},
+        {"render_prep", (std::max)(0.0, dip.render_prep_ms - dip.foliage_upload_ms - dip.cache_rebuild_ms - dip.cpu_skin_ms)},
+        {"render_submit", dip.submit_ms},
+        {"present_wait", dip.present_ms},
+        {"gpu_wait", dip.gpu_wait_ms},
+        {"gpu_frame", dip.gpu_ms},
+    };
+    const Candidate* best = &candidates[0];
+    for (const auto& candidate : candidates) {
+        if (candidate.ms > best->ms) best = &candidate;
+    }
+    if (best->ms < 0.5) return "unknown_or_spread";
+    return best->label;
+}
+
+nlohmann::json performance_dip_to_json(const EditorState::PerformanceDipRecord& dip) {
+    return nlohmann::json{{"epochMs", dip.epoch_ms}, {"time", dip.local_time}, {"frame", dip.frame},
+        {"fps", dip.fps}, {"wallMs", dip.wall_ms}, {"dominant", dip.dominant}, {"playTest", dip.play_test},
+        {"preUiMs", dip.pre_ui_ms}, {"simMs", dip.sim_ms}, {"terrainMs", dip.terrain_ms},
+        {"foliageMs", dip.foliage_ms}, {"waterMs", dip.water_ms}, {"collisionMs", dip.collision_ms},
+        {"physicsMs", dip.physics_ms},
+        {"editorUiMs", dip.editor_ui_ms}, {"renderPrepMs", dip.render_prep_ms},
+        {"foliageUploadMs", dip.foliage_upload_ms}, {"cacheRebuildMs", dip.cache_rebuild_ms},
+        {"cpuSkinMs", dip.cpu_skin_ms}, {"submitMs", dip.submit_ms}, {"presentMs", dip.present_ms},
+        {"gpuWaitMs", dip.gpu_wait_ms}, {"gpuMs", dip.gpu_ms}};
+}
+
+void clear_performance_dip_history(EditorState& state) {
+    state.performance_dips.clear();
+    state.performance_worst_dip = {};
+    state.performance_dip_valid = false;
+    state.performance_last_dip_frame = 0;
+    state.performance_last_logged_dip_fps = 1000.0f;
+}
+
+void record_performance_dip_if_needed(EditorState& state, std::uint64_t frames, float instant_fps, double wall_ms,
+    double pre_ui_ms, double simulation_ms, double terrain_ms, double foliage_ms, double water_ms, double collision_ms,
+    double physics_ms, double editor_ui_ms, double render_prep_ms, double foliage_upload_ms, double cache_rebuild_ms,
+    double cpu_skin_ms, double submit_ms, double present_ms, double gpu_wait_ms, double gpu_ms) {
+    if (instant_fps <= 0.0f) return;
+    if (frames < EditorState::k_performance_dip_ignore_frames) return;
+    if (wall_ms >= EditorState::k_performance_dip_ignore_wall_ms) return;
+    if (instant_fps >= EditorState::k_performance_dip_fps_threshold) return;
+
+    const bool deeper = instant_fps + 5.0f < state.performance_last_logged_dip_fps;
+    const bool spaced = frames >= state.performance_last_dip_frame + EditorState::k_performance_dip_min_gap_frames;
+    if (state.performance_last_dip_frame != 0 && !deeper && !spaced) return;
+
+    EditorState::PerformanceDipRecord dip{};
+    dip.epoch_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch())
+                       .count();
+    dip.local_time = format_dip_local_time(dip.epoch_ms);
+    dip.frame = frames;
+    dip.fps = instant_fps;
+    dip.wall_ms = wall_ms;
+    dip.pre_ui_ms = pre_ui_ms;
+    dip.sim_ms = simulation_ms;
+    dip.terrain_ms = terrain_ms;
+    dip.foliage_ms = foliage_ms;
+    dip.water_ms = water_ms;
+    dip.collision_ms = collision_ms;
+    dip.physics_ms = physics_ms;
+    dip.editor_ui_ms = editor_ui_ms;
+    dip.render_prep_ms = render_prep_ms;
+    dip.foliage_upload_ms = foliage_upload_ms;
+    dip.cache_rebuild_ms = cache_rebuild_ms;
+    dip.cpu_skin_ms = cpu_skin_ms;
+    dip.submit_ms = submit_ms;
+    dip.present_ms = present_ms;
+    dip.gpu_wait_ms = gpu_wait_ms;
+    dip.gpu_ms = gpu_ms;
+    dip.play_test = state.test_session_active();
+    dip.dominant = classify_performance_dip_dominant(dip);
+
+    state.performance_dips.push_back(dip);
+    while (state.performance_dips.size() > EditorState::k_performance_dip_history)
+        state.performance_dips.pop_front();
+    state.performance_last_dip_frame = frames;
+    state.performance_last_logged_dip_fps = instant_fps;
+
+    if (!state.performance_dip_valid || dip.fps < state.performance_worst_dip.fps) {
+        state.performance_worst_dip = dip;
+        state.performance_dip_valid = true;
+    }
+}
+
 void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capture, ImTextureID scene_texture,
     ImTextureID game_texture, const std::array<float, 16>& view, const std::array<float, 16>& projection,
     const std::array<float, 16>& view_projection, const std::array<float, 3>& camera_position,
@@ -6789,6 +10178,16 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking;
 
     if (ImGui::BeginMainMenuBar()) {
+        if (state.app_icon_tex != 0) {
+            constexpr float kMenuIcon = 18.0f;
+            const float pad_y = (ImGui::GetFrameHeight() - kMenuIcon) * 0.5f;
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + std::max(0.0f, pad_y));
+            ImGui::Image(static_cast<ImTextureID>(state.app_icon_tex), ImVec2(kMenuIcon, kMenuIcon));
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+                ImGui::SetTooltip("Wrathful Conquest / AI RPG Engine");
+            ImGui::SameLine(0.0f, 8.0f);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() - std::max(0.0f, pad_y));
+        }
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem(ICON_FA_SAVE " Save", "Ctrl+S")) {
                 const auto saved = state.scene.save_atomic(state.world_path);
@@ -6827,6 +10226,27 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                     }
                 }
             }
+            if (ImGui::BeginMenu("Open World")) {
+                register_ui_hotspot_last_item(&state.ui_hotspots, "Editor.File.OpenWorld", "Open World");
+                auto worlds = list_project_world_files(state.project_root);
+                bool current_listed = false;
+                for (const auto& relative : worlds) {
+                    const bool is_current = same_project_world(state.project_root, state.world_path, relative);
+                    if (is_current) current_listed = true;
+                    const auto label = world_file_display_stem(relative);
+                    if (ImGui::MenuItem(label.c_str(), nullptr, is_current, !is_current))
+                        request_open_project_world(state, relative);
+                    register_ui_hotspot_last_item(&state.ui_hotspots, "Editor.File.OpenWorld." + label, label);
+                }
+                if (!current_listed && !state.world_path.empty()) {
+                    const auto orphan = world_file_display_stem(state.world_path);
+                    ImGui::MenuItem(orphan.c_str(), nullptr, true, false);
+                    register_ui_hotspot_last_item(&state.ui_hotspots, "Editor.File.OpenWorld." + orphan, orphan);
+                }
+                if (worlds.empty() && state.world_path.empty())
+                    ImGui::MenuItem("(no worlds/*.world.json)", nullptr, false, false);
+                ImGui::EndMenu();
+            }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
@@ -6860,6 +10280,44 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         ImGui::EndMainMenuBar();
     }
 
+    if (state.open_world_confirm_dirty && state.pending_open_world) {
+        if (!ImGui::IsPopupOpen("##OpenWorldDirty")) ImGui::OpenPopup("##OpenWorldDirty");
+    }
+    if (ImGui::BeginPopupModal("##OpenWorldDirty", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        const auto pending_label = state.pending_open_world
+            ? project_relative_world_display(state.project_root, *state.pending_open_world)
+            : std::string{};
+        ImGui::TextUnformatted("Scene has unsaved changes.");
+        if (!pending_label.empty()) {
+            ImGui::TextColored(ImVec4(0.61f, 0.64f, 0.66f, 1.0f), "Open %s?", pending_label.c_str());
+        }
+        ImGui::Spacing();
+        if (ImGui::Button("Save", ImVec2(96.0f, 0.0f))) {
+            const auto saved = state.scene.save_atomic(state.world_path);
+            if (!saved) {
+                state.status = saved.error().message;
+                Logger::instance().write(saved.error());
+            } else {
+                state.scene_dirty = false;
+                state.open_world_confirm_dirty = false;
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Discard", ImVec2(96.0f, 0.0f))) {
+            state.scene_dirty = false;
+            state.open_world_confirm_dirty = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(96.0f, 0.0f))) {
+            state.pending_open_world.reset();
+            state.open_world_confirm_dirty = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
     const char* active_area = "Scene";
     switch (state.active_viewport_tab) {
     case EditorState::ViewportTab::Sculpt: active_area = "Sculpt"; break;
@@ -6872,8 +10330,9 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     bool chrome_save = false;
     const bool any_dirty = state.scene_dirty || state.terrain_edits_dirty || state.terrain_paint_dirty ||
         state.foliage_density_dirty || state.water_dirty || state.world_forge_editor.dirty;
+    const auto world_stem = world_file_display_stem(state.world_path);
     EditorChrome::draw_app_header(state.project_root, active_area, any_dirty, state.world_forge_editor.dirty,
-        state.status, &chrome_save, &state.ui_hotspots);
+        state.status, &chrome_save, &state.ui_hotspots, world_stem.c_str(), state.app_icon_tex);
     if (chrome_save) {
         const auto saved = state.scene.save_atomic(state.world_path);
         if (!saved) {
@@ -6947,7 +10406,9 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             ImGui::BeginTabItem(ICON_FA_CUBE " Scene##ViewportScene", nullptr, tab_flags(EditorState::ViewportTab::Scene));
         register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.Scene", "Scene");
         if (scene_open) {
-            if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::Scene;
+            // While MCP/force_select is targeting another tab, do not let the previously-open tab clobber it.
+            if (!state.lock_viewport_tab && !state.force_select_viewport_tab)
+                state.active_viewport_tab = EditorState::ViewportTab::Scene;
             ImGui::EndTabItem();
         }
         ImGui::BeginDisabled(state.test_session_active());
@@ -6955,7 +10416,8 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             tab_flags(EditorState::ViewportTab::Sculpt));
         register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.Sculpt", "Sculpt");
         if (sculpt_open) {
-            if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::Sculpt;
+            if (!state.lock_viewport_tab && !state.force_select_viewport_tab)
+                state.active_viewport_tab = EditorState::ViewportTab::Sculpt;
             ImGui::EndTabItem();
         }
         ImGui::EndDisabled();
@@ -6963,7 +10425,8 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             ImGui::BeginTabItem(ICON_FA_GAMEPAD " Game##ViewportGame", nullptr, tab_flags(EditorState::ViewportTab::Game));
         register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.Game", "Game");
         if (game_open) {
-            if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::Game;
+            if (!state.lock_viewport_tab || state.force_select_viewport_tab)
+                state.active_viewport_tab = EditorState::ViewportTab::Game;
             ImGui::EndTabItem();
         }
         ImGui::BeginDisabled(state.test_session_active());
@@ -6971,7 +10434,8 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             ImGui::BeginTabItem(ICON_FA_DESKTOP " UI##ViewportUI", nullptr, tab_flags(EditorState::ViewportTab::UI));
         register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.UI", "UI");
         if (ui_open) {
-            if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::UI;
+            if (!state.lock_viewport_tab && !state.force_select_viewport_tab)
+                state.active_viewport_tab = EditorState::ViewportTab::UI;
             ImGui::EndTabItem();
         }
         ImGui::EndDisabled();
@@ -6980,7 +10444,8 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             tab_flags(EditorState::ViewportTab::WorldForge));
         register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.WorldForge", "World Forge");
         if (world_forge_open) {
-            if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::WorldForge;
+            if (!state.lock_viewport_tab && !state.force_select_viewport_tab)
+                state.active_viewport_tab = EditorState::ViewportTab::WorldForge;
             ImGui::EndTabItem();
         }
         ImGui::EndDisabled();
@@ -6989,7 +10454,8 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             tab_flags(EditorState::ViewportTab::DesignDocs));
         register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.DesignDocs", "Design Docs");
         if (design_docs_open) {
-            if (!state.lock_viewport_tab) state.active_viewport_tab = EditorState::ViewportTab::DesignDocs;
+            if (!state.lock_viewport_tab && !state.force_select_viewport_tab)
+                state.active_viewport_tab = EditorState::ViewportTab::DesignDocs;
             ImGui::EndTabItem();
         }
         ImGui::EndDisabled();
@@ -7018,8 +10484,8 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     if (streamed_terrain) {
         const auto focus = streamed_terrain->focus_cell();
         ImGui::SameLine();
-        ImGui::Text("| Terrain %u cells @ (%d,%d)", static_cast<unsigned>(streamed_terrain->loaded_cell_count()),
-                    focus.x, focus.z);
+        ImGui::Text("| Terrain %u cells @ (%d,%d)%s", static_cast<unsigned>(streamed_terrain->loaded_cell_count()),
+            focus.x, focus.z, streamed_terrain->stream_pending() ? " streaming..." : "");
     }
     ImGui::SameLine();
     if (edit_mode && scene_tab) {
@@ -7038,20 +10504,20 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     }
     if (state.test_session == EditorState::TestSessionState::Inactive) {
         ImGui::SameLine();
-        if (editor_icon_button("test_start", ICON_FA_PLAY, "Start Test (F5)"))
+        if (editor_icon_button("test_start", ICON_FA_PLAY, "Start Test (F5)", true, &state.ui_hotspots))
             state.test_session_command = EditorState::TestSessionCommand::Start;
     } else {
         if (state.test_session == EditorState::TestSessionState::Running) {
             ImGui::SameLine();
-            if (editor_icon_button("test_pause", ICON_FA_PAUSE, "Pause (F6)"))
+            if (editor_icon_button("test_pause", ICON_FA_PAUSE, "Pause (F6)", true, &state.ui_hotspots))
                 state.test_session_command = EditorState::TestSessionCommand::Pause;
         } else {
             ImGui::SameLine();
-            if (editor_icon_button("test_resume", ICON_FA_PLAY, "Resume (F6)"))
+            if (editor_icon_button("test_resume", ICON_FA_PLAY, "Resume (F6)", true, &state.ui_hotspots))
                 state.test_session_command = EditorState::TestSessionCommand::Resume;
         }
         ImGui::SameLine();
-        if (editor_icon_button("test_end", ICON_FA_STOP, "End Test (Shift+F5)"))
+        if (editor_icon_button("test_end", ICON_FA_STOP, "End Test (Shift+F5)", true, &state.ui_hotspots))
             state.test_session_command = EditorState::TestSessionCommand::End;
     }
     const auto available = ImGui::GetContentRegionAvail();
@@ -7082,6 +10548,9 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                     state.lua_runtime->set_ui_canvas_stack(state.ui_canvas_stack.get());
                     state.lua_runtime->set_quest_runtime(state.quest_runtime.get());
                     state.lua_runtime->set_standing_runtime(state.standing_runtime.get());
+                    state.lua_runtime->set_flag_runtime(state.flag_runtime.get());
+                    state.lua_runtime->set_event_timeline_runtime(&state.event_timeline_runtime);
+                    state.lua_runtime->set_dialogue_runtime(&state.dialogue_runtime);
                     if (state.audio_engine) state.lua_runtime->set_audio_engine(state.audio_engine.get());
                 }
             });
@@ -7114,6 +10583,30 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             state.game_viewport_max = image_max;
             state.game_viewport_hovered = state.viewport_hovered;
             state.ui_canvas_stack->draw_overlay(draw_list, image_min, image_max);
+            if (state.lua_runtime) {
+                const auto prompt = state.lua_runtime->blackboard_get("interact.prompt");
+                const bool show_prompt =
+                    prompt && prompt->type == ScriptBlackboardType::Bool && prompt->bool_value;
+                float wx = 20.0f, wy = 6.0f, wz = 22.5f;
+                std::string label = "Press E to interact";
+                if (show_prompt) {
+                    if (const auto x = state.lua_runtime->blackboard_get("interact.x");
+                        x && x->type == ScriptBlackboardType::Number)
+                        wx = static_cast<float>(x->number_value);
+                    if (const auto y = state.lua_runtime->blackboard_get("interact.y");
+                        y && y->type == ScriptBlackboardType::Number)
+                        wy = static_cast<float>(y->number_value);
+                    if (const auto z = state.lua_runtime->blackboard_get("interact.z");
+                        z && z->type == ScriptBlackboardType::Number)
+                        wz = static_cast<float>(z->number_value);
+                    if (const auto lb = state.lua_runtime->blackboard_get("interact.label");
+                        lb && lb->type == ScriptBlackboardType::String && !lb->string_value.empty())
+                        label = lb->string_value;
+                }
+                state.world_ui_billboards.sync_interact_prompt(show_prompt, label, wx, wy, wz);
+            }
+            const ViewportRect game_rect{image_min.x, image_min.y, image_max.x, image_max.y};
+            state.world_ui_billboards.draw(draw_list, view_projection, game_rect);
         } else if (game_tab) {
             state.game_viewport_min.reset();
             state.game_viewport_max.reset();
@@ -7130,7 +10623,59 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             ImGuizmo::SetOrthographic(false);
             ImGuizmo::SetDrawlist();
             ImGuizmo::SetRect(image_min.x, image_min.y, frame.width, frame.height);
-            if (edit_mode && state.selected && state.scene.placement(*state.selected)) {
+            bool particle_gizmo_active = false;
+            if (edit_mode && state.selected && state.particle_gizmo_index && state.scene.placement(*state.selected)) {
+                const auto placement = state.scene.placement(*state.selected);
+                const auto prefab_key =
+                    resolve_prefab_catalog_path(state.prefab_catalog, placement->prefab_asset);
+                auto prefab_it = state.prefab_catalog.find(prefab_key);
+                if (prefab_it == state.prefab_catalog.end())
+                    prefab_it = state.prefab_catalog.find(normalize_asset_path(placement->prefab_asset));
+                if (prefab_it != state.prefab_catalog.end() &&
+                    *state.particle_gizmo_index < prefab_it->second.particles.size()) {
+                    particle_gizmo_active = true;
+                    auto& emitter = prefab_it->second.particles[*state.particle_gizmo_index];
+                    const auto transform = state.gizmo_preview && state.gizmo_entity &&
+                                                   *state.gizmo_entity == *state.selected
+                                               ? *state.gizmo_preview
+                                               : state.scene.transform(*state.selected).value();
+                    if (!state.particle_gizmo_entity || *state.particle_gizmo_entity != *state.selected ||
+                        !state.particle_gizmo_was_using) {
+                        const auto world = particle_world_from_local(transform, emitter.offset);
+                        using namespace DirectX;
+                        // LOCAL axes follow the placement so dragging matches prefab-local offset.
+                        const auto model =
+                            XMMatrixRotationQuaternion(
+                                XMLoadFloat4(reinterpret_cast<const XMFLOAT4*>(transform.rotation.data()))) *
+                            XMMatrixTranslation(world[0], world[1], world[2]);
+                        XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4*>(state.particle_gizmo_matrix.data()), model);
+                        state.particle_gizmo_entity = state.selected;
+                    }
+                    if (!state.terrain_drag_active) {
+                        ImGuizmo::Manipulate(view.data(), projection.data(), ImGuizmo::TRANSLATE, ImGuizmo::LOCAL,
+                            state.particle_gizmo_matrix.data());
+                    }
+                    const bool using_now = ImGuizmo::IsUsing();
+                    if (using_now || state.particle_gizmo_was_using) {
+                        float position[3];
+                        float rotation[3];
+                        float scale[3];
+                        ImGuizmo::DecomposeMatrixToComponents(
+                            state.particle_gizmo_matrix.data(), position, rotation, scale);
+                        emitter.offset = particle_local_from_world(transform,
+                            {position[0], position[1], position[2]});
+                        prefab_it->second.particle.reset();
+                        state.status = using_now ? "Moving particle emitter (release to finish; Save Prefab to persist)"
+                                                 : "Particle emitter offset updated — Save Prefab to persist";
+                    }
+                    state.particle_gizmo_was_using = using_now;
+                } else {
+                    state.particle_gizmo_index.reset();
+                    state.particle_gizmo_entity.reset();
+                    state.particle_gizmo_was_using = false;
+                }
+            }
+            if (edit_mode && state.selected && state.scene.placement(*state.selected) && !particle_gizmo_active) {
                 if (!state.gizmo_entity || *state.gizmo_entity != *state.selected) {
                     const auto transform = state.scene.transform(*state.selected).value();
                     using namespace DirectX;
@@ -7210,6 +10755,9 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                     state.inspector_player_spawn_entity.reset();
                     state.gizmo_entity.reset();
                     state.gizmo_preview.reset();
+                    state.particle_gizmo_index.reset();
+                    state.particle_gizmo_entity.reset();
+                    state.particle_gizmo_was_using = false;
                     if (state.left_press_pick)
                         state.status = "Object selected from viewport";
                     else if (const auto hit = viewport_raycast(collision, frame, view, projection, mouse)) {
@@ -7352,6 +10900,19 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 state.status = "Painting terrain";
             };
 
+            const auto capture_foliage_brush_before = [&](float world_x, float world_z, float radius) {
+                constexpr float cell_size = FoliageDensityStore::k_cell_size;
+                const int cell_extent = static_cast<int>(std::ceil(radius / cell_size)) + 1;
+                const auto center_cell = terrain_cell_for_position(world_x, world_z, cell_size);
+                for (int dz = -cell_extent; dz <= cell_extent; ++dz) {
+                    for (int dx = -cell_extent; dx <= cell_extent; ++dx) {
+                        const CellCoord cell{center_cell.x + dx, center_cell.z + dz};
+                        if (state.foliage_brush_before.find(cell) == state.foliage_brush_before.end())
+                            state.foliage_brush_before[cell] = state.foliage_density.cell_snapshot_or_empty(cell);
+                    }
+                }
+            };
+
             const auto apply_foliage_brush_at = [&](const WorldPosition& hit, bool shift_held) {
                 if (state.foliage_layers.layers.empty()) {
                     state.status = "Load foliage layers before painting";
@@ -7359,6 +10920,9 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 }
                 const bool erase = state.foliage_brush_mode == EditorState::FoliageBrushMode::Erase ||
                     (shift_held && state.foliage_brush_mode != EditorState::FoliageBrushMode::Erase);
+                // Snapshot before mutating — post-paint capture made Undo restore the painted state.
+                capture_foliage_brush_before(static_cast<float>(hit.x), static_cast<float>(hit.z),
+                    state.terrain_brush_radius);
                 const auto touched = [&]() -> Result<std::set<CellCoord>> {
                     if (state.foliage_brush_mode == EditorState::FoliageBrushMode::Mixed) {
                         const auto mix = default_meadow_mix_weights(state.foliage_layers);
@@ -7374,11 +10938,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                     Logger::instance().write(touched.error());
                     return;
                 }
-                for (const auto& cell : touched.value()) {
-                    if (state.foliage_brush_before.find(cell) == state.foliage_brush_before.end())
-                        state.foliage_brush_before[cell] = state.foliage_density.cell_snapshot_or_empty(cell);
-                    state.foliage_brush_touched.insert(cell);
-                }
+                for (const auto& cell : touched.value()) state.foliage_brush_touched.insert(cell);
                 state.foliage_density_dirty = true;
                 if (streamed_foliage && streamed_terrain) {
                     std::set<CellCoord> reload;
@@ -7503,12 +11063,14 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 draw_viewport_selection_overlays(state, frame, view_projection);
             draw_collision_debug_overlays(collision, state, frame, view_projection, character, interactions, combat);
             draw_authored_collider_overlays(state, frame, view_projection);
+            draw_event_zone_overlays(state, frame, view_projection);
             draw_world_forge_map_marker_overlays(state, frame, view_projection);
             if (state.drop_preview_prefab)
                 ImGui::SetTooltip("Drop %s here", state.drop_preview_prefab->c_str());
     }
     ImGui::End();
     process_test_session_ui_input(state);
+    process_coop_lobby_editor_hooks(state);
 
     ImGui::SetNextWindowPos(origin, ImGuiCond_Always);
     ImGui::SetNextWindowSize({left, top * 0.48f}, ImGuiCond_Always);
@@ -7524,6 +11086,9 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             state.inspector_player_spawn_entity.reset();
             state.gizmo_entity.reset();
             state.gizmo_preview.reset();
+            state.particle_gizmo_index.reset();
+            state.particle_gizmo_entity.reset();
+            state.particle_gizmo_was_using = false;
         }
         if (ImGui::IsItemHovered()) state.hovered = id;
         if (is_hovered && !is_selected) ImGui::PopStyleColor();
@@ -7735,6 +11300,34 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                     else mark_scene_dirty(state);
                 }
             }
+            {
+                const auto prefab_key =
+                    resolve_prefab_catalog_path(state.prefab_catalog, placement->prefab_asset);
+                auto prefab_it = state.prefab_catalog.find(prefab_key);
+                if (prefab_it == state.prefab_catalog.end())
+                    prefab_it = state.prefab_catalog.find(normalize_asset_path(placement->prefab_asset));
+                if (prefab_it != state.prefab_catalog.end()) {
+                    ImGui::Separator();
+                    draw_prefab_particle_attachment_editors(
+                        state, prefab_it->second, "inspector_placement_particles");
+                    if (prefab_it->second.light) {
+                        ImGui::TextUnformatted("Point Light");
+                        ImGui::SameLine();
+                        ImGui::TextDisabled("(prefab)");
+                        ImGui::ColorEdit3("Light Color##insp", prefab_it->second.light->color.data());
+                        ImGui::DragFloat("Light Radius##insp", &prefab_it->second.light->radius, 0.25f, 0.5f, 200.0f);
+                        ImGui::DragFloat(
+                            "Light Strength##insp", &prefab_it->second.light->strength, 0.05f, 0.0f, 20.0f);
+                        ImGui::DragFloat3(
+                            "Light Local Offset##insp", prefab_it->second.light->offset.data(), 0.01f);
+                    }
+                    if (ImGui::Button("Save Prefab##inspector"))
+                        (void)save_prefab_catalog_entry(state, prefab_it->first, prefab_it->second);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip(
+                            "Writes particle/light offsets to the prefab JSON (shared by all instances)");
+                }
+            }
             if (ImGui::Button("Snap To Terrain") && collision) {
                 const auto current = state.scene.transform(*state.selected).value();
                 if (const auto hit = collision->ray_cast(
@@ -7828,9 +11421,9 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             state.prefab_bounds[normalized] = prefab.bounds(state.mesh_bounds, lookup_material);
             ImGui::Separator();
             ImGui::Text("Collision / Components");
-            ImGui::Text("Colliders: %zu | Scripts: %zu | Animators: %zu | Rigidbodies: %zu | Audio: %zu",
+            ImGui::Text("Colliders: %zu | Scripts: %zu | Animators: %zu | Rigidbodies: %zu | Audio: %zu | Particles: %zu",
                 prefab.collision.size(), prefab.script_bindings.size(), prefab.animators.size(),
-                prefab.rigidbodies.size(), prefab.audio_sources.size());
+                prefab.rigidbodies.size(), prefab.audio_sources.size(), prefab.particles.size());
             for (std::size_t index = 0; index < prefab.collision.size(); ++index) {
                 auto& volume = prefab.collision[index];
                 ImGui::PushID(static_cast<int>(index));
@@ -7956,6 +11549,19 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 }
                 ImGui::PopID();
             }
+            ImGui::Separator();
+            draw_prefab_particle_attachment_editors(state, prefab, "prefab_editor_particles");
+            if (prefab.light) {
+                ImGui::Separator();
+                ImGui::TextUnformatted("Point Light");
+                ImGui::ColorEdit3("Light Color", prefab.light->color.data());
+                ImGui::DragFloat("Light Radius", &prefab.light->radius, 0.25f, 0.5f, 200.0f);
+                ImGui::DragFloat("Light Strength", &prefab.light->strength, 0.05f, 0.0f, 20.0f);
+                ImGui::DragFloat3("Light Local Offset", prefab.light->offset.data(), 0.01f);
+                if (ImGui::SmallButton("Remove Light")) prefab.light.reset();
+            } else if (ImGui::SmallButton("Add Point Light")) {
+                prefab.light = PrefabPointLight{};
+            }
             {
                 static int add_prefab_component_type = 0;
                 const char* add_labels[] = {"Collider", "Script Binding", "Rigidbody", "Audio Source"};
@@ -7991,18 +11597,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 }
             }
             if (ImGui::Button("Save Prefab")) {
-                const auto saved = prefab.save(state.project_root / normalized);
-                state.status = saved ? "Prefab saved" : saved.error().message;
-                if (!saved) Logger::instance().write(saved.error());
-                else {
-                    state.prefab_bounds[normalized] = prefab.bounds(state.mesh_bounds, lookup_material);
-                    state.prefab_meshes_dirty = true;
-                    const auto propagated = state.scene.propagate_prefab_components(normalized, prefab);
-                    if (propagated > 0) {
-                        mark_scene_dirty(state);
-                        state.status = "Prefab saved; propagated to " + std::to_string(propagated) + " instance(s)";
-                    }
-                }
+                (void)save_prefab_catalog_entry(state, normalized, prefab);
             }
             ImGui::SameLine();
             if (ImGui::Button("Close")) {
@@ -8024,7 +11619,12 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     ImGui::SetNextWindowPos({origin.x + left, origin.y + top}, ImGuiCond_Always);
     ImGui::SetNextWindowSize({center, bottom}, ImGuiCond_Always);
     ImGui::Begin("Diagnostics", nullptr, locked);
+    ImGui::BeginTabBar("DiagnosticsTabs");
+    if (ImGui::BeginTabItem("Diagnostics")) {
     ImGui::Checkbox("Show collision debug", &state.show_collision_debug);
+    ImGui::Checkbox("Show event zones", &state.show_event_zones);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Draw authored interaction / event trigger volumes with labels");
     ImGui::Checkbox("Show World Forge map markers", &state.show_world_forge_map_markers);
     ImGui::BeginDisabled(!state.show_world_forge_map_markers ||
                          !selected_world_forge_marker_world(state.world_forge_editor).has_value());
@@ -8089,6 +11689,23 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 event.interaction_id.c_str(), event.placement_entity_id.c_str());
         }
     }
+    {
+        ImGui::Separator();
+        ImGui::Text("Dialogue runtime");
+        if (state.dialogue_runtime.tree_id().empty()) {
+            ImGui::TextDisabled("inactive");
+        } else if (const auto present = state.dialogue_runtime.present()) {
+            ImGui::Text("tree: %s", present.value().tree_id.c_str());
+            ImGui::Text("node: %s", present.value().node_id.c_str());
+            ImGui::TextWrapped("%s: %s",
+                present.value().speaker_id.empty() ? "Narrator" : present.value().speaker_id.c_str(),
+                present.value().line.c_str());
+            ImGui::Text("choices: %d  complete: %s", static_cast<int>(present.value().choices.size()),
+                present.value().complete ? "yes" : "no");
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.2f, 1.0f), "%s", present.error().message.c_str());
+        }
+    }
     if (!state.recent_combat_events.empty()) {
         ImGui::Separator();
         ImGui::Text("Recent combat hits");
@@ -8104,6 +11721,122 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         ImGui::TextColored(color, "[%s][%s] %s: %s", to_string(error.severity), to_string(error.priority),
                            error.code.c_str(), error.message.c_str());
     }
+    ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Performance")) {
+        ImGui::Text("%.1f FPS", state.performance_fps);
+        if (state.performance_fps_history_count > 1) {
+            float history_min = state.performance_fps_history[0];
+            float history_max = history_min;
+            double history_sum = 0.0;
+            for (std::size_t i = 0; i < state.performance_fps_history_count; ++i) {
+                const float sample = state.performance_fps_history[i];
+                history_min = (std::min)(history_min, sample);
+                history_max = (std::max)(history_max, sample);
+                history_sum += static_cast<double>(sample);
+            }
+            const float history_avg =
+                static_cast<float>(history_sum / static_cast<double>(state.performance_fps_history_count));
+            char overlay[96];
+            std::snprintf(overlay, sizeof(overlay), "avg %.0f  min %.0f  max %.0f", history_avg, history_min,
+                history_max);
+            const float scale_max = (std::max)(120.0f, history_max * 1.05f);
+            const int values_offset = state.performance_fps_history_count < EditorState::k_performance_fps_history
+                ? 0
+                : static_cast<int>(state.performance_fps_history_write);
+            ImGui::PlotLines("##fps_history", state.performance_fps_history.data(),
+                static_cast<int>(state.performance_fps_history_count), values_offset, overlay, 0.0f, scale_max,
+                ImVec2(-1.0f, 80.0f));
+            ImGui::TextDisabled("FPS over last %llu frames (instantaneous)",
+                static_cast<unsigned long long>(state.performance_fps_history_count));
+            if (state.performance_dip_valid) {
+                const auto& worst = state.performance_worst_dip;
+                ImGui::Text("Worst dip: %.1f FPS (%.2f ms) @ %s  frame %llu", worst.fps, worst.wall_ms,
+                    worst.local_time.c_str(), static_cast<unsigned long long>(worst.frame));
+                ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.25f, 1.0f), "  dominant: %s", worst.dominant.c_str());
+                ImGui::TextDisabled(
+                    "  sim %.2f (terr %.2f fol %.2f wat %.2f coll %.2f phys %.2f) | prep %.2f up %.2f cache %.2f skin %.2f | ui %.2f submit %.2f present %.2f wait %.2f gpu %.2f",
+                    worst.sim_ms, worst.terrain_ms, worst.foliage_ms, worst.water_ms, worst.collision_ms,
+                    worst.physics_ms, worst.render_prep_ms, worst.foliage_upload_ms, worst.cache_rebuild_ms,
+                    worst.cpu_skin_ms, worst.editor_ui_ms, worst.submit_ms, worst.present_ms, worst.gpu_wait_ms,
+                    worst.gpu_ms);
+            }
+            if (!state.performance_dips.empty()) {
+                ImGui::Text("Recent dips (<%.0f FPS, boot ignored)",
+                    EditorState::k_performance_dip_fps_threshold);
+                const int show = static_cast<int>((std::min)(state.performance_dips.size(), std::size_t{8}));
+                for (int i = 0; i < show; ++i) {
+                    const auto& dip = state.performance_dips[state.performance_dips.size() - 1 - static_cast<std::size_t>(i)];
+                    ImGui::Text("  %s  %.0f FPS  %.1f ms  %s%s", dip.local_time.c_str(), dip.fps, dip.wall_ms,
+                        dip.dominant.c_str(), dip.play_test ? "  [play]" : "");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::BeginTooltip();
+                        ImGui::Text("frame %llu", static_cast<unsigned long long>(dip.frame));
+                        ImGui::Text("sim %.2f terr %.2f fol %.2f wat %.2f coll %.2f phys %.2f", dip.sim_ms,
+                            dip.terrain_ms, dip.foliage_ms, dip.water_ms, dip.collision_ms, dip.physics_ms);
+                        ImGui::Text("prep %.2f foliageUp %.2f cache %.2f skin %.2f ui %.2f", dip.render_prep_ms,
+                            dip.foliage_upload_ms, dip.cache_rebuild_ms, dip.cpu_skin_ms, dip.editor_ui_ms);
+                        ImGui::Text("submit %.2f present %.2f wait %.2f gpu %.2f", dip.submit_ms, dip.present_ms,
+                            dip.gpu_wait_ms, dip.gpu_ms);
+                        ImGui::EndTooltip();
+                    }
+                }
+            } else {
+                ImGui::TextDisabled("No gameplay dips logged yet (threshold %.0f FPS)",
+                    EditorState::k_performance_dip_fps_threshold);
+            }
+            if (ImGui::SmallButton("Clear FPS graph")) {
+                state.performance_fps_history.fill(0.0f);
+                state.performance_fps_history_write = 0;
+                state.performance_fps_history_count = 0;
+                clear_performance_dip_history(state);
+            }
+        } else {
+            ImGui::TextDisabled("FPS graph collecting samples...");
+        }
+        ImGui::Separator();
+        ImGui::Text("Frame wall time: %.2f ms", state.performance_wall_ms);
+        ImGui::Text("CPU work (estimated): %.2f ms", state.performance_cpu_work_ms);
+        ImGui::Text("GPU frame: %.2f ms", state.performance_gpu_ms);
+        ImGui::Text("Present wait: %.2f ms", state.performance_present_ms);
+        ImGui::Text("GPU fence wait: %.2f ms", state.performance_gpu_wait_ms);
+        ImGui::Separator();
+        ImGui::Text("CPU phase timings");
+        ImGui::Text("Pre-UI / automation: %.2f ms", state.performance_pre_ui_ms);
+        ImGui::Text("Simulation: %.2f ms (last %.2f)", state.performance_simulation_ms, state.performance_last_sim_ms);
+        ImGui::Text("  Terrain stream/upload: %.2f ms", state.performance_terrain_ms);
+        ImGui::Text("  Foliage sync: %.2f ms", state.performance_foliage_ms);
+        ImGui::Text("  Water stream/upload: %.2f ms", state.performance_water_ms);
+        ImGui::Text("  Placement collision: %.2f ms", state.performance_collision_ms);
+        ImGui::Text("  Physics step: %.2f ms", state.performance_physics_ms);
+        ImGui::Text("Editor UI: %.2f ms", state.performance_editor_ui_ms);
+        ImGui::Text("Render preparation: %.2f ms", state.performance_render_prep_ms);
+        ImGui::Text("  Foliage upload: %.2f ms", state.performance_foliage_upload_ms);
+        ImGui::Text("  Skin matrices: %.2f ms", state.performance_cpu_skin_ms);
+        ImGui::Text("  Cache rebuild: %.2f ms", state.performance_cache_rebuild_ms);
+        ImGui::Text("  Prop expand (worker): %.2f ms | %llu rebuild(s)%s", state.performance_cache_worker_ms,
+            static_cast<unsigned long long>(state.static_render_cache_rebuilds),
+            state.static_render_cache_job ? " | building" : "");
+        ImGui::Text("Render submit / present: %.2f ms", state.performance_render_submit_ms);
+        ImGui::Text("Process CPU: %.1f%%", state.performance_process_cpu_percent);
+        ImGui::Text("Process RAM: %.0f MB", state.performance_working_set_mb);
+        if (state.performance_gpu_memory_budget_mb > 0.0) {
+            ImGui::Text("GPU RAM: %.0f / %.0f MB", state.performance_gpu_memory_used_mb,
+                state.performance_gpu_memory_budget_mb);
+        } else {
+            ImGui::TextDisabled("GPU RAM unavailable");
+        }
+        ImGui::Separator();
+        ImGui::Text("%llu draws | %llu instances", static_cast<unsigned long long>(state.performance_draw_calls),
+            static_cast<unsigned long long>(state.performance_instances));
+        ImGui::Text("%llu terrain cells", static_cast<unsigned long long>(state.performance_terrain_cells));
+        ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Coordination")) {
+        draw_build_coordination_tab(state);
+        ImGui::EndTabItem();
+    }
+    ImGui::EndTabBar();
     ImGui::End();
     draw_new_material_asset_popup(state);
 }
@@ -8122,6 +11855,43 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         SDL_Quit();
         return Result<RenderStats>::failure(error);
     }
+    apply_sdl_window_icon(window);
+
+    Renderer renderer;
+    const bool editor_boot_ui = options.editor && !options.hidden;
+    auto abort_startup = [&](const EngineError& error) -> Result<RenderStats> {
+        renderer.release();
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return Result<RenderStats>::failure(error);
+    };
+    auto present_boot = [&](const char* stage, const char* detail, float progress) -> Result<void> {
+        if (!editor_boot_ui) return Result<void>::success();
+        SDL_Event event{};
+        while (SDL_PollEvent(&event)) {
+            ImGui_ImplSDL3_ProcessEvent(&event);
+            if (event.type == SDL_EVENT_QUIT) {
+                return Result<void>::failure(
+                    graphics_error("PLATFORM-QUIT", "Editor closed during startup"));
+            }
+            if (event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+                int width = 0, height = 0;
+                SDL_GetWindowSizeInPixels(window, &width, &height);
+                auto resized = renderer.resize(static_cast<UINT>(width), static_cast<UINT>(height));
+                if (!resized) return resized;
+            }
+        }
+        return renderer.present_boot_frame(stage, detail, progress);
+    };
+
+    if (options.editor) {
+        auto early =
+            renderer.initialize_device_and_imgui(window, options.enable_debug_layer, true, options.hidden);
+        if (!early) return abort_startup(early.error());
+        if (auto boot = present_boot("Initializing graphics", "Direct3D 12 + editor UI", 0.08f); !boot)
+            return abort_startup(boot.error());
+        SDL_SetWindowTitle(window, "AI RPG Engine Editor");
+    }
 
     MaterialAsset terrain_material;
     TerrainEditStore runtime_terrain_edits;
@@ -8131,38 +11901,77 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
     if(options.debug_world&&!options.project_root.empty()){
         const auto path=options.project_root/"assets/materials/terrain.material.json";
         auto loaded=MaterialAsset::load(path);
-        if(!loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(loaded.error());}
+        if(!loaded) return abort_startup(loaded.error());
         terrain_material=loaded.value();
         const auto edits_path=default_terrain_edits_path(options.project_root);
-        if(std::filesystem::exists(edits_path)){const auto edits_loaded=TerrainEditStore::load(edits_path);if(!edits_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(edits_loaded.error());}runtime_terrain_edits=std::move(edits_loaded.value());}
+        if(std::filesystem::exists(edits_path)){const auto edits_loaded=TerrainEditStore::load(edits_path);if(!edits_loaded)return abort_startup(edits_loaded.error());runtime_terrain_edits=std::move(edits_loaded.value());}
         const auto water_path=default_water_surfaces_path(options.project_root);
-        if(std::filesystem::exists(water_path)){const auto water_loaded=WaterStore::load(water_path);if(!water_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(water_loaded.error());}runtime_water=std::move(water_loaded.value());}
+        if(std::filesystem::exists(water_path)){const auto water_loaded=WaterStore::load(water_path);if(!water_loaded)return abort_startup(water_loaded.error());runtime_water=std::move(water_loaded.value());}
         if(const auto map_loaded=WorldForgeMapAsset::load(default_world_forge_map_path(options.project_root));map_loaded){std::vector<WaterSeaRegion> sea_regions;for(const auto& region:map_loaded.value().hydrology_regions){if(region.kind!=WorldForgeHydrologyKind::Sea)continue;sea_regions.push_back(WaterSeaRegion{region.id,region.min_x,region.max_x,region.min_z,region.max_z});}runtime_water.set_sea_regions(std::move(sea_regions));}
         const auto water_material_path=options.project_root/"assets/materials/water.material.json";
         if(const auto water_material=MaterialAsset::load(water_material_path);water_material){water_color=water_material.value().base_color;water_roughness=water_material.value().roughness;}
         if(!options.editor){set_active_terrain_edits(&runtime_terrain_edits);set_active_water_store(&runtime_water);}
     }
     std::optional<EditorState> editor;
-    if(options.editor){auto scene=Scene::load(options.world_path);if(!scene){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(scene.error());}EditorState value;value.scene=std::move(scene.value());const auto ids=value.scene.entity_ids();if(!ids.empty())value.selected=ids.front();value.world_path=options.world_path;auto scanned=value.assets.scan(options.project_root);if(!scanned){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(scanned.error());}const auto prefabs=load_prefab_catalog(value,options.project_root);if(!prefabs){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(prefabs.error());}const auto play=load_editor_play_session(value);if(!play){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(play.error());}sync_player_placement_tags(value);(void)value.scene.repair_prefab_paths(value.prefab_catalog);if(value.scene.seed_missing_authored_components(value.prefab_catalog)>0)value.scene_dirty=true;value.character_asset.visual_prefab=resolve_prefab_catalog_path(value.prefab_catalog,value.character_asset.visual_prefab);const auto edits_path=default_terrain_edits_path(options.project_root);if(std::filesystem::exists(edits_path)){const auto edits_loaded=TerrainEditStore::load(edits_path);if(!edits_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(edits_loaded.error());}value.terrain_edits=std::move(edits_loaded.value());}const auto paint_path=default_terrain_paint_path(options.project_root);if(std::filesystem::exists(paint_path)){const auto paint_loaded=TerrainPaintStore::load(paint_path);if(!paint_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(paint_loaded.error());}value.terrain_paint=std::move(paint_loaded.value());}const auto foliage_layers_path=default_foliage_layers_path(options.project_root);if(std::filesystem::exists(foliage_layers_path)){const auto layers_loaded=FoliageLayerPalette::load(foliage_layers_path);if(!layers_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(layers_loaded.error());}value.foliage_layers=std::move(layers_loaded.value());}else{value.foliage_layers.schema_version=1;value.foliage_layers.layers={{"grass","Grass","grass_blade",{0.14f,0.22f,0.10f},0.55f,1.0f,0.15f,0.55f,0.35f,1.2f,0.55f,"grass_walk"},{"flower","Flower","flower_clump",{0.62f,0.28f,0.48f},0.45f,0.85f,0.03f,0.45f,0.1f,0.9f,0.45f,"",FoliageScatterMode::GroundCover,64},{"bush","Bush","bush",{0.14f,0.22f,0.10f},0.85f,1.15f,1.0f,0.5f,0.08f,1.4f,0.95f,"",FoliageScatterMode::Discrete,72}};}const auto foliage_density_path=default_foliage_density_path(options.project_root);if(std::filesystem::exists(foliage_density_path)){const auto foliage_loaded=FoliageDensityStore::load(foliage_density_path);if(!foliage_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(foliage_loaded.error());}value.foliage_density=std::move(foliage_loaded.value());}const auto water_path=default_water_surfaces_path(options.project_root);if(std::filesystem::exists(water_path)){const auto water_loaded=WaterStore::load(water_path);if(!water_loaded){SDL_DestroyWindow(window);SDL_Quit();return Result<RenderStats>::failure(water_loaded.error());}value.water_store=std::move(water_loaded.value());}if(const auto map_loaded=WorldForgeMapAsset::load(default_world_forge_map_path(options.project_root));map_loaded){std::vector<WaterSeaRegion> sea_regions;for(const auto& region:map_loaded.value().hydrology_regions){if(region.kind!=WorldForgeHydrologyKind::Sea)continue;sea_regions.push_back(WaterSeaRegion{region.id,region.min_x,region.max_x,region.min_z,region.max_z});}value.water_store.set_sea_regions(std::move(sea_regions));}value.terrain_paint_brush_material=value.terrain_material_path;warm_material_cache(value);if(!options.initial_viewport.empty()){const auto&v=options.initial_viewport;if(v=="sculpt")value.active_viewport_tab=EditorState::ViewportTab::Sculpt;else if(v=="game")value.active_viewport_tab=EditorState::ViewportTab::Game;else if(v=="ui")value.active_viewport_tab=EditorState::ViewportTab::UI;else if(v=="world-forge"||v=="world_forge"||v=="worldforge")value.active_viewport_tab=EditorState::ViewportTab::WorldForge;else value.active_viewport_tab=EditorState::ViewportTab::Scene;value.force_select_viewport_tab=true;value.lock_viewport_tab=true;}editor=std::move(value);set_active_terrain_edits(&editor->terrain_edits);set_active_water_store(&editor->water_store);SDL_SetWindowTitle(window,"AI RPG Engine Editor");}
+    if (options.editor) {
+        if (auto boot = present_boot("Loading project", "Scene, assets, and world data", 0.18f); !boot)
+            return abort_startup(boot.error());
+        auto scene=Scene::load(options.world_path);if(!scene)return abort_startup(scene.error());
+        EditorState value;value.scene=std::move(scene.value());const auto ids=value.scene.entity_ids();if(!ids.empty())value.selected=ids.front();value.world_path=options.world_path;
+        if (auto boot = present_boot("Scanning assets", options.project_root.generic_string().c_str(), 0.28f); !boot)
+            return abort_startup(boot.error());
+        auto scanned=value.assets.scan(options.project_root);if(!scanned)return abort_startup(scanned.error());
+        const auto prefabs=load_prefab_catalog(value,options.project_root);if(!prefabs)return abort_startup(prefabs.error());
+        const auto particles=load_particle_assets(value);if(!particles)return abort_startup(particles.error());
+        const auto play=load_editor_play_session(value);if(!play)return abort_startup(play.error());
+        sync_player_placement_tags(value);(void)value.scene.repair_prefab_paths(value.prefab_catalog);if(value.scene.seed_missing_authored_components(value.prefab_catalog)>0)value.scene_dirty=true;value.character_asset.visual_prefab=resolve_prefab_catalog_path(value.prefab_catalog,value.character_asset.visual_prefab);
+        if (auto boot = present_boot("Loading terrain", "Height, paint, foliage, and water", 0.36f); !boot)
+            return abort_startup(boot.error());
+        const auto edits_path=default_terrain_edits_path(options.project_root);if(std::filesystem::exists(edits_path)){const auto edits_loaded=TerrainEditStore::load(edits_path);if(!edits_loaded)return abort_startup(edits_loaded.error());value.terrain_edits=std::move(edits_loaded.value());}
+        const auto paint_path=default_terrain_paint_path(options.project_root);if(std::filesystem::exists(paint_path)){const auto paint_loaded=TerrainPaintStore::load(paint_path);if(!paint_loaded)return abort_startup(paint_loaded.error());value.terrain_paint=std::move(paint_loaded.value());}
+        const auto foliage_layers_path=default_foliage_layers_path(options.project_root);if(std::filesystem::exists(foliage_layers_path)){const auto layers_loaded=FoliageLayerPalette::load(foliage_layers_path);if(!layers_loaded)return abort_startup(layers_loaded.error());value.foliage_layers=std::move(layers_loaded.value());}else{value.foliage_layers.schema_version=1;value.foliage_layers.layers={{"grass","Grass","grass_blade",{0.227f,0.251f,0.157f},0.9f,1.45f,0.16f,0.55f,0.5f,1.5f,0.7f,"grass_walk"},{"flower","Flower","flower_clump",{0.62f,0.28f,0.48f},0.45f,0.85f,0.03f,0.45f,0.1f,0.9f,0.45f,"",FoliageScatterMode::GroundCover,64},{"bush","Bush","bush",{0.14f,0.22f,0.10f},0.85f,1.15f,1.0f,0.5f,0.08f,1.4f,0.95f,"",FoliageScatterMode::Discrete,72}};}
+        const auto foliage_density_path=default_foliage_density_path(options.project_root);if(std::filesystem::exists(foliage_density_path)){const auto foliage_loaded=FoliageDensityStore::load(foliage_density_path);if(!foliage_loaded)return abort_startup(foliage_loaded.error());value.foliage_density=std::move(foliage_loaded.value());}
+        const auto water_path=default_water_surfaces_path(options.project_root);if(std::filesystem::exists(water_path)){const auto water_loaded=WaterStore::load(water_path);if(!water_loaded)return abort_startup(water_loaded.error());value.water_store=std::move(water_loaded.value());}
+        if(const auto map_loaded=WorldForgeMapAsset::load(default_world_forge_map_path(options.project_root));map_loaded){std::vector<WaterSeaRegion> sea_regions;for(const auto& region:map_loaded.value().hydrology_regions){if(region.kind!=WorldForgeHydrologyKind::Sea)continue;sea_regions.push_back(WaterSeaRegion{region.id,region.min_x,region.max_x,region.min_z,region.max_z});}value.water_store.set_sea_regions(std::move(sea_regions));}
+        value.terrain_paint_brush_material=value.terrain_material_path;warm_material_cache(value);
+        if(!options.initial_viewport.empty()){const auto&v=options.initial_viewport;if(v=="sculpt")value.active_viewport_tab=EditorState::ViewportTab::Sculpt;else if(v=="game")value.active_viewport_tab=EditorState::ViewportTab::Game;else if(v=="ui")value.active_viewport_tab=EditorState::ViewportTab::UI;else if(v=="world-forge"||v=="world_forge"||v=="worldforge")value.active_viewport_tab=EditorState::ViewportTab::WorldForge;else value.active_viewport_tab=EditorState::ViewportTab::Scene;value.force_select_viewport_tab=true;value.lock_viewport_tab=true;}
+        editor=std::move(value);set_active_terrain_edits(&editor->terrain_edits);set_active_water_store(&editor->water_store);
+        editor->app_icon_tex = renderer.app_icon_tex_id();
+    }
     std::vector<std::pair<std::string, ImportedMesh>> imported_meshes;
     std::optional<PrefabAsset> runtime_player_prefab;
     if (editor) {
+        if (options.require_gpu_timestamps || options.initial_viewport == "game") {
+            // TICKET-0139 / 0219: Game play-test pose with streamed neighborhood for representative timing/QA.
+            editor->active_viewport_tab = EditorState::ViewportTab::Game;
+            editor->force_select_viewport_tab = true;
+            editor->lock_viewport_tab = true;
+            editor->test_session_command = EditorState::TestSessionCommand::Start;
+        }
+        std::vector<std::string> mesh_paths;
         for (const auto& entry : editor->assets.records()) {
             const auto relative = normalize_asset_path(entry.second.path);
             const auto file_extension = std::filesystem::path(relative).extension().string();
-            if (file_extension == ".gltf" || file_extension == ".glb") {
-                auto imported = import_project_mesh(options.project_root / relative);
-                if (!imported) {
-                    // Clip-only glTFs are animation sources, not render meshes.
-                    if (imported.error().code == "MESH-ANIMATION-ONLY") continue;
-                    SDL_DestroyWindow(window);
-                    SDL_Quit();
-                    return Result<RenderStats>::failure(imported.error());
-                }
-                editor->mesh_bounds[relative] = imported.value().aabb;
-                imported_meshes.emplace_back(relative, std::move(imported.value()));
-            }
+            if (file_extension == ".gltf" || file_extension == ".glb") mesh_paths.push_back(relative);
         }
+        const std::size_t mesh_total = mesh_paths.empty() ? 1u : mesh_paths.size();
+        for (std::size_t mesh_index = 0; mesh_index < mesh_paths.size(); ++mesh_index) {
+            const auto& relative = mesh_paths[mesh_index];
+            const float mesh_progress =
+                0.42f + 0.22f * (static_cast<float>(mesh_index) / static_cast<float>(mesh_total));
+            if (auto boot = present_boot("Importing meshes", relative.c_str(), mesh_progress); !boot)
+                return abort_startup(boot.error());
+            auto imported = import_project_mesh(options.project_root / relative);
+            if (!imported) {
+                // Clip-only glTFs are animation sources, not render meshes.
+                if (imported.error().code == "MESH-ANIMATION-ONLY") continue;
+                return abort_startup(imported.error());
+            }
+            editor->mesh_bounds[relative] = imported.value().aabb;
+            imported_meshes.emplace_back(relative, std::move(imported.value()));
+        }
+        if (auto boot = present_boot("Importing meshes", "Prefab primitives and foliage", 0.64f); !boot)
+            return abort_startup(boot.error());
         ensure_prefab_primitive_meshes(*editor, imported_meshes);
         for (const auto& foliage_mesh : build_foliage_layer_meshes(editor->foliage_layers)) {
             const auto normalized = normalize_asset_path(foliage_mesh.first);
@@ -8183,13 +11992,19 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         if (player_assets) runtime_player_prefab = std::move(player_prefab);
         else Logger::instance().write(Severity::Warning, "rendering", "Runtime player prefab unavailable; using debug proxy");
     }
-    Renderer renderer;
-    auto initialized = renderer.initialize(window, options.enable_debug_layer, options.debug_world, options.editor, options.hidden, terrain_material, imported_meshes);
-    if (!initialized) {
-        SDL_DestroyWindow(window); SDL_Quit();
-        return Result<RenderStats>::failure(initialized.error());
+    if (options.editor) {
+        if (auto boot = present_boot("Building renderer", "Pipelines and GPU geometry", 0.72f); !boot)
+            return abort_startup(boot.error());
+        auto graphics = renderer.initialize_graphics(options.debug_world, terrain_material, imported_meshes);
+        if (!graphics) return abort_startup(graphics.error());
+    } else {
+        auto initialized = renderer.initialize(window, options.enable_debug_layer, options.debug_world, false,
+            options.hidden, terrain_material, imported_meshes);
+        if (!initialized) return abort_startup(initialized.error());
     }
     if (editor) {
+        if (auto boot = present_boot("Loading scripts and UI", "Lua, quests, canvases, audio", 0.84f); !boot)
+            return abort_startup(boot.error());
         editor->lua_runtime = std::make_unique<LuaRuntime>();
         editor->quest_runtime = std::make_unique<QuestRuntime>();
         editor->quest_asset = std::make_unique<WorldForgeQuestsAsset>();
@@ -8203,6 +12018,44 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         } else {
             Logger::instance().write(Severity::Warning, "quest",
                 "Quests asset not loaded: " + quests_loaded.error().message);
+        }
+        editor->dialogue_asset = std::make_unique<WorldForgeDialoguesAsset>();
+        if (const auto dialogues_loaded =
+                WorldForgeDialoguesAsset::load(default_world_forge_dialogues_path(options.project_root));
+            dialogues_loaded) {
+            *editor->dialogue_asset = std::move(dialogues_loaded.value());
+            if (const auto bound = editor->dialogue_runtime.bind(editor->dialogue_asset.get()); !bound) {
+                Logger::instance().write(Severity::Warning, "dialogue",
+                    "DialogueRuntime bind failed: " + bound.error().message);
+            }
+        } else {
+            Logger::instance().write(Severity::Warning, "dialogue",
+                "Dialogues asset not loaded: " + dialogues_loaded.error().message);
+        }
+        editor->events_asset = std::make_unique<WorldForgeEventsAsset>();
+        if (const auto events_loaded =
+                WorldForgeEventsAsset::load(default_world_forge_events_path(options.project_root));
+            events_loaded) {
+            *editor->events_asset = std::move(events_loaded.value());
+            if (const auto bound = editor->event_timeline_runtime.bind(editor->events_asset.get()); !bound) {
+                Logger::instance().write(Severity::Warning, "event_timeline",
+                    "EventTimelineRuntime bind failed: " + bound.error().message);
+            } else {
+                EditorState* editor_state = &*editor;
+                editor->event_timeline_runtime.set_dialogue_starter(
+                    [editor_state](const std::string& dialogue_id) -> Result<void> {
+                        const auto started = editor_state->dialogue_runtime.start(dialogue_id);
+                        if (!started) return started;
+                        if (editor_state->lua_runtime && editor_state->ui_canvas_stack) {
+                            sync_dialogue_canvas(editor_state->ui_canvas_stack.get(),
+                                &editor_state->dialogue_runtime, editor_state->lua_runtime->dialogue_ui_session());
+                        }
+                        return Result<void>::success();
+                    });
+            }
+        } else {
+            Logger::instance().write(Severity::Warning, "event_timeline",
+                "Events asset not loaded: " + events_loaded.error().message);
         }
         editor->standing_runtime = std::make_unique<StandingRuntime>();
         editor->standing_factions_asset = std::make_unique<WorldForgeFactionsAsset>();
@@ -8229,14 +12082,29 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             Logger::instance().write(Severity::Warning, "standing",
                 "StandingRuntime bind failed: " + bound.error().message);
         }
+        editor->flag_runtime = std::make_unique<FlagRuntime>();
+        editor->coop_local = options.coop_local;
+        editor->game_session.bind_quest_runtime(editor->quest_runtime.get());
+        editor->game_session.bind_standing_runtime(editor->standing_runtime.get());
+        editor->game_session.bind_flag_runtime(editor->flag_runtime.get());
         editor->ui_canvas_stack = std::make_unique<UiCanvasStack>();
+        editor->ui_texture_cache = std::make_unique<UiTextureCache>();
+        renderer.bind_ui_texture_cache(*editor->ui_texture_cache);
+        editor->ui_texture_cache->set_project_root(options.project_root);
+        editor->ui_canvas_stack->set_texture_cache(editor->ui_texture_cache.get());
         if (const auto hud_loaded = editor->ui_canvas_stack->set_hud(default_player_hud_path(options.project_root));
             hud_loaded) {
             editor->ui_canvas_stack->hud().reset_player_health(100.0, 100.0);
+            editor->ui_canvas_stack->hud().apply_archetype_hud("ashfell_blade");
+            editor->ui_canvas_stack->hud().set_text("player.name", "Player");
+            editor->ui_canvas_stack->hud().set_visible("quest_objective_text", false);
+            editor->ui_canvas_stack->hud().set_visible("quest_objective_panel", false);
+            editor->ui_canvas_stack->hud().set_visible("quest_objective_eyebrow", false);
         } else {
             Logger::instance().write(Severity::Warning, "hud",
                 "Player HUD not loaded: " + hud_loaded.error().message);
         }
+        editor->world_ui_billboards.clear();
         const auto pause_path = options.project_root / "assets" / "ui" / "pause.uicanvas.json";
         if (const auto pause_loaded = editor->ui_canvas_stack->register_canvas("pause", pause_path); !pause_loaded) {
             Logger::instance().write(Severity::Warning, "ui_canvas",
@@ -8266,14 +12134,33 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             Logger::instance().write(Severity::Warning, "ui_canvas",
                 "Dialogue canvas not registered: " + dialogue_loaded.error().message);
         }
+        const auto register_coop = [&](const char* id, const char* file) {
+            const auto path = options.project_root / "assets" / "ui" / file;
+            if (const auto loaded = editor->ui_canvas_stack->register_canvas(id, path); !loaded) {
+                Logger::instance().write(Severity::Warning, "ui_canvas",
+                    std::string(id) + " canvas not registered: " + loaded.error().message);
+            }
+        };
+        register_coop("coop_lobby_host", "coop_lobby_host.uicanvas.json");
+        register_coop("coop_lobby_join", "coop_lobby_join.uicanvas.json");
+        register_coop("coop_ready_room", "coop_ready_room.uicanvas.json");
+        register_coop("coop_reconnect", "coop_reconnect.uicanvas.json");
         editor->lua_runtime->set_hud_runtime(&editor->ui_canvas_stack->hud());
         editor->lua_runtime->set_ui_canvas_stack(editor->ui_canvas_stack.get());
+        editor->lua_runtime->set_world_ui_billboards(&editor->world_ui_billboards);
         editor->lua_runtime->set_quest_runtime(editor->quest_runtime.get());
         editor->lua_runtime->set_standing_runtime(editor->standing_runtime.get());
+        editor->lua_runtime->set_flag_runtime(editor->flag_runtime.get());
+        editor->lua_runtime->set_event_timeline_runtime(&editor->event_timeline_runtime);
+        editor->lua_runtime->set_dialogue_runtime(&editor->dialogue_runtime);
+        editor->lua_runtime->set_game_session(&editor->game_session);
         editor->ui_canvas_stack->hud().set_text("quest.objectiveText", "");
         editor->audio_engine = std::make_unique<AudioEngine>();
         editor->audio_engine->set_project_root(options.project_root);
-        if (const auto audio_init = editor->audio_engine->initialize(); !audio_init) {
+        AudioEngineConfig audio_config{};
+        // Hidden/benchmark sessions must not open a real audio device — ma_engine_uninit can stall teardown.
+        audio_config.no_device = options.hidden;
+        if (const auto audio_init = editor->audio_engine->initialize(audio_config); !audio_init) {
             Logger::instance().write(Severity::Warning, "audio",
                 "AudioEngine init failed: " + audio_init.error().message);
         } else {
@@ -8287,53 +12174,37 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         }
     }
 
-    const auto started = std::chrono::steady_clock::now();
+    if (editor) {
+        if (auto boot = present_boot("Preparing world", "Collision and streaming setup", 0.93f); !boot)
+            return abort_startup(boot.error());
+    }
+
     std::unique_ptr<CollisionWorld> debug_world;
     std::optional<CharacterController> debug_character;
     std::optional<RigidbodyLocomotion> player_locomotion;
+    std::optional<CharacterController> guest_character; // local co-op slot 1 (--coop-local)
     std::optional<StreamedTerrainField> streamed_terrain;
     std::optional<StreamedFoliageField> streamed_foliage;
+    int foliage_upload_deferred_frames = 0;
+    struct FoliagePackJob {
+        std::future<PackedFoliageGpu> future;
+        std::uint64_t generation = 0;
+        std::uint64_t content_revision = 0;
+    };
+    std::optional<FoliagePackJob> foliage_pack_job;
+    std::uint64_t foliage_pack_generation = 0;
     std::optional<StreamedWaterField> streamed_water;
     std::uint64_t water_terrain_revision_seen = 0;
     std::optional<PlacementCollisionTracker> placement_collision;
+    bool last_collision_simulate_dynamics = true;
     InteractionVolumeRegistry debug_interaction_registry;
     InteractionOverlapTracker debug_interaction_tracker;
     CombatVolumeRegistry debug_combat_registry;
     DebugCamera camera;
-    if (editor) {
-        // Open Scene camera on the authored player spawn when exactly one exists.
-        std::optional<EntityId> spawn_id;
-        for (const auto& id : editor->scene.entity_ids()) {
-            const auto placement = editor->scene.placement(id);
-            if (!placement || !placement->character_asset) continue;
-            if (spawn_id) {
-                spawn_id.reset();
-                break;
-            }
-            spawn_id = id;
-        }
-        if (spawn_id) {
-            if (const auto transform = editor->scene.transform(*spawn_id)) {
-                constexpr float k_distance = 28.0f;
-                constexpr float k_height = 16.0f;
-                const float tx = transform->position[0];
-                const float ty = transform->position[1];
-                const float tz = transform->position[2];
-                const float cam_x = tx;
-                const float cam_y = ty + k_height;
-                const float cam_z = tz - k_distance;
-                const float dx = tx - cam_x;
-                const float dy = ty - cam_y;
-                const float dz = tz - cam_z;
-                const float yaw = std::atan2(dx, dz);
-                const float horiz = std::sqrt(dx * dx + dz * dz);
-                const float pitch = std::atan2(dy, (std::max)(horiz, 0.001f));
-                camera.set_pose({cam_x, cam_y, cam_z}, yaw, pitch);
-            }
-        }
-    }
+    if (editor) frame_camera_on_unique_player_spawn(*editor, camera);
     std::optional<OrbitCamera> orbit_camera;
     float player_facing_yaw = 0.0f;
+    float guest_facing_yaw = 0.0f;
     float mouse_x=0,mouse_y=0;
     bool camera_look_active=false;
     float pending_orbit_zoom = 0.0f;
@@ -8366,11 +12237,32 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         }
     }
     std::uint64_t frames = 0;
+    bool cli_look_applied = false;
+    StreamViewBiasGate stream_view_bias_gate;
     double gpu_ms_total = 0.0;
+    std::uint64_t last_terrain_cells = 0;
+    std::uint64_t last_draw_calls = 0;
+    std::uint64_t last_instances = 0;
     bool running = true;
     bool space_key_was_down = false;
+    bool f7_key_was_down = false;
     auto previous_frame_time = std::chrono::steady_clock::now();
+    ProcessCpuMeter process_cpu_meter;
+    float raw_frame_delta_seconds = 1.0f / 60.0f;
     float frame_delta_seconds = 1.0f / 60.0f;
+    // Timing starts at the first presented frame (exclude editor/world setup).
+    const auto started = std::chrono::steady_clock::now();
+    const std::uint64_t warmup_frames = options.require_gpu_timestamps
+        ? (std::min)(static_cast<std::uint64_t>(30),
+            options.frame_limit > 0 ? static_cast<std::uint64_t>(options.frame_limit) / 4u : 30u)
+        : 0u;
+    double measured_gpu_ms_total = 0.0;
+    std::uint64_t measured_frames = 0;
+    auto measured_started = started;
+    if (editor) {
+        if (auto boot = present_boot("Editor ready", "Opening workspace", 1.0f); !boot)
+            return abort_startup(boot.error());
+    }
     while (running) {
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
@@ -8395,10 +12287,11 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         }
         if (!running) break;
         const auto frame_time = std::chrono::steady_clock::now();
-        frame_delta_seconds =
+        raw_frame_delta_seconds =
             std::chrono::duration<float>(frame_time - previous_frame_time).count();
         previous_frame_time = frame_time;
-        frame_delta_seconds = std::min(frame_delta_seconds, 0.25f);
+        frame_delta_seconds = std::min(raw_frame_delta_seconds, 0.25f);
+        const auto cpu_profile_started = std::chrono::steady_clock::now();
         if (editor) {
             if (const auto requested = consume_live_automation_request(editor->project_root)) {
                 if (*requested != editor->live_automation_enabled) {
@@ -8526,6 +12419,218 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                             {"worldMap", wf.map_show_official_backdrop ? "true" : "false"},
                             {"layerId", wf.map_layer_active_id}, {"pendingLayerId", wf.map_layer_pending_id},
                             {"zoom", std::to_string(wf.map_camera.zoom)}});
+                }
+
+                if (request.operation == "coop_call") {
+                    nlohmann::json params = nlohmann::json::object();
+                    try {
+                        if (!request.params_json.empty()) params = nlohmann::json::parse(request.params_json);
+                    } catch (...) {
+                        return make_bridge_err(ExitCode::InvalidArguments, "Invalid JSON params",
+                            EngineError{"COOP-JSON", Severity::Error, ErrorCategory::Validation, "automation",
+                                "params_json parse failed", std::nullopt, {}, "Send valid JSON arguments."});
+                    }
+                    auto kind = params.value("kind", std::string{});
+                    std::transform(kind.begin(), kind.end(), kind.begin(),
+                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                    for (char& c : kind) {
+                        if (c == '-' || c == ' ') c = '_';
+                    }
+
+                    auto ensure_game_tab = [&]() {
+                        // Drop World Forge / map locks so Game can become the active play viewport.
+                        editor->lock_viewport_tab = false;
+                        editor->world_forge_editor.lock_pane_tab = false;
+                        editor->active_viewport_tab = EditorState::ViewportTab::Game;
+                        editor->force_select_viewport_tab = true;
+                    };
+
+                    auto slot_from_params = [&]() -> int {
+                        if (params.contains("slot") && params["slot"].is_number_integer())
+                            return params["slot"].get<int>();
+                        auto name = params.value("slotName", params.value("possess", std::string{}));
+                        std::transform(name.begin(), name.end(), name.begin(),
+                            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                        if (name == "guest" || name == "1") return 1;
+                        if (name == "host" || name == "0") return 0;
+                        if (name == "toggle") return -2;
+                        return -1;
+                    };
+
+                    auto coop_status_meta = [&]() {
+                        const char* tab = "scene";
+                        switch (editor->active_viewport_tab) {
+                        case EditorState::ViewportTab::Sculpt: tab = "sculpt"; break;
+                        case EditorState::ViewportTab::Game: tab = "game"; break;
+                        case EditorState::ViewportTab::UI: tab = "ui"; break;
+                        case EditorState::ViewportTab::WorldForge: tab = "world_forge"; break;
+                        case EditorState::ViewportTab::DesignDocs: tab = "design_docs"; break;
+                        default: break;
+                        }
+                        std::map<std::string, std::string> meta{
+                            {"kind", kind.empty() ? "status" : kind},
+                            {"viewportTab", tab},
+                            {"coopLocal", editor->coop_local ? "true" : "false"},
+                            {"focusName", editor->coop_focus_slot == 0 ? "host" : "guest"},
+                            {"focusSlot", std::to_string(editor->coop_focus_slot)},
+                            {"testSession", editor->test_session_active()
+                                    ? (editor->test_session_running() ? "running" : "paused")
+                                    : "inactive"},
+                            {"sessionMode", to_string(editor->game_session.session_mode())},
+                            {"sessionState", to_string(editor->game_session.state())},
+                            {"hostConnected",
+                                editor->game_session.slot(0).connected ? "true" : "false"},
+                            {"guestConnected",
+                                editor->game_session.slot(1).connected ? "true" : "false"},
+                            {"hostReady", editor->game_session.slot(0).ready ? "true" : "false"},
+                            {"guestReady", editor->game_session.slot(1).ready ? "true" : "false"},
+                            {"canHostStart", editor->game_session.can_host_start() ? "true" : "false"},
+                            {"simulationAllowed",
+                                editor->game_session.simulation_allowed() ? "true" : "false"},
+                            {"wishFramesRemaining", std::to_string(editor->mcp_forced_wish_frames)},
+                        };
+                        if (streamed_terrain) {
+                            meta["terrainCells"] = std::to_string(streamed_terrain->loaded_cell_count());
+                            meta["terrainStreamPending"] =
+                                streamed_terrain->stream_pending() ? "true" : "false";
+                            const auto focus = streamed_terrain->focus_cell();
+                            meta["terrainFocusX"] = std::to_string(focus.x);
+                            meta["terrainFocusZ"] = std::to_string(focus.z);
+                        }
+                        auto put_pos = [&](const char* prefix, const WorldPosition& pos) {
+                            meta[std::string(prefix) + "X"] = std::to_string(pos.x);
+                            meta[std::string(prefix) + "Y"] = std::to_string(pos.y);
+                            meta[std::string(prefix) + "Z"] = std::to_string(pos.z);
+                        };
+                        if (player_locomotion) put_pos("host", player_locomotion->feet_position());
+                        else if (debug_character) put_pos("host", debug_character->position());
+                        if (guest_character) put_pos("guest", guest_character->position());
+                        return meta;
+                    };
+
+                    if (kind.empty() || kind == "status") {
+                        editor->status = "MCP coop status";
+                        return make_bridge_ok("Co-op status", coop_status_meta());
+                    }
+                    if (kind == "start_local" || kind == "start") {
+                        ensure_game_tab();
+                        editor->coop_local = true;
+                        if (editor->test_session_active()) {
+                            editor->pending_coop_local_restart = true;
+                            editor->test_session_command = EditorState::TestSessionCommand::End;
+                        } else {
+                            editor->test_session_command = EditorState::TestSessionCommand::Start;
+                        }
+                        editor->status = "MCP: co-op local play-test start requested";
+                        auto meta = coop_status_meta();
+                        meta["kind"] = kind;
+                        return make_bridge_ok("Co-op local play-test start requested", std::move(meta));
+                    }
+                    if (kind == "end") {
+                        editor->test_session_command = EditorState::TestSessionCommand::End;
+                        editor->pending_coop_local_restart = false;
+                        editor->mcp_forced_wish_frames = 0;
+                        editor->status = "MCP: play-test end requested";
+                        auto meta = coop_status_meta();
+                        meta["kind"] = kind;
+                        return make_bridge_ok("Play-test end requested", std::move(meta));
+                    }
+                    if (kind == "pause") {
+                        ensure_game_tab();
+                        editor->test_session_command = EditorState::TestSessionCommand::Pause;
+                        editor->status = "MCP: play-test pause requested";
+                        return make_bridge_ok("Play-test pause requested", coop_status_meta());
+                    }
+                    if (kind == "resume") {
+                        ensure_game_tab();
+                        editor->test_session_command = EditorState::TestSessionCommand::Resume;
+                        editor->status = "MCP: play-test resume requested";
+                        return make_bridge_ok("Play-test resume requested", coop_status_meta());
+                    }
+                    if (kind == "possess") {
+                        if (!editor->test_session_active() || !editor->coop_local) {
+                            return make_bridge_err(ExitCode::Unavailable, "Possess requires active co-op play-test",
+                                EngineError{"COOP-POSSESS", Severity::Error, ErrorCategory::Validation, "automation",
+                                    "No active coop_local play-test", std::nullopt, {},
+                                    "Call kind=start_local first, wait for testSession=running."});
+                        }
+                        ensure_game_tab();
+                        const int slot = slot_from_params();
+                        if (slot == -2) editor->coop_focus_slot = editor->coop_focus_slot == 0 ? 1 : 0;
+                        else if (slot == 0 || slot == 1) editor->coop_focus_slot = slot;
+                        else {
+                            return make_bridge_err(ExitCode::InvalidArguments, "possess requires slot",
+                                EngineError{"COOP-SLOT", Severity::Error, ErrorCategory::Validation, "automation",
+                                    "Missing slot/slotName", std::nullopt, {},
+                                    "Pass slot:0|1 or slotName:host|guest|toggle."});
+                        }
+                        editor->status = editor->coop_focus_slot == 0 ? "MCP possess: host" : "MCP possess: guest";
+                        return make_bridge_ok("Possess slot updated", coop_status_meta());
+                    }
+                    if (kind == "move") {
+                        if (!editor->test_session_active()) {
+                            return make_bridge_err(ExitCode::Unavailable, "move requires active play-test",
+                                EngineError{"COOP-MOVE", Severity::Error, ErrorCategory::Validation, "automation",
+                                    "Play-test inactive", std::nullopt, {}, "Call kind=start_local first."});
+                        }
+                        ensure_game_tab();
+                        const float wish_x = params.value("wishX", params.value("x", 0.0f));
+                        const float wish_z = params.value("wishZ", params.value("z", 1.0f));
+                        const int frames = (std::max)(1, params.value("frames", 30));
+                        const int slot = slot_from_params();
+                        editor->mcp_forced_wish = {wish_x, 0.0f, wish_z};
+                        editor->mcp_forced_wish_frames = frames;
+                        editor->mcp_forced_wish_slot = (slot == 0 || slot == 1) ? slot : -1;
+                        editor->status = "MCP move wish queued";
+                        auto meta = coop_status_meta();
+                        meta["wishX"] = std::to_string(wish_x);
+                        meta["wishZ"] = std::to_string(wish_z);
+                        meta["frames"] = std::to_string(frames);
+                        return make_bridge_ok("Move wish queued", std::move(meta));
+                    }
+                    if (kind == "jump") {
+                        if (!editor->test_session_active()) {
+                            return make_bridge_err(ExitCode::Unavailable, "jump requires active play-test",
+                                EngineError{"COOP-JUMP", Severity::Error, ErrorCategory::Validation, "automation",
+                                    "Play-test inactive", std::nullopt, {}, "Call kind=start_local first."});
+                        }
+                        ensure_game_tab();
+                        editor->mcp_forced_jump = true;
+                        editor->status = "MCP jump queued";
+                        return make_bridge_ok("Jump queued", coop_status_meta());
+                    }
+                    if (kind == "disconnect_guest") {
+                        if (!editor->coop_local || !editor->game_session.is_coop() ||
+                            editor->game_session.state() != GameSessionState::Playing) {
+                            return make_bridge_err(ExitCode::Unavailable, "disconnect_guest requires co-op playing",
+                                EngineError{"COOP-DISCONNECT", Severity::Error, ErrorCategory::Validation, "automation",
+                                    "Session not in co-op playing", std::nullopt, {},
+                                    "start_local and wait until sessionState=playing."});
+                        }
+                        (void)editor->game_session.set_slot_connected(1, false);
+                        editor->status = "MCP: guest disconnected (paused_waiting_guest)";
+                        return make_bridge_ok("Guest disconnected", coop_status_meta());
+                    }
+                    if (kind == "reconnect_guest") {
+                        if (!editor->coop_local ||
+                            editor->game_session.state() != GameSessionState::PausedWaitingGuest) {
+                            return make_bridge_err(ExitCode::Unavailable, "reconnect_guest requires paused_waiting_guest",
+                                EngineError{"COOP-RECONNECT", Severity::Error, ErrorCategory::Validation, "automation",
+                                    "Session not waiting for guest", std::nullopt, {},
+                                    "Call disconnect_guest first."});
+                        }
+                        (void)editor->game_session.set_slot_connected(1, true, 1);
+                        const auto resumed = editor->game_session.resume_after_guest_reconnect();
+                        if (!resumed) {
+                            return make_bridge_err(ExitCode::ValidationFailed, resumed.error().message, resumed.error());
+                        }
+                        editor->status = "MCP: guest reconnected";
+                        return make_bridge_ok("Guest reconnected", coop_status_meta());
+                    }
+                    return make_bridge_err(ExitCode::InvalidArguments, "Unknown coop_call kind",
+                        EngineError{"COOP-KIND", Severity::Error, ErrorCategory::Validation, "automation",
+                            "Unsupported kind: " + kind, std::nullopt, {},
+                            "Use status|start_local|end|pause|resume|possess|move|jump|disconnect_guest|reconnect_guest."});
                 }
 
                 if (request.operation == "editor_ui_query") {
@@ -8744,9 +12849,29 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                             editor->mcp_input_queue.push_back(up);
                             return std::nullopt;
                         }
+                        if (step_action == "look") {
+                            // Pixel-space orbit deltas (same units as SDL relative mouse motion).
+                            EditorState::InputEvent look;
+                            look.kind = EditorState::InputEvent::Kind::Look;
+                            look.x = step.value("dx", step.value("lookDx", 0.0f));
+                            look.y = step.value("dy", step.value("lookDy", 0.0f));
+                            const int frames = (std::max)(1, step.value("frames", 1));
+                            for (int i = 0; i < frames; ++i) {
+                                editor->mcp_input_queue.push_back(look);
+                                if (i + 1 < frames) {
+                                    EditorState::InputEvent wait;
+                                    wait.kind = EditorState::InputEvent::Kind::Wait;
+                                    wait.wait_frames = 1;
+                                    editor->mcp_input_queue.push_back(wait);
+                                }
+                            }
+                            return std::nullopt;
+                        }
                         if (step_action == "clear") {
                             editor->mcp_input_queue.clear();
                             editor->mcp_draw_cursor = false;
+                            editor->mcp_look_dx = 0.0f;
+                            editor->mcp_look_dy = 0.0f;
                             return std::nullopt;
                         }
                         if (step_action == "unlock_tab") {
@@ -8756,7 +12881,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                             editor->world_forge_editor.force_select_pane = false;
                             return std::nullopt;
                         }
-                        return std::string{"Unknown action (move|click|drag|scroll|key|wait|clear|unlock_tab)"};
+                        return std::string{"Unknown action (move|click|drag|scroll|key|look|wait|clear|unlock_tab)"};
                     };
 
                     std::size_t queued = 0;
@@ -8807,6 +12932,88 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     response.metadata["mapLayerTransition"] = std::to_string(wf.map_layer_transition_t);
                     response.metadata["mapZoom"] = std::to_string(wf.map_camera.zoom);
                     response.metadata["mapLayersReady"] = wf.map_layers_ready ? "true" : "false";
+                    response.metadata["coopLocal"] = editor->coop_local ? "true" : "false";
+                    response.metadata["coopFocusSlot"] = std::to_string(editor->coop_focus_slot);
+                    response.metadata["sessionMode"] = to_string(editor->game_session.session_mode());
+                    response.metadata["sessionState"] = to_string(editor->game_session.state());
+                    // Hitch diagnostics for live MCP sampling (look/walk spikes).
+                    response.metadata["perfWallMs"] = std::to_string(editor->performance_wall_ms);
+                    response.metadata["perfFps"] = std::to_string(editor->performance_fps);
+                    response.metadata["perfFpsInstant"] = std::to_string(editor->performance_fps_instant);
+                    response.metadata["perfWallInstantMs"] = std::to_string(editor->performance_wall_instant_ms);
+                    response.metadata["perfDipValid"] = editor->performance_dip_valid ? "true" : "false";
+                    response.metadata["perfDipCount"] = std::to_string(editor->performance_dips.size());
+                    response.metadata["perfDipThresholdFps"] =
+                        std::to_string(EditorState::k_performance_dip_fps_threshold);
+                    if (editor->performance_dip_valid) {
+                        const auto& worst = editor->performance_worst_dip;
+                        response.metadata["perfFpsSessionMin"] = std::to_string(worst.fps);
+                        response.metadata["perfDipWallMs"] = std::to_string(worst.wall_ms);
+                        response.metadata["perfDipSimMs"] = std::to_string(worst.sim_ms);
+                        response.metadata["perfDipTerrainMs"] = std::to_string(worst.terrain_ms);
+                        response.metadata["perfDipFoliageMs"] = std::to_string(worst.foliage_ms);
+                        response.metadata["perfDipWaterMs"] = std::to_string(worst.water_ms);
+                        response.metadata["perfDipCollisionMs"] = std::to_string(worst.collision_ms);
+                        response.metadata["perfDipPhysicsMs"] = std::to_string(worst.physics_ms);
+                        response.metadata["perfDipRenderPrepMs"] = std::to_string(worst.render_prep_ms);
+                        response.metadata["perfDipFoliageUploadMs"] = std::to_string(worst.foliage_upload_ms);
+                        response.metadata["perfDipEditorUiMs"] = std::to_string(worst.editor_ui_ms);
+                        response.metadata["perfDipSubmitMs"] = std::to_string(worst.submit_ms);
+                        response.metadata["perfDipCacheRebuildMs"] = std::to_string(worst.cache_rebuild_ms);
+                        response.metadata["perfDipCpuSkinMs"] = std::to_string(worst.cpu_skin_ms);
+                        response.metadata["perfDipPresentMs"] = std::to_string(worst.present_ms);
+                        response.metadata["perfDipGpuWaitMs"] = std::to_string(worst.gpu_wait_ms);
+                        response.metadata["perfDipGpuMs"] = std::to_string(worst.gpu_ms);
+                        response.metadata["perfDipFrame"] = std::to_string(worst.frame);
+                        response.metadata["perfDipTime"] = worst.local_time;
+                        response.metadata["perfDipEpochMs"] = std::to_string(worst.epoch_ms);
+                        response.metadata["perfDipDominant"] = worst.dominant;
+                        response.metadata["perfDipPlayTest"] = worst.play_test ? "true" : "false";
+                    } else {
+                        response.metadata["perfFpsSessionMin"] = "0";
+                        response.metadata["perfDipWallMs"] = "0";
+                        response.metadata["perfDipDominant"] = "";
+                        response.metadata["perfDipTime"] = "";
+                        response.metadata["perfDipFrame"] = "0";
+                    }
+                    {
+                        nlohmann::json dips = nlohmann::json::array();
+                        for (const auto& dip : editor->performance_dips) dips.push_back(performance_dip_to_json(dip));
+                        response.metadata["perfDipsJson"] = dips.dump();
+                    }
+                    if (editor->performance_fps_history_count > 0) {
+                        float window_min = editor->performance_fps_history[0];
+                        for (std::size_t i = 1; i < editor->performance_fps_history_count; ++i)
+                            window_min = (std::min)(window_min, editor->performance_fps_history[i]);
+                        response.metadata["perfFpsWindowMin"] = std::to_string(window_min);
+                    } else {
+                        response.metadata["perfFpsWindowMin"] = "0";
+                    }
+                    response.metadata["perfCpuWorkMs"] = std::to_string(editor->performance_cpu_work_ms);
+                    response.metadata["perfSimMs"] = std::to_string(editor->performance_simulation_ms);
+                    response.metadata["perfLastSimMs"] = std::to_string(editor->performance_last_sim_ms);
+                    response.metadata["perfTerrainMs"] = std::to_string(editor->performance_terrain_ms);
+                    response.metadata["perfFoliageMs"] = std::to_string(editor->performance_foliage_ms);
+                    response.metadata["perfWaterMs"] = std::to_string(editor->performance_water_ms);
+                    response.metadata["perfCollisionMs"] = std::to_string(editor->performance_collision_ms);
+                    response.metadata["perfPhysicsMs"] = std::to_string(editor->performance_physics_ms);
+                    response.metadata["perfEditorUiMs"] = std::to_string(editor->performance_editor_ui_ms);
+                    response.metadata["perfRenderPrepMs"] = std::to_string(editor->performance_render_prep_ms);
+                    response.metadata["perfFoliageUploadMs"] = std::to_string(editor->performance_foliage_upload_ms);
+                    response.metadata["perfCacheRebuildMs"] = std::to_string(editor->performance_cache_rebuild_ms);
+                    response.metadata["perfCacheWorkerMs"] = std::to_string(editor->performance_cache_worker_ms);
+                    response.metadata["perfCacheRebuilds"] =
+                        std::to_string(editor->static_render_cache_rebuilds);
+                    response.metadata["perfCacheBuilding"] =
+                        editor->static_render_cache_job ? "true" : "false";
+                    response.metadata["perfCacheDirty"] =
+                        editor->static_render_cache_dirty ? "true" : "false";
+                    response.metadata["perfCpuSkinMs"] = std::to_string(editor->performance_cpu_skin_ms);
+                    response.metadata["perfRenderSubmitMs"] =
+                        std::to_string(editor->performance_render_submit_ms);
+                    response.metadata["perfGpuMs"] = std::to_string(editor->performance_gpu_ms);
+                    response.metadata["perfDrawCalls"] = std::to_string(editor->performance_draw_calls);
+                    response.metadata["perfInstances"] = std::to_string(editor->performance_instances);
                 }
                 if (response.exit_code == ExitCode::Success && request.operation == "lua_apply") {
                     try {
@@ -8830,6 +13037,9 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                                 editor->lua_runtime->set_ui_canvas_stack(editor->ui_canvas_stack.get());
                                 editor->lua_runtime->set_quest_runtime(editor->quest_runtime.get());
                                 editor->lua_runtime->set_standing_runtime(editor->standing_runtime.get());
+                                editor->lua_runtime->set_flag_runtime(editor->flag_runtime.get());
+                                editor->lua_runtime->set_event_timeline_runtime(&editor->event_timeline_runtime);
+                                editor->lua_runtime->set_dialogue_runtime(&editor->dialogue_runtime);
                                 if (editor->audio_engine)
                                     editor->lua_runtime->set_audio_engine(editor->audio_engine.get());
                             }
@@ -8893,8 +13103,12 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                                 *spawn_resolution.placement_entity, found->second);
                             (void)editor->scene.propagate_prefab_components(resolved, found->second);
                         }
-                        const auto synced = placement_collision->sync(
-                            *debug_world, editor->scene, editor->prefab_catalog, true);
+                        // Budget rebuilds so play-start does not stall ~250 ms rebuilding every Rigidbody.
+                        // Priority spawn first so locomotion can bind immediately; remaining bodies catch up.
+                        constexpr std::size_t k_play_start_collision_rebuilds = 32;
+                        const auto synced = placement_collision->sync(*debug_world, editor->scene,
+                            editor->prefab_catalog, true, k_play_start_collision_rebuilds,
+                            &*spawn_resolution.placement_entity);
                         if (synced) {
                             if (const auto body =
                                     placement_collision->motion_body_for(*spawn_resolution.placement_entity)) {
@@ -8946,31 +13160,129 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     // Keep yaw from edit camera; start with authored RPG look-down pitch.
                     orbit_camera->set_orientation(camera.yaw(), editor->camera_asset.default_pitch);
                     player_facing_yaw = orbit_camera->yaw();
+                    guest_facing_yaw = player_facing_yaw;
+                    guest_character.reset();
+                    editor->game_session.reset_to_menu();
+                    editor->game_session.bind_quest_runtime(editor->quest_runtime.get());
+                    editor->game_session.bind_standing_runtime(editor->standing_runtime.get());
+                    editor->game_session.bind_flag_runtime(editor->flag_runtime.get());
+                    if (editor->coop_local) {
+                        (void)editor->game_session.begin_coop_lobby();
+                        (void)editor->game_session.set_slot_connected(0, true, 0);
+                        (void)editor->game_session.set_slot_connected(1, true, 1);
+                        if (const auto coop_started = editor->game_session.start_playing(); !coop_started) {
+                            editor->status = coop_started.error().message;
+                            Logger::instance().write(coop_started.error());
+                        } else {
+                            WorldPosition guest_spawn = spawn_resolution.position;
+                            guest_spawn.x += 2.0;
+                            auto guest_created =
+                                CharacterController::create(*debug_world, guest_spawn, spawn_character.controller_config());
+                            if (guest_created) {
+                                guest_character.emplace(std::move(guest_created.value()));
+                            } else {
+                                Logger::instance().write(guest_created.error());
+                                editor->status = "Co-op local: guest CharacterController spawn failed";
+                            }
+                        }
+                    } else {
+                        (void)editor->game_session.begin_solo();
+                        (void)editor->game_session.start_playing();
+                    }
                     editor->test_session = EditorState::TestSessionState::Running;
+                    editor->lock_viewport_tab = false;
+                    editor->world_forge_editor.lock_pane_tab = false;
                     editor->active_viewport_tab = EditorState::ViewportTab::Game;
+                    editor->force_select_viewport_tab = true;
+                editor->static_render_cache_dirty = true;
                     if (editor->ui_canvas_stack) {
                         editor->ui_canvas_stack->clear_modals();
                         (void)editor->ui_canvas_stack->set_hud(default_player_hud_path(editor->project_root));
                         editor->ui_canvas_stack->hud().reset_player_health(100.0, 100.0);
+                        editor->ui_canvas_stack->hud().apply_archetype_hud("ashfell_blade");
+                        editor->ui_canvas_stack->hud().set_text("player.name", "Player");
+                        editor->ui_canvas_stack->hud().set_text("quest.objectiveText", "");
+                        editor->ui_canvas_stack->hud().set_visible("quest_objective_text", false);
+                        editor->ui_canvas_stack->hud().set_visible("quest_objective_panel", false);
+                        editor->ui_canvas_stack->hud().set_visible("quest_objective_eyebrow", false);
+                        editor->world_ui_billboards.clear();
                         if (editor->lua_runtime) {
                             editor->lua_runtime->set_hud_runtime(&editor->ui_canvas_stack->hud());
                             editor->lua_runtime->set_ui_canvas_stack(editor->ui_canvas_stack.get());
+                            editor->lua_runtime->set_world_ui_billboards(&editor->world_ui_billboards);
                             editor->lua_runtime->set_quest_runtime(editor->quest_runtime.get());
                             editor->lua_runtime->set_standing_runtime(editor->standing_runtime.get());
+                            editor->lua_runtime->set_flag_runtime(editor->flag_runtime.get());
+                            editor->lua_runtime->set_event_timeline_runtime(&editor->event_timeline_runtime);
+                            editor->lua_runtime->set_dialogue_runtime(&editor->dialogue_runtime);
                             if (editor->audio_engine)
                                 editor->lua_runtime->set_audio_engine(editor->audio_engine.get());
                         }
                     }
-                    editor->status = started_rigidbody
-                        ? ("Test session started (Rigidbody loco, max speed " +
-                              std::to_string(static_cast<int>(spawn_character.max_speed)) + " m/s)")
-                        : ("Test session started (max speed " +
-                              std::to_string(static_cast<int>(spawn_character.max_speed)) + " m/s)");
+                    if (editor->coop_local && guest_character) {
+                        editor->coop_focus_slot = 0;
+                        editor->status =
+                            "Test session started (co-op local: WASD+look possess host; F7 swap to guest)";
+                    } else {
+                        editor->status = started_rigidbody
+                            ? ("Test session started (Rigidbody loco, max speed " +
+                                  std::to_string(static_cast<int>(spawn_character.max_speed)) + " m/s)")
+                            : ("Test session started (max speed " +
+                                  std::to_string(static_cast<int>(spawn_character.max_speed)) + " m/s)");
+                    }
                     append_editor_console(*editor,
                         std::string("Test session started: ") + (started_rigidbody ? "rigidbody" : "character") +
+                            (editor->coop_local ? " coop_local" : "") +
                             " max_speed=" + std::to_string(spawn_character.max_speed) + " m/s",
                         editor->show_movement_console);
                     debug_interaction_tracker.reset("player");
+                    editor->test_animator_entity_id.clear();
+                    editor->test_skinned_mesh_asset.clear();
+                    editor->animator_runtime.reset();
+                    editor->animator_runtime.set_project_root(editor->project_root);
+                    editor->animator_runtime.set_clip_library(&editor->animation_clip_library);
+                    if (spawn_resolution.placement_entity) {
+                        editor->test_animator_entity_id = spawn_resolution.placement_entity->str();
+                        if (const auto authored =
+                                editor->scene.authored_components(*spawn_resolution.placement_entity)) {
+                            for (const auto& entry : authored->entries) {
+                                if (entry.type != AuthoredComponentType::Animator) continue;
+                                if (entry.animator.controller.empty()) continue;
+                                auto attached = editor->animator_runtime.attach(editor->test_animator_entity_id,
+                                    entry.animator.controller, entry.animator.default_state);
+                                if (!attached) {
+                                    Logger::instance().write(attached.error());
+                                    append_editor_console(*editor,
+                                        "Animator attach failed: " + attached.error().message, true);
+                                }
+                                break;
+                            }
+                        }
+                        const auto placement = editor->scene.placement(*spawn_resolution.placement_entity);
+                        if (placement) {
+                            const PrefabAsset* visual = find_prefab(editor->prefab_catalog, placement->prefab_asset);
+                            if (!visual && !spawn_character.visual_prefab.empty())
+                                visual = find_prefab(editor->prefab_catalog, spawn_character.visual_prefab);
+                            if (visual) {
+                                if (!visual->is_compositional() && !visual->mesh.empty()) {
+                                    editor->test_skinned_mesh_asset = normalize_asset_path(visual->mesh);
+                                } else {
+                                    for (const auto& part : visual->parts) {
+                                        if (part.mesh.asset && !part.mesh.asset->empty()) {
+                                            editor->test_skinned_mesh_asset =
+                                                normalize_asset_path(*part.mesh.asset);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (editor->lua_runtime) {
+                        editor->lua_runtime->set_animator_runtime(&editor->animator_runtime);
+                        editor->lua_runtime->set_event_timeline_runtime(&editor->event_timeline_runtime);
+                        editor->lua_runtime->set_dialogue_runtime(&editor->dialogue_runtime);
+                    }
                 }
             } else if (command == EditorState::TestSessionCommand::Pause &&
                        editor->test_session == EditorState::TestSessionState::Running) {
@@ -8982,11 +13294,21 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 editor->status = "Test session resumed";
             } else if (command == EditorState::TestSessionCommand::End && editor->test_session_active()) {
                 if (editor->ui_canvas_stack) editor->ui_canvas_stack->clear_modals();
+                editor->world_ui_billboards.clear();
+                editor->dialogue_runtime.reset();
                 if (editor_test_restore && editor_test_restore->spawn_entity && editor_test_restore->spawn_transform)
                     (void)editor->scene.set_transform(*editor_test_restore->spawn_entity, *editor_test_restore->spawn_transform);
                 debug_character.reset();
+                guest_character.reset();
                 player_locomotion.reset();
                 orbit_camera.reset();
+                if (editor->game_session.state() != GameSessionState::Menu &&
+                    editor->game_session.state() != GameSessionState::Ended)
+                    (void)editor->game_session.end_session();
+                editor->game_session.reset_to_menu();
+                editor->game_session.bind_quest_runtime(editor->quest_runtime.get());
+                editor->game_session.bind_standing_runtime(editor->standing_runtime.get());
+                editor->game_session.bind_flag_runtime(editor->flag_runtime.get());
                 if (editor_test_restore) {
                     camera.set_pose(editor_test_restore->camera_position, editor_test_restore->camera_yaw,
                         editor_test_restore->camera_pitch);
@@ -8996,10 +13318,33 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 SDL_SetWindowRelativeMouseMode(window, false);
                 editor->test_session = EditorState::TestSessionState::Inactive;
                 editor->test_player_spawn_entity.reset();
+                editor->static_render_cache_dirty = true;
+                if (editor->lua_runtime) editor->lua_runtime->set_animator_runtime(nullptr);
+                editor->event_timeline_runtime.cancel();
+                editor->event_cine_pivot.reset();
+                editor->event_cine_shot_pose_valid = false;
+                editor->animator_runtime.reset();
+                editor->test_animator_entity_id.clear();
+                editor->test_skinned_mesh_asset.clear();
                 editor->status = "Test session ended";
                 clear_editor_manipulation(*editor);
             }
         }
+        if (editor && editor->pending_open_world && !editor->test_session_active() &&
+            !editor->open_world_confirm_dirty) {
+            const auto opened =
+                open_project_world_now(*editor, debug_world.get(), placement_collision ? &*placement_collision : nullptr);
+            if (!opened) {
+                editor->status = opened.error().message;
+                Logger::instance().write(opened.error());
+                editor->pending_open_world.reset();
+            }
+        }
+        if (editor && editor->request_repose_camera_on_spawn) {
+            editor->request_repose_camera_on_spawn = false;
+            frame_camera_on_unique_player_spawn(*editor, camera);
+        }
+        const auto ui_started = std::chrono::steady_clock::now();
         if (options.editor) {
             ImGui_ImplDX12_NewFrame();
             ImGui_ImplSDL3_NewFrame();
@@ -9009,6 +13354,12 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 draw_mcp_cursor_overlay(*editor);
             }
         }
+        const auto simulation_started = std::chrono::steady_clock::now();
+        double frame_terrain_ms = 0.0;
+        double frame_foliage_ms = 0.0;
+        double frame_water_ms = 0.0;
+        double frame_collision_ms = 0.0;
+        double frame_physics_ms = 0.0;
         const auto capture = (!options.capture_path.empty() &&
                               (options.frame_limit == 0 ? frames == 0 : (frames + 1 == options.frame_limit)))
                                  ? options.capture_path
@@ -9051,21 +13402,75 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             const bool test_active = editor_mode && editor->test_session_active();
             const bool test_running = editor_mode && editor->test_session_running();
             const bool game_tab = editor_mode && editor->game_viewport_active();
+            const bool mcp_drive =
+                editor_mode && (editor->mcp_forced_wish_frames > 0 || editor->mcp_forced_jump);
 
             if (orbit_camera && (debug_character || player_locomotion) && test_active) {
-                if (camera_look_active && game_tab) orbit_camera->apply_look(mouse_x, mouse_y);
+                if (editor && (editor->mcp_look_dx != 0.0f || editor->mcp_look_dy != 0.0f)) {
+                    orbit_camera->apply_look(editor->mcp_look_dx, editor->mcp_look_dy);
+                    editor->mcp_look_dx = 0.0f;
+                    editor->mcp_look_dy = 0.0f;
+                }
+                if (!cli_look_applied && frames == options.capture_look_at_frame &&
+                    (options.capture_look_dx != 0.0f || options.capture_look_dy != 0.0f)) {
+                    orbit_camera->apply_look(options.capture_look_dx, options.capture_look_dy);
+                    cli_look_applied = true;
+                }
+                if (camera_look_active && game_tab &&
+                    !(editor && editor->event_timeline_runtime.control_locked()))
+                    orbit_camera->apply_look(mouse_x, mouse_y);
+                const bool session_sim =
+                    !editor_mode || editor->game_session.simulation_allowed();
+                const bool control_locked =
+                    editor_mode && editor->event_timeline_runtime.control_locked();
+                const bool move_allowed =
+                    test_running && session_sim && (game_tab || mcp_drive) && !control_locked;
                 LocalPosition wish{};
-                if (test_running && game_tab) {
+                if (move_allowed) {
                     wish.x = (keys[SDL_SCANCODE_D] ? 1.0f : 0.0f) - (keys[SDL_SCANCODE_A] ? 1.0f : 0.0f);
                     wish.z = (keys[SDL_SCANCODE_W] ? 1.0f : 0.0f) - (keys[SDL_SCANCODE_S] ? 1.0f : 0.0f);
                 }
-                if (test_running && game_tab && debug_character) {
-                    const bool space_down = keys[SDL_SCANCODE_SPACE];
-                    const bool space_pressed = space_down && !space_key_was_down;
-                    if (space_pressed) (void)debug_character->jump();
+                // Local co-op: F7 swaps possessed avatar (WASD + look + jump). No auto-steal on move.
+                const bool coop_possess =
+                    editor && editor->coop_local && guest_character && editor->test_session_active();
+                if (coop_possess && game_tab) {
+                    const bool f7_down = keys[SDL_SCANCODE_F7];
+                    if (f7_down && !f7_key_was_down) {
+                        editor->coop_focus_slot = editor->coop_focus_slot == 0 ? 1 : 0;
+                        editor->status = editor->coop_focus_slot == 0
+                            ? "Co-op possess: host (WASD + look)"
+                            : "Co-op possess: guest (WASD + look)";
+                    }
+                }
+                const bool focus_guest = coop_possess && editor->coop_focus_slot == 1;
+                auto take_mcp_wish = [&](int slot) -> bool {
+                    if (!editor || editor->mcp_forced_wish_frames <= 0 || !move_allowed) return false;
+                    const int target =
+                        editor->mcp_forced_wish_slot < 0 ? editor->coop_focus_slot : editor->mcp_forced_wish_slot;
+                    if (target != slot) return false;
+                    wish = editor->mcp_forced_wish;
+                    --editor->mcp_forced_wish_frames;
+                    return true;
+                };
+                const bool space_down = keys[SDL_SCANCODE_SPACE];
+                const bool space_pressed = space_down && !space_key_was_down;
+                bool mcp_jump = false;
+                if (editor && editor->mcp_forced_jump && move_allowed) {
+                    mcp_jump = true;
+                    editor->mcp_forced_jump = false;
+                }
+                // CharacterVirtual host path (no Rigidbody locomotion).
+                if (move_allowed && debug_character && !player_locomotion && !focus_guest) {
+                    (void)take_mcp_wish(0);
+                    if (space_pressed || mcp_jump) (void)debug_character->jump();
                     const auto position_before = debug_character->position();
                     (void)debug_character->move(wish, orbit_camera->yaw(), frame_delta_seconds);
                     if (editor) record_movement_debug(*editor, *debug_character, wish, frame_delta_seconds, position_before);
+                }
+                if (move_allowed && guest_character && focus_guest) {
+                    (void)take_mcp_wish(1);
+                    if (space_pressed || mcp_jump) (void)guest_character->jump();
+                    (void)guest_character->move(wish, orbit_camera->yaw(), frame_delta_seconds);
                 }
                 if (test_running && game_tab && editor->ui_canvas_stack && debug_character) {
                     const float pending_damage = debug_character->pending_swim_damage();
@@ -9077,20 +13482,99 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                         debug_character->clear_pending_swim_damage();
                     }
                 }
-                if (player_locomotion) {
+                if (focus_guest && guest_character) {
+                    body_position = guest_character->position();
+                } else if (player_locomotion) {
                     body_position = player_locomotion->feet_position();
-                    (void)orbit_camera->update(body_position, *debug_world);
                 } else {
                     body_position = debug_character->position();
-                    (void)orbit_camera->update(character_feet_pivot(*debug_character), *debug_world);
                 }
+                // Camera follows the possessed co-op slot (overridden by cinematic look_at subject focus).
+                WorldPosition camera_pivot =
+                    (focus_guest && guest_character) ? character_feet_pivot(*guest_character)
+                    : (player_locomotion ? player_locomotion->feet_position()
+                                        : (debug_character ? character_feet_pivot(*debug_character) : body_position));
+                if (editor) {
+                    const auto cam = editor->event_timeline_runtime.camera_directive();
+                    const bool cine_locked = editor->event_timeline_runtime.control_locked();
+                    if (cam.active) {
+                        const WorldPosition from =
+                            editor->event_cine_pivot.value_or(camera_pivot);
+                        const bool new_shot = !editor->event_cine_shot_pose_valid ||
+                            editor->event_cine_shot_target[0] != cam.target[0] ||
+                            editor->event_cine_shot_target[1] != cam.target[1] ||
+                            editor->event_cine_shot_target[2] != cam.target[2];
+                        if (new_shot) {
+                            editor->event_cine_shot_pose_valid = true;
+                            editor->event_cine_shot_target = cam.target;
+                            editor->event_cine_yaw0 = orbit_camera->yaw();
+                            editor->event_cine_pitch0 = orbit_camera->pitch();
+                            editor->event_cine_distance0 = orbit_camera->desired_distance();
+                        }
+                        const float a = std::clamp(cam.alpha, 0.0f, 1.0f);
+                        // Smoothstep ease-in-out so pans don't feel linear/choppy.
+                        const float t = a * a * (3.0f - 2.0f * a);
+                        camera_pivot = WorldPosition{
+                            from.x + (static_cast<double>(cam.target[0]) - from.x) * static_cast<double>(t),
+                            from.y + (static_cast<double>(cam.target[1]) - from.y) * static_cast<double>(t),
+                            from.z + (static_cast<double>(cam.target[2]) - from.z) * static_cast<double>(t)};
+                        // Place the lens on the approach from the previous vantage toward the subject.
+                        const float dx = cam.target[0] - static_cast<float>(from.x);
+                        const float dz = cam.target[2] - static_cast<float>(from.z);
+                        const float desired_yaw = std::atan2(dx, dz);
+                        float desired_pitch = editor->event_cine_pitch0;
+                        if (cam.has_pitch) desired_pitch = cam.pitch;
+                        auto lerp_angle = [](float from_yaw, float to, float blend) {
+                            float delta = to - from_yaw;
+                            while (delta > 3.14159265f) delta -= 6.2831853f;
+                            while (delta < -3.14159265f) delta += 6.2831853f;
+                            return from_yaw + delta * blend;
+                        };
+                        orbit_camera->set_orientation(lerp_angle(editor->event_cine_yaw0, desired_yaw, t),
+                            editor->event_cine_pitch0 + (desired_pitch - editor->event_cine_pitch0) * t);
+                        if (cam.distance > 0.0f) {
+                            orbit_camera->set_desired_distance(
+                                editor->event_cine_distance0 + (cam.distance - editor->event_cine_distance0) * t);
+                        }
+                        if (a >= 1.0f) {
+                            editor->event_cine_pivot =
+                                WorldPosition{cam.target[0], cam.target[1], cam.target[2]};
+                        }
+                    } else if (cine_locked && editor->event_cine_pivot) {
+                        camera_pivot = *editor->event_cine_pivot;
+                        editor->event_cine_shot_pose_valid = false;
+                    } else {
+                        editor->event_cine_pivot.reset();
+                        editor->event_cine_shot_pose_valid = false;
+                    }
+                }
+                const bool cine_camera_driving =
+                    editor && (editor->event_timeline_runtime.camera_directive().active ||
+                               (editor->event_timeline_runtime.control_locked() &&
+                                editor->event_cine_pivot.has_value()));
+                // The post-physics follow update later this frame is the authoritative camera on the
+                // Rigidbody play path; running the collision sweep here too costs a second sweep with a
+                // stale (pre-step) pivot that mid-frame consumers (streaming foci, audio) would read.
+                const bool post_physics_follow_update = player_locomotion && !cine_camera_driving &&
+                    editor && editor->test_player_spawn_entity && editor->test_session_active();
+                if (!post_physics_follow_update)
+                    (void)orbit_camera->update(camera_pivot, *debug_world, frame_delta_seconds);
+                camera_position = orbit_camera->position();
+                view_projection_matrix = orbit_camera->view_projection();
                 // Face along the lens look (not orbit yaw alone) so OTS shoulder offset does not skew the mesh.
-                {
+                // Skip while filming a subject — keep the avatar pose stable during cinematic pans.
+                if (!cine_camera_driving) {
                     const auto eye = orbit_camera->position();
-                    const float target_x = static_cast<float>(body_position.x);
-                    const float target_z = static_cast<float>(body_position.z);
-                    player_facing_yaw =
-                        character_facing_yaw_from_camera_look(eye[0], eye[2], target_x, target_z, player_facing_yaw);
+                    if (!focus_guest && debug_character) {
+                        const auto feet = character_feet_pivot(*debug_character);
+                        player_facing_yaw = character_facing_yaw_from_camera_look(eye[0], eye[2],
+                            static_cast<float>(feet.x), static_cast<float>(feet.z), player_facing_yaw);
+                    }
+                    if (focus_guest && guest_character) {
+                        const auto guest_feet = character_feet_pivot(*guest_character);
+                        guest_facing_yaw = character_facing_yaw_from_camera_look(eye[0], eye[2],
+                            static_cast<float>(guest_feet.x), static_cast<float>(guest_feet.z), guest_facing_yaw);
+                    }
                 }
 
                 const WorldPosition probe{body_position.x, body_position.y + 1.2, body_position.z};
@@ -9098,7 +13582,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     placement_collision ? placement_collision->interaction_registry() : debug_interaction_registry;
                 const CombatVolumeRegistry& combat_reg =
                     placement_collision ? placement_collision->combat_registry() : debug_combat_registry;
-                if (test_running) {
+                if (test_running && session_sim) {
                     (void)debug_interaction_tracker.update("player", probe, 0.65f, *debug_world, interact_reg);
                     const float yaw = orbit_camera->yaw();
                     const WorldPosition attack_probe{body_position.x + std::sin(yaw), body_position.y + 1.2f,
@@ -9127,7 +13611,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 if (space_pressed) (void)debug_character->jump();
                 (void)debug_character->move(wish, orbit_camera->yaw(), frame_delta_seconds);
                 body_position = debug_character->position();
-                (void)orbit_camera->update(character_feet_pivot(*debug_character), *debug_world);
+                (void)orbit_camera->update(character_feet_pivot(*debug_character), *debug_world, frame_delta_seconds);
                 {
                     const auto eye = orbit_camera->position();
                     player_facing_yaw = character_facing_yaw_from_camera_look(eye[0], eye[2],
@@ -9166,47 +13650,135 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             editor->audio_engine->update(frame_delta_seconds);
         }
         if (streamed_terrain && debug_world) {
-            const std::array<float, 3> stream_focus = editor ? camera.position() : camera_position;
+            // During play-test, stream around gameplay foci — not the frozen edit camera.
+            // Prefer feet/pivot over orbit eye so look-only yaw does not flip the focus cell at edges.
+            // Local co-op: keep heightfields under every avatar, not only the possessed camera.
+            std::vector<std::array<float, 3>> terrain_foci;
+            if (editor && editor->test_session_active()) {
+                const bool focus_guest =
+                    editor->coop_local && editor->coop_focus_slot == 1 && guest_character.has_value();
+                if (focus_guest) {
+                    const auto feet = character_feet_pivot(*guest_character);
+                    terrain_foci.push_back(
+                        {static_cast<float>(feet.x), static_cast<float>(feet.y), static_cast<float>(feet.z)});
+                } else if (player_locomotion) {
+                    const auto feet = player_locomotion->feet_position();
+                    terrain_foci.push_back(
+                        {static_cast<float>(feet.x), static_cast<float>(feet.y), static_cast<float>(feet.z)});
+                } else if (debug_character) {
+                    const auto feet = character_feet_pivot(*debug_character);
+                    terrain_foci.push_back(
+                        {static_cast<float>(feet.x), static_cast<float>(feet.y), static_cast<float>(feet.z)});
+                } else if (orbit_camera) {
+                    const auto pivot = orbit_camera->pivot();
+                    terrain_foci.push_back(
+                        {static_cast<float>(pivot.x), static_cast<float>(pivot.y), static_cast<float>(pivot.z)});
+                } else {
+                    terrain_foci.push_back(camera_position);
+                }
+                if (editor->coop_local) {
+                    if (player_locomotion) {
+                        const auto feet = player_locomotion->feet_position();
+                        terrain_foci.push_back({static_cast<float>(feet.x), static_cast<float>(feet.y),
+                            static_cast<float>(feet.z)});
+                    } else if (debug_character) {
+                        const auto pos = debug_character->position();
+                        terrain_foci.push_back(
+                            {static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)});
+                    }
+                    if (guest_character) {
+                        const auto pos = guest_character->position();
+                        terrain_foci.push_back(
+                            {static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)});
+                    }
+                }
+            } else if (editor) {
+                terrain_foci.push_back(camera.position());
+            } else {
+                terrain_foci.push_back(camera_position);
+            }
             const TerrainEditStore* edits = editor ? &editor->terrain_edits : nullptr;
             const TerrainPaintStore* paint = editor ? &editor->terrain_paint : nullptr;
             TerrainPaintMaterialLookup paint_lookup;
             if (editor) paint_lookup = editor_paint_material_lookup(*editor);
-            const auto updated = streamed_terrain->update(*debug_world, stream_focus, terrain_material.physics,
-                StreamedTerrainField::k_default_radius, edits, paint, paint_lookup);
+            TerrainStreamParams stream_params;
+            stream_params.radius = StreamedTerrainField::k_default_radius;
+            stream_params.support_radius = 1;
+            stream_params.max_new_cells = StreamedTerrainField::k_default_max_new_cells_per_update;
+            stream_params.max_new_support_cells = StreamedTerrainField::k_default_max_new_support_cells_per_update;
+            stream_params.max_ready_commits = StreamedTerrainField::k_default_max_ready_commits_per_update;
+            stream_params.async_generation = true;
+            stream_params.view_bias = true;
+            const auto look = orbit_camera ? orbit_camera->forward() : camera.forward();
+            const float yaw = orbit_camera ? orbit_camera->yaw() : camera.yaw();
+            (void)apply_stream_view_bias_look_gate(stream_view_bias_gate, yaw, look[0], look[2], stream_params);
+            const auto terrain_started = std::chrono::steady_clock::now();
+            const auto updated =
+                streamed_terrain->update(*debug_world, terrain_foci, terrain_material.physics, stream_params, edits,
+                    paint, paint_lookup);
             if (!updated) {
                 SDL_DestroyWindow(window);
                 SDL_Quit();
                 return Result<RenderStats>::failure(updated.error());
             }
+            // Split one streamed cell across frames: collision commit (above) → GPU upload → foliage
+            // scatter. Doing all three in the commit frame is the visible "chunk loaded" hitch.
+            bool uploaded_terrain_cell = false;
+            bool foliage_scattered = false;
+            if (streamed_terrain->render_data_dirty()) {
+                const auto removed = streamed_terrain->take_render_removed_cells();
+                renderer.remove_terrain_cells(removed);
+                const auto dirty = streamed_terrain->take_render_dirty_cells(
+                    StreamedTerrainField::k_default_max_render_uploads_per_update);
+                for (const auto& cell : dirty) {
+                    const auto terrain_vertices =
+                        streamed_terrain->build_cell_render_vertices(cell, terrain_material.base_color);
+                    std::vector<Vertex> upload;
+                    upload.reserve(terrain_vertices.size());
+                    for (const auto& vertex : terrain_vertices)
+                        upload.push_back({vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b});
+                    assign_triangle_face_normals(upload);
+                    const auto uploaded = renderer.upload_terrain_cell(cell, upload);
+                    if (!uploaded) {
+                        SDL_DestroyWindow(window);
+                        SDL_Quit();
+                        return Result<RenderStats>::failure(uploaded.error());
+                    }
+                    uploaded_terrain_cell = true;
+                }
+            }
+            frame_terrain_ms = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - terrain_started)
+                                   .count();
             if (streamed_foliage && editor) {
+                const auto foliage_started = std::chrono::steady_clock::now();
                 streamed_foliage->set_palette(&editor->foliage_layers);
                 streamed_foliage->set_density(&editor->foliage_density);
-                const auto foliage_synced = streamed_foliage->sync(*streamed_terrain, stream_focus);
+                const std::size_t foliage_budget = uploaded_terrain_cell
+                    ? 0
+                    : StreamedFoliageField::k_default_max_new_cells_per_sync;
+                const std::uint64_t foliage_rev_before = streamed_foliage->change_revision();
+                const auto foliage_synced =
+                    streamed_foliage->sync(*streamed_terrain, terrain_foci.front(), foliage_budget);
                 if (!foliage_synced) {
                     SDL_DestroyWindow(window);
                     SDL_Quit();
                     return Result<RenderStats>::failure(foliage_synced.error());
                 }
+                foliage_scattered = streamed_foliage->change_revision() != foliage_rev_before;
+                frame_foliage_ms = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - foliage_started)
+                                       .count();
             }
-            if (streamed_terrain->render_data_dirty()) {
-                const auto terrain_vertices = streamed_terrain->build_render_vertices(terrain_material.base_color);
-                std::vector<Vertex> upload;
-                upload.reserve(terrain_vertices.size());
-                for (const auto& vertex : terrain_vertices)
-                    upload.push_back({vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b});
-                const auto uploaded = renderer.upload_terrain_vertices(upload);
-                if (!uploaded) {
-                    SDL_DestroyWindow(window);
-                    SDL_Quit();
-                    return Result<RenderStats>::failure(uploaded.error());
-                }
-                streamed_terrain->clear_render_data_dirty();
-            }
-        }
-        if (streamed_water && debug_world) {
-            const std::array<float, 3> stream_focus = editor ? camera.position() : camera_position;
+            // Keep water mesh/upload off frames that already paid terrain GPU or foliage scatter.
+            const bool defer_water_stream = uploaded_terrain_cell || foliage_scattered;
+            if (streamed_water && debug_world) {
+            const auto water_started = std::chrono::steady_clock::now();
+            const std::array<float, 3> stream_focus =
+                (editor && editor->test_session_active()) ? camera_position : (editor ? camera.position() : camera_position);
             const WaterStore* water = editor ? &editor->water_store : &runtime_water;
-            const auto updated = streamed_water->update(stream_focus, StreamedWaterField::k_default_radius, water);
+            const auto updated = streamed_water->update(stream_focus, StreamedWaterField::k_default_radius, water,
+                defer_water_stream ? 0 : StreamedWaterField::k_default_max_new_cells_per_update);
             if (!updated) {
                 SDL_DestroyWindow(window);
                 SDL_Quit();
@@ -9217,33 +13789,106 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 water_terrain_revision_seen = editor->terrain_height_revision;
                 reload_loaded_water_cells(*editor, &*streamed_water);
             }
+            // Per-cell GPU uploads (mirror terrain). The old path concatenated + re-uploaded the entire
+            // resident water buffer on every dirty frame (~40–50 ms water_stream dips while walking).
             if (streamed_water->render_data_dirty()) {
-                const auto water_vertices = streamed_water->build_render_vertices();
-                std::vector<Vertex> upload;
-                upload.reserve(water_vertices.size());
-                for (const auto& vertex : water_vertices)
-                    upload.push_back(
-                        {vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b, vertex.depth, 0.0f});
-                const auto uploaded = renderer.upload_water_vertices(upload);
-                if (!uploaded) {
-                    SDL_DestroyWindow(window);
-                    SDL_Quit();
-                    return Result<RenderStats>::failure(uploaded.error());
+                const auto removed = streamed_water->take_render_removed_cells();
+                renderer.remove_water_cells(removed);
+                const auto dirty = streamed_water->take_render_dirty_cells(defer_water_stream
+                        ? 0
+                        : StreamedWaterField::k_default_max_render_uploads_per_update);
+                for (const auto& cell : dirty) {
+                    const auto water_vertices = streamed_water->build_cell_render_vertices(cell);
+                    std::vector<Vertex> upload;
+                    upload.reserve(water_vertices.size());
+                    for (const auto& vertex : water_vertices)
+                        upload.push_back(
+                            {vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b, vertex.depth, 0.0f});
+                    const auto uploaded = renderer.upload_water_cell(cell, upload);
+                    if (!uploaded) {
+                        SDL_DestroyWindow(window);
+                        SDL_Quit();
+                        return Result<RenderStats>::failure(uploaded.error());
+                    }
                 }
-                streamed_water->clear_render_data_dirty();
             }
+            frame_water_ms = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - water_started)
+                                 .count();
+            }
+        } else if (streamed_water && debug_world) {
+            const auto water_started = std::chrono::steady_clock::now();
+            const std::array<float, 3> stream_focus =
+                (editor && editor->test_session_active()) ? camera_position : (editor ? camera.position() : camera_position);
+            const WaterStore* water = editor ? &editor->water_store : &runtime_water;
+            const auto updated = streamed_water->update(stream_focus, StreamedWaterField::k_default_radius, water,
+                StreamedWaterField::k_default_max_new_cells_per_update);
+            if (!updated) {
+                SDL_DestroyWindow(window);
+                SDL_Quit();
+                return Result<RenderStats>::failure(updated.error());
+            }
+            // Terrain sculpt changes bed height; rebuild water so sheets clip/skirt to the new basin.
+            if (editor && editor->terrain_height_revision != water_terrain_revision_seen) {
+                water_terrain_revision_seen = editor->terrain_height_revision;
+                reload_loaded_water_cells(*editor, &*streamed_water);
+            }
+            // Per-cell GPU uploads (mirror terrain). The old path concatenated + re-uploaded the entire
+            // resident water buffer on every dirty frame (~40–50 ms water_stream dips while walking).
+            if (streamed_water->render_data_dirty()) {
+                const auto removed = streamed_water->take_render_removed_cells();
+                renderer.remove_water_cells(removed);
+                const auto dirty = streamed_water->take_render_dirty_cells(
+                    StreamedWaterField::k_default_max_render_uploads_per_update);
+                for (const auto& cell : dirty) {
+                    const auto water_vertices = streamed_water->build_cell_render_vertices(cell);
+                    std::vector<Vertex> upload;
+                    upload.reserve(water_vertices.size());
+                    for (const auto& vertex : water_vertices)
+                        upload.push_back(
+                            {vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b, vertex.depth, 0.0f});
+                    const auto uploaded = renderer.upload_water_cell(cell, upload);
+                    if (!uploaded) {
+                        SDL_DestroyWindow(window);
+                        SDL_Quit();
+                        return Result<RenderStats>::failure(uploaded.error());
+                    }
+                }
+            }
+            frame_water_ms = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - water_started)
+                                 .count();
         }
         if (placement_collision && debug_world && editor) {
-            const bool simulate_dynamics = editor->test_session_running();
-            const auto synced =
-                placement_collision->sync(*debug_world, editor->scene, editor->prefab_catalog, simulate_dynamics);
+            // Keep dynamics tracking armed for the whole test session (Running + Paused).
+            // Flipping this false on Esc rebuilds motion bodies and orphans player_locomotion handles.
+            const bool simulate_dynamics = editor->test_session_active();
+            const auto collision_started = std::chrono::steady_clock::now();
+            // Dynamics flips and catch-up after a budgeted sync amortize across frames.
+            constexpr std::size_t k_collision_rebuild_budget = 24;
+            std::size_t max_rebuilds = std::numeric_limits<std::size_t>::max();
+            if (placement_collision->sync_incomplete() ||
+                simulate_dynamics != last_collision_simulate_dynamics)
+                max_rebuilds = k_collision_rebuild_budget;
+            const EntityId* priority =
+                (simulate_dynamics && editor->test_player_spawn_entity) ? &*editor->test_player_spawn_entity
+                                                                       : nullptr;
+            const auto synced = placement_collision->sync(
+                *debug_world, editor->scene, editor->prefab_catalog, simulate_dynamics, max_rebuilds, priority);
+            frame_collision_ms = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - collision_started)
+                                     .count();
             if (!synced) {
                 SDL_DestroyWindow(window);
                 SDL_Quit();
                 return Result<RenderStats>::failure(synced.error());
             }
-            if (simulate_dynamics && player_locomotion && editor->test_player_spawn_entity &&
-                editor->game_viewport_active()) {
+            if (!placement_collision->sync_incomplete())
+                last_collision_simulate_dynamics = simulate_dynamics;
+            if (editor->test_session_running() && player_locomotion && editor->test_player_spawn_entity &&
+                (editor->game_viewport_active() || editor->mcp_forced_wish_frames > 0 || editor->mcp_forced_jump) &&
+                editor->game_session.simulation_allowed() &&
+                !editor->event_timeline_runtime.control_locked()) {
                 if (const auto body = placement_collision->motion_body_for(*editor->test_player_spawn_entity)) {
                     if (player_locomotion->body().value != body->value) {
                         player_locomotion.emplace(*debug_world, *body, player_locomotion->config(),
@@ -9253,14 +13898,36 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     LocalPosition wish{};
                     wish.x = (loco_keys[SDL_SCANCODE_D] ? 1.0f : 0.0f) - (loco_keys[SDL_SCANCODE_A] ? 1.0f : 0.0f);
                     wish.z = (loco_keys[SDL_SCANCODE_W] ? 1.0f : 0.0f) - (loco_keys[SDL_SCANCODE_S] ? 1.0f : 0.0f);
-                    const bool space_down = loco_keys[SDL_SCANCODE_SPACE];
-                    if (space_down && !space_key_was_down) (void)player_locomotion->jump();
-                    const float yaw = orbit_camera ? orbit_camera->yaw() : camera.yaw();
-                    (void)player_locomotion->move(wish, yaw, frame_delta_seconds);
+                    const bool possess_guest =
+                        editor->coop_local && guest_character && editor->coop_focus_slot == 1;
+                    if (editor->mcp_forced_wish_frames > 0) {
+                        const int target_slot = editor->mcp_forced_wish_slot < 0 ? editor->coop_focus_slot
+                                                                               : editor->mcp_forced_wish_slot;
+                        if (target_slot == 0) {
+                            wish = editor->mcp_forced_wish;
+                            --editor->mcp_forced_wish_frames;
+                        }
+                    }
+                    if (!possess_guest) {
+                        const bool space_down = loco_keys[SDL_SCANCODE_SPACE];
+                        if ((space_down && !space_key_was_down) || editor->mcp_forced_jump) {
+                            (void)player_locomotion->jump();
+                            editor->mcp_forced_jump = false;
+                        }
+                        const float yaw = orbit_camera ? orbit_camera->yaw() : camera.yaw();
+                        (void)player_locomotion->move(wish, yaw, frame_delta_seconds);
+                    }
                 }
             }
-            const bool editor_physics_step = !editor->test_session_active() || editor->test_session_running();
-            if (editor_physics_step) (void)debug_world->step(frame_delta_seconds);
+            const bool editor_physics_step = !editor->test_session_active() ||
+                (editor->test_session_running() && editor->game_session.simulation_allowed());
+            if (editor_physics_step) {
+                const auto physics_started = std::chrono::steady_clock::now();
+                (void)debug_world->step(frame_delta_seconds);
+                frame_physics_ms = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - physics_started)
+                                       .count();
+            }
             if (editor_physics_step && simulate_dynamics)
                 placement_collision->write_back_transforms(editor->scene, *debug_world);
             if (editor_physics_step)
@@ -9303,11 +13970,28 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 editor->recent_combat_events.erase(editor->recent_combat_events.begin(),
                     editor->recent_combat_events.end() - 32);
             dispatch_pending_script_events(*editor);
+            if (editor->ui_canvas_stack) editor->ui_canvas_stack->tick_typewriters(frame_delta_seconds);
+            if (editor->test_session_running() && editor->lua_runtime && editor->game_viewport_active()) {
+                static bool interact_e_was_down = false;
+                const bool* keys_e = SDL_GetKeyboardState(nullptr);
+                const bool e_down = keys_e[SDL_SCANCODE_E];
+                if (e_down && !interact_e_was_down) {
+                    const auto prompt = editor->lua_runtime->blackboard_get("interact.prompt");
+                    const auto id = editor->lua_runtime->blackboard_get("interact.id");
+                    if (prompt && prompt->type == ScriptBlackboardType::Bool && prompt->bool_value && id &&
+                        id->type == ScriptBlackboardType::String && !id->string_value.empty()) {
+                        editor->lua_runtime->dispatch_interaction_use(id->string_value);
+                    }
+                }
+                interact_e_was_down = e_down;
+            }
         }
         if (debug_world) {
             const bool* keys_after = SDL_GetKeyboardState(nullptr);
             space_key_was_down = keys_after[SDL_SCANCODE_SPACE];
+            f7_key_was_down = keys_after[SDL_SCANCODE_F7];
         }
+        const auto editor_ui_started = std::chrono::steady_clock::now();
         if (options.editor) {
             if (editor->active_viewport_tab == EditorState::ViewportTab::WorldForge)
                 renderer.ensure_world_forge_placeholder_textures(editor->world_forge_editor);
@@ -9320,17 +14004,71 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 placement_collision ? &placement_collision->combat_registry() : nullptr);
             apply_pending_world_forge_marker_focus(*editor, camera);
         }
-        if (streamed_foliage && editor && streamed_foliage->dirty()) {
-            const auto uploaded = renderer.set_foliage_batches(streamed_foliage->batches(), &editor->foliage_layers);
-            if (!uploaded) {
-                SDL_DestroyWindow(window);
-                SDL_Quit();
-                return Result<RenderStats>::failure(uploaded.error());
+        const auto render_prep_started = std::chrono::steady_clock::now();
+        double frame_cpu_skin_ms = 0.0;
+        double frame_cache_rebuild_ms = 0.0;
+        double frame_foliage_upload_ms = 0.0;
+        if (streamed_foliage && editor) {
+            // Streaming commits land one terrain cell per frame (max_ready_commits); re-uploading the
+            // full foliage instance buffer for each commit stutters across cell boundaries. Batch the
+            // commits into one upload once the stream settles, with a bounded wait so long continuous
+            // walks still refresh foliage. Packing runs off-thread so look/walk frames only pay the
+            // map/memcpy upload when the job completes.
+            constexpr int k_max_foliage_upload_defer_frames = 16;
+            const bool stream_settling = streamed_terrain && streamed_terrain->stream_pending();
+            const bool look_busy = camera_look_active;
+            if (streamed_foliage->dirty()) {
+                if ((stream_settling || look_busy) &&
+                    foliage_upload_deferred_frames < k_max_foliage_upload_defer_frames) {
+                    ++foliage_upload_deferred_frames;
+                } else if (!foliage_pack_job) {
+                    foliage_upload_deferred_frames = 0;
+                    ++foliage_pack_generation;
+                    const auto content_revision = streamed_foliage->change_revision();
+                    auto cells = streamed_foliage->cell_instances();
+                    auto palette = editor->foliage_layers;
+                    auto known = renderer.foliage_known_mesh_keys();
+                    const auto generation = foliage_pack_generation;
+                    foliage_pack_job = FoliagePackJob{
+                        std::async(std::launch::async,
+                            [cells = std::move(cells), palette = std::move(palette),
+                                known = std::move(known)]() mutable {
+                                return pack_foliage_gpu_instances(cells, &palette, known);
+                            }),
+                        generation, content_revision};
+                }
             }
-            streamed_foliage->clear_dirty();
+            if (foliage_pack_job &&
+                foliage_pack_job->future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                if (foliage_pack_job->generation != foliage_pack_generation ||
+                    foliage_pack_job->content_revision != streamed_foliage->change_revision()) {
+                    (void)foliage_pack_job->future.get();
+                    foliage_pack_job.reset();
+                } else {
+                    const auto upload_started = std::chrono::steady_clock::now();
+                    const auto packed_revision = foliage_pack_job->content_revision;
+                    auto packed = foliage_pack_job->future.get();
+                    foliage_pack_job.reset();
+                    const auto uploaded = renderer.upload_packed_foliage(std::move(packed));
+                    frame_foliage_upload_ms = std::chrono::duration<double, std::milli>(
+                        std::chrono::steady_clock::now() - upload_started)
+                                                 .count();
+                    if (!uploaded) {
+                        SDL_DestroyWindow(window);
+                        SDL_Quit();
+                        return Result<RenderStats>::failure(uploaded.error());
+                    }
+                    // Only clear when the GPU upload matches the latest resident foliage content.
+                    if (packed_revision == streamed_foliage->change_revision())
+                        streamed_foliage->clear_dirty();
+                }
+            }
         }
         if (editor && editor->test_player_spawn_entity && editor->test_session_active()) {
             if (auto transform = editor->scene.transform(*editor->test_player_spawn_entity)) {
+                const bool cine_camera_driving =
+                    editor->event_timeline_runtime.camera_directive().active ||
+                    (editor->event_timeline_runtime.control_locked() && editor->event_cine_pivot.has_value());
                 if (debug_character) {
                     const PrefabAsset* spawn_prefab = find_prefab(editor->prefab_catalog,
                         normalize_asset_path(editor->character_asset.visual_prefab));
@@ -9339,33 +14077,122 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     } else {
                         *transform = character_visual_transform(*debug_character, PrefabAsset{}, player_facing_yaw);
                     }
-                    (void)editor->scene.set_transform(*editor->test_player_spawn_entity, *transform);
+                    // Visual follow only — bumping edit_revision every frame forced PlacementCollisionTracker
+                    // to rescan the whole open-world scene (~5–10 ms Simulation spikes while looking/walking).
+                    (void)editor->scene.set_transform(*editor->test_player_spawn_entity, *transform, false);
                 } else if (player_locomotion) {
                     using namespace DirectX;
-                    body_position = player_locomotion->feet_position();
-                    if (orbit_camera) {
-                        (void)orbit_camera->update(body_position, *debug_world);
-                        const auto eye = orbit_camera->position();
-                        player_facing_yaw = character_facing_yaw_from_camera_look(eye[0], eye[2],
-                            static_cast<float>(body_position.x), static_cast<float>(body_position.z),
-                            player_facing_yaw);
+                    const bool possess_guest =
+                        editor->coop_local && guest_character && editor->coop_focus_slot == 1;
+                    if (possess_guest) {
+                        body_position = guest_character->position();
+                        // Do not steal the orbit pivot while an event look_at is filming a subject.
+                        if (orbit_camera && !cine_camera_driving) {
+                            (void)orbit_camera->update(character_feet_pivot(*guest_character), *debug_world,
+                                frame_delta_seconds);
+                            const auto eye = orbit_camera->position();
+                            const auto guest_feet = character_feet_pivot(*guest_character);
+                            guest_facing_yaw = character_facing_yaw_from_camera_look(eye[0], eye[2],
+                                static_cast<float>(guest_feet.x), static_cast<float>(guest_feet.z),
+                                guest_facing_yaw);
+                        }
+                        // Keep host spawn-entity visual at host feet; do not steal the orbit pivot.
+                        const auto host_feet = player_locomotion->feet_position();
+                        transform->position = {static_cast<float>(host_feet.x), static_cast<float>(host_feet.y),
+                            static_cast<float>(host_feet.z)};
+                        constexpr float k_model_forward_yaw_offset = 3.14159265f;
+                        const auto facing_q = XMQuaternionRotationRollPitchYaw(0.0f,
+                            player_facing_yaw + k_model_forward_yaw_offset, 0.0f);
+                        XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(transform->rotation.data()), facing_q);
+                        (void)editor->scene.set_transform(*editor->test_player_spawn_entity, *transform, false);
+                    } else {
+                        body_position = player_locomotion->feet_position();
+                        // Late player-follow update was overwriting cinematic look_at subject focus.
+                        if (orbit_camera && !cine_camera_driving) {
+                            (void)orbit_camera->update(body_position, *debug_world, frame_delta_seconds);
+                            const auto eye = orbit_camera->position();
+                            player_facing_yaw = character_facing_yaw_from_camera_look(eye[0], eye[2],
+                                static_cast<float>(body_position.x), static_cast<float>(body_position.z),
+                                player_facing_yaw);
+                        }
+                        transform->position = {static_cast<float>(body_position.x), static_cast<float>(body_position.y),
+                            static_cast<float>(body_position.z)};
+                        constexpr float k_model_forward_yaw_offset = 3.14159265f;
+                        const auto facing_q =
+                            XMQuaternionRotationRollPitchYaw(0.0f, player_facing_yaw + k_model_forward_yaw_offset, 0.0f);
+                        XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(transform->rotation.data()), facing_q);
+                        (void)editor->scene.set_transform(*editor->test_player_spawn_entity, *transform, false);
                     }
-                    transform->position = {static_cast<float>(body_position.x), static_cast<float>(body_position.y),
-                        static_cast<float>(body_position.z)};
-                    constexpr float k_model_forward_yaw_offset = 3.14159265f;
-                    const auto facing_q =
-                        XMQuaternionRotationRollPitchYaw(0.0f, player_facing_yaw + k_model_forward_yaw_offset, 0.0f);
-                    XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(transform->rotation.data()), facing_q);
-                    (void)editor->scene.set_transform(*editor->test_player_spawn_entity, *transform);
                 }
             }
         }
-        std::vector<RenderInstance> placed_objects;
+        if (editor && editor->test_session_running() && !editor->test_animator_entity_id.empty()
+            && editor->game_session.simulation_allowed()) {
+            float speed_param = 0.0f;
+            if (player_locomotion) {
+                const auto vel = player_locomotion->linear_velocity();
+                const float horizontal = std::sqrt(vel[0] * vel[0] + vel[2] * vel[2]);
+                const float max_speed = std::max(0.01f, editor->character_asset.max_speed);
+                speed_param = std::clamp(horizontal / max_speed, 0.0f, 1.0f);
+            }
+            (void)editor->animator_runtime.set_float(editor->test_animator_entity_id, "speed", speed_param);
+            editor->animator_runtime.tick(frame_delta_seconds);
+            if (editor->lua_runtime) {
+                for (const auto& fired : editor->animator_runtime.take_fired_events())
+                    editor->lua_runtime->dispatch_animation_event(fired);
+            }
+            const auto skin_started = std::chrono::steady_clock::now();
+            if (!editor->test_skinned_mesh_asset.empty()) {
+                const ImportedMesh* skinned = nullptr;
+                for (const auto& entry : imported_meshes) {
+                    if (normalize_asset_path(entry.first) == editor->test_skinned_mesh_asset) {
+                        skinned = &entry.second;
+                        break;
+                    }
+                }
+                if (skinned && skinned->has_skinning() && !skinned->skins.empty()
+                    && skinned->influences.size() == skinned->vertices.size()
+                    && skinned->skins[0].joint_node_indices.size() <= k_max_bones) {
+                    auto status = editor->animator_runtime.status(editor->test_animator_entity_id);
+                    if (status) {
+                        auto locals = sample_skinned_local_poses(skinned->skins[0],
+                            editor->animation_clip_library, editor->project_root, status.value().active_clips);
+                        if (locals) {
+                            auto matrices = build_skin_matrices(skinned->skins[0], locals.value());
+                            if (matrices) renderer.set_pending_skin_matrices(matrices.value());
+                        }
+                    }
+                }
+            }
+            frame_cpu_skin_ms = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - skin_started)
+                                   .count();
+        }
+        if (editor && editor->test_session_running() && editor->game_session.simulation_allowed()) {
+            editor->event_timeline_runtime.tick(frame_delta_seconds);
+            if (editor->lua_runtime) {
+                for (const auto& emitted : editor->event_timeline_runtime.take_emitted_events())
+                    editor->lua_runtime->dispatch_event_timeline_emit(emitted);
+            }
+        }
+        std::vector<RenderInstance> dynamic_placed_objects;
         std::vector<std::pair<std::string, TransformComponent>> light_placements;
         const PrefabAsset::MaterialLookup editor_material_lookup =
             editor ? make_material_lookup(&editor->material_cache) : PrefabAsset::MaterialLookup{};
+        const std::vector<RenderInstance>* static_placed = nullptr;
         if (editor && editor->prefab_meshes_dirty) {
             ensure_prefab_primitive_meshes(*editor, imported_meshes);
+            for (const auto& foliage_mesh : build_foliage_layer_meshes(editor->foliage_layers)) {
+                const auto normalized = normalize_asset_path(foliage_mesh.first);
+                bool exists = false;
+                for (const auto& mesh : imported_meshes) {
+                    if (normalize_asset_path(mesh.first) == normalized) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) imported_meshes.emplace_back(foliage_mesh);
+            }
             const auto synced = renderer.sync_imported_meshes(imported_meshes);
             if (!synced) {
                 SDL_DestroyWindow(window);
@@ -9373,8 +14200,122 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 return Result<RenderStats>::failure(synced.error());
             }
             editor->prefab_meshes_dirty = false;
+            editor->static_render_cache_dirty = true;
+            // mesh_ranges_ were rebuilt; foliage draws still hold old vertex offsets until re-uploaded.
+            if (streamed_foliage) {
+                if (foliage_pack_job) {
+                    (void)foliage_pack_job->future.get();
+                    foliage_pack_job.reset();
+                }
+                ++foliage_pack_generation;
+                const auto upload_started = std::chrono::steady_clock::now();
+                const auto uploaded = renderer.set_foliage_cell_instances(streamed_foliage->cell_instances(),
+                    &editor->foliage_layers);
+                frame_foliage_upload_ms = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - upload_started)
+                                             .count();
+                if (!uploaded) {
+                    SDL_DestroyWindow(window);
+                    SDL_Quit();
+                    return Result<RenderStats>::failure(uploaded.error());
+                }
+                streamed_foliage->clear_dirty();
+            }
         }
-        if(editor){for(const auto& id:editor->scene.entity_ids()){auto placement=editor->scene.placement(id);auto transform=editor->scene.transform(id);if(placement&&transform){const bool previewing=editor->selected&&*editor->selected==id&&editor->gizmo_preview&&(editor->gizmo_was_using||editor->terrain_drag_active);const auto& draw_transform=previewing?*editor->gizmo_preview:*transform;if(const auto* prefab=find_prefab(editor->prefab_catalog,placement->prefab_asset))expand_prefab_render_instances(*prefab,draw_transform,placed_objects,editor_material_lookup);light_placements.push_back({normalize_asset_path(placement->prefab_asset),draw_transform});}}if(editor->drop_preview&&editor->drop_preview_prefab){if(const auto* prefab=find_prefab(editor->prefab_catalog,*editor->drop_preview_prefab))expand_prefab_render_instances(*prefab,*editor->drop_preview,placed_objects,editor_material_lookup);light_placements.push_back({normalize_asset_path(*editor->drop_preview_prefab),*editor->drop_preview});}if(editor->prefab_edit_path){const auto normalized=normalize_asset_path(*editor->prefab_edit_path);const auto found=editor->prefab_catalog.find(normalized);if(found!=editor->prefab_catalog.end()){TransformComponent preview_root;preview_root.position={0.0f,3.0f,0.0f};expand_prefab_render_instances(found->second,preview_root,placed_objects,editor_material_lookup);}}}
+        if (editor) {
+            // Do not treat sticky scene_dirty (unsaved edits) as a per-frame cache rebuild signal.
+            const bool previewing_transform = editor->selected && editor->gizmo_preview &&
+                (editor->gizmo_was_using || editor->terrain_drag_active);
+            // A live gizmo drag must see its own transform this frame, so it still expands inline. Every other
+            // rebuild runs on a worker: prefab expansion is O(placements x parts) and was landing whole inside a
+            // frame. Props keep drawing from the previous cache until the job completes.
+            if (previewing_transform) {
+                const auto cache_started = std::chrono::steady_clock::now();
+                editor->static_render_cache_job.reset();
+                editor->static_render_instances.clear();
+                std::vector<std::pair<std::string, TransformComponent>> static_light_placements;
+                for (const auto& id : editor->scene.entity_ids()) {
+                    if (editor->test_player_spawn_entity && id == *editor->test_player_spawn_entity) continue;
+                    const auto placement = editor->scene.placement(id);
+                    const auto transform = editor->scene.transform(id);
+                    if (!placement || !transform) continue;
+                    const bool previewing_selected = *editor->selected == id;
+                    const auto& draw_transform = previewing_selected ? *editor->gizmo_preview : *transform;
+                    if (const auto* prefab = find_prefab(editor->prefab_catalog, placement->prefab_asset)) {
+                        expand_prefab_render_instances(*prefab, draw_transform, editor->static_render_instances,
+                            editor_material_lookup, &editor->mesh_bounds);
+                    }
+                    static_light_placements.emplace_back(normalize_asset_path(placement->prefab_asset), draw_transform);
+                }
+                editor->static_point_lights = collect_point_lights(editor->prefab_catalog, static_light_placements);
+                // The preview transform is not an authored mutation; re-expand from the scene once the drag ends.
+                editor->static_render_cache_dirty = true;
+                ++editor->static_render_cache_rebuilds;
+                frame_cache_rebuild_ms = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - cache_started)
+                                             .count();
+            } else {
+                const auto cache_started = std::chrono::steady_clock::now();
+                if (editor->static_render_cache_dirty && !editor->static_render_cache_job) {
+                    auto input = std::make_shared<StaticRenderCacheInput>();
+                    input->prefab_catalog = editor->prefab_catalog;
+                    input->mesh_bounds = editor->mesh_bounds;
+                    input->materials = editor->material_cache;
+                    for (const auto& id : editor->scene.entity_ids()) {
+                        if (editor->test_player_spawn_entity && id == *editor->test_player_spawn_entity) continue;
+                        const auto placement = editor->scene.placement(id);
+                        const auto transform = editor->scene.transform(id);
+                        if (!placement || !transform) continue;
+                        input->placements.emplace_back(placement->prefab_asset, *transform);
+                    }
+                    // Cleared before launch so an edit landing mid-job re-dirties and queues a follow-up pass.
+                    editor->static_render_cache_dirty = false;
+                    editor->static_render_cache_job = std::async(std::launch::async,
+                        [input]() { return build_static_render_cache(*input); });
+                }
+                if (editor->static_render_cache_job &&
+                    editor->static_render_cache_job->wait_for(std::chrono::seconds(0)) ==
+                        std::future_status::ready) {
+                    auto built = editor->static_render_cache_job->get();
+                    editor->static_render_cache_job.reset();
+                    editor->static_render_instances = std::move(built.instances);
+                    editor->static_point_lights = std::move(built.lights);
+                    editor->performance_cache_worker_ms = built.build_ms;
+                    ++editor->static_render_cache_rebuilds;
+                }
+                frame_cache_rebuild_ms = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - cache_started)
+                                             .count();
+            }
+            static_placed = &editor->static_render_instances;
+        }
+        auto& placed_objects = dynamic_placed_objects;
+        if (editor && editor->test_player_spawn_entity) {
+            const auto placement = editor->scene.placement(*editor->test_player_spawn_entity);
+            const auto transform = editor->scene.transform(*editor->test_player_spawn_entity);
+            if (placement && transform) {
+                if (const auto* prefab = find_prefab(editor->prefab_catalog, placement->prefab_asset)) {
+                    expand_prefab_render_instances(*prefab, *transform, placed_objects, editor_material_lookup,
+                        &editor->mesh_bounds);
+                }
+                light_placements.emplace_back(normalize_asset_path(placement->prefab_asset), *transform);
+            }
+        }
+        if (editor && editor->drop_preview && editor->drop_preview_prefab) {
+            if (const auto* prefab = find_prefab(editor->prefab_catalog, *editor->drop_preview_prefab)) {
+                expand_prefab_render_instances(*prefab, *editor->drop_preview, placed_objects, editor_material_lookup,
+                    &editor->mesh_bounds);
+            }
+            light_placements.emplace_back(normalize_asset_path(*editor->drop_preview_prefab), *editor->drop_preview);
+        }
+        if (editor && editor->prefab_edit_path) {
+            const auto normalized = normalize_asset_path(*editor->prefab_edit_path);
+            if (const auto found = editor->prefab_catalog.find(normalized); found != editor->prefab_catalog.end()) {
+                TransformComponent preview_root;
+                preview_root.position = {0.0f, 3.0f, 0.0f};
+                expand_prefab_render_instances(found->second, preview_root, placed_objects, editor_material_lookup);
+            }
+        }
         bool draw_player_visual = false;
         const bool editor_spawn_visual =
             editor && editor->test_session_active() && editor->test_player_spawn_entity.has_value();
@@ -9392,7 +14333,51 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 draw_player_visual = true;
             }
         }
-        const auto point_lights=editor?collect_point_lights(editor->prefab_catalog,light_placements):std::vector<ActivePointLight>{};
+        // Local co-op guest is physics-only until drawn here (no scene spawn entity).
+        if (guest_character && editor && editor->coop_local && editor->test_session_active()) {
+            if (const PrefabAsset* guest_prefab =
+                    find_prefab(editor->prefab_catalog, normalize_asset_path(editor->character_asset.visual_prefab))) {
+                append_character_render_instances(*guest_prefab, *guest_character, guest_facing_yaw, placed_objects,
+                    editor_material_lookup);
+            }
+        }
+        auto point_lights = editor ? editor->static_point_lights : std::vector<ActivePointLight>{};
+        if (editor && !light_placements.empty()) {
+            auto preview_lights = collect_point_lights(editor->prefab_catalog, light_placements);
+            point_lights.insert(point_lights.end(), preview_lights.begin(), preview_lights.end());
+        }
+        if (editor) {
+            std::vector<std::pair<std::string, TransformComponent>> particle_placements;
+            for (const auto& id : editor->scene.entity_ids()) {
+                if (editor->test_player_spawn_entity && id == *editor->test_player_spawn_entity) continue;
+                const auto placement = editor->scene.placement(id);
+                const auto transform = editor->scene.transform(id);
+                if (!placement || !transform) continue;
+                const bool previewing_selected =
+                    editor->selected && editor->gizmo_preview && *editor->selected == id &&
+                    (editor->gizmo_was_using || editor->terrain_drag_active);
+                particle_placements.emplace_back(placement->prefab_asset,
+                    previewing_selected ? *editor->gizmo_preview : *transform);
+            }
+            editor->particle_system.sync_placements(editor->prefab_catalog, particle_placements);
+            const auto cam = (editor->active_viewport_tab == EditorState::ViewportTab::Game && orbit_camera)
+                                 ? orbit_camera->position()
+                                 : camera.position();
+            WindFieldParams wind = renderer.wind_field();
+            wind.time_seconds += frame_delta_seconds;
+            wind.normalize_direction();
+            renderer.set_wind_field(wind);
+            renderer.set_particle_texture_project_root(editor->project_root);
+            const bool play_or_game = editor->test_session_active()
+                || editor->active_viewport_tab == EditorState::ViewportTab::Game;
+            editor->particle_system.set_ambient_wind(play_or_game, "assets/vfx/wind_trail.particle.json", cam,
+                wind.direction, wind.ambient_amp);
+            editor->particle_system.update(frame_delta_seconds, cam);
+            renderer.set_particle_draw_list(&editor->particle_system.draw_instances(),
+                &editor->particle_system.texture_paths());
+        } else {
+            renderer.set_particle_draw_list(nullptr);
+        }
         WorldInfluenceBus influence_bus;
         if (debug_character) {
             const auto pos = debug_character->position();
@@ -9400,8 +14385,9 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             WorldInfluenceSource source;
             source.position = {static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)};
             source.velocity = vel;
-            source.radius = 1.25f;
-            source.strength = 1.0f;
+            source.radius = 1.35f;
+            const float speed_xz = std::sqrt(vel[0] * vel[0] + vel[2] * vel[2]);
+            source.strength = std::clamp(0.55f + speed_xz * 0.12f, 0.55f, 1.35f);
             source.kind = "character";
             influence_bus.add(std::move(source));
         } else if (player_locomotion) {
@@ -9410,8 +14396,9 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             WorldInfluenceSource source;
             source.position = {static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)};
             source.velocity = vel;
-            source.radius = 1.25f;
-            source.strength = 1.0f;
+            source.radius = 1.35f;
+            const float speed_xz = std::sqrt(vel[0] * vel[0] + vel[2] * vel[2]);
+            source.strength = std::clamp(0.55f + speed_xz * 0.12f, 0.55f, 1.35f);
             source.kind = "character";
             influence_bus.add(std::move(source));
         }
@@ -9448,19 +14435,240 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         runtime_pass.terrain_pbr = terrain_pbr;
         runtime_pass.water_color = water_color;
         runtime_pass.water_roughness = water_roughness;
-        auto rendered = editor ? renderer.render(capture, scene_pass, placed_objects, point_lights, &game_pass)
-                                 : renderer.render(capture, runtime_pass, placed_objects, point_lights);
-        if (!rendered) { SDL_DestroyWindow(window); SDL_Quit(); return Result<RenderStats>::failure(rendered.error()); }
+        const auto render_started = std::chrono::steady_clock::now();
+        auto rendered = [&]() {
+            const bool capture_game = options.capture_game_viewport || options.initial_viewport == "game";
+            if (!editor) return renderer.render(capture, runtime_pass, nullptr, placed_objects, point_lights);
+            // Benchmark gate measures Game play-test only (single world pass).
+            if (options.require_gpu_timestamps)
+                return renderer.render(capture, game_pass, static_placed, placed_objects, point_lights, nullptr, false);
+            // Only produce the viewport the user can see. Rendering Scene and Game every editor frame doubled
+            // world, shadow, water, and SSAO work during play-tests.
+            if (editor->active_viewport_tab == EditorState::ViewportTab::Game)
+                return renderer.render(capture, game_pass, static_placed, placed_objects, point_lights, nullptr,
+                    capture_game, true);
+            return renderer.render(capture, scene_pass, static_placed, placed_objects, point_lights, &game_pass,
+                capture_game);
+        }();
+        const auto render_finished = std::chrono::steady_clock::now();
+        if (!rendered) {
+            renderer.release();
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+            return Result<RenderStats>::failure(rendered.error());
+        }
         ++frames;
         gpu_ms_total += renderer.last_gpu_ms();
+        last_draw_calls = renderer.last_draw_calls();
+        last_instances = renderer.last_instances_drawn();
+        if (streamed_terrain) last_terrain_cells = streamed_terrain->loaded_cell_count();
+        if (editor) {
+            // Instant / dip wall time must match this frame's phase timers (cpu_profile_started → now).
+            // Inter-frame delta is previous→current start and misattributes present/gpu_wait to the wrong frame.
+            const auto frame_end = std::chrono::steady_clock::now();
+            const auto elapsed_ms = [](const auto& start, const auto& end) {
+                return std::chrono::duration<double, std::milli>(end - start).count();
+            };
+            const double wall_ms = elapsed_ms(cpu_profile_started, frame_end);
+            const double inter_frame_ms = static_cast<double>(raw_frame_delta_seconds) * 1000.0;
+            const double present_ms = renderer.last_present_ms();
+            const double gpu_wait_ms = renderer.last_gpu_wait_ms();
+            const double cpu_work_ms = (std::max)(0.0, wall_ms - present_ms - gpu_wait_ms);
+            const double pre_ui_ms = elapsed_ms(cpu_profile_started, ui_started);
+            const double simulation_ms = elapsed_ms(simulation_started, editor_ui_started);
+            const double editor_ui_ms = elapsed_ms(editor_ui_started, render_prep_started);
+            const double render_prep_ms = elapsed_ms(render_prep_started, render_started);
+            const double render_submit_ms = elapsed_ms(render_started, render_finished);
+            editor->performance_last_sim_ms = simulation_ms;
+            editor->performance_terrain_ms = frame_terrain_ms;
+            editor->performance_foliage_ms = frame_foliage_ms;
+            editor->performance_water_ms = frame_water_ms;
+            editor->performance_collision_ms = frame_collision_ms;
+            editor->performance_physics_ms = frame_physics_ms;
+            constexpr double smoothing = 0.12;
+            if (frames == 1) {
+                editor->performance_wall_ms = inter_frame_ms;
+                editor->performance_cpu_work_ms = cpu_work_ms;
+                editor->performance_gpu_ms = renderer.last_gpu_ms();
+                editor->performance_present_ms = present_ms;
+                editor->performance_gpu_wait_ms = gpu_wait_ms;
+                editor->performance_pre_ui_ms = pre_ui_ms;
+                editor->performance_simulation_ms = simulation_ms;
+                editor->performance_editor_ui_ms = editor_ui_ms;
+                editor->performance_render_prep_ms = render_prep_ms;
+                editor->performance_foliage_upload_ms = frame_foliage_upload_ms;
+                editor->performance_cpu_skin_ms = frame_cpu_skin_ms;
+                editor->performance_cache_rebuild_ms = frame_cache_rebuild_ms;
+                editor->performance_render_submit_ms = render_submit_ms;
+            } else {
+                editor->performance_wall_ms += (inter_frame_ms - editor->performance_wall_ms) * smoothing;
+                editor->performance_cpu_work_ms += (cpu_work_ms - editor->performance_cpu_work_ms) * smoothing;
+                editor->performance_gpu_ms += (renderer.last_gpu_ms() - editor->performance_gpu_ms) * smoothing;
+                editor->performance_present_ms += (present_ms - editor->performance_present_ms) * smoothing;
+                editor->performance_gpu_wait_ms += (gpu_wait_ms - editor->performance_gpu_wait_ms) * smoothing;
+                editor->performance_pre_ui_ms += (pre_ui_ms - editor->performance_pre_ui_ms) * smoothing;
+                editor->performance_simulation_ms += (simulation_ms - editor->performance_simulation_ms) * smoothing;
+                editor->performance_editor_ui_ms += (editor_ui_ms - editor->performance_editor_ui_ms) * smoothing;
+                editor->performance_render_prep_ms += (render_prep_ms - editor->performance_render_prep_ms) * smoothing;
+                editor->performance_foliage_upload_ms +=
+                    (frame_foliage_upload_ms - editor->performance_foliage_upload_ms) * smoothing;
+                editor->performance_cpu_skin_ms += (frame_cpu_skin_ms - editor->performance_cpu_skin_ms) * smoothing;
+                editor->performance_cache_rebuild_ms +=
+                    (frame_cache_rebuild_ms - editor->performance_cache_rebuild_ms) * smoothing;
+                editor->performance_render_submit_ms +=
+                    (render_submit_ms - editor->performance_render_submit_ms) * smoothing;
+            }
+            editor->performance_fps = editor->performance_wall_ms > 0.0 ? 1000.0 / editor->performance_wall_ms : 0.0;
+            const float instant_fps = wall_ms > 0.0 ? static_cast<float>(1000.0 / wall_ms) : 0.0f;
+            editor->performance_fps_instant = instant_fps;
+            editor->performance_wall_instant_ms = wall_ms;
+            editor->performance_fps_history[editor->performance_fps_history_write] = instant_fps;
+            editor->performance_fps_history_write =
+                (editor->performance_fps_history_write + 1) % EditorState::k_performance_fps_history;
+            if (editor->performance_fps_history_count < EditorState::k_performance_fps_history)
+                ++editor->performance_fps_history_count;
+            record_performance_dip_if_needed(*editor, frames, instant_fps, wall_ms, pre_ui_ms, simulation_ms,
+                frame_terrain_ms, frame_foliage_ms, frame_water_ms, frame_collision_ms, frame_physics_ms, editor_ui_ms,
+                render_prep_ms, frame_foliage_upload_ms, frame_cache_rebuild_ms, frame_cpu_skin_ms, render_submit_ms,
+                present_ms, gpu_wait_ms, renderer.last_gpu_ms());
+            editor->performance_draw_calls = last_draw_calls;
+            editor->performance_instances = last_instances;
+            editor->performance_terrain_cells = last_terrain_cells;
+            editor->performance_process_cpu_percent = sample_process_cpu_percent(process_cpu_meter);
+            const auto memory = renderer.memory_stats();
+            constexpr double bytes_per_mb = 1024.0 * 1024.0;
+            editor->performance_working_set_mb = static_cast<double>(memory.process_working_set_bytes) / bytes_per_mb;
+            editor->performance_gpu_memory_used_mb = static_cast<double>(memory.gpu_local_usage_bytes) / bytes_per_mb;
+            editor->performance_gpu_memory_budget_mb =
+                static_cast<double>(memory.gpu_local_budget_bytes) / bytes_per_mb;
+        }
+        if (frames == warmup_frames) {
+            measured_started = std::chrono::steady_clock::now();
+            measured_gpu_ms_total = 0.0;
+            measured_frames = 0;
+        }
+        if (frames > warmup_frames) {
+            measured_gpu_ms_total += renderer.last_gpu_ms();
+            ++measured_frames;
+        }
         if (options.frame_limit > 0 && frames >= options.frame_limit) running = false;
     }
-    const auto elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
-    RenderStats stats{frames, elapsed, frames ? elapsed * 1000.0 / static_cast<double>(frames) : 0.0,
-                      frames ? gpu_ms_total / static_cast<double>(frames) : 0.0,
-                      elapsed > 0.0 ? static_cast<double>(frames) / elapsed : 0.0, renderer.adapter_name()};
+    if (options.require_gpu_timestamps && !renderer.gpu_timestamps_ok()) {
+        renderer.release();
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return Result<RenderStats>::failure(
+            graphics_error("BENCH-GPU-TIMESTAMPS", "GPU timestamp queries are unavailable; benchmark cannot pass"));
+    }
+    const auto elapsed_all = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+    const auto elapsed = measured_frames > 0
+        ? std::chrono::duration<double>(std::chrono::steady_clock::now() - measured_started).count()
+        : elapsed_all;
+    const std::uint64_t stats_frames = measured_frames > 0 ? measured_frames : frames;
+    const double stats_gpu_total = measured_frames > 0 ? measured_gpu_ms_total : gpu_ms_total;
+    RenderStats stats{};
+    stats.frames = stats_frames;
+    stats.elapsed_seconds = elapsed;
+    stats.average_cpu_ms = stats_frames ? elapsed * 1000.0 / static_cast<double>(stats_frames) : 0.0;
+    stats.average_gpu_ms = stats_frames ? stats_gpu_total / static_cast<double>(stats_frames) : 0.0;
+    stats.frames_per_second = elapsed > 0.0 ? static_cast<double>(stats_frames) / elapsed : 0.0;
+    stats.adapter = renderer.adapter_name();
+    stats.terrain_cells = last_terrain_cells;
+    stats.draw_calls = last_draw_calls;
+    stats.instances_drawn = last_instances;
+    stats.gpu_timestamps_ok = renderer.gpu_timestamps_ok();
+    if (!options.benchmark_report_path.empty()) {
+        std::error_code ec;
+        std::filesystem::create_directories(options.benchmark_report_path.parent_path(), ec);
+        nlohmann::json report = {
+            {"schemaVersion", 1},
+            {"frames", stats.frames},
+            {"warmupFrames", warmup_frames},
+            {"totalPresentedFrames", frames},
+            {"elapsedSeconds", stats.elapsed_seconds},
+            {"averageCpuMs", stats.average_cpu_ms},
+            {"averageGpuMs", stats.average_gpu_ms},
+            {"framesPerSecond", stats.frames_per_second},
+            {"adapter", stats.adapter},
+            {"terrainCells", stats.terrain_cells},
+            {"drawCalls", stats.draw_calls},
+            {"instancesDrawn", stats.instances_drawn},
+            {"gpuTimestampsOk", stats.gpu_timestamps_ok},
+            {"width", options.width},
+            {"height", options.height},
+            {"projectRoot", options.project_root.generic_string()},
+            {"editor", options.editor},
+            {"debugWorld", options.debug_world},
+            {"hidden", options.hidden},
+            {"presentSyncInterval", 0},
+            {"buildConfig",
+#ifdef NDEBUG
+             "Release"
+#else
+             "Debug"
+#endif
+            },
+            {"viewport", "game"},
+            {"playTest", options.require_gpu_timestamps},
+        };
+        std::ofstream out(options.benchmark_report_path, std::ios::binary | std::ios::trunc);
+        if (out) out << report.dump(2);
+    }
+    if (editor) {
+        if (editor->lua_runtime) editor->lua_runtime->set_audio_engine(nullptr);
+        if (editor->audio_engine) editor->audio_engine->shutdown();
+        editor->audio_engine.reset();
+    }
+    renderer.release();
+    editor.reset();
     SDL_DestroyWindow(window);
     SDL_Quit();
+    // Hidden frame-limited sessions: remaining automatic destructors (streamed terrain/foliage)
+    // can stall for minutes after a successful run (TICKET-0139 / editor_smoke).
+    if (options.hidden && options.frame_limit > 0 && !options.skip_hidden_hard_exit) {
+        std::ostringstream summary;
+        summary << (options.require_gpu_timestamps ? "Benchmark complete" : "Render session complete")
+                << "; frames=" << stats.frames
+                << "; averageCpuMs=" << stats.average_cpu_ms
+                << "; averageGpuMs=" << stats.average_gpu_ms
+                << "; fps=" << stats.frames_per_second
+                << "; adapter=" << stats.adapter
+                << "; terrainCells=" << stats.terrain_cells
+                << "; drawCalls=" << stats.draw_calls
+                << "; instances=" << stats.instances_drawn
+                << "; gpuTimestampsOk=" << (stats.gpu_timestamps_ok ? "true" : "false");
+        if (!options.benchmark_report_path.empty())
+            summary << "; report=" << options.benchmark_report_path.generic_string();
+        if (options.cli_json) {
+            nlohmann::json response = {
+                {"exitCode", 0},
+                {"summary", summary.str()},
+                {"diagnostics", nlohmann::json::array()},
+                {"artifacts", nlohmann::json::array()},
+                {"metrics",
+                    {{"averageCpuMs", stats.average_cpu_ms}, {"averageGpuMs", stats.average_gpu_ms},
+                     {"elapsedSeconds", stats.elapsed_seconds}, {"frames", stats.frames},
+                     {"framesPerSecond", stats.frames_per_second},
+                     {"terrainCells", stats.terrain_cells}, {"drawCalls", stats.draw_calls},
+                     {"instancesDrawn", stats.instances_drawn}}},
+                {"metadata",
+                    {{"adapter", stats.adapter},
+                     {"gpuTimestampsOk", stats.gpu_timestamps_ok ? "true" : "false"}}},
+            };
+            if (!options.benchmark_report_path.empty())
+                response["artifacts"].push_back(options.benchmark_report_path.generic_string());
+            if (!options.capture_path.empty())
+                response["artifacts"].push_back(options.capture_path.generic_string());
+            std::cout << response.dump() << '\n';
+        } else {
+            std::cout << summary.str() << '\n';
+        }
+        std::cout.flush();
+        Logger::instance().write(Severity::Info, "process",
+            "Engine session finished; exitCode=0; errors=" + std::to_string(Logger::instance().error_count()) +
+                " (hidden frame-limit hard-exit)");
+        std::_Exit(0);
+    }
     return Result<RenderStats>::success(std::move(stats));
 }
 

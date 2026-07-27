@@ -2,6 +2,7 @@
 
 #include "engine/assets/world_forge_archetypes_asset.h"
 #include "engine/assets/world_forge_dialogues_asset.h"
+#include "engine/assets/world_forge_events_asset.h"
 #include "engine/assets/world_forge_factions_asset.h"
 #include "engine/assets/world_forge_map_asset.h"
 #include "engine/assets/world_forge_pantheon_asset.h"
@@ -50,7 +51,8 @@ enum class WorldForgeKind : std::uint8_t {
     Relationships,
     Map,
     Quests,
-    Dialogues
+    Dialogues,
+    Events
 };
 
 std::optional<WorldForgeKind> kind_from_string(const std::string& raw) {
@@ -64,6 +66,8 @@ std::optional<WorldForgeKind> kind_from_string(const std::string& raw) {
     if (key == "quests" || key == "quest") return WorldForgeKind::Quests;
     if (key == "dialogues" || key == "dialogue" || key == "dialogs" || key == "dialog")
         return WorldForgeKind::Dialogues;
+    if (key == "events" || key == "event" || key == "sequences" || key == "timelines")
+        return WorldForgeKind::Events;
     return std::nullopt;
 }
 
@@ -77,6 +81,7 @@ std::optional<WorldForgeKind> kind_from_path(const std::string& relative) {
     if (key.find("map.worldforge.json") != std::string::npos) return WorldForgeKind::Map;
     if (key.find("quests.worldforge.json") != std::string::npos) return WorldForgeKind::Quests;
     if (key.find("dialogues.worldforge.json") != std::string::npos) return WorldForgeKind::Dialogues;
+    if (key.find("events.worldforge.json") != std::string::npos) return WorldForgeKind::Events;
     return std::nullopt;
 }
 
@@ -90,6 +95,7 @@ const char* to_string(WorldForgeKind kind) {
     case WorldForgeKind::Map: return "map";
     case WorldForgeKind::Quests: return "quests";
     case WorldForgeKind::Dialogues: return "dialogues";
+    case WorldForgeKind::Events: return "events";
     }
     return "factions";
 }
@@ -104,6 +110,7 @@ std::filesystem::path default_path(WorldForgeKind kind, const std::filesystem::p
     case WorldForgeKind::Map: return default_world_forge_map_path(project_root);
     case WorldForgeKind::Quests: return default_world_forge_quests_path(project_root);
     case WorldForgeKind::Dialogues: return default_world_forge_dialogues_path(project_root);
+    case WorldForgeKind::Events: return default_world_forge_events_path(project_root);
     }
     return default_world_forge_factions_path(project_root);
 }
@@ -138,6 +145,16 @@ std::unordered_set<std::string> load_quest_ids(const std::filesystem::path& proj
     return ids;
 }
 
+std::unordered_set<std::string> load_dialogue_ids(const std::filesystem::path& project_root) {
+    std::unordered_set<std::string> ids;
+    const auto path = default_world_forge_dialogues_path(project_root);
+    if (!std::filesystem::exists(path)) return ids;
+    if (const auto loaded = WorldForgeDialoguesAsset::load(path); loaded) {
+        for (const auto& tree : loaded.value().trees) ids.insert(tree.id);
+    }
+    return ids;
+}
+
 std::string payload_text(const nlohmann::json& params) {
     if (params.contains("source") && params["source"].is_string()) return params["source"].get<std::string>();
     if (params.contains("json")) {
@@ -167,6 +184,8 @@ Result<void> validate_kind_file(WorldForgeKind kind, const std::filesystem::path
         return WorldForgeQuestsAsset::validate_file(absolute, load_region_ids(project_root));
     case WorldForgeKind::Dialogues:
         return WorldForgeDialoguesAsset::validate_file(absolute, load_quest_ids(project_root));
+    case WorldForgeKind::Events:
+        return WorldForgeEventsAsset::validate_file(absolute, load_dialogue_ids(project_root));
     }
     return Result<void>::success();
 }
@@ -246,10 +265,19 @@ Result<std::string> load_json_text(WorldForgeKind kind, const std::filesystem::p
         metadata["assetId"] = loaded.value().id;
         return Result<std::string>::success(loaded.value().to_json());
     }
+    case WorldForgeKind::Events: {
+        const auto loaded = WorldForgeEventsAsset::load(absolute);
+        if (!loaded) return Result<std::string>::failure(loaded.error());
+        if (const auto refs = loaded.value().validate_dialogue_refs(load_dialogue_ids(project_root)); !refs)
+            return Result<std::string>::failure(refs.error());
+        metadata["sequenceCount"] = std::to_string(loaded.value().sequences.size());
+        metadata["assetId"] = loaded.value().id;
+        return Result<std::string>::success(loaded.value().to_json());
+    }
     }
     return Result<std::string>::failure(wf_error("WORLD-FORGE-CMD-KIND", ErrorCategory::Validation,
         "Unknown World Forge kind",
-        "Use factions, pantheon, archetypes, resources, relationships, map, quests, or dialogues."));
+        "Use factions, pantheon, archetypes, resources, relationships, map, quests, dialogues, or events."));
 }
 
 Result<void> write_kind_file(WorldForgeKind kind, const std::filesystem::path& absolute, const std::string& text,
@@ -327,10 +355,19 @@ Result<void> write_kind_file(WorldForgeKind kind, const std::filesystem::path& a
         metadata["assetId"] = parsed.value().id;
         return parsed.value().save_atomic(absolute);
     }
+    case WorldForgeKind::Events: {
+        auto parsed = WorldForgeEventsAsset::parse(text, absolute.filename().string());
+        if (!parsed) return Result<void>::failure(parsed.error());
+        if (const auto refs = parsed.value().validate_dialogue_refs(load_dialogue_ids(project_root)); !refs)
+            return Result<void>::failure(refs.error());
+        metadata["sequenceCount"] = std::to_string(parsed.value().sequences.size());
+        metadata["assetId"] = parsed.value().id;
+        return parsed.value().save_atomic(absolute);
+    }
     }
     return Result<void>::failure(wf_error("WORLD-FORGE-CMD-KIND", ErrorCategory::Validation,
         "Unknown World Forge kind",
-        "Use factions, pantheon, archetypes, resources, relationships, map, quests, or dialogues."));
+        "Use factions, pantheon, archetypes, resources, relationships, map, quests, dialogues, or events."));
 }
 
 std::string relative_from(const std::filesystem::path& project_root, const std::filesystem::path& absolute) {
@@ -359,7 +396,7 @@ EditorBridgeResponse apply_world_forge_operation(const std::filesystem::path& pr
         return make_response(ExitCode::InvalidArguments, "World Forge kind or path required",
             {wf_error("WORLD-FORGE-CMD-KIND", ErrorCategory::Validation,
                 "Could not resolve World Forge asset kind",
-                "Pass kind=factions|pantheon|archetypes|resources|relationships|map|quests|dialogues or a *.worldforge.json path.")});
+                "Pass kind=factions|pantheon|archetypes|resources|relationships|map|quests|dialogues|events or a *.worldforge.json path.")});
     }
 
     const auto absolute = relative_arg.empty() ? default_path(*kind, project_root) : (project_root / relative_arg);

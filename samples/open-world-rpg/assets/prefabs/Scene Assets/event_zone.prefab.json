@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "entities": [
+    {
+      "name": "Event Zone Pad",
+      "transform": {
+        "position": [0.0, 0.05, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [2.4, 0.08, 2.4]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cylinder",
+        "color": [0.45, 0.55, 0.95]
+      }
+    },
+    {
+      "name": "Event Zone Marker",
+      "transform": {
+        "position": [0.0, 1.1, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [0.18, 1.1, 0.18]
+      },
+      "parent": null,
+      "mesh": {
+        "primitive": "cylinder",
+        "color": [0.75, 0.55, 1.0]
+      }
+    }
+  ],
+  "collision": [
+    {
+      "shape": "sphere",
+      "layer": "trigger",
+      "trigger": true,
+      "transform": {
+        "position": [0.0, 1.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "radius": 2.4,
+      "interaction": "event_sandbox"
+    }
+  ]
+}

@@ -2,8 +2,10 @@
 
 #include "engine/assets/world_forge_archetypes_asset.h"
 #include "engine/assets/world_forge_dialogues_asset.h"
+#include "engine/assets/world_forge_events_asset.h"
 #include "engine/assets/world_forge_factions_asset.h"
 #include "engine/assets/world_forge_map_asset.h"
+#include "engine/assets/world_forge_mvp_readiness_asset.h"
 #include "engine/assets/world_forge_pantheon_asset.h"
 #include "engine/assets/world_forge_quests_asset.h"
 #include "engine/assets/world_forge_relationships_asset.h"
@@ -43,7 +45,8 @@ enum class WorldForgeEditorPane : std::uint8_t {
     Relationships,
     Map,
     Quests,
-    Dialogues
+    Dialogues,
+    Events
 };
 
 /// Map Canvas authoring tool (TICKET-0208 Pencil tool rail).
@@ -78,6 +81,7 @@ struct WorldForgeEditorSession {
         Quests,
         Dialogues,
         DialogueGraph,
+        Events,
         Pantheon,
         Archetypes,
         Resources,
@@ -91,6 +95,14 @@ struct WorldForgeEditorSession {
     bool lock_pane_tab = false;
     /// Global Act lens (DEC-0036). Empty = All acts. Values: act0..act4.
     std::string act_filter;
+    /// Overview workstream bounce filter. Empty = all streams. Values match `to_string(WorldForgeMvpWorkstream)`.
+    std::string overview_workstream_filter;
+    /// Selected MVP checklist item id (Overview detail pane).
+    std::string overview_selected_item_id;
+    /// When true, Overview table hides items with status `done` (default on — focus open work).
+    bool overview_hide_done = true;
+    /// Overview checklist sort: next unblocker (actionable + most waited-on) vs priority.
+    bool overview_sort_by_blockers = true;
     WorldForgeHierarchyPage hierarchy_page = WorldForgeHierarchyPage::Religion;
     /// Hierarchy pages: tree list vs parentId graph canvas.
     bool hierarchy_graph_mode = false;
@@ -117,6 +129,9 @@ struct WorldForgeEditorSession {
     WorldForgeMapAsset map;
     WorldForgeQuestsAsset quests;
     WorldForgeDialoguesAsset dialogues;
+    WorldForgeEventsAsset events;
+    /// Act Zero (Landfall) MVP readiness checklist — Overview authoritative progress.
+    WorldForgeMvpReadinessAsset mvp_readiness;
     /// Selected entity/node/edge/region/poi/link/quest/tree id, interpreted per `list_kind`.
     std::string selected_id;
     ListKind list_kind = ListKind::Entities;
@@ -187,6 +202,7 @@ struct WorldForgeEditorSession {
 
     std::array<char, 96> create_dialogue_tree_name{};
     std::array<char, 96> create_dialogue_tree_parent_quest{};
+    std::array<char, 96> create_event_sequence_name{};
 
     std::array<char, 96> create_edge_id{};
     std::array<char, 96> create_edge_from{};
@@ -289,6 +305,8 @@ struct WorldForgeEditorSession {
 
     std::unordered_map<std::string, std::uint64_t> concept_placeholder_tex;
     bool concept_placeholder_tex_ready = false;
+    /// Act Zero Overview concept / reference PNGs keyed by repo-relative path.
+    std::unordered_map<std::string, std::uint64_t> mvp_image_tex;
     /// Cartography Map Canvas icons / heraldry (`icon-village`, `heraldry-kingdom_tessera`, …).
     std::unordered_map<std::string, std::uint64_t> cartography_tex;
     bool cartography_tex_ready = false;

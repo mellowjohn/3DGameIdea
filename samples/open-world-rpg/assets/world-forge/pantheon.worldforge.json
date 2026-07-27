@@ -32,7 +32,7 @@
       "parentId": "",
       "openQuestions": [
         "Whether Act 0 'destroy the Shroud' guidance is honest or dramatic irony vs Frangitur's prologue",
-        "Creator-origin crystal location and current holder"
+        "Creator-origin crystal display name, location, and White Lotus holder detail"
       ]
     },
     {
@@ -40,7 +40,7 @@
       "kind": "deity",
       "displayName": "The Sea of Whispers",
       "canonStatus": "draft",
-      "summary": "False deity of the Calrenoth watershed cult (The Thalassar + The Underflow). Hinted true name for narrative; public rite titles Muirthalia (Thalassar) and Grakk-Maren (Underflow). Not a true god — a lieutenant of Luceran the Hollow planted by Frangitur; Underflow rite perverted. Candidate early Act 1 boss.",
+      "summary": "False deity of the Calrenoth watershed cult (The Thalassar + The Underflow). Hinted true name for narrative; public rite titles Muirthalia (Thalassar) and Grakk-Maren (Underflow). Not a true god — manifest lieutenant Pneumyra (pneumyra), a Luceran agent planted by Frangitur; siren-bodied; public epithet She Who Sings the Undertow. Underflow rite perverted. Act 1 boss body.",
       "storyRef": "context/story/factions.md#the-sea-of-whispers",
       "tags": [
         "false-deity",
@@ -48,12 +48,14 @@
         "act1",
         "water",
         "muirthalia",
-        "grakk-maren"
+        "grakk-maren",
+        "pneumyra",
+        "she_who_sings_the_undertow"
       ],
       "parentId": "",
       "openQuestions": [
         "When the false nature is confirmed to the player",
-        "Lieutenant display name if distinct from cult title"
+        "Whether Anál Muir attunement channels this patron directly"
       ]
     }
   ]

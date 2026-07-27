@@ -29,10 +29,13 @@ add_library(engine_core
     src/automation/editor_bridge.cpp
     src/automation/editor_session.cpp
     src/automation/editor_screenshot.cpp
+    src/testing/image_diff.cpp
     src/automation/live_automation_control.cpp
     src/automation/mcp_server.cpp
     src/automation/world_forge_commands.cpp
     src/automation/project_git_commands.cpp
+    src/automation/planning_backlog.cpp
+    src/automation/build_coordination.cpp
     src/rendering/render_app.cpp
     src/rendering/viewport_picking.cpp
     src/world/entity_id.cpp
@@ -52,11 +55,13 @@ add_library(engine_core
     src/assets/animation_clip_asset.cpp
     src/assets/animator_controller_asset.cpp
     src/animation/animator_runtime.cpp
+    src/animation/cpu_skinning.cpp
     src/audio/audio_engine.cpp
     src/animation/animation_preview.cpp
     src/assets/prefab_asset.cpp
     src/assets/script_bindings_asset.cpp
     src/assets/hud_asset.cpp
+    src/assets/particle_emitter_asset.cpp
     src/assets/ui_canvas_asset.cpp
     src/assets/ui_canvas_mutate.cpp
     src/assets/world_forge_factions_asset.cpp
@@ -67,20 +72,31 @@ add_library(engine_core
     src/assets/world_forge_map_asset.cpp
     src/assets/world_forge_quests_asset.cpp
     src/assets/world_forge_dialogues_asset.cpp
+    src/assets/world_forge_events_asset.cpp
+    src/assets/world_forge_mvp_readiness_asset.cpp
     src/dialogue/dialogue_runtime.cpp
+    src/dialogue/dialogue_ui.cpp
     src/dialogue/dialogue_graph_edit.cpp
     src/dialogue/twee_import.cpp
+    src/event/event_timeline_runtime.cpp
     src/quest/quest_runtime.cpp
+    src/flag/flag_runtime.cpp
     src/standing/standing_runtime.cpp
+    src/session/game_session.cpp
+    src/party/party_runtime.cpp
+    src/save/rpg_save.cpp
     src/ui/hud_runtime.cpp
+    src/ui/world_ui_billboard.cpp
     src/ui/ui_canvas_stack.cpp
     src/ui/ui_canvas_editor.cpp
     src/ui/editor_ui_hotspots.cpp
     src/ui/editor_chrome.cpp
+    src/ui/app_branding.cpp
     src/ui/world_forge_editor.cpp
     src/ui/world_forge_graph_camera.cpp
     src/ui/cartography_strokes.cpp
     src/ui/imgui_png_texture.cpp
+    src/ui/ui_texture_cache.cpp
     src/world/world_partition.cpp
     src/world/cell_streamer.cpp
     src/world/cell_state.cpp
@@ -94,6 +110,8 @@ add_library(engine_core
     src/world/foliage_scatter.cpp
     src/world/foliage_field.cpp
     src/world/world_influence.cpp
+    src/world/wind_field.cpp
+    src/vfx/particle_system.cpp
     src/world/terrain_field.cpp
     src/world/transform_utils.cpp
     src/world/prefab_collision.cpp
@@ -104,6 +122,7 @@ add_library(engine_core
     src/physics/collision_world.cpp
     src/physics/character_controller.cpp
     src/physics/rigidbody_locomotion.cpp
+    src/rendering/viewport_math.cpp
     src/rendering/debug_camera.cpp
     src/rendering/orbit_camera.cpp
     src/rendering/editor_fonts.cpp
@@ -118,12 +137,19 @@ target_compile_definitions(engine_core PUBLIC UNICODE _UNICODE NOMINMAX WIN32_LE
 target_link_libraries(engine_core PUBLIC SDL3::SDL3 EnTT::EnTT nlohmann_json::nlohmann_json Jolt::Jolt imgui::imgui imguizmo::imguizmo fastgltf::fastgltf ${LUA_LIBRARIES})
 target_include_directories(engine_core PUBLIC ${LUA_INCLUDE_DIR})
 if(MSVC)
-    target_compile_options(engine_core PRIVATE /W4 /permissive- /EHsc /utf-8 /FS)
+    target_compile_options(engine_core PRIVATE /W4 /permissive- /EHsc /utf-8 /FS /bigobj)
     target_link_libraries(engine_core PRIVATE dbghelp d3d12 dxgi dxguid d3dcompiler shell32 windowscodecs)
 endif()
 
 add_executable(engine src/app/main.cpp)
 target_link_libraries(engine PRIVATE engine_core)
+if(WIN32)
+    target_sources(engine PRIVATE src/app/engine.rc)
+endif()
+# Keep the developer executable separate from a stale/locked legacy Debug\engine.exe.
+# This also makes it explicit which binary is safe to run during iteration.
+set_target_properties(engine PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/dev-next")
 
 if(ENGINE_BUILD_TESTS)
     enable_testing()
@@ -132,7 +158,7 @@ if(ENGINE_BUILD_TESTS)
     add_test(NAME regression_all COMMAND engine_tests)
     add_executable(engine_suite_tests tests/suite_tests.cpp)
     target_link_libraries(engine_suite_tests PRIVATE engine_core)
-    foreach(suite IN ITEMS core world world_influence assets world_forge streaming terrain foliage water collision navigation character interaction combat camera diagnostics scripting automation hud animator audio)
+    foreach(suite IN ITEMS core world world_influence assets world_forge streaming terrain foliage water collision navigation character interaction combat camera diagnostics scripting automation hud animator audio particles)
         add_test(NAME ${suite} COMMAND engine_suite_tests --suite ${suite} --json)
         set_tests_properties(${suite} PROPERTIES LABELS "${suite};unit")
     endforeach()
@@ -150,6 +176,9 @@ if(ENGINE_BUILD_TESTS)
         set_tests_properties(editor_smoke PROPERTIES TIMEOUT 30 LABELS "gpu;editor;integration")
         add_test(NAME editor_responsive_smoke COMMAND engine editor --project ${CMAKE_SOURCE_DIR}/samples/open-world-rpg --width 900 --height 600 --frames 2 --hidden true --json)
         set_tests_properties(editor_responsive_smoke PROPERTIES TIMEOUT 30 LABELS "gpu;editor;integration")
+        add_test(NAME visual_regression COMMAND engine visual-regression
+            --project ${CMAKE_SOURCE_DIR}/samples/open-world-rpg --json)
+        set_tests_properties(visual_regression PROPERTIES TIMEOUT 180 LABELS "gpu;visual;integration")
     endif()
 endif()
 

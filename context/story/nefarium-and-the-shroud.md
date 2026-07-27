@@ -27,7 +27,9 @@ Nefarium may be forged into weapons that feed on a wielder's hatred and armor th
 
 The Shroud is a prison disguised as a source of power. It appears neither wholly fabric nor metal, but as a dense, liquid-like void pulsing with crimson veins. It moves as though breathing and reaches toward nearby people with unraveling tendrils.
 
-The established account says an orc warband leader wore the Shroud before Luceran recovered it. Luceran then wore it believing he could contain its corruption, but the Shroud gained control over him and transformed him into Luceran the Hollow.
+The established account says **The Black Howl** orc warband leader **Grul’thaz the Black Howl** (Shadowpaw clan) wore the Shroud during the **first war** before Luceran recovered it (draft lock 2026-07-22). Luceran then wore it believing he could contain its corruption, but the Shroud gained control over him and transformed him into Luceran the Hollow.
+
+**Imperium command (draft lock, 2026-07-22):** Luceran holds Chaotic Imperium command because **Frangitur is trapped within the Shroud** and Luceran controls that binding — not mere political myth alone.
 
 ## Competing Prison Proposal
 
@@ -49,6 +51,7 @@ The throne imagery suggests that the Shroud waits for a suitable vessel and that
 - Decide who forged the Shroud and whether it was designed as a prison, a weapon, a mantle of command, or some combination.
 - Decide whether Frangitur created Nefarium before or after his fall and how a Shroud made from it could imprison him.
 - Standardize the spelling as **Nefarium Shroud**; one source also uses “Nefarion Shroud.”
-- Decide whether wearing the Shroud grants command of the Chaotic Imperium or whether that command is political mythology.
+- ~~Decide whether wearing the Shroud grants command of the Chaotic Imperium~~ — **partial lock 2026-07-22:** Luceran commands while Frangitur is trapped in the Shroud; throne-fused vs battle-worn imagery still open.
 - Define whether cult claims that Nefarium is a divine fragment are true, false, or incomplete.
 - Specify which visual energy color is primary: crimson, sickly green, or context-dependent.
+- Cristallo Creator-origin crystal **cleanses** Nefarium corruption (inverse relic) — see [factions.md](factions.md#the-cristallo); name/location open.

@@ -34,11 +34,12 @@ Format docs: [`../formats/ui-canvas-assets.md`](../formats/ui-canvas-assets.md).
 - Per-canvas `scaleMode`: `letterbox` (default) or `fill_edges` (cover; content may extend past viewport, clipped on draw)
 - Settings sample: `assets/ui/settings.uicanvas.json`
 
-## Images (TICKET-0164 — MVP)
+## Images (TICKET-0164)
 
 - Optional `image` + `imageMode` (`stretch` | `contain`) on widgets; dedicated `image` type (decorative)
-- Runtime currently draws a distinct placeholder (border + fill + filename stem). **GPU texture upload is a follow-on** (WIC/stb + ImGui/D3D12).
-- Sample: main menu New Game references `assets/ui/textures/btn_new_game.png` (missing texture → placeholder OK)
+- Runtime: `UiTextureCache` loads PNG via WIC → D3D12 SRV on the ImGui heap (slots 256–511) and draws with `AddImageRounded`. Missing / unloadable paths still show the purple placeholder + filename stem.
+- Sample: main menu New Game → `assets/ui/textures/btn_new_game.png`; play HUD / dialogue chrome under `assets/ui/hud/` and `assets/ui/dialogue/`
+- Play HUD + dialogue share a **40 design-px** letterbox safe margin; regenerate with `tools/generate_ui_canvases.py`
 
 ## Decisions (locked)
 

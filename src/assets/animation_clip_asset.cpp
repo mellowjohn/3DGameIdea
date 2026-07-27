@@ -394,6 +394,124 @@ Result<std::array<float, 3>> sample_translation_channel(const AnimationClipChann
 
 namespace {
 
+std::array<float, 4> normalize_quat4(std::array<float, 4> q) {
+    const float len = std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+    if (!(len > 1e-8f)) return {0.0f, 0.0f, 0.0f, 1.0f};
+    const float inv = 1.0f / len;
+    return {q[0] * inv, q[1] * inv, q[2] * inv, q[3] * inv};
+}
+
+std::array<float, 4> slerp_quat4(std::array<float, 4> a, std::array<float, 4> b, float t) {
+    a = normalize_quat4(a);
+    b = normalize_quat4(b);
+    float dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+    if (dot < 0.0f) {
+        b = {-b[0], -b[1], -b[2], -b[3]};
+        dot = -dot;
+    }
+    if (dot > 0.9995f) {
+        return normalize_quat4({
+            a[0] + (b[0] - a[0]) * t,
+            a[1] + (b[1] - a[1]) * t,
+            a[2] + (b[2] - a[2]) * t,
+            a[3] + (b[3] - a[3]) * t,
+        });
+    }
+    const float theta = std::acos(std::clamp(dot, -1.0f, 1.0f));
+    const float sin_theta = std::sin(theta);
+    const float w1 = std::sin((1.0f - t) * theta) / sin_theta;
+    const float w2 = std::sin(t * theta) / sin_theta;
+    return normalize_quat4({
+        a[0] * w1 + b[0] * w2,
+        a[1] * w1 + b[1] * w2,
+        a[2] * w1 + b[2] * w2,
+        a[3] * w1 + b[3] * w2,
+    });
+}
+
+} // namespace
+
+Result<std::array<float, 4>> sample_rotation_channel(const AnimationClipChannel& channel, float time_seconds) {
+    if (channel.path != AnimationChannelPath::Rotation) {
+        return Result<std::array<float, 4>>::failure(anim_error("ANIM-CLIP-SAMPLE-PATH",
+            "sample_rotation_channel requires a rotation channel"));
+    }
+    if (channel.times.empty() || channel.values.size() != channel.times.size() * 4) {
+        return Result<std::array<float, 4>>::failure(anim_error("ANIM-CLIP-EMPTY-KEYS",
+            "Rotation channel has no usable keyframes"));
+    }
+    if (!std::isfinite(time_seconds)) {
+        return Result<std::array<float, 4>>::failure(anim_error("ANIM-CLIP-NONFINITE",
+            "Sample time must be finite"));
+    }
+
+    const auto read_key = [&](std::size_t index) -> std::array<float, 4> {
+        const std::size_t offset = index * 4;
+        return normalize_quat4({channel.values[offset], channel.values[offset + 1], channel.values[offset + 2],
+            channel.values[offset + 3]});
+    };
+
+    if (time_seconds <= channel.times.front()) return Result<std::array<float, 4>>::success(read_key(0));
+    if (time_seconds >= channel.times.back()) {
+        return Result<std::array<float, 4>>::success(read_key(channel.times.size() - 1));
+    }
+
+    std::size_t upper = 1;
+    while (upper < channel.times.size() && channel.times[upper] < time_seconds) ++upper;
+    const std::size_t lower = upper - 1;
+    if (channel.interpolation == AnimationInterpolationMode::Step) {
+        return Result<std::array<float, 4>>::success(read_key(lower));
+    }
+    const float t0 = channel.times[lower];
+    const float t1 = channel.times[upper];
+    const float alpha = (t1 > t0) ? ((time_seconds - t0) / (t1 - t0)) : 0.0f;
+    return Result<std::array<float, 4>>::success(slerp_quat4(read_key(lower), read_key(upper), alpha));
+}
+
+Result<std::array<float, 3>> sample_scale_channel(const AnimationClipChannel& channel, float time_seconds) {
+    if (channel.path != AnimationChannelPath::Scale) {
+        return Result<std::array<float, 3>>::failure(anim_error("ANIM-CLIP-SAMPLE-PATH",
+            "sample_scale_channel requires a scale channel"));
+    }
+    if (channel.times.empty() || channel.values.size() != channel.times.size() * 3) {
+        return Result<std::array<float, 3>>::failure(anim_error("ANIM-CLIP-EMPTY-KEYS",
+            "Scale channel has no usable keyframes"));
+    }
+    if (!std::isfinite(time_seconds)) {
+        return Result<std::array<float, 3>>::failure(anim_error("ANIM-CLIP-NONFINITE",
+            "Sample time must be finite"));
+    }
+
+    const auto read_key = [&](std::size_t index) -> std::array<float, 3> {
+        const std::size_t offset = index * 3;
+        return {channel.values[offset], channel.values[offset + 1], channel.values[offset + 2]};
+    };
+
+    if (time_seconds <= channel.times.front()) return Result<std::array<float, 3>>::success(read_key(0));
+    if (time_seconds >= channel.times.back()) {
+        return Result<std::array<float, 3>>::success(read_key(channel.times.size() - 1));
+    }
+
+    std::size_t upper = 1;
+    while (upper < channel.times.size() && channel.times[upper] < time_seconds) ++upper;
+    const std::size_t lower = upper - 1;
+    if (channel.interpolation == AnimationInterpolationMode::Step) {
+        return Result<std::array<float, 3>>::success(read_key(lower));
+    }
+    const float t0 = channel.times[lower];
+    const float t1 = channel.times[upper];
+    const float alpha = (t1 > t0) ? ((time_seconds - t0) / (t1 - t0)) : 0.0f;
+    const auto a = read_key(lower);
+    const auto b = read_key(upper);
+    return Result<std::array<float, 3>>::success({
+        a[0] + (b[0] - a[0]) * alpha,
+        a[1] + (b[1] - a[1]) * alpha,
+        a[2] + (b[2] - a[2]) * alpha,
+    });
+}
+
+namespace {
+
 const AnimationClipChannel* find_root_translation_channel(const AnimationClip& clip,
     const std::string& root_joint_name) {
     const AnimationClipChannel* fallback_root = nullptr;

@@ -102,6 +102,20 @@ Result<PrefabPointLight> read_light(const nlohmann::json& light) {
     return Result<PrefabPointLight>::success(point);
 }
 
+Result<PrefabParticleEmitter> read_particle(const nlohmann::json& particle) {
+    if (!particle.is_object())
+        return Result<PrefabParticleEmitter>::failure(
+            prefab_error("PREFAB-PARTICLE-INVALID", "Prefab particle must be an object"));
+    PrefabParticleEmitter emitter{};
+    emitter.asset = particle.value("asset", std::string{});
+    if (emitter.asset.empty())
+        return Result<PrefabParticleEmitter>::failure(
+            prefab_error("PREFAB-PARTICLE-INVALID", "Prefab particle.asset is required"));
+    if (particle.contains("offset")) emitter.offset = read_vec3(particle["offset"]);
+    if (particle.contains("enabled")) emitter.enabled = particle["enabled"].get<bool>();
+    return Result<PrefabParticleEmitter>::success(emitter);
+}
+
 Result<CollisionLayer> read_collision_layer(const std::string& value) {
     const auto normalized = normalize_primitive_name(value);
     if (normalized == "staticworld") return Result<CollisionLayer>::success(CollisionLayer::StaticWorld);
@@ -434,6 +448,24 @@ Result<PrefabAsset> PrefabAsset::load(const std::filesystem::path& path) {
         if (!light) return Result<PrefabAsset>::failure(light.error());
         asset.light = light.value();
     }
+    if (document.contains("particles") && document["particles"].is_array()) {
+        for (const auto& entry : document["particles"]) {
+            const auto particle = read_particle(entry);
+            if (!particle) return Result<PrefabAsset>::failure(particle.error());
+            auto emitter = particle.value();
+            emitter.asset = normalize_asset_path(emitter.asset);
+            asset.particles.push_back(std::move(emitter));
+        }
+    }
+    if (document.contains("particle")) {
+        const auto particle = read_particle(document["particle"]);
+        if (!particle) return Result<PrefabAsset>::failure(particle.error());
+        asset.particle = particle.value();
+        if (asset.particle) asset.particle->asset = normalize_asset_path(asset.particle->asset);
+        if (asset.particles.empty() && asset.particle) asset.particles.push_back(*asset.particle);
+    } else if (asset.particles.size() == 1) {
+        asset.particle = asset.particles.front();
+    }
     if (document.contains("characterAsset") && document["characterAsset"].is_string())
         asset.character_asset = document["characterAsset"].get<std::string>();
     if (document.contains("entities") && document["entities"].is_array()) {
@@ -596,6 +628,21 @@ Result<void> PrefabAsset::save(const std::filesystem::path& path) const {
                              {"radius", light->radius},
                              {"strength", light->strength},
                              {"offset", write_vec3(light->offset)}};
+    }
+    if (!particles.empty()) {
+        nlohmann::json list = nlohmann::json::array();
+        for (const auto& emitter : particles) {
+            list.push_back({{"asset", emitter.asset}, {"offset", write_vec3(emitter.offset)},
+                {"enabled", emitter.enabled}});
+        }
+        document["particles"] = std::move(list);
+        if (particles.size() == 1) {
+            document["particle"] = {{"asset", particles.front().asset},
+                {"offset", write_vec3(particles.front().offset)}, {"enabled", particles.front().enabled}};
+        }
+    } else if (particle) {
+        document["particle"] = {{"asset", particle->asset}, {"offset", write_vec3(particle->offset)},
+            {"enabled", particle->enabled}};
     }
     if (character_asset) document["characterAsset"] = *character_asset;
     if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());

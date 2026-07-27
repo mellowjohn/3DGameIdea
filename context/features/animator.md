@@ -53,7 +53,7 @@ Controllers may author `timelineEvents[]` (state + time + name + optional layer/
 
 ## Out of scope
 
-- GPU skinning / viewport character playback polish (later M5 exit work).
+- Play-test player **GPU LBS skinning** landed (TICKET-0227); catalog-wide / Animation tools viewport polish remain follow-on.
 - Runtime IK solve (metadata only today — [`../formats/rig-assets.md`](../formats/rig-assets.md), TICKET-0106).
 - Auto combat-volume enable from events; play-session animator wiring polish.
 - Lua-authored state machines (rejected unless a new decision supersedes DEC-0022).

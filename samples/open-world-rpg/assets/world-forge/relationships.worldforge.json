@@ -25,8 +25,8 @@
       "kind": "person",
       "displayName": "King Asher the Brittle",
       "canonStatus": "draft",
-      "summary": "Current King of Tessera after Luceran's fall; drafts settlements into the war against the Imperium. Twine Act 0 draft: Luceran's fragile half-brother; stalls rear support at Calrenoth.",
-      "storyRef": "context/story/the-squire.md",
+      "summary": "Current King of Tessera after Luceran's fall; drafts settlements into the war against the Imperium. Established: Luceran's fragile half-brother (D-P0-13). Draft: stalls rear support at Calrenoth.",
+      "storyRef": "context/story/ashfell-blade.md",
       "acts": [],
       "tags": [
         "kingdom",
@@ -34,7 +34,8 @@
       ],
       "parentId": "",
       "openQuestions": [
-        "Legitimacy, personality, and full relationship to Luceran beyond draft half-brother status"
+        "Legitimacy and personality beyond established half-brother kinship",
+        "How far ‘brittle / absent support’ goes as a campaign beat"
       ]
     },
     {
@@ -59,7 +60,7 @@
       "kind": "person",
       "displayName": "Commander Grenge",
       "canonStatus": "draft",
-      "summary": "Calrenoth commander during the Imperium siege; green shroud over plate; assigns rear-drawbridge mission.",
+      "summary": "Calrenoth commander during the Imperium siege; green shroud over plate; assigns rear-drawbridge mission. Default continuity: survives Act 0 and may reappear in Act 1 (D-P0-12).",
       "storyRef": "context/story/campaign-beat-sheet.md#named-cast-introduced-by-act-0-draft",
       "acts": [
         "act0"
@@ -71,7 +72,7 @@
       ],
       "parentId": "",
       "openQuestions": [
-        "Survival after Act 0 and role in later acts"
+        "Survival after Act 0 and role in later acts — default survive / Act 1 reappear (D-P0-12); optional hostage pick still open"
       ]
     },
     {
@@ -79,7 +80,7 @@
       "kind": "person",
       "displayName": "Sergeant Larrell",
       "canonStatus": "draft",
-      "summary": "Rear drawbridge NCO at Calrenoth; player choice may save or abandon him as Imperium overruns the rear.",
+      "summary": "Rear drawbridge NCO at Calrenoth; player choice may save or abandon him as Imperium overruns the rear. Default continuity: survives Act 0 and may reappear in Act 1 (D-P0-12).",
       "storyRef": "context/story/campaign-beat-sheet.md#named-cast-introduced-by-act-0-draft",
       "acts": [
         "act0"
@@ -91,7 +92,7 @@
       ],
       "parentId": "",
       "openQuestions": [
-        "Whether survival of Larrell is a consequential flag beyond Act 0"
+        "Whether Twine save/flee remains a hard death fork vs soft hostage / injury beat under D-P0-12 survive-by-default"
       ]
     },
     {
@@ -99,7 +100,7 @@
       "kind": "person",
       "displayName": "Damius",
       "canonStatus": "draft",
-      "summary": "Scout berated by Grenge over the fall of Rinos during the Calrenoth siege.",
+      "summary": "Scout berated by Grenge over the fall of Rinos during the Calrenoth siege. Default continuity: survives Act 0 and may reappear in Act 1 (D-P0-12).",
       "storyRef": "context/story/campaign-beat-sheet.md#named-cast-introduced-by-act-0-draft",
       "acts": [
         "act0"
@@ -110,7 +111,7 @@
       ],
       "parentId": "",
       "openQuestions": [
-        "Whether Damius reappears after Act 0"
+        "Whether Damius is the optional Act 0 hostage (D-P0-12 leftover)"
       ]
     },
     {
@@ -129,6 +130,75 @@
       "openQuestions": [
         "Whether her arcs map strictly to Cristallo/tribal factions or broader conduct",
         "Loyalty-breaking points and death rules outside hardcore"
+      ]
+    },
+    {
+      "id": "drul_gath",
+      "kind": "person",
+      "displayName": "Drul’gath",
+      "canonStatus": "draft",
+      "summary": "War-chief of The Underflow. Act 0 corridor presence and Act 1 usurper-path face; Luceran-influenced. Distinct from cult mask Grakk-Maren and from Black Howl war-chief Grul’thaz.",
+      "storyRef": "context/story/factions.md#the-underflow",
+      "acts": [
+        "act0",
+        "act1"
+      ],
+      "tags": [
+        "orc",
+        "underflow",
+        "war-chief",
+        "act0",
+        "act1"
+      ],
+      "parentId": "",
+      "openQuestions": [
+        "Whether Drul’gath personally is the A1-05 usurper candidate or backs a separate proxy (D-P1-12)",
+        "Direct Act 0 encounter staging vs off-map presence"
+      ]
+    },
+    {
+      "id": "pneumyra",
+      "kind": "person",
+      "displayName": "Pneumyra",
+      "canonStatus": "draft",
+      "summary": "Luceran lieutenant planted by Frangitur as the false Sea of Whispers presence. Siren-bodied Act 1 boss; leads the Thalassar assassination plot. Public dread epithet for those who do not know her name: She Who Sings the Undertow. Underflow public cult title remains Grakk-Maren (liturgy mask, not this person).",
+      "storyRef": "context/story/factions.md#the-sea-of-whispers",
+      "acts": [
+        "act1"
+      ],
+      "tags": [
+        "lieutenant",
+        "imperium",
+        "siren",
+        "act1",
+        "sea_of_whispers",
+        "boss"
+      ],
+      "parentId": "",
+      "openQuestions": [
+        "Reveal timing of false-cult / lieutenant identity (D-P1-16)",
+        "Whether Anál Muir attunement channels her presence directly"
+      ]
+    },
+    {
+      "id": "grul_thaz",
+      "kind": "person",
+      "displayName": "Grul’thaz",
+      "canonStatus": "draft",
+      "summary": "War-chief of The Black Howl (Twine Shadowpaw clan). Prior Nefarium Shroud bearer in the first war before Luceran usurped it. Corrupted orc leader; whether slain by Luceran or survives for later beats remains open (D-P2-11).",
+      "storyRef": "context/story/factions.md#the-black-howl",
+      "acts": [],
+      "tags": [
+        "orc",
+        "black_howl",
+        "war-chief",
+        "shroud-history",
+        "first-war"
+      ],
+      "parentId": "",
+      "openQuestions": [
+        "Slain vs returns as antagonist / remnant face (D-P2-11)",
+        "Exact kinship distance to Underflow bloodline (rule locked; tree open)"
       ]
     },
     {
@@ -236,13 +306,11 @@
         "id": "luceran_the_hollow"
       },
       "kind": "kin",
-      "canonStatus": "draft",
+      "canonStatus": "established",
       "bidirectional": true,
-      "summary": "Asher is Luceran's fragile half-brother on the throne (Twine-backed draft).",
-      "storyRef": "context/story/campaign-beat-sheet.md",
-      "openQuestions": [
-        "Confirm half-brother kinship as established canon"
-      ],
+      "summary": "Asher is Luceran’s half-brother and the current King of Tessera (Creotar vision / tutorial; Dom + owner lock D-P0-13).",
+      "storyRef": "context/story/ashfell-blade.md",
+      "openQuestions": [],
       "standingTransfer": 0.0
     },
     {
@@ -395,6 +463,120 @@
       "summary": "Anál Muir is the Thalassar clan's rite-gated minor leadership relic (weaker than the Nefarium Shroud).",
       "storyRef": "context/story/factions.md#the-thalassar",
       "openQuestions": [],
+      "standingTransfer": 0.0
+    },
+    {
+      "id": "drul_gath_leads_underflow",
+      "from": {
+        "target": "node",
+        "id": "drul_gath"
+      },
+      "to": {
+        "target": "faction",
+        "id": "underflow"
+      },
+      "kind": "leads",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "summary": "Drul’gath is war-chief of The Underflow.",
+      "storyRef": "context/story/factions.md#the-underflow",
+      "openQuestions": [],
+      "standingTransfer": 0.0
+    },
+    {
+      "id": "luceran_influences_underflow",
+      "from": {
+        "target": "node",
+        "id": "luceran_the_hollow"
+      },
+      "to": {
+        "target": "faction",
+        "id": "underflow"
+      },
+      "kind": "influences",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "summary": "The Underflow is Luceran-influenced (draft lock 2026-07-22); war-chief Drul’gath is the local face.",
+      "storyRef": "context/story/factions.md#the-underflow",
+      "openQuestions": [
+        "How direct the command chain is vs cult/Pneumyra intermediary"
+      ],
+      "standingTransfer": 0.0
+    },
+    {
+      "id": "pneumyra_serves_luceran",
+      "from": {
+        "target": "node",
+        "id": "pneumyra"
+      },
+      "to": {
+        "target": "node",
+        "id": "luceran_the_hollow"
+      },
+      "kind": "serves",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "summary": "Pneumyra is Luceran’s lieutenant — false Sea of Whispers presence planted by Frangitur.",
+      "storyRef": "context/story/factions.md#the-sea-of-whispers",
+      "openQuestions": [],
+      "standingTransfer": 0.0
+    },
+    {
+      "id": "pneumyra_influences_thalassar",
+      "from": {
+        "target": "node",
+        "id": "pneumyra"
+      },
+      "to": {
+        "target": "faction",
+        "id": "thalassar"
+      },
+      "kind": "influences",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "summary": "Pneumyra leads the Act 1 Thalassar assassination / succession plot as the false cult’s lieutenant body.",
+      "storyRef": "context/story/factions.md#the-sea-of-whispers",
+      "openQuestions": [
+        "Exact assassination staging once A1-05 quest id locks"
+      ],
+      "standingTransfer": 0.0
+    },
+    {
+      "id": "grul_thaz_leads_black_howl",
+      "from": {
+        "target": "node",
+        "id": "grul_thaz"
+      },
+      "to": {
+        "target": "faction",
+        "id": "black_howl"
+      },
+      "kind": "leads",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "summary": "Grul’thaz is war-chief of The Black Howl and prior Shroud bearer.",
+      "storyRef": "context/story/factions.md#the-black-howl",
+      "openQuestions": [],
+      "standingTransfer": 0.0
+    },
+    {
+      "id": "luceran_opposes_grul_thaz",
+      "from": {
+        "target": "node",
+        "id": "luceran_the_hollow"
+      },
+      "to": {
+        "target": "node",
+        "id": "grul_thaz"
+      },
+      "kind": "opposes",
+      "canonStatus": "draft",
+      "bidirectional": false,
+      "summary": "Luceran usurped the Nefarium Shroud from Grul’thaz / The Black Howl in the first war. Whether Grul’thaz was slain remains open (D-P2-11).",
+      "storyRef": "context/story/factions.md#the-black-howl",
+      "openQuestions": [
+        "Upgrade to slew / related once D-P2-11 locks survival"
+      ],
       "standingTransfer": 0.0
     }
   ]

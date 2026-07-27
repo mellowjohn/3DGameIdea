@@ -97,6 +97,11 @@
         "enabled": false,
         "notes": ""
       },
+      "anchor": {
+        "x": -566.181396484375,
+        "y": 0.9682257771492004,
+        "z": 666.2014770507813
+      },
       "openQuestions": [
         "Named tribes, groves, and travel approaches",
         "Soft-gate policy vs Cristallo settlements",
@@ -146,7 +151,7 @@
       "kind": "settlement",
       "displayName": "Ledgeport",
       "canonStatus": "draft",
-      "summary": "Coastal market free-town near the Calrenoth / Landfall retreat path — not owned by Arrotrebae or Cristallo. Primary Act 1 hub: mayor possible, market-led politics, merchant guild + undermarket; ferry toward Cristallo; traders from Thalassar and Cristallo visit.",
+      "summary": "Coastal market free-town near the Calrenoth / Landfall retreat path — not owned by Arrotrebae or Cristallo. Primary Act 1 hub: mayor possible, market-led politics, merchant guild + undermarket; ferry to Porto Lucente (Cristallo U-bay); traders from Thalassar and Cristallo visit.",
       "storyRef": "context/story/official-world-map.md#draft-faction-theaters-2026-07-20",
       "parentRegionId": "tessera_overland",
       "factionIds": [],
@@ -171,9 +176,44 @@
         "z": 222.5849609375
       },
       "openQuestions": [
-        "Locked world-space coordinates vs Calrenoth",
-        "Ferry dock wiring to Cristallo (Dom D-P0-09)",
-        "DEC-0032 evergreen wake/camp reconcile with Ledgeport-first Act 1 (Dom D-P0-10)"
+        "Locked world-space coordinates vs Calrenoth (D-P2-08)",
+        "DEC-0032 evergreen wake/camp reconcile with Ledgeport-first Act 1 (Dom D-P0-10 done for campsite model; coords remain)"
+      ]
+    },
+    {
+      "id": "porto_lucente",
+      "kind": "settlement",
+      "displayName": "Porto Lucente",
+      "canonStatus": "draft",
+      "summary": "Cristallo ferry landing in the central island’s U-shaped channel bay — public gate from Ledgeport across the channel. Italian/Latin Cristallo register (“shining port”); owned by The Cristallo, not a neutral free-town.",
+      "storyRef": "context/story/official-world-map.md#draft-faction-theaters-2026-07-20",
+      "parentRegionId": "tessera_overland",
+      "factionIds": [
+        "cristallo"
+      ],
+      "acts": [
+        "act1",
+        "act2"
+      ],
+      "tags": [
+        "act1",
+        "cristallo",
+        "ferry",
+        "dock",
+        "u-bay"
+      ],
+      "softGate": {
+        "enabled": false,
+        "notes": "Act 1 Cristallo dual-path intro landing; soft-gate policy vs island interior still open."
+      },
+      "anchor": {
+        "x": -528.7843017578125,
+        "y": -1.9138875007629395,
+        "z": 127.9461669921875
+      },
+      "openQuestions": [
+        "World-space coordinates on central-island U-bay (D-P2-08)",
+        "Whether Porto Lucente is a full settlement vs dock hamlet under a larger Cristallo capital"
       ]
     }
   ],
@@ -304,8 +344,38 @@
         "z": 214.11282348632813
       },
       "openQuestions": [
-        "World-space anchor once peninsula geography is locked",
-        "Ferry route endpoint toward Cristallo island once Cristallo dock POI exists"
+        "World-space anchor once peninsula geography is locked (D-P2-08)",
+        "Ferry route polyline once Porto Lucente U-bay coords lock"
+      ]
+    },
+    {
+      "id": "porto_lucente_dock",
+      "kind": "other",
+      "displayName": "Porto Lucente Dock",
+      "canonStatus": "draft",
+      "regionId": "porto_lucente",
+      "summary": "Cristallo-side ferry dock in the central-island U-shaped channel bay — disembark from Ledgeport ferry.",
+      "storyRef": "context/story/official-world-map.md#draft-faction-theaters-2026-07-20",
+      "sceneEntityId": "",
+      "prefabId": "",
+      "acts": [
+        "act1",
+        "act2"
+      ],
+      "tags": [
+        "ferry",
+        "dock",
+        "act1",
+        "cristallo",
+        "porto_lucente"
+      ],
+      "anchor": {
+        "x": -618.8081665039063,
+        "y": 0.5115511417388916,
+        "z": 101.18231964111328
+      },
+      "openQuestions": [
+        "World-space anchor on U-bay shoreline (D-P2-08)"
       ]
     },
     {
@@ -448,6 +518,42 @@
       "summary": "Dock POI belongs to Ledgeport.",
       "storyRef": "context/story/official-world-map.md#draft-faction-theaters-2026-07-20",
       "openQuestions": []
+    },
+    {
+      "id": "dock_in_porto_lucente",
+      "kind": "adjacency",
+      "fromKind": "poi",
+      "fromId": "porto_lucente_dock",
+      "toKind": "region",
+      "toId": "porto_lucente",
+      "canonStatus": "draft",
+      "bidirectional": true,
+      "softGate": {
+        "enabled": false,
+        "notes": ""
+      },
+      "summary": "Dock POI belongs to Porto Lucente.",
+      "storyRef": "context/story/official-world-map.md#draft-faction-theaters-2026-07-20",
+      "openQuestions": []
+    },
+    {
+      "id": "ledgeport_travel_to_porto_lucente",
+      "kind": "travel",
+      "fromKind": "region",
+      "fromId": "ledgeport",
+      "toKind": "region",
+      "toId": "porto_lucente",
+      "canonStatus": "draft",
+      "bidirectional": true,
+      "softGate": {
+        "enabled": false,
+        "notes": "Primary Act 1 ferry path; soft-gate timing for Cristallo dual-path intro still open."
+      },
+      "summary": "Channel ferry adjacency from Ledgeport to Cristallo landing Porto Lucente.",
+      "storyRef": "context/story/campaign-beat-sheet.md",
+      "openQuestions": [
+        "World-space ferry corridor once both settlement anchors lock (D-P2-08)"
+      ]
     }
   ],
   "hydrologyRegions": [
@@ -495,6 +601,17 @@
           "z": 51.03913879394531
         }
       ]
+    },
+    {
+      "id": "ledgeport_porto_lucente_ferry",
+      "fromPoiId": "ledgeport_dock",
+      "toPoiId": "porto_lucente_dock",
+      "summary": "Act 1 channel ferry from Ledgeport to Cristallo Porto Lucente (U-bay). Polyline placeholders until D-P2-08 world coords lock.",
+      "acts": [
+        "act1",
+        "act2"
+      ],
+      "points": []
     }
   ],
   "travelRoutes": []

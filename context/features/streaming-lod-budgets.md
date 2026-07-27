@@ -9,12 +9,32 @@ Not an implementation ticket. Hard FPS/GPU gates remain [TICKET-0139](../plannin
 | Layer | Cell / neighborhood | Notes |
 | --- | --- | --- |
 | World partition | **128 m** cells | Ownership, placement, nav grids ([roadmap.md](../roadmap.md)) |
-| Terrain / foliage paint | **40 m** cells, 33×33 samples | Stream radius **2** → camera-centered **5×5** resident terrain tiles ([debug-world.md](debug-world.md)) |
+| Terrain / foliage paint | **40 m** cells, 33×33 samples | Stream radius **2** with **view bias** (full support radius **1**, outer ring toward look) + **amortized** loads (≤1 support fringe / ≤2 outer cells / ≤1 ready commit per frame; prior cells held until support complete); **look-gate** freezes outer bias forward and blocks outer/support queue + ready commits while yaw is hot; collision commit / GPU upload / foliage scatter split across frames; bootstrap/teleport still fills support immediately ([debug-world.md](debug-world.md)) |
 | Navigation field | 128 m grids | Streamed with focus; queries fail if cell not resident ([navigation-grid.md](navigation-grid.md)) |
 | Collision | Streamed bodies per cell | Unload with cells; character not owned by a streamed cell |
 | Stress check | 16 km² walk | Resident terrain cells stay **bounded** (suite / debug-world) |
 
-LOD today is primarily **distance fog + unload** (and foliage impostor intent in visual direction). Multi-tier mesh LOD and GPU budget meters are follow-on engineering.
+LOD today is **distance fog + unload**, plus the view-distance ladder below (TICKET-0220). Impostor atlases remain design intent. Numeric 1440p/60 capture + provisional budgets: [`../benchmarks/open-world-1440p.md`](../benchmarks/open-world-1440p.md) (TICKET-0139).
+
+**Frustum culling (2026-07-22 / 0220):** `draw_world_pass` skips draw calls whose world-space AABB is fully outside the camera frustum (`engine::frustum_from_view_projection` / `frustum_intersects_aabb`, `src/rendering/viewport_picking.cpp`):
+
+| Geometry | Bounds source |
+| --- | --- |
+| Terrain cells | Baked cell vertices at GPU upload |
+| Placed objects | Mesh-bounds catalog (same as pick/gizmo) |
+| Foliage draws | Per **40 m cell × mesh** AABB (cell footprint + blade height); draw units come from `StreamedFoliageField::cell_instances()` |
+
+Conservative — never culls partially visible work. Scene and Game tabs each cull against their own camera. Per-instance CPU culling (no spatial index) may need revisiting if placed-object counts grow much further.
+
+**Mesh distance LOD ladder (TICKET-0220):** Placed-mesh path uses two bands with hysteresis (`include/engine/rendering/mesh_distance_lod.h`):
+
+| Band | Threshold | Behavior |
+| --- | --- | --- |
+| Near full | distance ≤ **160 m** (`k_near_full_end_m`) | Always draw |
+| Far cull enter | distance ≥ **210 m** (`k_far_cull_start_m`) | Skip draw; sticky far key |
+| Far cull exit | distance ≤ **160 m** (`k_far_cull_exit_m`) | Clear sticky key and draw again |
+
+This is **view-distance** only — streaming unload radii are unchanged. v1 far band culls the full mesh (no alternate LODed mesh). Foliage still uses scatter falloff (120–220 m) plus frustum cull on **centered** cell AABBs (matching density/scatter origin); it does not use the placed-mesh sticky LOD keys.
 
 ## What “authored region” means here
 
@@ -42,11 +62,11 @@ Map language bands ([map-design-language.md](map-design-language.md)) imply budg
 
 ## Resident-set policy (acceptance targets)
 
-These are product acceptance targets for later engineering tickets (numbers may be tuned under TICKET-0139):
+These are product acceptance targets (numbers tuned under [TICKET-0139](../planning/tickets/TICKET-0139.md) / [`../benchmarks/open-world-1440p.md`](../benchmarks/open-world-1440p.md)):
 
 ### Overland (default play)
 
-1. **Terrain/foliage resident set** stays within a fixed camera/player neighborhood (today: radius 2 / 5×5 of 40 m cells). Expanding radius requires an explicit budget ticket, not silent growth.
+1. **Terrain/foliage resident set** stays within a fixed camera/player neighborhood (today: radius 2 with view bias + support radius 1; amortize ≤1 support fringe + ≤2 outer cells/frame; hold unload until support complete). Expanding radius requires an explicit budget ticket, not silent growth.
 2. **Collision + nav** resident sets track the same focus; queries must fail closed with diagnostics when a cell is missing (already true for nav).
 3. **Placement/prefab bodies** unload with their owner cells; no permanent residency for distant hubs.
 4. **Point lights:** keep a small active set (debug world already favors nearest placed lights). Hub cores may author more lights, but only nearest N affect shading.
@@ -58,22 +78,20 @@ These are product acceptance targets for later engineering tickets (numbers may 
 2. Exit restores overland focus at the pitch/return anchor and rebuilds the neighborhood without retaining instance meshes.
 3. Nested instances are denied (already: no camp while inside another instance).
 
-## LOD ladder (design intent)
-
-Until mesh LOD pipelines exist, accept this ladder:
+## LOD ladder (shipped + design intent)
 
 | Distance | Presentation |
 | --- | --- |
-| Near (resident cells) | Full terrain, foliage instances, collision, interactables |
-| Mid (edge of stream / just unloaded) | Pop via stream load/unload; fog softens seams |
-| Far | Silhouette landmarks + fog; no collision/sim |
+| Near (≤160 m placed; resident foliage cells in frustum) | Full terrain, foliage instances, collision, interactables |
+| Mid (160–210 m placed sticky band; stream edge) | Placed meshes may enter sticky far-cull; fog + stream load/unload soften seams |
+| Far (>210 m placed, or outside frustum / unloaded) | Culled or unloaded; silhouette landmarks + fog; no collision/sim |
 | Map UI | Fog-of-war / discovery dust — not a 3D LOD tier ([DEC-0032](../decisions/index.md#dec-0032-open-world-travel-discovery-map-and-dual-soft-gates)) |
 
-Future mesh LOD / impostors must preserve **value separation** and combat readability ([visual-direction.md](../art/visual-direction.md)).
+Future impostors / reduced meshes must preserve **value separation** and combat readability ([visual-direction.md](../art/visual-direction.md)). Constants live in `mesh_distance_lod.h` (TICKET-0220).
 
 ## Budget categories (for TICKET-0139 + content review)
 
-Acceptance reviews for authored regions should report against these categories (metrics TBD at 1440p/60):
+Acceptance reviews for authored regions should report against these categories (see measured 1440p baselines in [`../benchmarks/open-world-1440p.md`](../benchmarks/open-world-1440p.md)):
 
 | Category | Owned by | Region risk |
 | --- | --- | --- |
@@ -100,13 +118,14 @@ Use these as test/scenario seeds for engineering:
 - [ ] **Nav fail-closed:** query into unloaded partition cell returns structured error (existing nav behavior).
 - [ ] **Seam readability:** streamed borders remain seamless; fog hides pop (visual direction).
 
-## Out of scope (this ticket)
+## Out of scope (this doc / TICKET-0032)
 
-- Implementing new stream radii, mesh LOD, or GPU profilers
-- Locking numeric FPS budgets (TICKET-0139)
+- Implementing new stream radii or GPU profilers (mesh LOD ladder + foliage frustum: TICKET-0220)
+- Locking final owner FPS budgets (provisional table lives in [`../benchmarks/open-world-1440p.md`](../benchmarks/open-world-1440p.md); TICKET-0139)
 - Mini-map rendering (TICKET-0061)
 - Recast/detour (TICKET-0109)
 - Final region layouts / art production
+- Nanite / Hi-Z occlusion / impostor atlases
 
 ## Open preferences
 
@@ -121,3 +140,4 @@ Use these as test/scenario seeds for engineering:
 - Debug stream demo: [debug-world.md](debug-world.md)
 - Terrain/foliage stream: [terrain-authoring.md](terrain-authoring.md)
 - Ticket: [TICKET-0032](../planning/tickets/TICKET-0032.md)
+- 1440p/60 gate: [`../benchmarks/open-world-1440p.md`](../benchmarks/open-world-1440p.md) (TICKET-0139)

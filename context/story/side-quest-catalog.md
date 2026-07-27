@@ -190,7 +190,7 @@ Local-color quests (`consequential: no`) do not move allegiance tracks.
 | Starts | Mountain path soft-gate after Act 1; pilgrims argue at ruined shrine to Creo. |
 | Objectives | 1) Hear both pilgrims (Creo-loyal vs Frangitur-apologist). 2) Retrieve the fallen **keystone idol** from a cave troll nest (small instance OK). 3) Place idol for Creo, smash for Frangitur, or keep. |
 | Fork | Place Creo → `sq11.creo`. Smash → `sq11.frangitur`. Keep → `sq11.idol_kept`. |
-| Mainline impact | `creo` → Cristallo faith door opens earlier; Acolyte players get unique dialogue. `frangitur` → dark shrine event; Creotar later distrusts player. `idol_kept` → can gift to Cristallo (SQ-06) or sell to Imperium agent. |
+| Mainline impact | `creo` → Cristallo faith door opens earlier; Runecaster players get unique dialogue. `frangitur` → dark shrine event; Creotar later distrusts player. `idol_kept` → can gift to Cristallo (SQ-06) or sell to Imperium agent. |
 | Faction / morality | Creo: Cristallo+/faith+. Frangitur: morality−−, Imperium whisper+. Keep: flexible. |
 | Rewards | Creo: pilgrim charm. Frangitur: cracked idol ash. Keep: Keystone Idol (quest item). |
 | If ignored | Mountain path stays soft-gated; no faith standing change. |
@@ -211,6 +211,22 @@ Local-color quests (`consequential: no`) do not move allegiance tracks.
 
 Tone: isolated comedy pocket — must not rewrite Frangitur/Shroud lore. **Lion gecko** is easter-egg flavor only (see [companions.md](companions.md)); do not promote it to a character concept.
 
+### SQ-13 — Thrator’s Arena *(easter egg / Act 1–2)*
+
+| Field | Value |
+| --- | --- |
+| Status | draft |
+| Consequential | **light** (optional power/mount fantasy; not mainline-required) |
+| Starts | Act **1 or 2** orc warband theater (not Act 0 Landfall). Hook: rumor, warband challenge banner, or Ledgeport black-market tip pointing inland to an Orgrimmar-flavored warlord camp/arena. Warband id **open** (Dom) — may attach to existing draft warband or a new one without forking Black Howl / Underflow history. |
+| Objectives | 1) Reach Thrator’s camp/arena set piece. 2) Optional: earn entry via warband trial / tribute / pit fight. 3) Duel **Thrator** the orc warlord champion. 4) Claim spoils. |
+| Fork | Victory → `sq13.thrator_slain`. Flee/fail → `sq13.thrator_fled` (may retry). Ally with warband without duel → open draft (do not invent without Dom). |
+| Mainline impact | None required. Optional: warband standing bump; unlocks **glad mount** for overland traversal toy (does **not** replace carriage-post FT — [DEC-0032](../decisions/index.md#dec-0032-open-world-travel-discovery-map-and-dual-soft-gates)). Soft-extends near-term “horses only” when mount runtime exists ([DEC-0048](../decisions/index.md#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity)). |
+| Faction / morality | Orc warband standing+ on honorable duel; morality neutral-to-mixed. |
+| Rewards | **Glad mount** unlock (primary). Optional gear drops (common + obscure rare per gearing design). |
+| If ignored | Thrator remains a world easter-egg champion; no story soft-gate. |
+
+Tone: Orgrimmar-flavored warlord spectacle / easter egg — keep Frangitur/Shroud lore untouched. Transcript provenance: “Thraador” → **Thrator**.
+
 ---
 
 ## Consequential summary (quick ref)
@@ -227,6 +243,7 @@ Tone: isolated comedy pocket — must not rewrite Frangitur/Shroud lore. **Lion 
 | SQ-09 | Crystal shrine POI vs stalled thread | Creotar quest path |
 | SQ-10 | Islet mural exposition | — |
 | SQ-11 | Faith door / Creotar trust | Cristallo faith vs Frangitur |
+| SQ-13 | Optional glad mount / warband standing | Orc warband (easter egg) |
 
 ---
 
@@ -240,7 +257,7 @@ Tone: isolated comedy pocket — must not rewrite Frangitur/Shroud lore. **Lion 
 | Village / town / estate | SQ-04, SQ-06 |
 | Market / bazaar | SQ-09 |
 | Castle / fort fringe | SQ-03 |
-| Battlefield / chaotic | SQ-07 |
+| Battlefield / chaotic | SQ-07, SQ-13 |
 | Docks / island | SQ-10 |
 
 ## ID conventions

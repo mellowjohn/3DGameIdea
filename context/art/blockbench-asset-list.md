@@ -15,16 +15,23 @@ Do not remake these first. Refine only when a higher-tier kit needs a shared bas
 | --- | --- | --- |
 | Oak tree + variants (tall / wide / lean / young / asymmetric) | `tools/art/tree/` | `assets/models/tree.gltf`, `oak_*.gltf` |
 | Stone cluster | `tools/art/stones/Stones.bbmodel` | `assets/models/stones.gltf` |
-| Player body v1 | `tools/art/player/player.blockbench.gltf` | `assets/models/player.gltf` |
+| Player body v2 (skinned + Idle; finger/thumb bones) | `tools/art/player/Player_V2_rigged.bbmodel` | `assets/models/player.gltf` (+ `player.png`); NPC test prefab `assets/prefabs/NPC/npc_test.prefab.json` |
 | Dead tree | — | `assets/models/dead-tree.gltf` |
 | Dead log | `tools/art/dead-log/DeadLog.bbmodel` | `assets/models/dead_log.gltf` |
 | Stump | `tools/art/stump/Stump.bbmodel` | `assets/models/stump.gltf` |
+| Crate | `tools/art/crate/Crate.gltf` | `assets/models/crate.gltf` |
+| Bush (normal) | `tools/art/bush/Bush.gltf` | `assets/models/bush.gltf` |
+| Tall bush | `tools/art/tall-bush/Tall_Bush.gltf` | `assets/models/bush_tall.gltf` |
+| Campfire | `tools/art/campfire/Campfire_New.gltf` | `assets/models/campfire.gltf` |
+| Barrel | `tools/art/barrel/Barrel.gltf` | `assets/models/barrel.gltf` |
+| Lantern | `tools/art/lantern/Lantern.gltf` | `assets/models/lantern.gltf` |
+| Wall torch | `tools/art/wall-torch/Wall_Torch.gltf` | `assets/models/wall_torch.gltf` |
 
-Still primitive-composed (candidates to replace with Blockbench meshes): bushes, campfire, crate (`assets/prefabs/Scene Assets/`).
+Still primitive-composed (candidate to replace): `bush_wide` only. Rebake Tier 1 props with `python tools/bake_tier1_props_gltf.py` (optional name filter, e.g. `barrel lantern wall_torch`).
 
 ## Suggested work order
 
-1. Tier 1 — replace placeholders  
+1. ~~Tier 1 — replace placeholders~~ **done** (except `bush_wide`)
 2. Tier 2 — Act 0 Calrenoth props  
 3. Tier 3 — characters + weapons  
 4. Tier 4 — player camp kit  
@@ -39,11 +46,11 @@ Unlock readable world dressing without new story content.
 
 | Asset | Why | Notes |
 | --- | --- | --- |
-| Bush (normal / wide / tall) | Foliage scatter + scene dressing | Align silhouettes with existing bush prefabs |
-| Campfire (ring + logs) | Camp interaction + warm landmarks | Flame mesh optional; VFX can replace later |
-| Crate / supply crate | Physics prop + loot clutter | Replaces cube `crate.prefab.json` |
-| Barrel | Town / dock / siege clutter | |
-| Torch / lantern | Night readability, fortress lights | |
+| ~~Bush (normal / tall)~~ | Foliage scatter + scene dressing | **Shipped** (`bush`, `bush_tall`); wide still primitive |
+| ~~Campfire (ring + logs)~~ | Camp interaction + warm landmarks | **Shipped** mesh + light; **particle flame later** (`effects_campfire_flame`) |
+| ~~Crate / supply crate~~ | Physics prop + loot clutter | **Shipped** (`crate.prefab.json`) |
+| ~~Barrel~~ | Town / dock / siege clutter | **Shipped** (`barrel.prefab.json`) |
+| ~~Torch / lantern~~ | Night readability, fortress lights | **Shipped** (`wall_torch`, `lantern`) + warm point lights; **particle flame later** |
 | ~~Dead log / stump~~ | Road / forest fill | **Both shipped** (`dead_log`, `stump`) |
 
 ### Tier 1 concept sheets
@@ -58,7 +65,7 @@ Draft Blockbench references under `context/art/` (palette-aligned; not final mes
 
 ## Tier 2 — Act 0 Calrenoth (Landfall)
 
-Story-critical set dressing and interactables for the siege tutorial.
+Story-critical set dressing and interactables for the siege tutorial. Scene mood / layout targets: [concepts/README.md](concepts/README.md) (`act0-a0-03` … `act0-a0-09`).
 
 | Asset | Why | Beat / quest |
 | --- | --- | --- |
@@ -83,9 +90,9 @@ Prefer one shared body + kit swaps over per-archetype body remakes. Rig in T-pos
 | Asset | Why |
 | --- | --- |
 | Player base body (clean T-pose, modular slots) | Character creation foundation — match approved front `reference/player-base-body-front.png` |
-| Squire starter kit | Tunic, wraps, belt/pouch, boots — match [character-direction.md](character-direction.md) |
-| Archer starter kit | Cloak/hood, bracer, quiver attachment — concept still open |
-| Acolyte starter kit | Robe/hood, sash, staff attachment — concept still open |
+| Ashfell Blade starter kit | Tunic, wraps, belt/pouch, boots — match [character-direction.md](character-direction.md) (legacy Squire) |
+| Outrider starter kit | Cloak/hood, bracer, quiver attachment — concept still open |
+| Runecaster starter kit | Rune/sigil caster kit (focus + inscribed accents) — concept still open; not crystal-warden default |
 | Arkand | Full-plate knight; goofy personality vs imposing armor |
 | Vanessa | Mage robes, academy look |
 | Generic Tessera soldier / guard | Grenge’s forces, Pellin, Larrell |
@@ -98,9 +105,9 @@ Prefer one shared body + kit swaps over per-archetype body remakes. Rig in T-pos
 
 | Asset | Kit / role |
 | --- | --- |
-| Short sword / arming sword | Squire |
-| Bow + arrow | Archer |
-| Staff / rod | Acolyte |
+| Short sword / arming sword | Ashfell Blade |
+| Bow + arrow | Outrider |
+| Rune focus (staff/rod or inscribed token) | Runecaster |
 | Knight sword / shield | Arkand |
 | Orc axe / cleaver | Underflow |
 | Spear | Guards |
@@ -181,7 +188,7 @@ Mirror existing conventions: `tools/art/tree/`, `tools/art/stones/`, `tools/art/
 
 ## Open art questions
 
-- Archer and Acolyte starter-kit turnaround references ([character-direction.md](character-direction.md)).
+- Outrider and Runecaster starter-kit turnaround references ([character-direction.md](character-direction.md)).
 - Flat shading versus softened normals on characters/props ([visual-direction.md](visual-direction.md)).
 - Whether starting kits share one base body with swaps or use per-archetype bodies.
 - Ferry dock asset only after Dom locks ferry yes/no (D-P0-09).

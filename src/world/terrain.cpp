@@ -172,4 +172,39 @@ std::vector<CellCoord> terrain_cells_in_radius(CellCoord center, std::uint32_t r
     return cells;
 }
 
+std::vector<CellCoord> terrain_cells_in_view_bias(CellCoord center, std::uint32_t radius,
+    std::uint32_t support_radius, float forward_x, float forward_z) {
+    if (radius > 32) return {};
+    if (support_radius > radius) support_radius = radius;
+    const float forward_len_sq = forward_x * forward_x + forward_z * forward_z;
+    if (!(forward_len_sq > 1.0e-8f)) return terrain_cells_in_radius(center, radius);
+    const float inv_len = 1.0f / std::sqrt(forward_len_sq);
+    const float fx = forward_x * inv_len;
+    const float fz = forward_z * inv_len;
+    // Slight back inclusion so short turns do not unload collision under the player.
+    constexpr float k_min_forward_dot = -0.2f;
+    const int extent = static_cast<int>(radius);
+    const int support = static_cast<int>(support_radius);
+    std::vector<CellCoord> cells;
+    cells.reserve(static_cast<std::size_t>((extent * 2 + 1) * (extent * 2 + 1)));
+    for (int z = -extent; z <= extent; ++z) {
+        for (int x = -extent; x <= extent; ++x) {
+            const int cheb = std::max(std::abs(x), std::abs(z));
+            if (cheb <= support) {
+                cells.push_back({center.x + x, center.z + z});
+                continue;
+            }
+            if (x == 0 && z == 0) {
+                cells.push_back({center.x + x, center.z + z});
+                continue;
+            }
+            const float cell_len = std::sqrt(static_cast<float>(x * x + z * z));
+            const float dx = static_cast<float>(x) / cell_len;
+            const float dz = static_cast<float>(z) / cell_len;
+            if (dx * fx + dz * fz >= k_min_forward_dot) cells.push_back({center.x + x, center.z + z});
+        }
+    }
+    return cells;
+}
+
 } // namespace engine

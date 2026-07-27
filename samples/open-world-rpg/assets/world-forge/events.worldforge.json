@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "id": "tessera_events",
+  "sequences": [
+    {
+      "id": "evt_act0_timeline_smoke",
+      "displayName": "Act 0 timeline smoke",
+      "canonStatus": "draft",
+      "summary": "Headless/play smoke: lock, look_at, wait, emit, dialogue, unlock for Landfall timeline MVP.",
+      "acts": ["act0"],
+      "steps": [
+        { "kind": "lock_control" },
+        { "kind": "look_at", "target": [0.0, 2.0, 8.0], "seconds": 0.2, "distance": 12.0, "pitch": 0.25 },
+        { "kind": "wait", "seconds": 0.1 },
+        { "kind": "emit", "name": "vfx_stub", "payload": { "source": "timeline_smoke" } },
+        { "kind": "start_dialogue", "dialogueId": "dlg_act0_meet_arkand" },
+        { "kind": "wait", "seconds": 0.1 },
+        { "kind": "unlock_control" }
+      ],
+      "tags": ["act0", "smoke"]
+    },
+    {
+      "id": "evt_sandbox_zone_pan",
+      "displayName": "Sandbox event zone — cinematic multi-subject pan",
+      "canonStatus": "draft",
+      "summary": "Standalone cinematic playtest (separate from practice-keeper talk): lock, pan/zoom to NPC then campfire then oak, then dlg_sandbox_event_zone. Orbit pivot leaves the player for each look_at subject. Triggered by event_zone_sandbox (interaction event_sandbox).",
+      "acts": [],
+      "steps": [
+        { "kind": "lock_control" },
+        {
+          "kind": "look_at",
+          "target": [24.0, 4.0, 22.5],
+          "seconds": 3.0,
+          "distance": 7.5,
+          "pitch": 0.2
+        },
+        { "kind": "wait", "seconds": 1.1 },
+        {
+          "kind": "look_at",
+          "target": [20.0, 4.05, 20.0],
+          "seconds": 2.8,
+          "distance": 12.0,
+          "pitch": 0.28
+        },
+        { "kind": "wait", "seconds": 1.0 },
+        {
+          "kind": "look_at",
+          "target": [8.0, 2.0, 28.0],
+          "seconds": 3.2,
+          "distance": 16.0,
+          "pitch": 0.15
+        },
+        { "kind": "wait", "seconds": 1.0 },
+        { "kind": "emit", "name": "sandbox_zone_beat", "payload": { "source": "event_sandbox", "shots": 3 } },
+        { "kind": "start_dialogue", "dialogueId": "dlg_sandbox_event_zone" },
+        { "kind": "unlock_control" }
+      ],
+      "tags": ["sandbox", "event_zone", "timeline", "cinematic"]
+    }
+  ]
+}

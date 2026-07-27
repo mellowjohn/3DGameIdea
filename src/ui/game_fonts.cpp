@@ -13,6 +13,7 @@ namespace {
 
 ImFont* g_ui = nullptr;
 ImFont* g_display = nullptr;
+ImFont* g_body = nullptr;
 ImFont* g_mono = nullptr;
 ImFont* g_icons = nullptr;
 ImFont* g_map_forum = nullptr;
@@ -55,10 +56,10 @@ ImFont* add_font(ImGuiIO& io, const std::filesystem::path& path, float size_px, 
 } // namespace
 
 bool load(ImGuiIO& io) {
-    g_ui = g_display = g_mono = g_icons = nullptr;
+    g_ui = g_display = g_body = g_mono = g_icons = nullptr;
     g_map_forum = g_map_eb_garamond = g_map_uncial = g_map_metamorphous = g_map_medievalsharp = nullptr;
 
-    // Roboto = engine/editor chrome. Cinzel = in-scene game canvases (HUD, menus, dialogue).
+    // Roboto = engine chrome + readable dialogue body. Cinzel = display titles / speaker.
     const auto ui_path = resolve_under_assets("assets/ui/fonts/roboto/Roboto-Regular.ttf");
     const auto display_path = resolve_under_assets("assets/ui/fonts/cinzel/Cinzel-Regular.ttf");
     const auto mono_path = resolve_under_assets("assets/ui/fonts/jetbrains-mono/JetBrainsMono-Regular.ttf");
@@ -72,6 +73,7 @@ bool load(ImGuiIO& io) {
             "Falling back to ImGui default font for engine UI");
     }
 
+    // Merge FA into the engine UI face *before* adding other fonts — MergeMode targets the last font.
     if (g_ui && !icons_path.empty()) {
         ImFontConfig config;
         config.MergeMode = true;
@@ -91,7 +93,10 @@ bool load(ImGuiIO& io) {
             "Font Awesome icon font not found; toolbar icons disabled");
     }
 
-    g_display = add_font(io, display_path, 22.0f, "scene/game (Cinzel)");
+    g_body = add_font(io, ui_path, 28.0f, "dialogue body (Roboto)");
+    if (!g_body) g_body = g_ui;
+
+    g_display = add_font(io, display_path, 36.0f, "scene/game (Cinzel)");
     g_mono = add_font(io, mono_path, 16.0f, "mono (JetBrains Mono)");
 
     const auto forum_path = resolve_under_assets("assets/ui/fonts/forum/Forum-Regular.ttf");
@@ -116,12 +121,14 @@ bool load(ImGuiIO& io) {
 
 ImFont* ui() { return g_ui; }
 ImFont* display() { return g_display; }
+ImFont* body() { return g_body ? g_body : g_ui; }
 ImFont* mono() { return g_mono; }
 ImFont* icons() { return g_icons; }
 
 ImFont* for_design_size(float /*design_px*/) {
-    // All in-scene canvas text uses Cinzel; call sites for engine chrome use ui() / FontDefault.
+    // Display titles use Cinzel; long prose callers should prefer body().
     if (g_display) return g_display;
+    if (g_body) return g_body;
     if (g_ui) return g_ui;
     return ImGui::GetFont();
 }

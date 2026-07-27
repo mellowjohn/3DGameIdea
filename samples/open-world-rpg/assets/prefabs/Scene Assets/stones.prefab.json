@@ -1,4 +1,35 @@
 {
+  "collision": [
+    {
+      "halfExtent": [
+        0.7,
+        0.22,
+        0.75
+      ],
+      "id": "collision-0",
+      "layer": "staticWorld",
+      "shape": "box",
+      "transform": {
+        "position": [
+          0,
+          0.22,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    }
+  ],
   "entities": [
     {
       "mesh": {

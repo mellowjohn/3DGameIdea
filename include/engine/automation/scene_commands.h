@@ -155,6 +155,7 @@ public:
     [[nodiscard]] Result<void> execute(Scene& scene, std::unique_ptr<SceneCommand> command);
     [[nodiscard]] Result<void> undo(Scene& scene);
     [[nodiscard]] Result<void> redo(Scene& scene);
+    void clear() noexcept;
     [[nodiscard]] std::size_t undo_size() const noexcept { return undo_.size(); }
     [[nodiscard]] std::size_t redo_size() const noexcept { return redo_.size(); }
     [[nodiscard]] const std::string& last_summary() const noexcept { return last_summary_; }

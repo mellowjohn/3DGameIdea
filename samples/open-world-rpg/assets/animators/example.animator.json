@@ -11,9 +11,9 @@
     "defaultState": "idle",
     "blendMode": "override",
     "states": [
-      {"name": "idle", "motion": {"type": "clip", "clipSource": "assets/models/player_clips.gltf", "clip": "Idle", "loop": true}},
+      {"name": "idle", "motion": {"type": "clip", "clipSource": "assets/models/player.gltf", "clip": "Idle", "loop": true}},
       {"name": "locomotion", "motion": {"type": "blendTree1D", "parameter": "speed", "children": [
-        {"threshold": 0.0, "clipSource": "assets/models/player_clips.gltf", "clip": "Idle", "loop": true},
+        {"threshold": 0.0, "clipSource": "assets/models/player.gltf", "clip": "Idle", "loop": true},
         {"threshold": 1.0, "clipSource": "assets/models/player_clips.gltf", "clip": "Walk", "loop": true}
       ]}},
       {"name": "attack", "motion": {"type": "clip", "clipSource": "assets/models/player_clips.gltf", "clip": "Attack", "loop": false}}

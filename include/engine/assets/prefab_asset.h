@@ -24,6 +24,12 @@ struct PrefabPointLight {
     std::array<float, 3> offset{0.0f, 0.35f, 0.0f};
 };
 
+struct PrefabParticleEmitter {
+    std::string asset; // project-relative *.particle.json
+    std::array<float, 3> offset{0.0f, 0.4f, 0.0f};
+    bool enabled = true;
+};
+
 struct PrefabMeshSource {
     std::optional<std::string> primitive;
     std::optional<std::string> asset;
@@ -102,6 +108,10 @@ struct PrefabAsset {
     std::vector<PrefabRigidbody> rigidbodies;
     std::vector<PrefabAudioSource> audio_sources;
     std::optional<PrefabPointLight> light;
+    /// One or more particle attachments (flame / smoke / embers). Legacy `particle` merges here on load.
+    std::vector<PrefabParticleEmitter> particles;
+    /// Legacy single attachment kept for round-trip of older prefabs; prefer `particles`.
+    std::optional<PrefabParticleEmitter> particle;
     std::optional<std::string> character_asset;
 
     [[nodiscard]] bool is_compositional() const { return schema_version >= 2 && !parts.empty(); }

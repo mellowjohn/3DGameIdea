@@ -99,6 +99,43 @@ std::optional<float> ray_aabb_intersection(const ViewportRay& ray, const WorldBo
     return t_min >= 0.0f ? t_min : t_max;
 }
 
+Frustum frustum_from_view_projection(const std::array<float, 16>& view_projection) {
+    // Row-vector convention (v' = v * M): clip.x/y/z/w = v . column(M). Frustum planes are the classic
+    // Gribb-Hartmann combinations of those columns; D3D near/far use depth range [0, 1].
+    const float* m = view_projection.data();
+    const auto column = [&](int index) {
+        return std::array<float, 4>{m[index], m[4 + index], m[8 + index], m[12 + index]};
+    };
+    const auto add = [](const std::array<float, 4>& x, const std::array<float, 4>& y) {
+        return std::array<float, 4>{x[0] + y[0], x[1] + y[1], x[2] + y[2], x[3] + y[3]};
+    };
+    const auto subtract = [](const std::array<float, 4>& x, const std::array<float, 4>& y) {
+        return std::array<float, 4>{x[0] - y[0], x[1] - y[1], x[2] - y[2], x[3] - y[3]};
+    };
+    const auto to_plane = [](const std::array<float, 4>& v) { return FrustumPlane{v[0], v[1], v[2], v[3]}; };
+    const auto c0 = column(0), c1 = column(1), c2 = column(2), c3 = column(3);
+    Frustum frustum;
+    frustum.planes[0] = to_plane(add(c3, c0));      // left
+    frustum.planes[1] = to_plane(subtract(c3, c0)); // right
+    frustum.planes[2] = to_plane(add(c3, c1));      // bottom
+    frustum.planes[3] = to_plane(subtract(c3, c1)); // top
+    frustum.planes[4] = to_plane(c2);               // near
+    frustum.planes[5] = to_plane(subtract(c3, c2)); // far
+    return frustum;
+}
+
+bool frustum_intersects_aabb(const Frustum& frustum, const WorldBounds& bounds) {
+    for (const auto& plane : frustum.planes) {
+        // Test the AABB corner most aligned with the plane normal; if even that corner is outside, the whole
+        // box is outside (safe/conservative: never rejects a box that is still partially visible).
+        const float px = plane.a >= 0.0f ? bounds.max_x : bounds.min_x;
+        const float py = plane.b >= 0.0f ? bounds.max_y : bounds.min_y;
+        const float pz = plane.c >= 0.0f ? bounds.max_z : bounds.min_z;
+        if (plane.a * px + plane.b * py + plane.c * pz + plane.d < 0.0f) return false;
+    }
+    return true;
+}
+
 std::vector<WorldBounds> placement_mesh_bounds(const PrefabAsset& prefab, const TransformComponent& placement,
     const std::map<std::string, MeshBounds>& mesh_bounds, const PrefabAsset::MaterialLookup& lookup_material) {
     std::vector<WorldBounds> bounds;

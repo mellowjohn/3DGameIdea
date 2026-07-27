@@ -39,7 +39,7 @@
       ],
       "parentId": "",
       "openQuestions": [
-        "How Imperium authority ties to Frangitur, the Nefarium Shroud, and Luceran's remaining agency"
+        "Reconcile battle-worn vs throne-fused Shroud imagery"
       ],
       "emblemPath": "assets/ui/cartography/heraldry-chaotic_imperium.png",
       "mapColor": [
@@ -54,7 +54,7 @@
       "kind": "faction",
       "displayName": "The Cristallo",
       "canonStatus": "draft",
-      "summary": "Religious and noble oligarchy; selective; associated with higher social classes; refined architecture; hostile toward the woodland faction; can shift good/evil via player influence (proposal).",
+      "summary": "Religious and noble oligarchy; selective; associated with higher social classes; refined architecture; hostile toward the woodland faction; central island seat. Draft 2026-07-22: Old/New Testament faith split over Creotar; church/state bipartisan politics; White Lotus guardians of Creator-origin crystal that cleanses Nefarium.",
       "storyRef": "context/story/factions.md#the-cristallo",
       "tags": [
         "neutral",
@@ -63,8 +63,9 @@
       ],
       "parentId": "",
       "openQuestions": [
-        "Theology, hierarchy, and politics",
-        "Relationship to Creo/Frangitur and the gods",
+        "Hierarchy titles (theological vs secular head)",
+        "Creator crystal display name and exact location",
+        "Luceran-puppet Scarlet-Crusade sub-faction name",
         "Player influence thresholds, lock-in, and destruction conditions"
       ],
       "emblemPath": "assets/ui/cartography/heraldry-cristallo.png",
@@ -80,7 +81,7 @@
       "kind": "faction",
       "displayName": "Arrotrebae of the Rampant Wilds",
       "canonStatus": "draft",
-      "summary": "Umbrella culture of regional woodland/coastal tribes molded by local land and Loa/gods; shared world/Gaia council tradition with possible inter-tribe conflict; adversarial with Cristallo; tonal barbarian/druid references. First named clan: The Thalassar (thalassar).",
+      "summary": "Umbrella culture of regional woodland/coastal tribes molded by local land and Loa/gods; shared world/Gaia council tradition with possible inter-tribe conflict; adversarial with Cristallo; tonal barbarian/druid references. Council decisions: majority consensus; dissenters may challenge champion (2026-07-22). First named clan: The Thalassar (thalassar).",
       "storyRef": "context/story/factions.md#arrotrebae-of-the-rampant-wilds",
       "tags": [
         "neutral",
@@ -90,8 +91,7 @@
       ],
       "parentId": "",
       "openQuestions": [
-        "Collective decision rules when chieftains disagree",
-        "Named tribes / philosophical traditions for relationship-graph nodes — name from land; prioritize Act 0 / Act 1",
+        "Named tribes for council seats vs open conflict; Luceran-lost tribe names (Act 2+)",
         "Thalassar (thalassar): mask Muirthalia + relic Anál Muir (anal_muir) locked; Sea of Whispers false patron; succession rite; council seat",
         "Player influence thresholds, lock-in, and destruction conditions"
       ],
@@ -136,7 +136,7 @@
       "kind": "faction",
       "displayName": "Orc Warbands",
       "canonStatus": "draft",
-      "summary": "Container for multiple orc warbands rather than one unified faction; individual warbands may support or oppose the Imperium based on Nefarium exposure and hatred of Luceran.",
+      "summary": "Container for multiple orc warbands rather than one unified faction; individual warbands may support or oppose the Imperium based on Nefarium exposure and hatred of Luceran. Draft lock 2026-07-22: separate warbands still share a royal/clan bloodline tie (dwarven-clan analogy).",
       "storyRef": "context/story/factions.md#orc-warbands",
       "tags": [
         "orc",
@@ -145,9 +145,10 @@
       ],
       "parentId": "",
       "openQuestions": [
-        "Stable warband IDs and names — underflow seeded for Act 0",
-        "Which warband possessed the Nefarium Shroud and why",
-        "Name of the great orc leader slain by Luceran"
+        "Stable warband IDs and names — underflow + black_howl seeded",
+        "Black Howl wolf patron display name (transcript Goldrin draft)",
+        "Whether Grul'thaz was slain by Luceran or survives for later beats",
+        "Exact bloodline genealogy between Drul’gath / Grul’thaz (rule locked; tree not invented)"
       ],
       "emblemPath": "assets/ui/cartography/heraldry-orc_warbands.png",
       "mapColor": [
@@ -162,7 +163,7 @@
       "kind": "warband",
       "displayName": "The Underflow",
       "canonStatus": "draft",
-      "summary": "Minor orc warband inland/east of the Calrenoth peninsula corridor (Act 0 / Landfall). Land-derived: subsurface underflow beneath the ridge feeding the watershed. Same original water cult as The Thalassar, but rite perverted — false patron The Sea of Whispers (Luceran lieutenant plant). Public liturgy mask: Grakk-Maren (vs Thalassar Muirthalia). Owner confirmed 2026-07-20.",
+      "summary": "Minor orc warband inland/east of the Calrenoth peninsula corridor (Act 0 / Landfall). Land-derived: subsurface underflow beneath the ridge feeding the watershed. Same original water cult as The Thalassar, but rite perverted — false patron The Sea of Whispers (Luceran lieutenant plant). Public liturgy mask: Grakk-Maren. War-chief Drul'gath (drul_gath). Luceran-influenced (2026-07-22). Owner confirmed 2026-07-20.",
       "storyRef": "context/story/factions.md#the-underflow",
       "tags": [
         "orc",
@@ -173,7 +174,6 @@
       ],
       "parentId": "orc_warbands",
       "openQuestions": [
-        "Named war-chief for Act 0 encounters",
         "Imperium / Nefarium stance in Act 0 corridor"
       ],
       "emblemPath": "assets/ui/cartography/heraldry-underflow.png",
@@ -181,6 +181,31 @@
         0.3799999952316284,
         0.3400000035762787,
         0.30000001192092896
+      ],
+      "mapTypefaceId": "metamorphous"
+    },
+    {
+      "id": "black_howl",
+      "kind": "warband",
+      "displayName": "The Black Howl",
+      "canonStatus": "draft",
+      "summary": "Orc warband that held the Nefarium Shroud during the first war before Luceran usurped it from war-chief Grul'thaz the Black Howl (Shadowpaw clan). Patron wolf god corrupted from golden/silver ferocity wolf to black mist-wolf by Frangitur/Nefarium. Separate history from The Underflow. Dom + owner 2026-07-22.",
+      "storyRef": "context/story/factions.md#the-black-howl",
+      "tags": [
+        "orc",
+        "shroud-history",
+        "first-war"
+      ],
+      "parentId": "orc_warbands",
+      "openQuestions": [
+        "Wolf patron display name (transcript Goldrin draft)",
+        "Whether Grul'thaz was slain by Luceran or survives for later beats",
+        "Heraldry asset"
+      ],
+      "mapColor": [
+        0.25,
+        0.2199999988079071,
+        0.2800000011920929
       ],
       "mapTypefaceId": "metamorphous"
     }

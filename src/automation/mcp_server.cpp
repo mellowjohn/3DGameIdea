@@ -6,6 +6,7 @@
 #include "engine/automation/live_automation_control.h"
 #include "engine/automation/world_forge_commands.h"
 #include "engine/automation/project_git_commands.h"
+#include "engine/automation/build_coordination.h"
 #include "engine/core/result.h"
 #include "engine/assets/prefab_asset.h"
 #include "engine/assets/hud_asset.h"
@@ -224,7 +225,7 @@ const char* k_tools_list_json =
     },
     {
         "name": "engine_editor_input",
-        "description": "Queue mouse/keyboard UI input for the live editor (ImGui). Actions: move|click|drag|scroll|key|wait|clear|unlock_tab. Coords: x/y client px, nx/ny [0,1], or targetId from engine_editor_ui_query. Optional steps[] sequence. Shows a yellow MCP cursor overlay. Requires live bridge.",
+        "description": "Queue mouse/keyboard UI input for the live editor (ImGui). Actions: move|click|drag|scroll|key|look|wait|clear|unlock_tab. Coords: x/y client px, nx/ny [0,1], or targetId from engine_editor_ui_query. look: dx/dy (or lookDx/lookDy) pixel orbit deltas, optional frames. Optional steps[] sequence. Shows a yellow MCP cursor overlay. Requires live bridge.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -467,13 +468,59 @@ const char* k_tools_list_json =
     },
     {
         "name": "engine_quest_call",
-        "description": "Drive session QuestRuntime for agent testing (DEC-0028). kind=start|complete_objective|abandon|status|list. Pass questId; complete_objective also needs objectiveId. Returns status metadata (currentObjectiveId, completedObjectiveIds). Requires live editor MCP. Allowed during play test.",
+        "description": "Drive session QuestRuntime for agent testing (DEC-0028). kind=start|complete_objective|abandon|resolve_fork|status|list. Pass questId; complete_objective also needs objectiveId; resolve_fork needs forkId + outcomeFlag (DEC-0046). Returns status metadata (currentObjectiveId, completedObjectiveIds). Requires live editor MCP. Allowed during play test.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "kind": { "type": "string" },
                 "questId": { "type": "string" },
-                "objectiveId": { "type": "string" }
+                "objectiveId": { "type": "string" },
+                "forkId": { "type": "string" },
+                "outcomeFlag": { "type": "string" }
+            },
+            "required": ["kind"]
+        }
+    },
+    {
+        "name": "engine_flag_call",
+        "description": "Drive session FlagRuntime for story/outcome flags (DEC-0046). kind=set|clear|has|list. Pass flagId except for list. Requires live editor MCP. Allowed during play test.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "kind": { "type": "string" },
+                "flagId": { "type": "string" }
+            },
+            "required": ["kind"]
+        }
+    },
+    {
+        "name": "engine_dialogue_call",
+        "description": "Drive session DialogueRuntime for agent testing (quest/volume play pipeline). kind=start|present|status|continue|choose|reset. Pass treeId for start; choiceId for choose. continue advances typewriter or opens the choices page. Returns tree/node/line/choice metadata and syncs the dialogue UI canvas. Requires live editor MCP. Allowed during play test.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "kind": { "type": "string" },
+                "treeId": { "type": "string" },
+                "choiceId": { "type": "string" }
+            },
+            "required": ["kind"]
+        }
+    },
+    {
+        "name": "engine_coop_call",
+        "description": "Drive local co-op play-test for agent QA (DEC-0042 prove-out). kind=status|start_local|end|pause|resume|possess|move|jump|disconnect_guest|reconnect_guest. possess: slot 0|1 or slotName host|guest|toggle. move: wishX/wishZ (camera-relative) + frames. Requires live editor MCP + Game viewport for movement.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "kind": { "type": "string" },
+                "slot": { "type": "number" },
+                "slotName": { "type": "string" },
+                "possess": { "type": "string" },
+                "wishX": { "type": "number" },
+                "wishZ": { "type": "number" },
+                "x": { "type": "number" },
+                "z": { "type": "number" },
+                "frames": { "type": "number" }
             },
             "required": ["kind"]
         }
@@ -584,8 +631,28 @@ const char* k_tools_list_json =
         }
     },
     {
+        "name": "engine_build_coordination",
+        "description": "Same-machine agent rebuild lease (TICKET-0228). Acquire the shared engine rebuild slot BEFORE running MSBuild; wait your turn in a FIFO queue while another agent holds it; release with the granted token after the kill -> rebuild -> restart loop. Actions: status | acquire | wait | release | heartbeat | clear-stale. acquire/wait require agentId + ticketId (must exist in context/planning/epics.md) + summary; optional leaseSeconds (default 600), command; wait adds timeoutSeconds (default 60) and polls until granted or timeout. release/heartbeat require token. clear-stale drops expired/dead leases (force clears a live one — owner use). Offline — does not require a live editor. Queued responses return queuePosition + retryAfterMs; do not start MSBuild until state=granted.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": { "type": "string" },
+                "agentId": { "type": "string" },
+                "ticketId": { "type": "string" },
+                "summary": { "type": "string" },
+                "command": { "type": "string" },
+                "token": { "type": "string" },
+                "leaseSeconds": { "type": "number" },
+                "timeoutSeconds": { "type": "number" },
+                "pid": { "type": "number" },
+                "force": { "type": "boolean" }
+            },
+            "required": ["action"]
+        }
+    },
+    {
         "name": "engine_world_forge_apply",
-        "description": "Read, validate, write, or import World Forge narrative assets (factions / pantheon / archetypes / resources / relationships / map / quests / dialogues). Actions: get|validate|apply|import_twee. Pass kind=factions|pantheon|archetypes|resources|relationships|map|quests|dialogues and/or path to *.worldforge.json. apply requires json object or source string. import_twee (kind=dialogues) requires tweePath + treeId; optional displayName, parentQuestId, entryNodeId, storyRef. Works offline. Not Scene/Sculpt.",
+        "description": "Read, validate, write, or import World Forge narrative assets (factions / pantheon / archetypes / resources / relationships / map / quests / dialogues / events). Actions: get|validate|apply|import_twee. Pass kind=factions|pantheon|archetypes|resources|relationships|map|quests|dialogues|events and/or path to *.worldforge.json. apply requires json object or source string. import_twee (kind=dialogues) requires tweePath + treeId; optional displayName, parentQuestId, entryNodeId, storyRef. Works offline. Not Scene/Sculpt.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -801,6 +868,33 @@ nlohmann::json handle_tools_call(const std::filesystem::path& project_root, cons
         }
         return bridge_to_tool_result(forward_to_editor(project_root, "quest_call", arguments));
     }
+    if (tool_name == "engine_flag_call") {
+        EditorBridgeClient client(project_root);
+        if (!client.is_editor_running()) {
+            return {{"isError", true},
+                {"content", nlohmann::json::array({tool_text_content(
+                    "engine_flag_call requires a running editor with MCP connection enabled")})}};
+        }
+        return bridge_to_tool_result(forward_to_editor(project_root, "flag_call", arguments));
+    }
+    if (tool_name == "engine_dialogue_call") {
+        EditorBridgeClient client(project_root);
+        if (!client.is_editor_running()) {
+            return {{"isError", true},
+                {"content", nlohmann::json::array({tool_text_content(
+                    "engine_dialogue_call requires a running editor with MCP connection enabled")})}};
+        }
+        return bridge_to_tool_result(forward_to_editor(project_root, "dialogue_call", arguments));
+    }
+    if (tool_name == "engine_coop_call") {
+        EditorBridgeClient client(project_root);
+        if (!client.is_editor_running()) {
+            return {{"isError", true},
+                {"content", nlohmann::json::array({tool_text_content(
+                    "engine_coop_call requires a running editor with MCP connection enabled")})}};
+        }
+        return bridge_to_tool_result(forward_to_editor(project_root, "coop_call", arguments));
+    }
     if (tool_name == "engine_standing_call") {
         EditorBridgeClient client(project_root);
         if (!client.is_editor_running()) {
@@ -867,6 +961,8 @@ nlohmann::json handle_tools_call(const std::filesystem::path& project_root, cons
     }
     if (tool_name == "engine_project_git")
         return bridge_to_tool_result(apply_project_git_operation(project_root, arguments));
+    if (tool_name == "engine_build_coordination")
+        return bridge_to_tool_result(apply_build_coordination_operation(project_root, arguments));
     if (tool_name == "engine_project_validate") return command_to_tool_result(validate_project_at(project_root));
     return {{"isError", true}, {"content", nlohmann::json::array({tool_text_content("Unknown tool: " + tool_name)})}};
 }

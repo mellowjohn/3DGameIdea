@@ -1,17 +1,61 @@
 {
-  "schemaVersion": 2,
+  "collision": [
+    {
+      "halfExtent": [
+        0.22,
+        0.2,
+        0.58
+      ],
+      "id": "collision-0",
+      "layer": "staticWorld",
+      "shape": "box",
+      "transform": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    }
+  ],
   "entities": [
     {
-      "name": "Dead Log",
-      "transform": {
-        "position": [0.0, 0.0, 0.0],
-        "rotation": [0.0, 0.0, 0.0, 1.0],
-        "scale": [1.0, 1.0, 1.0]
-      },
-      "parent": null,
       "mesh": {
         "asset": "assets/models/dead_log.gltf"
+      },
+      "name": "Dead Log",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
       }
     }
-  ]
+  ],
+  "schemaVersion": 2
 }

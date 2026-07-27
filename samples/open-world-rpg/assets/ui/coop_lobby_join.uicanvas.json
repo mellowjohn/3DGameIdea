@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "id": "coop_lobby_join",
+  "designResolution": [1920, 1080],
+  "widgets": [
+    {
+      "id": "join_dim",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [1920, 1080],
+      "opacity": 0.72,
+      "color": [21, 23, 25, 255]
+    },
+    {
+      "id": "join_panel",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [520, 400],
+      "color": [45, 41, 35, 250]
+    },
+    {
+      "id": "join_title",
+      "type": "text",
+      "anchor": "center",
+      "offset": [0, -140],
+      "size": [460, 56],
+      "bind": "coop_lobby_join.title",
+      "text": "Join Co-op",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 40,
+      "color": [241, 238, 232, 255]
+    },
+    {
+      "id": "join_hint",
+      "type": "text",
+      "anchor": "center",
+      "offset": [0, -60],
+      "size": [440, 64],
+      "bind": "coop_lobby_join.hint",
+      "text": "Enter invite code (dev: COOP-LOCAL)",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 24,
+      "color": [200, 200, 200, 255]
+    },
+    {
+      "id": "join_submit",
+      "type": "button",
+      "anchor": "center",
+      "offset": [0, 30],
+      "size": [360, 48],
+      "bind": "coop_lobby_join.submit",
+      "text": "Join with COOP-LOCAL",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 26,
+      "color": [213, 185, 120, 255]
+    },
+    {
+      "id": "join_back",
+      "type": "button",
+      "anchor": "center",
+      "offset": [0, 100],
+      "size": [360, 48],
+      "bind": "coop_lobby_join.back",
+      "text": "Back",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "fontSize": 28,
+      "color": [41, 45, 48, 255]
+    }
+  ]
+}

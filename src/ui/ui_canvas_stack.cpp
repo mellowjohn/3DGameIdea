@@ -41,9 +41,19 @@ void nudge_slider(HudRuntime& runtime, const HudWidget& widget, bool left) {
 
 } // namespace
 
+void UiCanvasStack::set_texture_cache(UiTextureCache* cache) {
+    textures_ = cache;
+    hud_.set_texture_cache(cache);
+    for (auto& [id, runtime] : canvases_) {
+        (void)id;
+        runtime.set_texture_cache(cache);
+    }
+}
+
 Result<void> UiCanvasStack::set_hud(const std::filesystem::path& path) {
     const auto loaded = hud_.load(path);
     if (!loaded) return loaded;
+    hud_.set_texture_cache(textures_);
     paths_["hud"] = path;
     return Result<void>::success();
 }
@@ -60,6 +70,7 @@ Result<void> UiCanvasStack::register_canvas(std::string id, const std::filesyste
     HudRuntime runtime;
     const auto loaded = runtime.load(path);
     if (!loaded) return Result<void>::failure(loaded.error());
+    runtime.set_texture_cache(textures_);
     paths_[id] = path;
     canvases_[id] = std::move(runtime);
     return Result<void>::success();
@@ -79,6 +90,7 @@ Result<void> UiCanvasStack::ensure_loaded(const std::string& id) {
     HudRuntime runtime;
     const auto loaded = runtime.load(path_it->second);
     if (!loaded) return Result<void>::failure(loaded.error());
+    runtime.set_texture_cache(textures_);
     canvases_[id] = std::move(runtime);
     return Result<void>::success();
 }
@@ -193,6 +205,21 @@ UiCanvasInputResult UiCanvasStack::handle_modal_input(const UiCanvasInputEvent& 
         return result;
     }
 
+    if (event.digit_slot && *event.digit_slot >= 1 && *event.digit_slot <= 4 && lua_runtime) {
+        const int slot = *event.digit_slot;
+        const std::string widget_id = "dialogue_choice_" + std::to_string(slot);
+        if (runtime->is_visible(widget_id) && runtime->is_enabled(widget_id)) {
+            const std::string bind = "dialogue.choice_" + std::to_string(slot);
+            modal_focus_widget_id_ = widget_id;
+            lua_runtime->dispatch_ui_button(bind, canvas_id, widget_id);
+            result.handled = true;
+            result.activated_bind = bind;
+            result.canvas_id = canvas_id;
+            result.widget_id = widget_id;
+            return result;
+        }
+    }
+
     auto focusable = runtime->focusable_widget_ids();
     ensure_modal_focus(*runtime);
     focusable = runtime->focusable_widget_ids();
@@ -200,29 +227,19 @@ UiCanvasInputResult UiCanvasStack::handle_modal_input(const UiCanvasInputEvent& 
     if (event.mouse_clicked && in_viewport) {
         if (const auto hit = runtime->hit_test_widget(viewport_min, viewport_max, mouse_pos)) {
             if (const HudWidget* widget = find_widget(*runtime, *hit)) {
+                // Mouse activates on the first click (keyboard still uses focus + activate).
+                modal_focus_widget_id_ = *hit;
+                result.handled = true;
+                result.canvas_id = canvas_id;
+                result.widget_id = widget->id;
+                result.activated_bind = widget->bind;
                 if (widget->type == HudWidgetType::Slider) {
-                    modal_focus_widget_id_ = *hit;
                     (void)runtime->apply_slider_click(viewport_min, viewport_max, *hit, mouse_pos);
-                    result.handled = true;
-                    result.canvas_id = canvas_id;
-                    result.widget_id = widget->id;
-                    result.activated_bind = widget->bind;
-                    return result;
-                }
-                if (modal_focus_widget_id_ && *modal_focus_widget_id_ == *hit) {
-                    result.handled = true;
-                    result.activated_bind = widget->bind;
-                    result.canvas_id = canvas_id;
-                    result.widget_id = widget->id;
-                    if (widget->type == HudWidgetType::Toggle) {
-                        const bool next = !runtime->get_bool(widget->bind).value_or(false);
-                        runtime->set_bool(widget->bind, next);
-                    } else if (widget->type == HudWidgetType::Button) {
-                        if (lua_runtime) lua_runtime->dispatch_ui_button(widget->bind, canvas_id, widget->id);
-                    }
-                } else {
-                    modal_focus_widget_id_ = *hit;
-                    result.handled = true;
+                } else if (widget->type == HudWidgetType::Toggle) {
+                    const bool next = !runtime->get_bool(widget->bind).value_or(false);
+                    runtime->set_bool(widget->bind, next);
+                } else if (widget->type == HudWidgetType::Button) {
+                    if (lua_runtime) lua_runtime->dispatch_ui_button(widget->bind, canvas_id, widget->id);
                 }
             }
             return result;
@@ -272,6 +289,14 @@ UiCanvasInputResult UiCanvasStack::handle_modal_input(const UiCanvasInputEvent& 
     }
 
     return result;
+}
+
+void UiCanvasStack::tick_typewriters(float delta_seconds) {
+    hud_.tick_typewriter(delta_seconds);
+    for (auto& [id, canvas] : canvases_) {
+        (void)id;
+        canvas.tick_typewriter(delta_seconds);
+    }
 }
 
 void UiCanvasStack::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, const ImVec2& image_max) const {

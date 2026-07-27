@@ -15,6 +15,7 @@ struct ImVec2;
 namespace engine {
 
 class LuaRuntime;
+class UiTextureCache;
 
 struct UiScreenPoint {
     float x = 0.0f;
@@ -32,6 +33,8 @@ struct UiCanvasInputEvent {
     bool cancel_pressed = false;
     bool adjust_left = false;
     bool adjust_right = false;
+    /// When set (1–4), activates that dialogue choice slot if visible.
+    std::optional<int> digit_slot;
 };
 
 struct UiCanvasInputResult {
@@ -46,6 +49,9 @@ struct UiCanvasInputResult {
 // modal screen stack. MCP and Lua are equal clients.
 class UiCanvasStack final {
 public:
+    void set_texture_cache(UiTextureCache* cache);
+    [[nodiscard]] UiTextureCache* texture_cache() const noexcept { return textures_; }
+
     [[nodiscard]] Result<void> set_hud(const std::filesystem::path& path);
     [[nodiscard]] Result<void> register_canvas(std::string id, const std::filesystem::path& path);
 
@@ -71,6 +77,7 @@ public:
 
     void reset_modal_focus();
     [[nodiscard]] UiCanvasInputResult handle_modal_input(const UiCanvasInputEvent& event, LuaRuntime* lua_runtime);
+    void tick_typewriters(float delta_seconds);
 
     void draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, const ImVec2& image_max) const;
 
@@ -83,6 +90,7 @@ private:
     std::map<std::string, HudRuntime> canvases_;
     std::vector<std::string> modal_stack_;
     std::optional<std::string> modal_focus_widget_id_;
+    UiTextureCache* textures_ = nullptr;
 };
 
 } // namespace engine

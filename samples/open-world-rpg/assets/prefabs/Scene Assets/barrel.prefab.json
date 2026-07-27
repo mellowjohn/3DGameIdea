@@ -1,0 +1,58 @@
+{
+  "collision": [
+    {
+      "halfHeight": 0.05,
+      "id": "collision-0",
+      "layer": "staticWorld",
+      "radius": 0.45,
+      "shape": "capsule",
+      "transform": {
+        "position": [
+          0,
+          0.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    }
+  ],
+  "entities": [
+    {
+      "mesh": {
+        "asset": "assets/models/barrel.gltf"
+      },
+      "name": "Barrel",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

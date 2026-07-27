@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <limits>
 #include <set>
 
 namespace engine {
@@ -170,14 +171,45 @@ void PlacementCollisionTracker::remove_bodies(CollisionWorld& world, TrackedPlac
 }
 
 Result<void> PlacementCollisionTracker::sync(CollisionWorld& world, const Scene& scene,
-    const std::map<std::string, PrefabAsset>& catalog, bool simulate_dynamics) {
+    const std::map<std::string, PrefabAsset>& catalog, bool simulate_dynamics, std::size_t max_rebuilds,
+    const EntityId* priority_entity) {
+    const auto scene_revision = scene.edit_revision();
+    // Play-test and idle frames usually leave the authored scene untouched. Physics write-back uses
+    // set_transform(..., bump_edit_revision=false), so we can skip the full entity scan most frames.
+    if (!sync_incomplete_ && scene_revision == last_scene_edit_revision_ &&
+        simulate_dynamics == last_simulate_dynamics_)
+        return Result<void>::success();
+
+    sync_incomplete_ = false;
+    std::size_t rebuilds_left = max_rebuilds;
     std::set<std::string> active;
-    for (const auto& id : scene.entity_ids()) {
+
+    auto rebuild_one = [&](const EntityId& id) -> Result<bool> {
+        // Returns true if a body rebuild was performed.
         const auto placement = scene.placement(id);
         const auto transform = scene.transform(id);
-        if (!placement || !transform) continue;
+        if (!placement || !transform) return Result<bool>::success(false);
         const auto id_key = id.str();
         active.insert(id_key);
+        auto tracked_it = tracked_.find(id_key);
+        if (tracked_it != tracked_.end()) {
+            auto& tracked = tracked_it->second;
+            const auto authored = scene.authored_components(id);
+            const std::uint64_t generation = authored ? authored->generation : 0;
+            const bool transform_matches = tracked.transform.position == transform->position &&
+                tracked.transform.rotation == transform->rotation && tracked.transform.scale == transform->scale;
+            if (tracked.prefab_path == placement->prefab_asset && tracked.cell == placement->cell &&
+                tracked.components_generation == generation && tracked.simulate_dynamics == simulate_dynamics &&
+                (tracked.physics_driven ? true : transform_matches)) {
+                if (!tracked.physics_driven) tracked.transform = *transform;
+                tracked.entity_id = id;
+                return Result<bool>::success(false);
+            }
+        }
+        if (rebuilds_left == 0) {
+            sync_incomplete_ = true;
+            return Result<bool>::success(false);
+        }
         const auto resolved = resolve_prefab_catalog_path(catalog, placement->prefab_asset);
         const auto found = catalog.find(resolved);
         const PrefabAsset* prefab = found == catalog.end() ? nullptr : &found->second;
@@ -194,17 +226,20 @@ Result<void> PlacementCollisionTracker::sync(CollisionWorld& world, const Scene&
             tracked.physics_driven == physics_driven &&
             (physics_driven ? true : transform_matches);
         if (unchanged) {
+            tracked.entity_id = id;
             if (!physics_driven) tracked.transform = *transform;
-            continue;
+            return Result<bool>::success(false);
         }
+        --rebuilds_left;
         remove_bodies(world, tracked);
+        tracked.entity_id = id;
         tracked.prefab_path = resolved;
         tracked.transform = *transform;
         tracked.cell = placement->cell;
         tracked.components_generation = generation;
         tracked.simulate_dynamics = simulate_dynamics;
         tracked.physics_driven = physics_driven;
-        if (volumes.empty()) continue;
+        if (volumes.empty()) return Result<bool>::success(true);
 
         if (physics_driven) {
             const PrefabCollisionVolume* solid = nullptr;
@@ -217,23 +252,21 @@ Result<void> PlacementCollisionTracker::sync(CollisionWorld& world, const Scene&
             if (solid) {
                 const auto settings = settings_from_rigidbody(*rigidbody, simulate_dynamics);
                 const auto motion = spawn_motion_body(world, *solid, *transform, placement->cell, settings);
-                if (!motion) return Result<void>::failure(motion.error());
+                if (!motion) return Result<bool>::failure(motion.error());
                 tracked.motion_body = motion.value();
                 tracked.bodies.push_back(motion.value());
                 tracked.motion_local = solid->transform;
                 tracked.motion_local.scale = {1.0f, 1.0f, 1.0f};
             }
             const auto sensors = spawn_sensor_volumes(world, volumes, *transform, placement->cell);
-            if (!sensors) return Result<void>::failure(sensors.error());
+            if (!sensors) return Result<bool>::failure(sensors.error());
             for (const auto& body : sensors.value()) tracked.bodies.push_back(body);
         } else {
             const auto spawned = spawn_collision_volumes(world, volumes, *transform, placement->cell);
-            if (!spawned) return Result<void>::failure(spawned.error());
+            if (!spawned) return Result<bool>::failure(spawned.error());
             tracked.bodies = spawned.value();
         }
 
-        // Bind interaction/combat to sensor bodies — index by volume order among sensors for physics-driven,
-        // or by full volume list for static path.
         if (physics_driven) {
             std::uint32_t sensor_index = 0;
             const std::uint32_t motion_count = tracked.motion_body ? 1u : 0u;
@@ -269,14 +302,31 @@ Result<void> PlacementCollisionTracker::sync(CollisionWorld& world, const Scene&
                 combat_registry_.bind(tracked.bodies[index], std::move(binding));
             }
         }
+        return Result<bool>::success(true);
+    };
+
+    if (priority_entity && !priority_entity->empty()) {
+        const auto prioritized = rebuild_one(*priority_entity);
+        if (!prioritized) return Result<void>::failure(prioritized.error());
     }
-    for (auto it = tracked_.begin(); it != tracked_.end();) {
-        if (active.find(it->first) != active.end()) {
-            ++it;
-            continue;
+
+    for (const auto& id : scene.entity_ids()) {
+        if (priority_entity && !priority_entity->empty() && id == *priority_entity) continue;
+        const auto rebuilt = rebuild_one(id);
+        if (!rebuilt) return Result<void>::failure(rebuilt.error());
+    }
+
+    if (!sync_incomplete_) {
+        for (auto it = tracked_.begin(); it != tracked_.end();) {
+            if (active.find(it->first) != active.end()) {
+                ++it;
+                continue;
+            }
+            remove_bodies(world, it->second);
+            it = tracked_.erase(it);
         }
-        remove_bodies(world, it->second);
-        it = tracked_.erase(it);
+        last_scene_edit_revision_ = scene_revision;
+        last_simulate_dynamics_ = simulate_dynamics;
     }
     return Result<void>::success();
 }
@@ -293,14 +343,18 @@ void PlacementCollisionTracker::write_back_transforms(Scene& scene, CollisionWor
         body_pose.rotation = rotation.value();
         body_pose.scale = {1.0f, 1.0f, 1.0f};
         TransformComponent entity_pose = multiply_transforms(body_pose, inverse_transform(tracked.motion_local));
-        for (const auto& entity : scene.entity_ids()) {
-            if (entity.str() != id_key) continue;
-            if (auto current = scene.transform(entity)) entity_pose.scale = current->scale;
-            else entity_pose.scale = tracked.transform.scale;
-            tracked.transform = entity_pose;
-            (void)scene.set_transform(entity, entity_pose);
-            break;
+        EntityId entity = tracked.entity_id;
+        if (entity.empty() || !scene.contains(entity)) {
+            auto parsed = EntityId::parse(id_key);
+            if (!parsed || !scene.contains(parsed.value())) continue;
+            entity = parsed.value();
+            tracked.entity_id = entity;
         }
+        if (auto current = scene.transform(entity)) entity_pose.scale = current->scale;
+        else entity_pose.scale = tracked.transform.scale;
+        tracked.transform = entity_pose;
+        // Physics follow must not bump edit_revision or sync would rebuild every frame.
+        (void)scene.set_transform(entity, entity_pose, false);
     }
 }
 
@@ -309,6 +363,9 @@ void PlacementCollisionTracker::clear(CollisionWorld& world) {
     tracked_.clear();
     interaction_registry_.clear();
     combat_registry_.clear();
+    last_scene_edit_revision_ = std::numeric_limits<std::uint64_t>::max();
+    last_simulate_dynamics_ = true;
+    sync_incomplete_ = false;
 }
 
 std::optional<CollisionBody> PlacementCollisionTracker::motion_body_for(const EntityId& id) const {

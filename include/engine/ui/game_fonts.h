@@ -11,11 +11,12 @@ namespace engine::GameFonts {
 [[nodiscard]] bool load(ImGuiIO& io);
 
 [[nodiscard]] ImFont* ui();       // Roboto — engine / editor
-[[nodiscard]] ImFont* display();  // Cinzel — scene / game assets
+[[nodiscard]] ImFont* display();  // Cinzel — scene / game display titles
+[[nodiscard]] ImFont* body();     // Roboto @ larger size — readable dialogue / long prose
 [[nodiscard]] ImFont* mono();
 [[nodiscard]] ImFont* icons();
 
-/// Face for game canvas / HUD overlay text (always Cinzel when loaded).
+/// Face for game canvas overlay text. Prefer `body()` for long dialogue lines.
 [[nodiscard]] ImFont* for_design_size(float design_px);
 
 /// World Forge cartography labels (`cinzel`, `forum`, `eb_garamond`, `uncial_antiqua`, `metamorphous`,
