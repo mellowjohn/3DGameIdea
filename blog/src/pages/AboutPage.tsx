@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ImageLightbox } from '../components/ImageLightbox'
 import { SubscribeForm } from '../components/SubscribeForm'
+import { useImageZoom } from '../hooks/useImageZoom'
 import { assetUrl } from '../lib/assets'
 import { loadAbout, type AboutDoc } from '../lib/about'
 import { setPageMeta } from '../lib/seo'
 
 export function AboutPage() {
   const [doc, setDoc] = useState<AboutDoc | null>(null)
+  const pageRef = useRef<HTMLElement>(null)
+  const { image, close } = useImageZoom(pageRef, doc?.html ?? '')
 
   useEffect(() => {
     void loadAbout().then((about) => {
@@ -20,7 +24,7 @@ export function AboutPage() {
   }, [])
 
   return (
-    <main className="page page--read">
+    <main className="page page--read" ref={pageRef}>
       <div className="page-banner">
         <img src={assetUrl('/images/og-default.webp')} alt="" />
       </div>
@@ -35,6 +39,7 @@ export function AboutPage() {
       <section className="section--subscribe">
         <SubscribeForm />
       </section>
+      <ImageLightbox image={image} onClose={close} />
     </main>
   )
 }

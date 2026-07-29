@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ImageLightbox } from '../components/ImageLightbox'
 import { ShareLinks } from '../components/ShareLinks'
 import { SubscribeForm } from '../components/SubscribeForm'
+import { useImageZoom } from '../hooks/useImageZoom'
 import { assetUrl } from '../lib/assets'
 import { getPost, type Post } from '../lib/posts'
 import { setPageMeta } from '../lib/seo'
@@ -9,6 +11,8 @@ import { setPageMeta } from '../lib/seo'
 export function PostPage() {
   const { slug = '' } = useParams()
   const [post, setPost] = useState<Post | null | undefined>(undefined)
+  const articleRef = useRef<HTMLElement>(null)
+  const { image, close } = useImageZoom(articleRef, post?.html ?? '')
 
   useEffect(() => {
     let cancelled = false
@@ -68,7 +72,7 @@ export function PostPage() {
 
   return (
     <main className="page page--read">
-      <article>
+      <article ref={articleRef}>
         {post.cover && (
           <div className="article-cover">
             <img src={assetUrl(post.cover)} alt="" />
@@ -93,6 +97,7 @@ export function PostPage() {
       <section className="section--subscribe">
         <SubscribeForm />
       </section>
+      <ImageLightbox image={image} onClose={close} />
     </main>
   )
 }

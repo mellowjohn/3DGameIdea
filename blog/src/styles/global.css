@@ -549,6 +549,112 @@ a:hover {
   margin: 1.25rem 0;
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  background: #0b0f14;
+}
+
+/* Match article column width; reserve layout before metadata/play. */
+.prose video {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  margin: 1.25rem 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #0b0f14;
+}
+
+.img-zoomable {
+  cursor: zoom-in;
+}
+
+.img-zoomable:focus-visible {
+  outline: 2px solid rgba(224, 112, 64, 0.65);
+  outline-offset: 3px;
+}
+
+.article-cover .img-zoomable,
+.page-banner .img-zoomable {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+  background: rgba(6, 10, 14, 0.88);
+  backdrop-filter: blur(6px);
+}
+
+.lightbox__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(96vw, 72rem);
+  max-height: calc(100vh - 2 * var(--gutter));
+}
+
+.lightbox__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.lightbox__title {
+  margin: 0;
+  min-width: 0;
+  color: var(--steel-bright);
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lightbox__close {
+  flex: 0 0 auto;
+  appearance: none;
+  border: 1px solid var(--line);
+  background: rgba(26, 37, 48, 0.9);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.lightbox__close:hover,
+.lightbox__close:focus-visible {
+  border-color: var(--ember);
+  color: var(--ember-hot);
+  outline: none;
+}
+
+.lightbox__image {
+  display: block;
+  width: 100%;
+  max-height: calc(100vh - 8rem);
+  height: auto;
+  object-fit: contain;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #0b0f14;
+}
+
+.lightbox__hint {
+  margin: 0;
+  font-size: 0.85rem;
 }
 
 .prose figure {

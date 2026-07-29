@@ -20,7 +20,7 @@ I got terrain and materials working first: big open ground, textures, light. And
 
 I knew particles and effects were not the most “productive” thing on the critical path. I also knew I would not keep caring about the story I want to tell if the world stayed bland. So I chased the things that put life in the frame: fire, wind, the small motion that says time is passing.
 
-<video controls playsinline loop preload="metadata" width="1280" height="724" src="/videos/fire-breathe-campfire.mp4" poster="/images/cover-fire-breathe.jpg"></video>
+<video controls playsinline loop preload="metadata" src="/videos/fire-breathe-campfire.mp4" poster="/images/cover-fire-breathe.jpg"></video>
 
 *Sandbox Scene capture: campfire flame and ember layers moving in the editor, play-test stopped.*
 
