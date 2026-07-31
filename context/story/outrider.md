@@ -30,4 +30,4 @@ Shares the drafted-to-Calrenoth premise with Ashfell Blade and Runecaster. Kit a
 
 - Lodge ranks, faces, and first quests.
 - Mechanical split for Ranger / Forager / Nomad (systems/comps pass).
-- Starter kit turnaround still needed ([character-direction.md](../art/character-direction.md)).
+- Starter kit first-pass turnaround landed: `context/art/reference/starting-player-outrider-turnaround.png` ([character-direction.md](../art/character-direction.md)).

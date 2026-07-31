@@ -55,7 +55,8 @@
   "entities": [
     {
       "mesh": {
-        "asset": "assets/models/campfire.gltf"
+        "asset": "assets/models/campfire.gltf",
+        "material": "assets/materials/flame_core_emissive.material.json"
       },
       "name": "Campfire",
       "parent": null,
@@ -82,43 +83,54 @@
   "light": {
     "color": [
       1,
-      0.58,
-      0.22
+      0.55,
+      0.18
     ],
     "offset": [
       0,
-      0.4,
+      0.55,
       0
     ],
-    "radius": 34,
-    "strength": 2.25
+    "radius": 38,
+    "strength": 2.6
   },
   "particles": [
     {
       "asset": "assets/vfx/campfire_core.particle.json",
-      "offset": [0.0, 0.32, 0.0],
-      "enabled": true
+      "enabled": true,
+      "offset": [
+        0,
+        0.3,
+        0
+      ]
     },
     {
-      "asset": "assets/vfx/campfire_flame.particle.json",
-      "offset": [0.0, 0.4, 0.0],
-      "enabled": true
+      "asset": "assets/vfx/stylized_flame_molten.particle.json",
+      "enabled": true,
+      "offset": [
+        0,
+        0.42,
+        0
+      ]
     },
     {
-      "asset": "assets/vfx/campfire_embers.particle.json",
-      "offset": [0.0, 0.5, 0.0],
-      "enabled": true
+      "asset": "assets/vfx/hit_spark.particle.json",
+      "enabled": true,
+      "offset": [
+        0,
+        0.55,
+        0
+      ]
     },
     {
       "asset": "assets/vfx/campfire_smoke.particle.json",
-      "offset": [0.0, 0.9, 0.0],
-      "enabled": true
+      "enabled": true,
+      "offset": [
+        0,
+        1.05,
+        0
+      ]
     }
   ],
-  "particle": {
-    "asset": "assets/vfx/campfire_flame.particle.json",
-    "offset": [0.0, 0.4, 0.0],
-    "enabled": true
-  },
   "schemaVersion": 2
 }

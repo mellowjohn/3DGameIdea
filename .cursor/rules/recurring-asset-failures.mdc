@@ -1,0 +1,20 @@
+# Recurring Asset Failures → Document Path Forward
+
+When fixing a **repeat** of a known sample-asset failure class (missing player locomotion clips, muddy/glitchy foliage atlases, corrupted Tier-1 prop bakes after import):
+
+## Rules
+
+1. Fix the immediate asset with the named bake / restore path — do not invent a one-off undocumented workaround.
+2. Update `context/testing/recurring-asset-failures.md` if the path changed (or add a new section for a new class).
+3. Add or extend a `context/testing/findings.md` entry (newest first) with a **Path forward when this recurs** bullet linking that playbook section.
+4. Do not leave the next agent to rediscover the same console string or atlas failure from chat history alone.
+
+## Examples
+
+```text
+❌ BAD: Rebake player.gltf, move on; next session hits ANIM-CLIP-MISSING again with no playbook
+✅ GOOD: Rebake + confirm clip names; findings entry + recurring-asset-failures Player section current
+
+❌ BAD: Tweak bush_tall.png by hand only and forget the baker flag that caused muddy camo
+✅ GOOD: Fix PROPS / bake; document Fix now + Prevent in recurring-asset-failures
+```

@@ -284,6 +284,8 @@ void ParticleSystem::clear() {
 
     active_particles_ = 0;
 
+    burst_seq_ = 0;
+
 }
 
 
@@ -491,7 +493,15 @@ void ParticleSystem::sync_placements(const std::map<std::string, PrefabAsset>& p
 
     std::vector<Emitter> next;
 
-    next.reserve(placements.size());
+    next.reserve(placements.size() + emitters_.size());
+
+    // Preserve one-shot burst emitters across placement rebuilds.
+
+    for (auto& emitter : emitters_) {
+
+        if (emitter.transient_burst) next.push_back(std::move(emitter));
+
+    }
 
     for (const auto& placement : placements) {
 
@@ -516,7 +526,7 @@ void ParticleSystem::sync_placements(const std::map<std::string, PrefabAsset>& p
 
             for (auto& emitter : emitters_) {
 
-                if (emitter.key == key) {
+                if (!emitter.transient_burst && emitter.key == key) {
 
                     existing = &emitter;
 
@@ -541,6 +551,8 @@ void ParticleSystem::sync_placements(const std::map<std::string, PrefabAsset>& p
             emitter.emission_direction_override.reset();
 
             emitter.rate_scale = 1.0f;
+
+            emitter.transient_burst = false;
 
             if (emitter.pool.empty()) {
 
@@ -568,7 +580,8 @@ void ParticleSystem::sync_placements(const std::map<std::string, PrefabAsset>& p
 
 void ParticleSystem::set_ambient_wind(bool enabled, const std::string& asset_path,
 
-    const std::array<float, 3>& camera_position, const std::array<float, 3>& wind_direction, float strength) {
+    const std::array<float, 3>& camera_position, const std::array<float, 3>& wind_direction, float strength,
+    float gust, float wind_speed) {
 
     if (!enabled || asset_path.empty() || strength <= 0.01f) {
 
@@ -606,17 +619,23 @@ void ParticleSystem::set_ambient_wind(bool enabled, const std::string& asset_pat
 
     }
 
+    const auto wind_dir = normalize3(wind_direction);
+
     ambient_emitter_->enabled = true;
 
     ambient_emitter_->transform.position = camera_position;
 
     ambient_emitter_->transform.scale = {1.0f, 1.0f, 1.0f};
 
-    ambient_emitter_->offset = {0.0f, 1.2f, 0.0f};
+    // Spawn upwind and slightly above the camera so elongated streaks drift through the view.
+    const float upwind = 6.0f + clampf(wind_speed, 1.0f, 12.0f) * 0.35f;
+    ambient_emitter_->offset = {-wind_dir[0] * upwind, 2.1f, -wind_dir[2] * upwind};
 
-    ambient_emitter_->emission_direction_override = normalize3(wind_direction);
+    ambient_emitter_->emission_direction_override = wind_dir;
 
-    ambient_emitter_->rate_scale = clampf(strength, 0.15f, 2.0f);
+    // Calm meadows keep a faint trickle; traveling gust bands thicken the trails.
+    const float gust01 = clampf(gust, 0.0f, 1.0f);
+    ambient_emitter_->rate_scale = clampf(strength * (0.4f + 0.95f * gust01), 0.12f, 2.6f);
 
 }
 
@@ -679,6 +698,18 @@ void ParticleSystem::update(float dt_seconds, const std::array<float, 3>& camera
     for (auto& emitter : emitters_) update_emitter(emitter, dt);
 
     if (ambient_emitter_) update_emitter(*ambient_emitter_, dt);
+
+    // Drop finished one-shot bursts so sync_placements does not accumulate forever.
+
+    emitters_.erase(std::remove_if(emitters_.begin(), emitters_.end(),
+                        [](const Emitter& emitter) {
+                            if (!emitter.transient_burst) return false;
+                            for (const auto& particle : emitter.pool) {
+                                if (particle.alive) return false;
+                            }
+                            return true;
+                        }),
+        emitters_.end());
 
     rebuild_draw_list(camera_position);
 
@@ -812,6 +843,55 @@ void ParticleSystem::rebuild_draw_list(const std::array<float, 3>& /*camera_posi
     for (const auto& emitter : emitters_) append_emitter(emitter);
 
     if (ambient_emitter_) append_emitter(*ambient_emitter_);
+
+}
+
+
+
+bool ParticleSystem::spawn_burst(const std::string& asset_path, const std::array<float, 3>& world_position,
+    std::size_t count, const std::optional<std::array<float, 3>>& emission_direction) {
+
+    if (count == 0) return false;
+
+    const auto path = normalize_particle_path(asset_path);
+
+    const auto* asset = find_asset(path);
+
+    if (!asset || !asset->enabled) return false;
+
+    Emitter emitter;
+
+    emitter.key = "burst|" + path + "|" + std::to_string(++burst_seq_);
+
+    emitter.asset_path = path;
+
+    emitter.transform.position = world_position;
+
+    emitter.transform.scale = {1.0f, 1.0f, 1.0f};
+
+    emitter.offset = {0.0f, 0.0f, 0.0f};
+
+    emitter.enabled = true;
+
+    emitter.rate_scale = 0.0f; // no continuous spawn; particles come from the forced emit below
+
+    emitter.transient_burst = true;
+
+    if (emission_direction) emitter.emission_direction_override = normalize3(*emission_direction);
+
+    emitter.pool.assign(asset->max_particles, Particle{});
+
+    emitter.rng = hash_mix(seed_ ^ burst_seq_ ^ static_cast<std::uint32_t>(std::hash<std::string>{}(emitter.key)));
+
+    const std::size_t to_emit = std::min(count, static_cast<std::size_t>(asset->max_particles));
+
+    for (std::size_t i = 0; i < to_emit; ++i) emit_one(emitter, *asset);
+
+    emitters_.push_back(std::move(emitter));
+
+    rebuild_draw_list(world_position);
+
+    return true;
 
 }
 

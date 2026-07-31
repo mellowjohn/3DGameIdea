@@ -1,0 +1,5 @@
+# Local venv pins for article-capture MCP.
+# windows-computer-use-mcp imports mcp.server.fastmcp (MCP SDK 1.x API).
+# Do not allow mcp 2.x — it drops FastMCP and breaks server startup.
+windows-computer-use-mcp @ git+https://github.com/sshh12/windows-computer-use-mcp@8d367a868f49150c9dcc8ea4d70b6efe8ad8a892
+mcp>=1.2.0,<2

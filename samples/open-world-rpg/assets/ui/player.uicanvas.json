@@ -314,7 +314,6 @@
         255.0
       ],
       "id": "hud_hotbar_1_icon",
-      "image": "assets/ui/hud/hud-icon-sword.png",
       "imageMode": "contain",
       "offset": [
         750.0,
@@ -324,7 +323,8 @@
         40.0,
         40.0
       ],
-      "type": "panel"
+      "type": "panel",
+      "imageBind": "hud.hotbar.1.icon"
     },
     {
       "anchor": "bottom_left",
@@ -380,7 +380,6 @@
         255.0
       ],
       "id": "hud_hotbar_2_icon",
-      "image": "assets/ui/hud/hud-icon-shield.png",
       "imageMode": "contain",
       "offset": [
         826.0,
@@ -390,7 +389,8 @@
         40.0,
         40.0
       ],
-      "type": "panel"
+      "type": "panel",
+      "imageBind": "hud.hotbar.2.icon"
     },
     {
       "anchor": "bottom_left",
@@ -446,7 +446,6 @@
         255.0
       ],
       "id": "hud_hotbar_3_icon",
-      "image": "assets/ui/hud/hud-icon-sprint.png",
       "imageMode": "contain",
       "offset": [
         902.0,
@@ -456,7 +455,8 @@
         40.0,
         40.0
       ],
-      "type": "panel"
+      "type": "panel",
+      "imageBind": "hud.hotbar.3.icon"
     },
     {
       "anchor": "bottom_left",
@@ -738,6 +738,96 @@
         320.0,
         36.0
       ],
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        240.0
+      ],
+      "id": "hud_hotbar_7",
+      "image": "assets/ui/hud/hud-ability-slot.png",
+      "imageMode": "contain",
+      "offset": [
+        1194.0,
+        60.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "hud.hotbar.7",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 18.0,
+      "id": "hud_hotbar_7_key",
+      "offset": [
+        1194.0,
+        40.0
+      ],
+      "size": [
+        64.0,
+        18.0
+      ],
+      "text": "7",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        240.0
+      ],
+      "id": "hud_hotbar_8",
+      "image": "assets/ui/hud/hud-ability-slot.png",
+      "imageMode": "contain",
+      "offset": [
+        1270.0,
+        60.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "hud.hotbar.8",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 18.0,
+      "id": "hud_hotbar_8_key",
+      "offset": [
+        1270.0,
+        40.0
+      ],
+      "size": [
+        64.0,
+        18.0
+      ],
+      "text": "8",
+      "textAlign": "center",
       "textVAlign": "middle",
       "type": "text"
     }

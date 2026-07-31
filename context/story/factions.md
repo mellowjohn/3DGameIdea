@@ -9,9 +9,9 @@
 | --- | --- | --- | --- |
 | Kingdom of Tessera | **draft** (arena vs faction choice open) | Dominant human occupying power *within* Tessera ([DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land)); land fractured by chaotic forces; heroic medieval visual tone (*Gondor*/*Rohan* as references only) | Whether the kingdom is a playable faction choice or the political arena around others |
 | Chaotic Imperium | **established** (existence + leader); **open** (Frangitur/Shroud links) | Evil coalition of living + ethereal forces; led by Luceran the Hollow; structure exists because a monarch heads it — without that head it would run wild ([design session 2026-07-20](#design-session-2026-07-20-faction-structure--theaters-draft)); heraldry art: dark crusade / fractured-creator (`heraldry-chaotic_imperium.png`; Roman eagle retired) | How Imperium authority ties to Frangitur, the Nefarium Shroud, and Luceran’s remaining agency; owner lock on heraldry emblem |
-| The Cristallo | **draft** | Religious/noble oligarchy; selective; higher social classes; refined architecture; hostile to woodland faction; can shift good/evil via player influence (proposal); **theater draft:** central island / origin-crater seat ([official-world-map.md](official-world-map.md#draft-faction-theaters-2026-07-20)); **2026-07-22:** Old/New Testament faith split + church/state bipartisan politics; **White Lotus** relic guardians; Creator crystal cleanses Nefarium | Hierarchy titles; crystal name/location; Luceran-puppet sub-faction name |
+| The Cristallo | **draft** | Religious/noble oligarchy; selective; higher social classes; refined architecture; hostile to woodland faction; can shift good/evil via player influence (proposal); **theater draft:** central island / origin-crater seat ([official-world-map.md](official-world-map.md#draft-faction-theaters-2026-07-20)); **2026-07-22:** Old/New Testament faith split + church/state bipartisan politics; **White Lotus** relic guardians; Creator crystal **Claritas** cleanses Nefarium (staff-borne by Cristallo leader, 2026-07-29) | Hierarchy titles; Claritas court map pin; Luceran-puppet sub-faction name |
 | Arrotrebae of the Rampant Wilds | **draft** | **Umbrella culture**, not one contiguous kingdom — regional tribes molded by local land, Loa/gods, and lifestyle; council of **tribal leaders** (rite-passed seats); **2026-07-22:** **majority consensus** default; dissenters may **challenge champion**; adversarial with Cristallo; Greek–Irish naming theme; **The Thalassar** (`thalassar`) as first named clan; public mask **Muirthalia**; minor leadership relic **Anál Muir** (`anal_muir`); false patron **The Sea of Whispers** | Council seat roster; Luceran-lost tribe **names** (Underflow = Luceran-influenced orc warband, not Arrotrebae) |
-| Orc warbands | **draft** (structure); **open** (some names) | **Umbrella culture** of multiple warbands; may support or oppose Imperium; **The Underflow** (`underflow`) — Act 0 minor warband inland of Calrenoth; **Luceran-influenced** (2026-07-22); war-chief **Drul’gath** (`drul_gath`); public mask **Grakk-Maren**; same false **Sea of Whispers** cult as Thalassar; **The Black Howl** (`black_howl`) — **first-war Shroud bearer**; war-chief **Grul’thaz** (Shadowpaw) | Other warband names/IDs; wolf patron display name (“Goldrin” draft) |
+| Orc warbands | **draft** (structure); **open** (some names) | **Umbrella culture** of multiple warbands; may support or oppose Imperium; **The Underflow** (`underflow`) — Act 0 minor warband inland of Calrenoth; **Luceran-influenced** **coerced ally** (2026-07-29); war-chief **Drul’gath** (`drul_gath`); public mask **Grakk-Maren**; same false **Sea of Whispers** cult as Thalassar; **The Black Howl** (`black_howl`) — **first-war Shroud bearer**; war-chief **Grul’thaz** (Shadowpaw) | Other warband names/IDs; wolf patron display name (“Goldrin” draft) |
 | Player influence (Cristallo / Arrotrebae) | **proposal** | Engine model: continuous standing + hostility transfer + lock-in fields ([DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer)). Both start neutral in story; morality remains a separate track. | Numeric thresholds, destruction/reform, morality binding — still open; do not invent numbers in World Forge seeds |
 
 Labels follow [story index continuity](index.md): **established** = current story context; **draft** / **proposal** / **open** = needs owner review before canon.
@@ -30,7 +30,7 @@ The Chaotic Imperium gathers the evil forces that disrupt the player's journey. 
 
 Luceran the Hollow is the Imperium's current **monarch / head**. Draft direction (2026-07-20): without a head, Frangitur’s creation would run wild and kill everything; Luceran is what currently gives the Imperium structure. Frangitur remains the deeper creator / manipulator figure behind that creation.
 
-**Authority lock (draft, 2026-07-22):** Luceran holds Imperium command because **Frangitur is trapped within the Nefarium Shroud** and Luceran controls that binding. Luceran manipulates the player toward Act 3 to “free Creotar” — in reality freeing **Frangitur**. The player should not learn Creotar = Frangitur until late game. Luceran remains in charge until defeated by the player.
+**Authority lock (draft, 2026-07-22; purpose reinforced 2026-07-29):** Luceran holds Imperium command because **Frangitur is trapped within the Nefarium Shroud** and Luceran controls that binding. The Shroud was made to **contain Frangitur** and **bind** Chaotic Imperium forces; breaking it **releases Frangitur** and drops the binding. Luceran manipulates the player toward Act 3 to “free Creotar” — in reality freeing **Frangitur**. The player should not learn Creotar = Frangitur until late game. Luceran remains in charge until defeated by the player.
 
 **Lieutenant aesthetic (2026-07-22):** Imperium agents may appear as corrupted Arrotrebae/orc silhouettes — dark-spawn–like, mist-wreathed bodies (e.g. **Pneumyra** as siren-bodied Sea of Whispers lieutenant).
 
@@ -48,7 +48,7 @@ The organization can develop toward good or evil through player influence.
 
 **Faith and politics (draft lock, 2026-07-22):** Cristallo worship follows **Creotar** (Creo) as understood at world’s founding. A split analogous to **Old Testament vs New Testament** (not Bible structure) drives public debate: whether Creotar still exists, left, or will return; some faithful secretly know **Creotar fell to Frangitur**; Luceran-aligned infiltrators manipulate the church. After Creotar’s long absence, **church and state separated** into two political lines: (1) **theological reinstatement** — faith should govern again; (2) **secular democratic order** — society runs through the people without waiting for Creotar. The parties conflict; a **Scarlet Crusade–like** religious sub-faction becomes overzealous when **Luceran** manipulates it (Imperium agents may puppet leadership while believers think they serve Creotar).
 
-**Creator relic (draft, 2026-07-22):** founding Cristallo met Creotar and received a **Creator-origin crystal** that seeded their society. An elite **White Lotus** order (Avatar: The Last Airbender reference — elected guardians, *Unknown Soldier* preservation cycle) protects the relic. It is the **inverse of Nefarium**: contact **cleanses** Shroud corruption. Cristallo Act 2 duty (faith path): join White Lotus, navigate politics, wield the relic against **Frangitur / Nefarium Shroud** effects. Crystal **display name and exact location** still open.
+**Creator relic (draft, 2026-07-22; name lock 2026-07-29):** founding Cristallo met Creotar and received a **Creator-origin crystal** — display name **Claritas** (`claritas`) — that seeded their society. Form: crystal set in a **staff** forged to wield it; **Cristallo’s leader bears the staff** (not a vault megachurch). An elite **White Lotus** order (Avatar: The Last Airbender reference — elected guardians, *Unknown Soldier* preservation cycle) protects the relic / path. It is the **inverse of Nefarium**: contact **cleanses** Shroud corruption. Cristallo Act 2 duty (faith path): join White Lotus, navigate politics, wield **Claritas** against **Frangitur / Nefarium Shroud** effects. Exact court **map pin** still open (D-P2-08).
 
 Hierarchy titles (theological pinnacle vs secular head) and the Luceran-puppet sub-faction **name** remain open.
 
@@ -102,9 +102,11 @@ Minor local warband, not a continent-scale horde. Same regional cult as The Thal
 
 **Luceran influence (draft lock, 2026-07-22):** **The Underflow** is **absolutely** under Luceran influence — contrast **The Thalassar**, where Act 1 is about **preventing** that fall. Not every orc warband is Luceran-controlled; some may share the same false patron without being mutually exclusive.
 
+**Act 0 corridor stance (draft lock, 2026-07-29, D-P0-14):** **coerced ally** of Imperium / Nefarium Shroud — Luceran keeps a **lieutenant presence** in the corridor (Sea of Whispers / **Pneumyra** plant + Luceran-influenced warband under **Drul’gath**), not a free Imperium friendship.
+
 **War-chief (draft lock, 2026-07-22):** **Drul’gath** (`drul_gath`) — Act 0 corridor presence and A1 usurper-path face. Orc/ridge tongue (same family as **Grul’thaz**); distinct from cult mask **Grakk-Maren**. The A1-05 usurper *candidate* may still be a separate named person (D-P1-12).
 
-Warband heraldry: `heraldry-underflow.png` (tusks + underground black-water sinkhole). Still open: Imperium / Nefarium stance detail in Act 0 corridor.
+Warband heraldry: `heraldry-underflow.png` (tusks + underground black-water sinkhole).
 
 ### Calrenoth corridor — liturgy names
 
@@ -176,11 +178,11 @@ Source: owner + Dom recording *Open World RPG Worldbuilding*, 2026-07-20. Status
 | Topic | Draft takeaway | Still open |
 | --- | --- | --- |
 | Open world vs instances | Most story plays in the seamless open world; rare instanced scenes when needed for density/vision. Calrenoth siege prefers open-world placement ([DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances)) | Which beats stay instances (Realm of Darkness still a candidate) |
-| Act 0 title | **Landfall** — tutorial establishing Chaotic Imperium, Luceran the Hollow, Kingdom of Tessera | Working title vs final marketing name |
-| Calrenoth geography | Western peninsula tip confirmed; landlocked player approach + moat drawbridge | Exact coords / Map Canvas lock |
+| Act 0 title | **Landfall** — tutorial establishing Chaotic Imperium, Luceran the Hollow, Kingdom of Tessera | **Final** marketing name (D-P0-15, 2026-07-29) |
+| Calrenoth geography | Western peninsula tip confirmed; landlocked player approach + moat drawbridge | Exact coords / Map Canvas lock (D-P2-08 — level design) |
 | Sea of Whispers | Luceran lieutenant planted by Frangitur; Underflow cult perverted; **lieutenant body = Act 1 boss** (leads assassination); lieutenant **Pneumyra** (`pneumyra`); public epithet **She Who Sings the Undertow** | Reveal timing; **Anál Muir** channeling |
-| Creotar / Creo / Frangitur | Creotar = Creo (short); Frangitur = fallen form | Destroy-Shroud honesty / irony |
-| Act 1 hub | **Ledgeport** (`ledgeport`) — market free-town / trade port; Act 1 focus region (evergreen wake deprecated as competing geography) | Ferry to Cristallo; DEC-0032 wake reconcile; world coords |
+| Creotar / Creo / Frangitur | Creotar = Creo (short); Frangitur = fallen form; Act 0 “destroy the Shroud” = **partially true** (D-P2-14) | Harden Act 4 destroy-vs-control matrix (D-P2-13) |
+| Act 1 hub | **Ledgeport** (`ledgeport`) — market free-town / trade port; Act 1 focus region (evergreen wake deprecated as competing geography) | World coords (D-P2-08); DEC-0032 wake reconcile → campsite locked |
 
 ## Player Influence
 
@@ -195,14 +197,14 @@ Concrete gaps — do not invent answers in schema or beat work until owner-resol
 - ~~Is Imperium command granted by wearing the Shroud, by Frangitur’s will, by political myth, or a mix?~~ — **draft lock 2026-07-22:** Luceran commands because **Frangitur is trapped in the Shroud**; Luceran wears/controls the binding; Act 3 “free Creotar” manipulation frees Frangitur.
 - ~~How much agency does Luceran retain vs Shroud/Frangitur control?~~ — Luceran retains command until defeated; player learns Creotar = Frangitur late.
 - Reconcile battle-worn Shroud with throne-fused imagery ([nefarium-and-the-shroud.md](nefarium-and-the-shroud.md)).
-- Competing “Shroud as prison” proposal must stay non-canon until chosen or rejected.
+- ~~Competing “Shroud as prison” proposal~~ — **elevated to draft lock 2026-07-29 (D-P2-14):** Shroud **contains Frangitur** and **binds** Imperium chaos; break = release + lose binding.
 
 ### Cristallo theology / politics
 
 - ~~Faith, hierarchy, and what it means for Creotar (Creo) / Frangitur to be a god “under” the Cristallo~~ — **partial lock 2026-07-22:** Old/New Testament split; church/state bipartisan politics; White Lotus guardians; Creator crystal cleanses Nefarium.
-- Relationship to Kingdom of Tessera noble houses (Ashfell Blade / House Ashfell path) vs Cristallo as a separate power.
-- Still open: hierarchy **titles**; crystal **name/location**; Luceran-puppet sub-faction **name**.
-- Fields World Forge will eventually need: faith id, hierarchy ranks, settlement affiliation — partially unblocked; crystal POI still blocked.
+- Relationship to Kingdom of Tessera noble houses (**House Ashfell** confirmed 2026-07-29) vs Cristallo as a separate power.
+- Still open: hierarchy **titles**; **Claritas** court map pin (name locked); Luceran-puppet sub-faction **name**.
+- Fields World Forge will eventually need: faith id, hierarchy ranks, settlement affiliation — partially unblocked; Claritas court POI still soft-blocked on D-P2-08.
 
 ### Arrotrebae council rules
 
@@ -233,7 +235,7 @@ Concrete gaps — do not invent answers in schema or beat work until owner-resol
 
 Dom-facing list: open [`../design/dom-open-questions.md`](../design/dom-open-questions.md) · answered [`../design/dom-answered-questions.md`](../design/dom-answered-questions.md).
 
-- Define the Cristallo's faith, hierarchy, and relationship to Creo before his fall — **partial lock 2026-07-22** (Old/New Testament split, White Lotus, crystal cleanses Nefarium); titles + crystal name/location still open.
+- Define the Cristallo's faith, hierarchy, and relationship to Creo before his fall — **partial lock 2026-07-22** (Old/New Testament split, White Lotus, **Claritas** cleanses Nefarium); titles + Claritas court map pin still open.
 - ~~Define how the Arrotrebae make collective decisions when chieftains disagree~~ — **majority consensus + champion duel** (2026-07-22); name tribes from land.
 - ~~Identify which orc warband possessed the Nefarium Shroud~~ — **The Black Howl**; **Grul’thaz** prior bearer (2026-07-22).
 - Decide whether the Kingdom of Tessera is itself a faction choice or the political arena surrounding the other factions.
@@ -275,7 +277,7 @@ Source: owner + Dom recording *World Building: Cristallo and Co-op*, 2026-07-22 
 | Sea of Whispers lieutenant | Siren-bodied chaotic-Imperium aesthetic; **Pneumyra** + **She Who Sings the Undertow** (reconfirmed in session) | — |
 | Cristallo faith/politics | Old/New Testament split over Creotar; church/state bipartisan lines; Luceran-puppet Scarlet-Crusade sub-faction | Hierarchy titles; sub-faction name |
 | Creator crystal | **White Lotus** guardians; **cleanses Nefarium**; Act 2 Cristallo duty | Crystal name + location |
-| Luceran–Shroud | Luceran commands because **Frangitur trapped in Shroud**; Act 3 “free Creotar” = free Frangitur irony | Prison proposal non-canon |
+| Luceran–Shroud | Luceran commands because **Frangitur trapped in Shroud**; Act 3 “free Creotar” = free Frangitur irony | Prison+mantle purpose locked 2026-07-29 (D-P2-14) |
 | Black Howl / Shroud history | **Black Howl** held Shroud in first war; **Grul’thaz** (Shadowpaw); corrupted golden→black wolf patron | Wolf god display name |
 | Playable races | **Humans + orcs only** (scope) | — |
 | Co-op | **Single-player + online 2-player co-op**; mode-locked saves; shared campaign + standing + morality; party ≤4 (solo 1+3 companions; co-op 2+2 companions) | [DEC-0042](../decisions/index.md#dec-0042-online-co-op-session-model-mode-locked-saves) |

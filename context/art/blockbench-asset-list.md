@@ -15,7 +15,9 @@ Do not remake these first. Refine only when a higher-tier kit needs a shared bas
 | --- | --- | --- |
 | Oak tree + variants (tall / wide / lean / young / asymmetric) | `tools/art/tree/` | `assets/models/tree.gltf`, `oak_*.gltf` |
 | Stone cluster | `tools/art/stones/Stones.bbmodel` | `assets/models/stones.gltf` |
-| Player body v2 (skinned + Idle; finger/thumb bones) | `tools/art/player/Player_V2_rigged.bbmodel` | `assets/models/player.gltf` (+ `player.png`); NPC test prefab `assets/prefabs/NPC/npc_test.prefab.json` |
+| Player body v2 (legacy skinned + Idle/Run/Fall; superseded by GoodPlayerModel) | `tools/art/player/Player_V2_rigged.bbmodel` / `.gltf` | kept for reference; runtime uses GoodPlayerModel bake |
+| Player body v3 (WIP — bald Ashfell kit T-pose palms-down; no textures/rig; 2026-07-29) | `tools/art/player/Player_V3.bbmodel` (+ `build_player_v3_ashfell.py`) | — (not baked) |
+| GoodPlayerModel (runtime player — skinned 37-bone + Idle/Run/Fall; bake 2026-07-30b) | `tools/art/player/GoodPlayerModel.gltf` / `_rigged.bbmodel` (+ `Documents/Models/GoodPlayerModel.gltf`) | `assets/models/player.gltf` (+ `player.png`); animator `assets/animators/player.animator.json`; NPC test prefab `assets/prefabs/NPC/npc_test.prefab.json` |
 | Dead tree | — | `assets/models/dead-tree.gltf` |
 | Dead log | `tools/art/dead-log/DeadLog.bbmodel` | `assets/models/dead_log.gltf` |
 | Stump | `tools/art/stump/Stump.bbmodel` | `assets/models/stump.gltf` |
@@ -26,8 +28,13 @@ Do not remake these first. Refine only when a higher-tier kit needs a shared bas
 | Barrel | `tools/art/barrel/Barrel.gltf` | `assets/models/barrel.gltf` |
 | Lantern | `tools/art/lantern/Lantern.gltf` | `assets/models/lantern.gltf` |
 | Wall torch | `tools/art/wall-torch/Wall_Torch.gltf` | `assets/models/wall_torch.gltf` |
+| Ashfell arming sword | `tools/art/ashfell-arming-sword/Ashfell_Arming_Sword.gltf` | `assets/models/ashfell_arming_sword.gltf` |
+| Outrider shortbow | `tools/art/outrider-shortbow/Outrider_Shortbow.gltf` | `assets/models/outrider_shortbow.gltf` + Scene Asset `outrider_shortbow.prefab.json` |
+| Outrider arrow | `tools/art/outrider-arrow/Outrider_Arrow.gltf` | `assets/models/outrider_arrow.gltf` + Scene Asset `outrider_arrow.prefab.json` |
+| Guild rune focus | `tools/art/guild-rune-focus/Guild_Rune_Focus.gltf` | `assets/models/guild_rune_focus.gltf` + Scene Asset `guild_rune_focus.prefab.json` |
+| Loot bag (generic) | `tools/art/loot-bag/Loot_Bag.gltf` (+ `.bbmodel`) | `assets/models/loot_bag.gltf` + Scene Asset `loot_bag.prefab.json` |
 
-Still primitive-composed (candidate to replace): `bush_wide` only. Rebake Tier 1 props with `python tools/bake_tier1_props_gltf.py` (optional name filter, e.g. `barrel lantern wall_torch`).
+Still primitive-composed (candidate to replace): `bush_wide` only. Rebake Tier 1 props with `python tools/bake_tier1_props_gltf.py` (optional name filter, e.g. `barrel lantern wall_torch ashfell_arming_sword outrider_shortbow outrider_arrow guild_rune_focus loot_bag`). Legacy bbmodel loot bake: `python tools/bake_loot_bag_gltf.py` (prefer glTF Tier-1 bake going forward).
 
 ## Suggested work order
 
@@ -49,6 +56,7 @@ Unlock readable world dressing without new story content.
 | ~~Bush (normal / tall)~~ | Foliage scatter + scene dressing | **Shipped** (`bush`, `bush_tall`); wide still primitive |
 | ~~Campfire (ring + logs)~~ | Camp interaction + warm landmarks | **Shipped** mesh + light; **particle flame later** (`effects_campfire_flame`) |
 | ~~Crate / supply crate~~ | Physics prop + loot clutter | **Shipped** (`crate.prefab.json`) |
+| ~~Loot bag (generic)~~ | World pickup / approach finds clutter | **Shipped** (`loot_bag.prefab.json`); ~0.45 m |
 | ~~Barrel~~ | Town / dock / siege clutter | **Shipped** (`barrel.prefab.json`) |
 | ~~Torch / lantern~~ | Night readability, fortress lights | **Shipped** (`wall_torch`, `lantern`) + warm point lights; **particle flame later** |
 | ~~Dead log / stump~~ | Road / forest fill | **Both shipped** (`dead_log`, `stump`) |
@@ -89,10 +97,10 @@ Prefer one shared body + kit swaps over per-archetype body remakes. Rig in T-pos
 
 | Asset | Why |
 | --- | --- |
-| Player base body (clean T-pose, modular slots) | Character creation foundation — match approved front `reference/player-base-body-front.png` |
-| Ashfell Blade starter kit | Tunic, wraps, belt/pouch, boots — match [character-direction.md](character-direction.md) (legacy Squire) |
-| Outrider starter kit | Cloak/hood, bracer, quiver attachment — concept still open |
-| Runecaster starter kit | Rune/sigil caster kit (focus + inscribed accents) — concept still open; not crystal-warden default |
+| Player base body (clean T-pose, modular slots) | Character creation foundation — match approved front `reference/player-base-body-front.png`; WIP mesh `tools/art/player/Player_V3.bbmodel` |
+| Ashfell Blade starter kit | Tunic, wraps, belt/pouch, boots — match `reference/starting-player-ashfell-blade-turnaround.png` |
+| Outrider starter kit | Cloak/hood, vest, bracer, quiver — match `reference/starting-player-outrider-turnaround.png` |
+| Runecaster starter kit | Wrap-coat, etched wraps, focus pouch — match `reference/starting-player-runecaster-turnaround.png`; not crystal-warden default |
 | Arkand | Full-plate knight; goofy personality vs imposing armor |
 | Vanessa | Mage robes, academy look |
 | Generic Tessera soldier / guard | Grenge’s forces, Pellin, Larrell |
@@ -105,9 +113,9 @@ Prefer one shared body + kit swaps over per-archetype body remakes. Rig in T-pos
 
 | Asset | Kit / role |
 | --- | --- |
-| Short sword / arming sword | Ashfell Blade |
-| Bow + arrow | Outrider |
-| Rune focus (staff/rod or inscribed token) | Runecaster |
+| ~~Ashfell arming sword~~ | Ashfell Blade — **Shipped** mesh + Scene Asset prefab; hand-slot attach follow-on |
+| ~~Outrider shortbow + arrow~~ | Outrider — **Shipped** static meshes + Scene Assets (`outrider_shortbow`, `outrider_arrow`); draw armature / hand-slot attach follow-on |
+| ~~Guild rune focus~~ | Runecaster — **Shipped** mesh + Scene Asset; hand-slot attach follow-on |
 | Knight sword / shield | Arkand |
 | Orc axe / cleaver | Underflow |
 | Spear | Guards |
@@ -157,6 +165,7 @@ Do after Tier 1–3; reserved saturated accents per [theme-palette.md](theme-pal
 ## Production rules
 
 - Keep pieces **modular** (wall segments, clothing kits, attachable weapons) so they fit compositional prefabs ([DEC-0008](../decisions/index.md#dec-0008-compositional-prefab-meshes-from-primitives)).
+- **Blockbench authoring:** for curved / organic / tapered weapons and props, prefer **mesh** elements over stacked cubes; grow connected shapes with **extrude** then **move vertices/faces/edges** (see `.cursor/rules/blockbench-prefer-meshes.mdc`). Cubes remain fine for boxy props and explicit graybox passes.
 - Prefer **palette / vertex color / small atlases** over photoreal textures.
 - Favor **strong silhouettes** over dense micro-detail; combat readability first.
 - Export **glTF**; place baked runtime under `samples/open-world-rpg/assets/models/`; keep editable `.bbmodel` (or Blockbench glTF source) under `tools/art/<asset>/`.
@@ -172,6 +181,11 @@ tools/art/
   campfire/
   crate/
   barrel/
+  loot-bag/
+  ashfell-arming-sword/
+  outrider-shortbow/
+  outrider-arrow/
+  guild-rune-focus/
   torch/
   wheelbarrow/
   cart/
@@ -188,7 +202,6 @@ Mirror existing conventions: `tools/art/tree/`, `tools/art/stones/`, `tools/art/
 
 ## Open art questions
 
-- Outrider and Runecaster starter-kit turnaround references ([character-direction.md](character-direction.md)).
 - Flat shading versus softened normals on characters/props ([visual-direction.md](visual-direction.md)).
-- Whether starting kits share one base body with swaps or use per-archetype bodies.
+- Whether starting kits share one base body with swaps or use per-archetype bodies (direction currently: shared body + kit swaps).
 - Ferry dock asset only after Dom locks ferry yes/no (D-P0-09).

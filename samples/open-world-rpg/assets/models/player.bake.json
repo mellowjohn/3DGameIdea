@@ -1,0 +1,151 @@
+{
+  "ok": true,
+  "action": "bake",
+  "target": "player",
+  "kind": "skinned",
+  "source": "C:\\Users\\johnr\\Documents\\3DGameIdea\\tools\\art\\player\\GoodPlayerModel.gltf",
+  "outputs": {
+    "mesh": "C:\\Users\\johnr\\Documents\\3DGameIdea\\samples\\open-world-rpg\\assets\\models\\player.gltf",
+    "atlas": "C:\\Users\\johnr\\Documents\\3DGameIdea\\samples\\open-world-rpg\\assets\\models\\player.png",
+    "report": "C:\\Users\\johnr\\Documents\\3DGameIdea\\samples\\open-world-rpg\\assets\\models\\player.bake.json"
+  },
+  "elapsedSec": 93.716,
+  "bake": {
+    "source": "C:\\Users\\johnr\\Documents\\3DGameIdea\\tools\\art\\player\\GoodPlayerModel.gltf",
+    "atlasSource": "C:\\Users\\johnr\\Documents\\3DGameIdea\\tools\\art\\player\\GoodPlayerModel.png",
+    "mesh": "C:\\Users\\johnr\\Documents\\3DGameIdea\\samples\\open-world-rpg\\assets\\models\\player.gltf",
+    "atlas": "C:\\Users\\johnr\\Documents\\3DGameIdea\\samples\\open-world-rpg\\assets\\models\\player.png",
+    "generator": "AI RPG Engine bake_player_v2_gltf.py (GoodPlayerModel-2026-07-31-winding)",
+    "sourceClips": [
+      "Idle",
+      "Run",
+      "Fall",
+      "Walk",
+      "Jump",
+      "Land",
+      "Attack",
+      "HitReact",
+      "Dodge",
+      "DodgeBack",
+      "DodgeRight",
+      "DodgeLeft",
+      "Death",
+      "Interact",
+      "InteractPickup",
+      "Block",
+      "Revive"
+    ],
+    "bakedClips": [
+      "Idle",
+      "Run",
+      "Fall",
+      "Walk",
+      "Jump",
+      "Land",
+      "Attack",
+      "HitReact",
+      "Dodge",
+      "DodgeBack",
+      "DodgeRight",
+      "DodgeLeft",
+      "Death",
+      "Interact",
+      "InteractPickup",
+      "Block",
+      "Revive"
+    ],
+    "scale": 1.1238825244101882,
+    "targetHeight": 2.75
+  },
+  "verify": [
+    {
+      "code": "ASSET-BAKE-EMPTY-MESH",
+      "ok": true,
+      "detail": "verts=3452 has_indices=True"
+    },
+    {
+      "code": "ASSET-BAKE-GENERATOR",
+      "ok": true,
+      "detail": "generator='AI RPG Engine bake_player_v2_gltf.py (GoodPlayerModel-2026-07-31-winding)'"
+    },
+    {
+      "code": "ASSET-BAKE-FEET",
+      "ok": true,
+      "detail": "minY=0.0000 eps=0.05"
+    },
+    {
+      "code": "ASSET-BAKE-HEIGHT",
+      "ok": true,
+      "detail": "height=2.7500 target=2.75 tol=0.08"
+    },
+    {
+      "code": "ASSET-BAKE-ATLAS-SIZE",
+      "ok": true,
+      "detail": "atlas=2048x2048 bounds=[32,4096]"
+    },
+    {
+      "code": "ASSET-BAKE-ATLAS-CANVAS",
+      "ok": true,
+      "detail": "yellow_canvas_pixels=0"
+    },
+    {
+      "code": "ASSET-BAKE-ATLAS-NEON",
+      "ok": true,
+      "detail": "neonish_pixels=0"
+    },
+    {
+      "code": "ASSET-BAKE-ATLAS-SOFT-BLUE",
+      "ok": true,
+      "detail": "source_soft_blue=1979 baked=31550"
+    },
+    {
+      "code": "ASSET-BAKE-ATLAS-MISMATCH",
+      "ok": true,
+      "detail": "source mesh/atlas pairing ok"
+    },
+    {
+      "code": "ASSET-BAKE-SKIN-MISSING",
+      "ok": true,
+      "detail": "skins=1 joints_attr=True weights_attr=True"
+    },
+    {
+      "code": "ASSET-BAKE-JOINT-MISSING",
+      "ok": true,
+      "detail": "joints=37"
+    },
+    {
+      "code": "ASSET-BAKE-CLIP-MISSING",
+      "ok": true,
+      "detail": "missing=[] have=['Attack', 'Block', 'Death', 'Dodge', 'DodgeBack', 'DodgeLeft', 'DodgeRight', 'Fall', 'HitReact', 'Idle', 'Interact', 'InteractPickup', 'Jump', 'Land', 'Revive', 'Run', 'Walk']"
+    },
+    {
+      "code": "ASSET-BAKE-CLIP-EMPTY",
+      "ok": true,
+      "detail": "empty_clips=[]"
+    },
+    {
+      "code": "ASSET-BAKE-CLIP-REGRESS",
+      "ok": true,
+      "detail": "dropped_from_source=[]"
+    },
+    {
+      "code": "ASSET-BAKE-WINDING-HAND",
+      "ok": true,
+      "detail": "hand_tris=288 outward=284 inward=4"
+    },
+    {
+      "code": "ASSET-BAKE-CLIP-LOCO-THIN",
+      "ok": true,
+      "detail": "min=30 thin=[]"
+    },
+    {
+      "code": "ASSET-BAKE-COLLATERAL",
+      "ok": true,
+      "detail": "no unexpected assets/models writes"
+    }
+  ],
+  "summary": "bake player ok",
+  "meshReloads": [
+    "assets/models/player.gltf"
+  ]
+}

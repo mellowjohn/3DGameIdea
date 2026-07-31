@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 
@@ -363,6 +364,11 @@ Result<ParticleEmitterAsset> ParticleEmitterAsset::parse(const std::string& text
     }
     asset.id = document.value("id", std::string{});
     asset.texture = document.value("texture", std::string{});
+    if (!asset.texture.empty() && !is_valid_particle_texture_path(asset.texture)) {
+        return Result<ParticleEmitterAsset>::failure(particle_error("PARTICLE-TEXTURE-PATH-INVALID",
+            "texture must be a project-relative .png path without '..'",
+            "Use paths like assets/vfx/fire_flipbook_4x4.png."));
+    }
     if (document.contains("color")) {
         auto color = parse_color_sequence(document["color"]);
         if (!color) return Result<ParticleEmitterAsset>::failure(color.error());
@@ -500,6 +506,32 @@ Result<ParticleEmitterAsset> ParticleEmitterAsset::parse(const std::string& text
     }
     if (asset.id.empty()) asset.id = "particle";
     return Result<ParticleEmitterAsset>::success(asset);
+}
+
+bool is_valid_particle_texture_path(const std::string& relative) noexcept {
+    if (relative.empty()) return false;
+    if (relative.find("..") != std::string::npos) return false;
+    if (relative.size() >= 2 && std::isalpha(static_cast<unsigned char>(relative[0])) && relative[1] == ':')
+        return false;
+    if (relative[0] == '/' || relative[0] == '\\') return false;
+    const auto slash = relative.find_last_of("/\\");
+    const std::string file = slash == std::string::npos ? relative : relative.substr(slash + 1);
+    if (file.size() < 5) return false;
+    std::string ext = file.substr(file.size() - 4);
+    for (char& c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return ext == ".png";
+}
+
+Result<void> ParticleEmitterAsset::validate_texture(const std::filesystem::path& project_root) const {
+    if (texture.empty()) return Result<void>::success();
+    if (!is_valid_particle_texture_path(texture))
+        return Result<void>::failure(particle_error("PARTICLE-TEXTURE-PATH-INVALID",
+            "texture must be a project-relative .png path without '..'",
+            "Use paths like assets/vfx/fire_flipbook_4x4.png."));
+    if (!std::filesystem::exists(project_root / texture))
+        return Result<void>::failure(particle_error("PARTICLE-TEXTURE-MISSING",
+            "texture file not found: " + texture, "Add the PNG under the project or clear texture."));
+    return Result<void>::success();
 }
 
 Result<ParticleEmitterAsset> ParticleEmitterAsset::load(const std::filesystem::path& path) {

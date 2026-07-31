@@ -1,41 +1,49 @@
 {
   "schemaVersion": 1,
   "id": "wind_trail",
-  "texture": "assets/vfx/wind_streak.png",
+  "texture": "assets/vfx/wind_streak_flipbook_4x4.png",
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "Loop",
+  "flipbookFramerate": 10,
+  "flipbookStartRandom": true,
   "color": {
     "keypoints": [
-      { "t": 0.0, "color": [0.82, 0.88, 0.92] },
-      { "t": 0.4, "color": [0.72, 0.80, 0.86] },
-      { "t": 1.0, "color": [0.55, 0.62, 0.70] }
+      { "t": 0.0, "color": [0.96, 0.98, 1.0] },
+      { "t": 0.4, "color": [0.92, 0.96, 0.99] },
+      { "t": 1.0, "color": [0.82, 0.88, 0.94] }
     ]
   },
   "size": {
     "keypoints": [
-      { "t": 0.0, "value": 1.1 },
-      { "t": 0.35, "value": 1.45 },
-      { "t": 1.0, "value": 0.75 }
+      { "t": 0.0, "value": 1.7 },
+      { "t": 0.4, "value": 2.55 },
+      { "t": 1.0, "value": 1.35 }
     ]
   },
+  "aspectRatio": 2.4,
+  "rotationStartRandom": false,
   "transparency": {
     "keypoints": [
-      { "t": 0.0, "value": 0.62 },
-      { "t": 0.45, "value": 0.72 },
+      { "t": 0.0, "value": 0.88 },
+      { "t": 0.12, "value": 0.42 },
+      { "t": 0.45, "value": 0.35 },
+      { "t": 0.82, "value": 0.68 },
       { "t": 1.0, "value": 1.0 }
     ]
   },
-  "lifetime": { "min": 1.2, "max": 2.4 },
-  "speed": { "min": 3.5, "max": 7.0 },
-  "rate": 14,
-  "spreadAngle": [8, 6],
+  "lifetime": { "min": 1.5, "max": 2.9 },
+  "speed": { "min": 4.2, "max": 8.8 },
+  "rate": 9,
+  "spreadAngle": [5, 3.5],
   "shape": "box",
   "shapeStyle": "volume",
-  "shapeSize": [14.0, 2.5, 14.0],
+  "shapeSize": [18.0, 2.4, 11.0],
   "orientation": "VelocityParallel",
-  "lightEmission": 0.08,
+  "lightEmission": 0.35,
   "blend": "alpha",
-  "acceleration": [0.0, 0.05, 0.0],
-  "drag": 0.15,
-  "maxParticles": 64,
+  "acceleration": [0.0, 0.06, 0.0],
+  "drag": 0.1,
+  "maxParticles": 48,
   "enabled": true,
-  "emissionDirection": [1.0, 0.05, 0.15]
+  "emissionDirection": [1.0, 0.04, 0.15]
 }

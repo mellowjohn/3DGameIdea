@@ -106,10 +106,12 @@ public:
 
 
     /// Camera-local ambient wind streak emitter (TICKET-0230). Empty asset_path disables.
+    /// `gust` is a 0..1 traveling-band pulse (same envelope as foliage); `wind_speed` scales drift.
 
     void set_ambient_wind(bool enabled, const std::string& asset_path, const std::array<float, 3>& camera_position,
 
-        const std::array<float, 3>& wind_direction, float strength = 1.0f);
+        const std::array<float, 3>& wind_direction, float strength = 1.0f, float gust = 0.0f,
+        float wind_speed = 4.5f);
 
 
 
@@ -139,6 +141,12 @@ public:
     }
 
 
+
+    /// Gameplay / test one-shot: spawn `count` particles at a world position from a registered asset.
+    /// Transient burst emitters survive `sync_placements` and are removed once their particles die.
+    /// Returns false if the asset is unregistered or `count` is zero.
+    [[nodiscard]] bool spawn_burst(const std::string& asset_path, const std::array<float, 3>& world_position,
+        std::size_t count, const std::optional<std::array<float, 3>>& emission_direction = std::nullopt);
 
     /// Headless helper: force-spawn `count` particles on emitter 0 (tests).
 
@@ -192,6 +200,10 @@ private:
 
         float rate_scale = 1.0f;
 
+        /// One-shot burst emitters are preserved across sync_placements and culled when empty.
+
+        bool transient_burst = false;
+
     };
 
 
@@ -226,6 +238,8 @@ private:
     std::size_t active_particles_ = 0;
 
     std::uint32_t seed_ = 0xC0FFEEu;
+
+    std::uint32_t burst_seq_ = 0;
 
 };
 

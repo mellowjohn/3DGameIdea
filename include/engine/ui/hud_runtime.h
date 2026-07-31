@@ -32,6 +32,8 @@ public:
     void set_number(const std::string& bind, double value);
     void set_bool(const std::string& bind, bool value);
     void set_text(const std::string& bind, std::string value);
+    /// Runtime project-relative PNG path for widgets with `imageBind` (empty clears).
+    void set_image(const std::string& bind, std::string path);
     /// Like set_text, but reveals characters over time (typewriter). Used for dialogue body.
     void set_text_typed(const std::string& bind, std::string value, float chars_per_second = 48.0f);
     void tick_typewriter(float delta_seconds);
@@ -50,6 +52,7 @@ public:
     [[nodiscard]] std::optional<double> get_number(const std::string& bind) const;
     [[nodiscard]] std::optional<bool> get_bool(const std::string& bind) const;
     [[nodiscard]] std::optional<std::string> get_text(const std::string& bind) const;
+    [[nodiscard]] std::optional<std::string> get_image(const std::string& bind) const;
     [[nodiscard]] bool is_visible(const std::string& widget_id) const;
     [[nodiscard]] bool is_enabled(const std::string& widget_id) const;
     [[nodiscard]] const UiCanvasAsset& asset() const noexcept { return asset_; }
@@ -73,6 +76,7 @@ private:
     std::map<std::string, double> numbers_;
     std::map<std::string, bool> bools_;
     std::map<std::string, std::string> texts_;
+    std::map<std::string, std::string> images_;
     std::map<std::string, std::string> typed_full_;
     std::map<std::string, float> typed_chars_;
     std::map<std::string, float> typed_cps_;

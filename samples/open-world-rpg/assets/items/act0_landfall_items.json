@@ -1,0 +1,221 @@
+{
+  "entities": [
+    {
+      "displayName": "Ashfell Arming Sword",
+      "handAttach": {
+        "gripEulerDeg": [
+          -89.98021697998047,
+          35.312347412109375,
+          -35.31233215332031
+        ],
+        "gripOffset": [
+          0.0,
+          -0.009999999776482582,
+          0.0
+        ],
+        "gripScale": [
+          1.0000004768371582,
+          1.2999999523162842,
+          0.9999996423721313
+        ],
+        "joint": "LeftHand"
+      },
+      "icon": "assets/ui/icons/items/ashfell_arming_sword.png",
+      "id": "ashfell_arming_sword",
+      "kind": "weapon",
+      "source": "starter_ashfell_blade",
+      "tags": [
+        "one_handed",
+        "melee"
+      ],
+      "worldMesh": "assets/models/ashfell_arming_sword.gltf"
+    },
+    {
+      "displayName": "Outrider Shortbow",
+      "icon": "assets/ui/icons/items/outrider_shortbow.png",
+      "id": "outrider_shortbow",
+      "kind": "weapon",
+      "source": "starter_outrider",
+      "tags": [
+        "two_handed",
+        "ranged"
+      ],
+      "worldMesh": "assets/models/outrider_shortbow.gltf"
+    },
+    {
+      "displayName": "Guild Rune Focus",
+      "icon": "assets/ui/icons/items/guild_rune_focus.png",
+      "id": "guild_rune_focus",
+      "kind": "weapon",
+      "source": "starter_runecaster",
+      "tags": [
+        "one_handed",
+        "magic"
+      ],
+      "worldMesh": "assets/models/guild_rune_focus.gltf"
+    },
+    {
+      "displayName": "Outrider Arrow",
+      "icon": "assets/ui/icons/items/outrider_shortbow.png",
+      "id": "outrider_arrow",
+      "kind": "material",
+      "notes": "Uses shortbow concept as temporary ammo icon; stackable ammo slot later.",
+      "source": "ammo_clutter",
+      "tags": [
+        "ammo"
+      ],
+      "worldMesh": "assets/models/outrider_arrow.gltf"
+    },
+    {
+      "displayName": "Crude Arrow",
+      "icon": "assets/ui/icons/items/outrider_shortbow.png",
+      "iconOnly": true,
+      "id": "crude_arrow",
+      "kind": "material",
+      "source": "combat_ammo_drop",
+      "tags": [
+        "ammo"
+      ]
+    },
+    {
+      "displayName": "Field Bandage",
+      "icon": "assets/ui/icons/items/field_bandage.png",
+      "iconOnly": true,
+      "id": "field_bandage",
+      "kind": "consumable",
+      "source": "loot_container",
+      "tags": [
+        "healing"
+      ]
+    },
+    {
+      "displayName": "Soldier's Scrap Pouch",
+      "icon": "assets/ui/icons/items/soldiers_scrap_pouch.png",
+      "iconOnly": true,
+      "id": "soldiers_scrap_pouch",
+      "kind": "consumable",
+      "source": "loot_container"
+    },
+    {
+      "displayName": "Siege Tonic",
+      "icon": "assets/ui/icons/items/field_bandage.png",
+      "iconOnly": true,
+      "id": "siege_tonic",
+      "kind": "consumable",
+      "notes": "Placeholder icon (field bandage) until dedicated art.",
+      "source": "loot_container",
+      "tags": [
+        "healing"
+      ]
+    },
+    {
+      "displayName": "Vein-Iron Pendant",
+      "icon": "assets/ui/icons/items/vein_iron_pendant.png",
+      "iconOnly": true,
+      "id": "vein_iron_pendant",
+      "kind": "trinket",
+      "source": "loot_container_obscure"
+    },
+    {
+      "displayName": "Arkand's Favor",
+      "icon": "assets/ui/icons/items/vein_iron_pendant.png",
+      "iconOnly": true,
+      "id": "arkands_favor",
+      "kind": "trinket",
+      "notes": "Placeholder icon until dedicated art; story grant preferred over container.",
+      "source": "story_grant"
+    },
+    {
+      "displayName": "Muddied Keep Ring",
+      "icon": "assets/ui/icons/items/vein_iron_pendant.png",
+      "iconOnly": true,
+      "id": "muddied_keep_ring",
+      "kind": "trinket",
+      "notes": "Placeholder icon until dedicated art.",
+      "source": "loot_container"
+    },
+    {
+      "displayName": "Imperium Footsoldier Badge",
+      "icon": "assets/ui/icons/items/soldiers_scrap_pouch.png",
+      "iconOnly": true,
+      "id": "imperium_footsoldier_badge",
+      "kind": "material",
+      "notes": "Placeholder icon until dedicated art.",
+      "source": "loot_container",
+      "tags": [
+        "junk"
+      ]
+    }
+  ],
+  "id": "act0_landfall_items",
+  "lootTables": [
+    {
+      "containerKinds": [
+        "loot_bag"
+      ],
+      "entries": [
+        {
+          "count": 1,
+          "itemId": "field_bandage",
+          "weight": 3
+        },
+        {
+          "count": 1,
+          "itemId": "soldiers_scrap_pouch",
+          "weight": 2
+        },
+        {
+          "count": 1,
+          "itemId": "siege_tonic",
+          "weight": 2
+        },
+        {
+          "count": 5,
+          "itemId": "crude_arrow",
+          "weight": 2
+        },
+        {
+          "count": 1,
+          "itemId": "imperium_footsoldier_badge",
+          "weight": 1
+        }
+      ],
+      "id": "landfall_approach_pouch"
+    },
+    {
+      "containerKinds": [
+        "supply_chest"
+      ],
+      "entries": [
+        {
+          "count": 2,
+          "itemId": "field_bandage",
+          "weight": 2
+        },
+        {
+          "count": 1,
+          "itemId": "siege_tonic",
+          "weight": 2
+        },
+        {
+          "count": 1,
+          "itemId": "muddied_keep_ring",
+          "weight": 1
+        },
+        {
+          "count": 1,
+          "itemId": "soldiers_scrap_pouch",
+          "weight": 2
+        },
+        {
+          "count": 1,
+          "itemId": "vein_iron_pendant",
+          "weight": 1
+        }
+      ],
+      "id": "landfall_supply_chest"
+    }
+  ],
+  "notes": "Act 0 Landfall item defs. Weapons use world meshes; trinkets/consumables are icon-only and obtained from loot_bag / supply_chest containers until thin inventory (TICKET-0237) grants them for real.",
+  "schemaVersion": 1
+}

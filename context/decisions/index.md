@@ -627,7 +627,7 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Context: Design session (John + Dom, 2026-07-27) locked a Terraria-inspired item/trinket fantasy for Wrathful Conquest: depth from unique item effects, not complex combat animation trees. Follow-up chat clarified cross-archetype use, rare chase loot, and Thrator mount reward. Existing lanes are Ashfell Blade / Outrider / Runecaster ([DEC-0009](#dec-0009-starting-archetype-character-creation), [DEC-0044](#dec-0044-starting-archetype-lane-orgs-and-rename)). Inventory foundation remains TICKET-0111.
 - Decision:
   1. **Combat feel:** simple **action combat** (Souls-lite), not tab-target WoW and not Black Desert–complexity animation. Baseline = **three weapon chains** (melee / ranged / magic) plus item-driven procs/on-use/passives. **Ability caveats** allowed (resource costs, cooldowns, situational gates) without abandoning the simple-chain core.
-  2. **No hard gear locks:** any archetype may equip and use any weapon/item and its weapon ability. **Soft affinity:** the matching lane benefits more via **stat allocation / efficiency multipliers** (off-lane underperforms, still usable). Co-op item gifting between players is expected.
+  2. **No hard gear locks:** any archetype may equip and use any weapon/item and its weapon ability. **Soft affinity:** matching lane benefits via **stat allocation / efficiency multipliers** (off-lane stays usable). **Amended by [DEC-0050](#dec-0050-inventory-ux-item-kinds-and-positive-soft-affinity):** affinity is a **positive bonus** on matching gear — do not nerf off-lane below a 1× baseline. Co-op item gifting between players is expected.
   3. **Act-tier scaling:** item power bands track campaign acts (Act 0 weakest commons → later acts stronger). **Obscure rare chase items** may punch above their act band (including early-act rares that stay relevant later); first-playthrough discovery should be hard without external knowledge / deep exploration — not required for story completion.
   4. **Acquisition loops:** world finds, vendors (incl. Ledgeport undermarket), mining ores/crystals → craft materials, boss common + rare tables with optional farm replay. Full craft loop after inventory basics. **Act 0 Landfall ships a small playable loot slice** (starter kit + a handful of finds/rewards along the siege → camp path)—not a full Terraria catalog and not Thrator/Ledgeport vendor depth.
   5. **Thrator:** draft easter-egg **orc warlord** champion (Act **1 or 2**, not Act 0). Side quest with a warband, Orgrimmar-flavored set piece; kill reward includes a **glad mount**. Carriage-post **fast travel remains** ([DEC-0032](#dec-0032-open-world-travel-discovery-map-and-dual-soft-gates)); ground mounts are traversal toys/rewards. Exotic mounts (glad mount) **soft-extend** DEC-0032’s near-term “horses only” when that content ships.
@@ -635,4 +635,63 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Rationale: Matches Dom/John intent (item-driven depth, soft lanes, replayable rares) without exploding animation scope or contradicting FT policy.
 - Consequences: Feature note [`../features/gearing-system.md`](../features/gearing-system.md); epic **EPIC-0018**; extend TICKET-0111 / combat slice tickets; seed **SQ-13 Thrator** in side-quest catalog. Do not invent full exotic mount roster in Act 0.
 - Supersedes: none (soft-extends DEC-0032 mount near-term when glad mount lands)
+
+### DEC-0049: Agent-writable material shader profiles
+
+- Status: accepted
+- Date: 2026-07-28
+- Context: Owner wants stronger artistic capability for MCP and AI agents. Research compared Unity/Unreal-style shader graphs to code-first master shaders with JSON parameters. Agents already author well via diffable JSON (materials, particles); node graphs are poor for MCP validation, diff review, and agent reasoning. Current materials are scalar PBR only; shaders are embedded HLSL in `render_app.cpp`.
+- Decision:
+  1. **No Unity-style shader graph** for v1 (or near-term EPIC-0005). Do not build node-editor codegen as the agent authoring path.
+  2. **Code-first master shaders** owned in C++/HLSL; materials select a `shader` profile enum and fill documented parameters in `.material.json`.
+  3. **MCP/agents** create and tweak looks through `engine_asset_apply` (and future particle apply), validate, and screenshot-iterate.
+  4. **Expand vocabulary in slices:** TICKET-0238 (profiles + emissive pulse), TICKET-0239 (masked cutout), TICKET-0240 (material map slots), TICKET-0241 (particle MCP + recipes).
+  5. A human-facing surface graph remains a possible later option; if added, it must still compile to the same master+params (or HLSL files) so agents keep a text path.
+- Rationale: Matches content-vs-engine workflows, text-first assets, and agent tooling; delivers most stylized-art flexibility without multi-month graph infrastructure.
+- Consequences: TICKET-0041 → needs-approval; implement TICKET-0238–0241 under EPIC-0005; update materials format + features index (“shader profiles” not “shader graphs” as the primary path).
+- Supersedes: none (resolves TICKET-0041 interview)
+
+### DEC-0050: Inventory UX, item kinds, and positive soft affinity
+
+- Status: accepted
+- Date: 2026-07-29
+- Context: John + Dom design recording (2026-07-29) answered remaining inventory/item open questions after [DEC-0048](#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity). Provenance: [`../design/recording_item_system_2026-07-29.md`](../design/recording_item_system_2026-07-29.md).
+- Decision:
+  1. **Use model (Terraria-shaped hotbar + light armor doll):** weapons and utility tools live on an **8-slot hotbar**; select a slot to use it (including situational utility weapons). Equipped gear uses named slots: **`head`**, **`chest`**, **`legs`**, plus **four accessory/trinket slots** (`trinket0`…`trinket3`; experiment; may tune later). Stats/effects can come from armor pieces, trinkets, and weapons. Shields may occupy a trinket slot (Terraria-style), not a deep MMO offhand tree for v1. Class/lane **abilities are a separate UI** (draft: right-side, ~3–4 active slots)—not hotbar slots.
+  2. **Bag:** base capacity **20 slots**, not weight. **One item entry per bag slot** (no multi-slot tetris footprints). Capacity can **increase** by crafting or looting **bag upgrade items** (exact upgrade steps / soft max are implementation-tunable; must remain slot-based). **Stacking:** gather resources and similar stack up to **99** per bag stack; **dedicated ammo slots** may stack higher (target **~1000**).
+  3. **Camp storage:** **per-player** chests (co-op partners open their own stash in a shared camp). Persist for the life of the save. Players may **trade/gift**. **Quest items** use a **separate quest inventory**, not bag slots.
+  4. **Soft affinity (positive):** any lane may use any gear. Matching archetype gains **bonus** efficiency/stat benefit on matching gear. Off-lane stays at a **1× baseline** — do **not** apply a punitive underperformance tax. Reward on-lane play; do not diminish off-lane experimentation.
+  5. **Effect authoring:** **both** data-driven effect ids/params **and** Lua hooks for unique item behavior.
+  6. **Item classification:** **primary kind tag** (bucket) plus optional **labels** for sorting/filters. Primary buckets include at least: `weapon`, `armor`, `trinket`, `consumable`, `material` (resource). Labels e.g. `healing`, `utility`. Quest-bound items may also live in the quest inventory regardless of combat tags.
+  7. **Durability:** **none for v1** — gear does not wear out / no repair gold sink. Difficulty-scaled durability remains explicitly deferred.
+  8. **Save shape (inventory):** per-player profile stores **bag**, **hotbar**, **equipped** (accessories/armor strip), and references/state for **camp storage**; each entry has `itemId`, stack `count`, and resolves against authored defs (kind tag + labels + effects). **Currencies** are **non-slot counters** owned by the inventory/economy API (icons + amounts)—not bag entries. Co-op **shared gold** default in `sharedCampaign.economy` remains ([`../formats/rpg-save.md`](../formats/rpg-save.md)) unless a later decision splits purses.
+  9. **Act 0 concrete defs:** ship the six concept-backed items (3 starters + Field Bandage + Soldier's Scrap Pouch + **Vein-Iron Pendant**) and expand with light commons/uncommons (potions, ammo, uncommon finds) plus optional extras—see [`../features/gearing-system.md`](../features/gearing-system.md).
+- Rationale: Matches Dom/John preference for Terraria clarity (slots, hotbar use, accessory trinkets) and positive reward psychology for soft lanes, without inventing durability chores or weight simulation.
+- Consequences: Update gearing feature note, open-questions, rpg-save inventory stub, TICKET-0111 / 0232 / 0237 acceptance detail; hotbar HUD sample should move toward **8** slots when inventory UI lands.
+- Supersedes: none (amends DEC-0048 soft-affinity tone: bonus-not-nerf)
+
+### DEC-0051: No-XP power progression and quest UX
+
+- Status: accepted
+- Date: 2026-07-29
+- Context: Follow-on to quest UI session ([`../design/recording_quest_ui_progression_2026-07-29.md`](../design/recording_quest_ui_progression_2026-07-29.md)). Owner + Dom answered the progression / journal questionnaire in [`../design/recording_archetype_quests_power_progression_2026-07-29.md`](../design/recording_archetype_quests_power_progression_2026-07-29.md). Aligns with Terraria-shaped gearing ([DEC-0048](#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity), [DEC-0050](#dec-0050-inventory-ux-item-kinds-and-positive-soft-affinity)) and quest-owned dialogue ([DEC-0026](#dec-0026-quest-owned-dialogue-hooks-multi-stage)).
+- Decision:
+  1. **No traditional XP / player level.** Character power does **not** come from an XP bar or combat level. Power comes from **gear**, **act/boss loot bands**, **archetype quest unlocks**, and **story/act milestones**.
+  2. **Ability unlock paths (combined):**
+     - **Archetype quest lines** and **story/act milestones** unlock lane abilities / power.
+     - **Gear and trinkets** may grant **archetype-affinity abilities or benefits** while equipped (positive soft affinity; off-lane still usable at 1× baseline per DEC-0050).
+     - There is **no** pure XP talent tree.
+  3. **Archetype quest rewards** are **per-quest authored**: signature gear, signature ability, or both. Act 1 vs Act 3 rewards scale in power; do not force one reward type for every quest.
+  4. **Archetype quests are optional for main-story completion** but are the path to **full lane / archetype power**. Players who skip stay viable via gear; players who want max lane power should run the lines.
+  5. **Loot-band unlocks** are gated by **known main-storyline bosses**, including **mid-act chapter bosses** (not only act finales). Completing act main-quest beats may also advance bands. Bosses should be **player-visible / well-known**. Boss tables remain **farmable** for gear ([DEC-0048](#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity)). Exact Act 0 boss list deferred (session interrupted).
+  6. **Journal tabs (locked):** **Main · Side · Faction · Archetype** (+ Completed). Primary filtration; more tabs later only with owner ask.
+  7. **Faction tab** holds standing quests for **Cristallo**, **Arrotrebae**, Kingdom of **Tessera**, and other major polities — same tab, separate quest lists. A quest may **blend** (e.g. archetype + Cristallo) when story-fit: one primary `kind` plus optional `factionId` / lane refs or tags so it can surface under multiple filters.
+  8. **World markers:** classic floating **`?`** (available) and **`!`** (active / turn-in), with a light bob animation. Generate UI icons later.
+  9. **HUD tracking:** up to **3** tracked quests at once, with kind filter (prefer mixing main / side / faction / archetype). Clicking a chip should surface **minimap / map** location UX (TICKET-0062). Chip corner remains top-left draft until polish.
+  10. **Abandon:** main quests **cannot** be abandoned. Side / faction / archetype **can** abandon and **re-accept** later.
+  11. **Events:** quests are the **parent**; cinematic / EventTimeline steps are **children** quests may reference/trigger by id (start / objective / complete).
+  12. **Complete panel:** shows reward copy, optional **lore journal** beat, **items** (hover for effects), gold/consumables, and **standing ±** for affected factions. **`standingRewards` apply on quest complete** via QuestRuntime (closes prior “scripts must call standing_adjust” gap for authored rewards).
+- Rationale: Removes cheese-leveling while keeping Terraria gear fantasy; separates lane power (archetype lines) from campaign spine; keeps journal filters transparent; binds standing to completion for predictable authoring.
+- Consequences: Update gearing + character-creation + quest format + `quest-ui.pen` + open-questions. Schema: widen `kind` with `archetype` when lane-org seeds land; wire `standingRewards` on complete (QuestRuntime follow-up). Journal/map markers remain TICKET-0062. Act 0 boss presence still open.
+- Supersedes: none (amends quest standing-apply gap noted in [`../formats/world-forge-quests.md`](../formats/world-forge-quests.md))
 

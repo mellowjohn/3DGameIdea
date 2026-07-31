@@ -14,6 +14,7 @@ struct ImVec2;
 
 namespace engine {
 
+class InventoryRuntime;
 class LuaRuntime;
 class UiTextureCache;
 
@@ -27,6 +28,9 @@ struct UiCanvasInputEvent {
     UiScreenPoint viewport_max{};
     UiScreenPoint mouse_pos{};
     bool mouse_clicked = false;
+    bool mouse_down = false;
+    bool mouse_released = false;
+    bool mouse_held = false;
     bool nav_next = false;
     bool nav_prev = false;
     bool activate_pressed = false;
@@ -41,6 +45,9 @@ struct UiCanvasInputResult {
     bool handled = false;
     bool modal_popped = false;
     std::optional<std::string> activated_bind;
+    /// Set when a slot-to-slot drag completed (inventory.select.* → inventory.select.*).
+    std::optional<std::string> drag_from_bind;
+    std::optional<std::string> drag_to_bind;
     std::string canvas_id;
     std::string widget_id;
 };
@@ -51,6 +58,9 @@ class UiCanvasStack final {
 public:
     void set_texture_cache(UiTextureCache* cache);
     [[nodiscard]] UiTextureCache* texture_cache() const noexcept { return textures_; }
+    /// Optional live inventory for hover tooltips on `inventory.select.*` slots.
+    void set_inventory_runtime(InventoryRuntime* inventory) noexcept { inventory_ = inventory; }
+    [[nodiscard]] InventoryRuntime* inventory_runtime() const noexcept { return inventory_; }
 
     [[nodiscard]] Result<void> set_hud(const std::filesystem::path& path);
     [[nodiscard]] Result<void> register_canvas(std::string id, const std::filesystem::path& path);
@@ -84,6 +94,7 @@ public:
 private:
     [[nodiscard]] Result<void> ensure_loaded(const std::string& id);
     void ensure_modal_focus(const HudRuntime& runtime);
+    void clear_drag_state() noexcept;
 
     HudRuntime hud_;
     std::map<std::string, std::filesystem::path> paths_;
@@ -91,6 +102,20 @@ private:
     std::vector<std::string> modal_stack_;
     std::optional<std::string> modal_focus_widget_id_;
     UiTextureCache* textures_ = nullptr;
+    InventoryRuntime* inventory_ = nullptr;
+
+    struct ModalDragState {
+        bool active = false;
+        bool past_threshold = false;
+        std::string widget_id;
+        std::string bind;
+        std::string image_path;
+        float start_x = 0.0f;
+        float start_y = 0.0f;
+        float mouse_x = 0.0f;
+        float mouse_y = 0.0f;
+    };
+    ModalDragState modal_drag_{};
 };
 
 } // namespace engine

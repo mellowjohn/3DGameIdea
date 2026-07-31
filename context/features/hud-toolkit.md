@@ -26,7 +26,11 @@ Screen-space always-on canvas (`player.uicanvas.json`) — Dragon Age–inspired
 - `player.name` (Cinzel) beside stacked **Health** then **Stamina/Magic** bars with resource-bar chrome
 - Bottom-centered hotbar slots 1–6 (ability-slot chrome; icons on 1–3)
 - Top-right circular minimap frame (centered player dot)
-- Top-left quest objective chip (hidden when `quest.objectiveText` is empty — panel + eyebrow + text)
+- Top-left quest objective chip(s) — up to **3** tracked ([DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux)); kind filter; hidden when empty
+- Journal (planned, TICKET-0062): tabs **Main · Side · Faction · Archetype · Completed**; abandon non-main; minimap link from tracked chips — [`../design/quest-ui.pen`](../design/quest-ui.pen)
+- World quest markers: floating **`?`** available / **`!`** turn-in (bob animation) — assets [`../design/quest-assets/`](../design/quest-assets/) → `assets/ui/quest/`
+- Minimap: kind-tinted objective dots, gold path dashes to focused chip, edge chevron when off-disk; click tracked chip to focus ([`../design/quest-ui.pen`](../design/quest-ui.pen) screen 09)
+- Full map (M): centered on focused objective; pins by kind; Set as Tracked (screen 10)
 - Design PNGs: `context/design/hud-assets/` → `assets/ui/hud/` (loaded via widget `image` + `UiTextureCache`)
 - Dialogue modal uses the same tokens + circular portrait rings (`dialogue.uicanvas.json`, `assets/ui/dialogue/`)
 
@@ -58,6 +62,8 @@ World-space billboards (`WorldUiBillboardRuntime`):
 | `engine.apply_archetype_hud(archetypeId)` | Seeds stamina vs magic label/color (`ashfell_blade`/`outrider` → stamina; `runecaster` → magic) |
 | `engine.world_ui_upsert(id, {x,y,z,text,barCurrent,barMax,visible})` | World-anchored billboard chip |
 | `engine.world_ui_clear(id?)` | Remove one billboard or clear all |
+
+Play-test dodge spends **20** from `player.resource` and regenerates at **25/s** after a **0.4 s** delay (see [`gearing-system.md`](gearing-system.md)). There is still no general sprint/attack stamina economy (TICKET-0127).
 
 ## Interact blackboard (prompt UX)
 

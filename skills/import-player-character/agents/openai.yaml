@@ -1,0 +1,4 @@
+interface:
+  display_name: "Import Player Character"
+  short_description: "Bake Player_V2 skinned kit into open-world-rpg"
+  default_prompt: "Use $import-player-character to rebake and verify the Player_V2 character kit."

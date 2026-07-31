@@ -19,6 +19,7 @@ Labels: **draft** (working), **proposal** (design intent), **open** (unresolved)
 | Tone | Dark fantasy core + goofy contrast ([story-vision.md](story-vision.md)) |
 | World model | Soft gates default; rare instances OK ([DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances)) |
 | Faction tags | Draft where [TICKET-0021](../planning/tickets/TICKET-0021.md) gaps remain |
+| Journal kinds (2026-07-29) | **Locked** [DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux): **Main / Side / Faction / Archetype** — faction = polity standing; archetype = lane-org unlocks (optional for story, needed for full lane power) |
 
 ### Entry checklist (required fields)
 

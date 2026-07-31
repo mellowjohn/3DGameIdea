@@ -79,7 +79,7 @@ Per-human state. Same schema for both; `playerSlot` is 0 (host) or 1 (guest).
 | `displayName` | string | Player-chosen name |
 | `archetypeId` | string | World Forge archetype id ([`world-forge-archetypes.md`](world-forge-archetypes.md)) |
 | `appearance` | object | TBD — body/face/voice refs; extensible |
-| `inventory` | object | Items, equipment, gold split TBD (per-player gold vs shared purse — default **shared gold in `sharedCampaign.economy`**) |
+| `inventory` | object | Per [DEC-0050](../decisions/index.md#dec-0050-inventory-ux-item-kinds-and-positive-soft-affinity): `bag`, `hotbar`, `equipped`, optional `questInventory` / camp-stash refs; stack `count` + `itemId`. **Currencies** are non-slot counters (not bag entries). Co-op **shared gold** stays in `sharedCampaign.economy` unless a later decision splits purses |
 | `stats` | object | HP, stamina, etc. when combat persistence lands |
 | `inputDeviceHint` | string | Optional last-used device id for local multi-device tests |
 
@@ -208,7 +208,30 @@ Shared purse (recommended default for co-op):
 }
 ```
 
-Per-player gold purses are rejected for v1 co-op unless a future decision splits them.
+Per-player gold purses are rejected for v1 co-op unless a future decision splits them. Other currency counters (if any) follow the same shared-vs-per-player rule when introduced; they remain **non-slot** amounts, not bag entries ([DEC-0050](../decisions/index.md#dec-0050-inventory-ux-item-kinds-and-positive-soft-affinity)).
+
+### Inventory object shape (draft)
+
+```json
+"inventory": {
+  "bagCapacity": 20,
+  "bag": [{ "itemId": "field_bandage", "count": 3 }],
+  "hotbar": [{ "slot": 0, "itemId": "ashfell_arming_sword", "count": 1 }],
+  "equipped": {
+    "head": null,
+    "chest": null,
+    "legs": null,
+    "trinket0": "vein_iron_pendant",
+    "trinket1": null,
+    "trinket2": null,
+    "trinket3": null
+  },
+  "questInventory": [{ "itemId": "grenges_ledger", "count": 1 }],
+  "ammo": [{ "itemId": "crude_arrow", "count": 40 }]
+}
+```
+
+Camp storage is per-player and persists with the save (exact path: profile vs `sharedCampaign.camp` stash map keyed by player slot — implement under TICKET-0111 / camp tickets; must remain **per-player**). Field names may tighten when TICKET-0111 lands; semantics above are locked.
 
 ### `instances`
 

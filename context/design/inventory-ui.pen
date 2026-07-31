@@ -1,0 +1,4055 @@
+{
+  "version": "2.14",
+  "children": [
+    {
+      "type": "frame",
+      "id": "GXikP",
+      "x": 0,
+      "y": 0,
+      "name": "00 — Components · REVIEW",
+      "clip": true,
+      "width": 640,
+      "height": 1880,
+      "fill": "$chrome",
+      "layout": "vertical",
+      "gap": 16,
+      "padding": 28,
+      "children": [
+        {
+          "type": "frame",
+          "id": "KKoZk",
+          "name": "Kit Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 6,
+          "children": [
+            {
+              "type": "text",
+              "id": "lqOYJ",
+              "name": "Eyebrow",
+              "fill": "$gold",
+              "content": "PLAYER UI · INVENTORY",
+              "fontFamily": "$body",
+              "fontSize": 11,
+              "fontWeight": "700",
+              "letterSpacing": 1.4
+            },
+            {
+              "type": "text",
+              "id": "f0Ffi",
+              "name": "Title",
+              "fill": "$text",
+              "content": "Inventory Components",
+              "fontFamily": "$display",
+              "fontSize": 26,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "qZYcK",
+              "name": "Sub",
+              "fill": "$muted",
+              "content": "DEC-0050 · iron / gold · Cinzel titles",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "vq70d",
+          "name": "comp/SlotEmpty",
+          "reusable": true,
+          "width": 48,
+          "height": 48,
+          "fill": "$slotIdle",
+          "cornerRadius": 2,
+          "stroke": "$slotStroke",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "rectangle",
+              "id": "hggM9",
+              "x": 2,
+              "y": 2,
+              "name": "Stud TL",
+              "fill": "$gold",
+              "width": 5,
+              "height": 5
+            },
+            {
+              "type": "rectangle",
+              "id": "gpYsN",
+              "x": 41,
+              "y": 41,
+              "name": "Stud BR",
+              "fill": "$gold",
+              "width": 5,
+              "height": 5
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "A3tmGZ",
+          "name": "comp/SlotFilled",
+          "reusable": true,
+          "clip": true,
+          "width": 48,
+          "height": 48,
+          "fill": "$slotIdle",
+          "cornerRadius": 2,
+          "stroke": "$gold",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "frame",
+              "id": "XRDQc",
+              "layoutPosition": "absolute",
+              "x": 6,
+              "y": 4,
+              "name": "Icon Well",
+              "width": 36,
+              "height": 30,
+              "fill": "$iron",
+              "cornerRadius": 2,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "VhnAF",
+                  "name": "Glyph",
+                  "fill": "$gold",
+                  "content": "⚔",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "NDjPA",
+              "layoutPosition": "absolute",
+              "x": 4,
+              "y": 32,
+              "name": "Count",
+              "fill": "$text",
+              "textGrowth": "fixed-width-height",
+              "width": 40,
+              "height": 14,
+              "content": "12",
+              "textAlign": "right",
+              "fontFamily": "$body",
+              "fontSize": 9,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "P9x6d",
+          "name": "comp/SlotActive",
+          "reusable": true,
+          "clip": true,
+          "width": 48,
+          "height": 48,
+          "fill": "$slotActive",
+          "cornerRadius": 2,
+          "stroke": "$focusRing",
+          "strokeWidth": 2,
+          "layout": "none",
+          "children": [
+            {
+              "type": "frame",
+              "id": "ICpwg",
+              "layoutPosition": "absolute",
+              "x": 6,
+              "y": 4,
+              "name": "Icon Well",
+              "width": 36,
+              "height": 30,
+              "fill": "$iron",
+              "cornerRadius": 2,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Jb8sg",
+                  "name": "Glyph",
+                  "fill": "$gold",
+                  "content": "◆",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "c8LbC",
+              "layoutPosition": "absolute",
+              "x": 4,
+              "y": 32,
+              "name": "Count",
+              "fill": "$text",
+              "textGrowth": "fixed-width-height",
+              "width": 40,
+              "height": 14,
+              "content": "1",
+              "textAlign": "right",
+              "fontFamily": "$body",
+              "fontSize": 9,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "sFDdx",
+          "name": "comp/EquipSlot",
+          "reusable": true,
+          "width": 56,
+          "height": 70,
+          "layout": "vertical",
+          "gap": 4,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Ek8om",
+              "name": "Cell",
+              "width": 48,
+              "height": 48,
+              "fill": "$slotIdle",
+              "cornerRadius": 2,
+              "stroke": "$gold",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "P1E6V",
+                  "layoutPosition": "absolute",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Glyph",
+                  "fill": "$gold",
+                  "textGrowth": "fixed-width-height",
+                  "width": 48,
+                  "height": 48,
+                  "content": "◉",
+                  "textAlign": "center",
+                  "textAlignVertical": "middle",
+                  "fontFamily": "$body",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "LyacY",
+              "name": "Label",
+              "fill": "$muted",
+              "content": "Head",
+              "fontFamily": "$body",
+              "fontSize": 10,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "OH4lh",
+          "name": "comp/CurrencyChip",
+          "reusable": true,
+          "height": 36,
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "gap": 8,
+          "padding": [
+            0,
+            12
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "a3YNW",
+              "name": "Coin",
+              "fill": "$gold",
+              "width": 16,
+              "height": 16
+            },
+            {
+              "type": "text",
+              "id": "oUDqW",
+              "name": "Amount",
+              "fill": "$text",
+              "content": "128",
+              "fontFamily": "$display",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "V4v43X",
+              "name": "Name",
+              "fill": "$muted",
+              "content": "Gold",
+              "fontFamily": "$body",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "zMwPD",
+          "name": "comp/TabActive",
+          "reusable": true,
+          "height": 36,
+          "fill": "$iron",
+          "cornerRadius": 2,
+          "stroke": "$gold",
+          "strokeWidth": 1,
+          "padding": [
+            0,
+            16
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "XXb4k",
+              "name": "Label",
+              "fill": "$text",
+              "content": "Bag",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "M7Rm8",
+          "name": "comp/TabIdle",
+          "reusable": true,
+          "height": 36,
+          "fill": "$ironDeep",
+          "cornerRadius": 2,
+          "stroke": "$slotStroke",
+          "strokeWidth": 1,
+          "padding": [
+            0,
+            16
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "i9I0A6",
+              "name": "Label",
+              "fill": "$muted",
+              "content": "Quest",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "BNyIh",
+          "name": "comp/PrimaryBtn",
+          "reusable": true,
+          "height": 40,
+          "fill": "$gold",
+          "cornerRadius": 2,
+          "padding": [
+            0,
+            18
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "j3nvpz",
+              "name": "Label",
+              "fill": "$ink",
+              "content": "Equip",
+              "fontFamily": "$display",
+              "fontSize": 14,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "U97jua",
+          "name": "comp/SecondaryBtn",
+          "reusable": true,
+          "height": 40,
+          "fill": "$ironDeep",
+          "cornerRadius": 2,
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "padding": [
+            0,
+            18
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "RijUF",
+              "name": "Label",
+              "fill": "$text",
+              "content": "Drop",
+              "fontFamily": "$display",
+              "fontSize": 14,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "J6hEr",
+          "name": "comp/HotbarKey",
+          "reusable": true,
+          "width": 20,
+          "height": 16,
+          "fill": "$iron",
+          "cornerRadius": 1,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "g8s5DE",
+              "name": "Key",
+              "fill": "$gold",
+              "content": "1",
+              "fontFamily": "$body",
+              "fontSize": 10,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "XhXY6",
+          "name": "comp/SlotHover",
+          "reusable": true,
+          "clip": true,
+          "width": 48,
+          "height": 48,
+          "fill": "$slotHover",
+          "cornerRadius": 2,
+          "stroke": "$slotHoverStroke",
+          "strokeWidth": 2,
+          "layout": "none",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Stz0N",
+              "layoutPosition": "absolute",
+              "x": 6,
+              "y": 4,
+              "name": "Icon Well",
+              "width": 36,
+              "height": 30,
+              "fill": "$iron",
+              "cornerRadius": 2,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "B6fYkg",
+                  "name": "Glyph",
+                  "fill": "$gold",
+                  "content": "⚔",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "k8C6zu",
+              "layoutPosition": "absolute",
+              "x": 4,
+              "y": 32,
+              "name": "Count",
+              "fill": "$text",
+              "textGrowth": "fixed-width-height",
+              "width": 40,
+              "height": 14,
+              "content": "1",
+              "textAlign": "right",
+              "fontFamily": "$body",
+              "fontSize": 9,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "XdEeQ",
+          "name": "comp/SlotFocus",
+          "reusable": true,
+          "clip": true,
+          "width": 48,
+          "height": 48,
+          "fill": "$slotFocus",
+          "cornerRadius": 2,
+          "stroke": "$slotFocusStroke",
+          "strokeWidth": 2,
+          "layout": "none",
+          "children": [
+            {
+              "type": "frame",
+              "id": "j5edmo",
+              "layoutPosition": "absolute",
+              "x": 6,
+              "y": 4,
+              "name": "Icon Well",
+              "width": 36,
+              "height": 30,
+              "fill": "$iron",
+              "cornerRadius": 2,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "H1PR9B",
+                  "name": "Glyph",
+                  "fill": "$gold",
+                  "content": "✚",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "g9WCO",
+              "layoutPosition": "absolute",
+              "x": 4,
+              "y": 32,
+              "name": "Count",
+              "fill": "$text",
+              "textGrowth": "fixed-width-height",
+              "width": 40,
+              "height": 14,
+              "content": "4",
+              "textAlign": "right",
+              "fontFamily": "$body",
+              "fontSize": 9,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "pd9Wa",
+          "name": "comp/SlotDisabled",
+          "reusable": true,
+          "opacity": 0.55,
+          "clip": true,
+          "width": 48,
+          "height": 48,
+          "fill": "$slotDisabled",
+          "cornerRadius": 2,
+          "stroke": "$slotDisabledStroke",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "frame",
+              "id": "qU9N4",
+              "layoutPosition": "absolute",
+              "x": 6,
+              "y": 4,
+              "name": "Icon Well",
+              "width": 36,
+              "height": 30,
+              "fill": "$ironDeep",
+              "cornerRadius": 2,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "yIBcI",
+                  "name": "Glyph",
+                  "fill": "$muted",
+                  "content": "◇",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "qWlkv",
+              "layoutPosition": "absolute",
+              "x": 4,
+              "y": 32,
+              "name": "Count",
+              "fill": "$muted",
+              "textGrowth": "fixed-width-height",
+              "width": 40,
+              "height": 14,
+              "content": "99",
+              "textAlign": "right",
+              "fontFamily": "$body",
+              "fontSize": 9,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "u3s2v",
+          "name": "comp/SlotEquipped",
+          "reusable": true,
+          "clip": true,
+          "width": 48,
+          "height": 48,
+          "fill": "$slotEquipped",
+          "cornerRadius": 2,
+          "stroke": "$slotEquippedStroke",
+          "strokeWidth": 2,
+          "layout": "none",
+          "children": [
+            {
+              "type": "frame",
+              "id": "oHYUw",
+              "layoutPosition": "absolute",
+              "x": 6,
+              "y": 4,
+              "name": "Icon Well",
+              "width": 36,
+              "height": 30,
+              "fill": "$iron",
+              "cornerRadius": 2,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "SsnsX",
+                  "name": "Glyph",
+                  "fill": "$gold",
+                  "content": "◆",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "Qd3wK",
+              "layoutPosition": "absolute",
+              "x": 4,
+              "y": 32,
+              "name": "Count",
+              "fill": "$text",
+              "textGrowth": "fixed-width-height",
+              "width": 40,
+              "height": 14,
+              "content": "1",
+              "textAlign": "right",
+              "fontFamily": "$body",
+              "fontSize": 9,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "FEtO7",
+              "layoutPosition": "absolute",
+              "x": 4,
+              "y": 3,
+              "name": "Badge",
+              "fill": "$affinity",
+              "textGrowth": "fixed-width-height",
+              "width": 40,
+              "height": 12,
+              "content": "EQ",
+              "fontFamily": "$body",
+              "fontSize": 8,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "iXNsb",
+          "name": "State Legend",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 10,
+          "padding": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "MGiiu",
+              "name": "Legend Title",
+              "fill": "$gold",
+              "content": "Slot states",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "mw0ar",
+              "name": "Leg Empty / idle",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "DV2Zy",
+                  "type": "ref",
+                  "ref": "vq70d",
+                  "name": "Sample"
+                },
+                {
+                  "type": "text",
+                  "id": "bUt3r",
+                  "name": "Lbl",
+                  "fill": "$text",
+                  "content": "Empty / idle",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iUaoA",
+              "name": "Leg Filled",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "fvONw",
+                  "type": "ref",
+                  "ref": "A3tmGZ",
+                  "name": "Sample"
+                },
+                {
+                  "type": "text",
+                  "id": "idV4w",
+                  "name": "Lbl",
+                  "fill": "$text",
+                  "content": "Filled",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pGSGL",
+              "name": "Leg Hover",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "LyUOV",
+                  "type": "ref",
+                  "ref": "XhXY6",
+                  "name": "Sample"
+                },
+                {
+                  "type": "text",
+                  "id": "kdDr7",
+                  "name": "Lbl",
+                  "fill": "$text",
+                  "content": "Hover",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "hn9S4",
+              "name": "Leg Focus (keyboard)",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "JnpVw",
+                  "type": "ref",
+                  "ref": "XdEeQ",
+                  "name": "Sample"
+                },
+                {
+                  "type": "text",
+                  "id": "ax0Po",
+                  "name": "Lbl",
+                  "fill": "$text",
+                  "content": "Focus (keyboard)",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GSexE",
+              "name": "Leg Active / selected",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "N1cbk4",
+                  "type": "ref",
+                  "ref": "P9x6d",
+                  "name": "Sample"
+                },
+                {
+                  "type": "text",
+                  "id": "t3L1KZ",
+                  "name": "Lbl",
+                  "fill": "$text",
+                  "content": "Active / selected",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "c0XYOb",
+              "name": "Leg Equipped (on doll/hotbar)",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "BEXhY",
+                  "type": "ref",
+                  "ref": "u3s2v",
+                  "name": "Sample"
+                },
+                {
+                  "type": "text",
+                  "id": "YHcKi",
+                  "name": "Lbl",
+                  "fill": "$text",
+                  "content": "Equipped (on doll/hotbar)",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pYOel",
+              "name": "Leg Disabled / locked",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "xHCli",
+                  "type": "ref",
+                  "ref": "pd9Wa",
+                  "name": "Sample"
+                },
+                {
+                  "type": "text",
+                  "id": "oYMHS",
+                  "name": "Lbl",
+                  "fill": "$text",
+                  "content": "Disabled / locked",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "NYsAW",
+          "name": "comp/SortControl",
+          "reusable": true,
+          "height": 32,
+          "fill": "$ironDeep",
+          "cornerRadius": 2,
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "gap": 8,
+          "padding": [
+            0,
+            10
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "q0r8TP",
+              "name": "Sort Label",
+              "fill": "$muted",
+              "content": "Sort",
+              "fontFamily": "$body",
+              "fontSize": 11,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "FYl6B",
+              "name": "Sort Value",
+              "fill": "$text",
+              "content": "Kind",
+              "fontFamily": "$display",
+              "fontSize": 12,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "YSEG9",
+              "name": "Sort Chev",
+              "fill": "$gold",
+              "content": "▾",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "jgY4V",
+          "name": "comp/SortMenu",
+          "reusable": true,
+          "clip": true,
+          "width": 160,
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "stroke": "$gold",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "qCVEY",
+              "name": "Opt Kind",
+              "width": "fill_container",
+              "height": 32,
+              "fill": "$slotActive",
+              "gap": 8,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "estEl",
+                  "name": "Check",
+                  "fill": "$gold",
+                  "textGrowth": "fixed-width",
+                  "width": 12,
+                  "content": "✓",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "D4Yuqn",
+                  "name": "OptLbl",
+                  "fill": "$text",
+                  "content": "Kind",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qmDEu",
+              "name": "Opt Name",
+              "width": "fill_container",
+              "height": 32,
+              "fill": "#00000000",
+              "gap": 8,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "mj5Rx",
+                  "name": "Check",
+                  "fill": "$gold",
+                  "textGrowth": "fixed-width",
+                  "width": 12,
+                  "content": " ",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "p2yIH",
+                  "name": "OptLbl",
+                  "fill": "$muted",
+                  "content": "Name",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CzoPl",
+              "name": "Opt Newest",
+              "width": "fill_container",
+              "height": 32,
+              "fill": "#00000000",
+              "gap": 8,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "G1atgW",
+                  "name": "Check",
+                  "fill": "$gold",
+                  "textGrowth": "fixed-width",
+                  "width": 12,
+                  "content": " ",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "KmESz",
+                  "name": "OptLbl",
+                  "fill": "$muted",
+                  "content": "Newest",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "BfRG3",
+              "name": "Opt Stack size",
+              "width": "fill_container",
+              "height": 32,
+              "fill": "#00000000",
+              "gap": 8,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wscNr",
+                  "name": "Check",
+                  "fill": "$gold",
+                  "textGrowth": "fixed-width",
+                  "width": 12,
+                  "content": " ",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "yrj5e",
+                  "name": "OptLbl",
+                  "fill": "$muted",
+                  "content": "Stack size",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Vx77z",
+              "name": "Opt Rarity",
+              "width": "fill_container",
+              "height": 32,
+              "fill": "#00000000",
+              "gap": 8,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "XG82p",
+                  "name": "Check",
+                  "fill": "$gold",
+                  "textGrowth": "fixed-width",
+                  "width": 12,
+                  "content": " ",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "t6xxj",
+                  "name": "OptLbl",
+                  "fill": "$muted",
+                  "content": "Rarity",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Cf0tc",
+      "x": 700,
+      "y": 0,
+      "name": "01 — Inventory Modal · REVIEW",
+      "clip": true,
+      "width": 1920,
+      "height": 1080,
+      "fill": "$stageSky",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "sH3xQ",
+          "x": 0,
+          "y": 0,
+          "name": "Dim Scrim",
+          "fill": "$dim",
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "type": "frame",
+          "id": "E4k2P",
+          "x": 160,
+          "y": 80,
+          "name": "Inventory Panel",
+          "clip": true,
+          "width": 1600,
+          "height": 920,
+          "fill": "$ironPanel",
+          "cornerRadius": 3,
+          "stroke": "$border",
+          "strokeWidth": 2,
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "jgx8N",
+              "name": "Top Bar",
+              "width": "fill_container",
+              "height": 48,
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "DYKoK",
+                  "name": "Title Col",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "VPhjK",
+                      "name": "Eyebrow",
+                      "fill": "$gold",
+                      "content": "PLAYER · MODAL",
+                      "fontFamily": "$body",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1.2
+                    },
+                    {
+                      "type": "text",
+                      "id": "WdKfI",
+                      "name": "Title",
+                      "fill": "$text",
+                      "content": "Inventory",
+                      "fontFamily": "$display",
+                      "fontSize": 28,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "t2OP6",
+                  "name": "Tabs",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "m30f2",
+                      "type": "ref",
+                      "ref": "zMwPD",
+                      "name": "Tab Bag"
+                    },
+                    {
+                      "id": "jPDGu",
+                      "type": "ref",
+                      "ref": "M7Rm8",
+                      "name": "Tab Camp",
+                      "descendants": {
+                        "i9I0A6": {
+                          "content": "Camp"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "s4ibmy",
+                  "name": "Close Hint",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "T8VNht",
+                      "name": "Hint",
+                      "fill": "$muted",
+                      "content": "I / Esc",
+                      "fontFamily": "$body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "E54WZy",
+              "name": "Body",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "jUjh6",
+                  "name": "Equip Column",
+                  "width": 260,
+                  "height": "fill_container",
+                  "fill": "$ironDeep",
+                  "cornerRadius": 3,
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "iXior",
+                      "name": "Equip Title",
+                      "fill": "$gold",
+                      "content": "Equipped",
+                      "fontFamily": "$display",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "u9aZq",
+                      "name": "Equip Sub",
+                      "fill": "$muted",
+                      "content": "head · chest · legs · bags",
+                      "fontFamily": "$body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "rrHeE",
+                      "name": "Armor Strip",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "ulH0W",
+                          "type": "ref",
+                          "ref": "sFDdx",
+                          "name": "Equip Head",
+                          "descendants": {
+                            "P1E6V": {
+                              "content": "⌂"
+                            },
+                            "LyacY": {
+                              "content": "Head"
+                            }
+                          }
+                        },
+                        {
+                          "id": "H3TGf",
+                          "type": "ref",
+                          "ref": "sFDdx",
+                          "name": "Equip Chest",
+                          "descendants": {
+                            "P1E6V": {
+                              "content": "▣"
+                            },
+                            "LyacY": {
+                              "content": "Chest"
+                            }
+                          }
+                        },
+                        {
+                          "id": "w0BmB",
+                          "type": "ref",
+                          "ref": "sFDdx",
+                          "name": "Equip Legs",
+                          "descendants": {
+                            "P1E6V": {
+                              "content": "☰"
+                            },
+                            "LyacY": {
+                              "content": "Legs"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "TgYbp",
+                      "name": "Trinket Title",
+                      "fill": "$gold",
+                      "content": "Trinkets",
+                      "fontFamily": "$display",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "unst9",
+                      "name": "Trinket Sub",
+                      "fill": "$muted",
+                      "content": "4 slots · shields ok",
+                      "fontFamily": "$body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "dhc1S",
+                      "name": "Trinket Grid",
+                      "width": "fill_container",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "id": "zI7RY",
+                          "type": "ref",
+                          "ref": "P9x6d",
+                          "name": "Trinket 0",
+                          "descendants": {
+                            "Jb8sg": {
+                              "content": "◆"
+                            },
+                            "c8LbC": {
+                              "content": ""
+                            }
+                          }
+                        },
+                        {
+                          "id": "RlMoP",
+                          "type": "ref",
+                          "ref": "vq70d",
+                          "name": "Trinket 1"
+                        },
+                        {
+                          "id": "hKwXZ",
+                          "type": "ref",
+                          "ref": "vq70d",
+                          "name": "Trinket 2"
+                        },
+                        {
+                          "id": "N9eiNi",
+                          "type": "ref",
+                          "ref": "vq70d",
+                          "name": "Trinket 3"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "c2Jca",
+                      "name": "BagSlots Title",
+                      "fill": "$gold",
+                      "content": "Bags",
+                      "fontFamily": "$display",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "dBWga",
+                      "name": "BagSlots Sub",
+                      "fill": "$muted",
+                      "content": "equip pouches to expand capacity",
+                      "fontFamily": "$body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LmFlQ",
+                      "name": "Bag Equip Strip",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "D5xYxX",
+                          "name": "BagEquip Bag I",
+                          "width": "fill_container",
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "id": "ikrKz",
+                              "type": "ref",
+                              "ref": "u3s2v",
+                              "name": "BagCell Bag I",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "SsnsX": {
+                                  "content": "◎"
+                                },
+                                "Qd3wK": {
+                                  "content": "+10"
+                                },
+                                "FEtO7": {
+                                  "content": "EQ"
+                                }
+                              }
+                            },
+                            {
+                              "type": "frame",
+                              "id": "qGxAt",
+                              "name": "BagMeta Bag I",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "RYmR4",
+                                  "name": "BL",
+                                  "fill": "$text",
+                                  "content": "Bag I",
+                                  "fontFamily": "$display",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "MHbPH",
+                                  "name": "BM",
+                                  "fill": "$muted",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Traveler's Pouch · +10 slots",
+                                  "fontFamily": "$body",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "t8JyzN",
+                          "name": "BagEquip Bag II",
+                          "width": "fill_container",
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "id": "TuSj4",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "BagCell Bag II",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "type": "frame",
+                              "id": "ViF1T",
+                              "name": "BagMeta Bag II",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "tRM5A",
+                                  "name": "BL",
+                                  "fill": "$text",
+                                  "content": "Bag II",
+                                  "fontFamily": "$display",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "X4BhD",
+                                  "name": "BM",
+                                  "fill": "$muted",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Empty · craft or loot a bag",
+                                  "fontFamily": "$body",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "cRRvg",
+                          "name": "BagEquip Bag III",
+                          "width": "fill_container",
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "id": "UUIJ8",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "BagCell Bag III",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "type": "frame",
+                              "id": "O6T6kM",
+                              "name": "BagMeta Bag III",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "CZjxD",
+                                  "name": "BL",
+                                  "fill": "$text",
+                                  "content": "Bag III",
+                                  "fontFamily": "$display",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "dkBEM",
+                                  "name": "BM",
+                                  "fill": "$muted",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Empty · craft or loot a bag",
+                                  "fontFamily": "$body",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qu1JV",
+                      "name": "Affinity Note",
+                      "width": "fill_container",
+                      "fill": "#1E2A20",
+                      "cornerRadius": 2,
+                      "stroke": "$affinity",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 10,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "RyVxr",
+                          "name": "Aff Title",
+                          "fill": "$affinity",
+                          "content": "Soft affinity",
+                          "fontFamily": "$body",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "c0nMDv",
+                          "name": "Aff Body",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Ashfell bonus on matching gear. Off-lane stays 1×.",
+                          "fontFamily": "$body",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "v0s682",
+                  "name": "Bag Column",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$ironDeep",
+                  "cornerRadius": 3,
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": [
+                    14,
+                    16
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ApxeO",
+                      "name": "Bag Head",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "XldOe",
+                          "name": "Bag Title",
+                          "fill": "$gold",
+                          "content": "Bag",
+                          "fontFamily": "$display",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "B2by8",
+                          "name": "Bag Actions",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "qxFPu",
+                              "name": "Bag Cap",
+                              "fill": "$muted",
+                              "content": "8 / 30 · base 20 +10 bags",
+                              "fontFamily": "$body",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "id": "d5TNd",
+                              "type": "ref",
+                              "ref": "NYsAW",
+                              "name": "Bag Sort",
+                              "descendants": {
+                                "FYl6B": {
+                                  "content": "Kind"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "P5jw0",
+                      "name": "Bag Grid",
+                      "width": 272,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "XtAgz",
+                          "name": "Bag Row 0",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "PoI8K",
+                              "type": "ref",
+                              "ref": "u3s2v",
+                              "name": "Bag 0 Equipped",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "SsnsX": {
+                                  "content": "⚔"
+                                },
+                                "Qd3wK": {
+                                  "content": "1"
+                                }
+                              }
+                            },
+                            {
+                              "id": "rtMwL",
+                              "type": "ref",
+                              "ref": "XhXY6",
+                              "name": "Bag 1 Hover",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "B6fYkg": {
+                                  "content": "✚"
+                                },
+                                "k8C6zu": {
+                                  "content": "4"
+                                }
+                              }
+                            },
+                            {
+                              "id": "VnTbr",
+                              "type": "ref",
+                              "ref": "P9x6d",
+                              "name": "Bag 2 Active",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "Jb8sg": {
+                                  "content": "◆"
+                                },
+                                "c8LbC": {
+                                  "content": "1"
+                                }
+                              }
+                            },
+                            {
+                              "id": "vIyCB",
+                              "type": "ref",
+                              "ref": "XdEeQ",
+                              "name": "Bag 3 Focus",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "H1PR9B": {
+                                  "content": "◇"
+                                },
+                                "g9WCO": {
+                                  "content": "99"
+                                }
+                              }
+                            },
+                            {
+                              "id": "WtOtm",
+                              "type": "ref",
+                              "ref": "A3tmGZ",
+                              "name": "Bag 4 Filled",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "VhnAF": {
+                                  "content": "↑"
+                                },
+                                "NDjPA": {
+                                  "content": "240"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "XDePm",
+                          "name": "Bag Row 1",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "V5LDJN",
+                              "type": "ref",
+                              "ref": "A3tmGZ",
+                              "name": "Bag 5 Filled",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "VhnAF": {
+                                  "content": "▣"
+                                },
+                                "NDjPA": {
+                                  "content": "1"
+                                }
+                              }
+                            },
+                            {
+                              "id": "uQ90M",
+                              "type": "ref",
+                              "ref": "pd9Wa",
+                              "name": "Bag 6 Disabled",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "yIBcI": {
+                                  "content": "✦"
+                                },
+                                "qWlkv": {
+                                  "content": "2"
+                                }
+                              }
+                            },
+                            {
+                              "id": "ybopM",
+                              "type": "ref",
+                              "ref": "A3tmGZ",
+                              "name": "Bag 7 Filled",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "VhnAF": {
+                                  "content": "◎"
+                                },
+                                "NDjPA": {
+                                  "content": "1"
+                                }
+                              }
+                            },
+                            {
+                              "id": "T7ofGr",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 8",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "eMAPt",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 9",
+                              "width": 48,
+                              "height": 48
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "si75B",
+                          "name": "Bag Row 2",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "e8A1z",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 10",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "VzPj7",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 11",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "W1CXp6",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 12",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "B5mOC",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 13",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "ABqFC",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 14",
+                              "width": 48,
+                              "height": 48
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ivsiE",
+                          "name": "Bag Row 3",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "esXbc",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 15",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "xQylV",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 16",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "YLgk9",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 17",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "C4jys",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 18",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "cYB5B",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Empty 19",
+                              "width": 48,
+                              "height": 48
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "IzP98",
+                          "name": "Bag Bonus Divider",
+                          "width": 272,
+                          "height": 18,
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "id": "Yykrq",
+                              "name": "Div L",
+                              "fill": "$slotEquippedStroke",
+                              "width": "fill_container",
+                              "height": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "cU8MV",
+                              "name": "Div Lbl",
+                              "fill": "$affinity",
+                              "content": "+10 from Bag I",
+                              "fontFamily": "$body",
+                              "fontSize": 9,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "rectangle",
+                              "id": "NOE2F",
+                              "name": "Div R",
+                              "fill": "$slotEquippedStroke",
+                              "width": "fill_container",
+                              "height": 1
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "kjyyZ",
+                          "name": "Bag Row 4 (bag)",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "H7a5yv",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Bonus 20",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "CuJEI",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Bonus 21",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "OkLQ3",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Bonus 22",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "tgzSY",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Bonus 23",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "Eh2eA",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Bonus 24",
+                              "width": 48,
+                              "height": 48
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "E54ac",
+                          "name": "Bag Row 5 (bag)",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "G927fp",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Bonus 25",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "c7jAPP",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Bonus 26",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "Fkg1E",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Bonus 27",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "vC214",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Bonus 28",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "OD1by",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "Bag Bonus 29",
+                              "width": 48,
+                              "height": 48
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "H5CUoB",
+                      "name": "Bag Foot",
+                      "fill": "$muted",
+                      "content": "Base 20 · Bag I–III each add capacity when equipped",
+                      "fontFamily": "$body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Cne3h",
+                      "name": "State Callout",
+                      "width": 272,
+                      "fill": "#1E2A20",
+                      "cornerRadius": 2,
+                      "stroke": "$affinity",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "O9sNv3",
+                          "name": "SC Title",
+                          "fill": "$affinity",
+                          "content": "State pass",
+                          "fontFamily": "$body",
+                          "fontSize": 10,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "FBRfd",
+                          "name": "SC Body",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "EQ · hover · active · focus · disabled shown in bag row 1",
+                          "fontFamily": "$body",
+                          "fontSize": 10,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "KtpJd",
+                  "name": "Detail Column",
+                  "width": 300,
+                  "height": "fill_container",
+                  "fill": "$ironDeep",
+                  "cornerRadius": 3,
+                  "stroke": "$gold",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "T5fMFH",
+                      "name": "Kind",
+                      "fill": "$gold",
+                      "content": "TRINKET",
+                      "fontFamily": "$body",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1.2
+                    },
+                    {
+                      "type": "text",
+                      "id": "YyQ6l",
+                      "name": "Item Name",
+                      "fill": "$text",
+                      "content": "Vein-Iron Pendant",
+                      "fontFamily": "$display",
+                      "fontSize": 20,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "R5Eyh",
+                      "name": "Labels",
+                      "fill": "$muted",
+                      "content": "utility · obscure rare",
+                      "fontFamily": "$body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "uZfru",
+                      "name": "Detail Icon",
+                      "width": "fill_container",
+                      "height": 88,
+                      "fill": "$slotIdle",
+                      "cornerRadius": 2,
+                      "stroke": "$border",
+                      "strokeWidth": 1,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "CKr2O",
+                          "name": "Big Glyph",
+                          "fill": "$gold",
+                          "content": "◆",
+                          "fontFamily": "$body",
+                          "fontSize": 32,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "HFe0K",
+                      "name": "Desc",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Cold vein-iron on a leather cord. First Landfall nook find — not story-gated. Grants a light grit bonus while worn.",
+                      "lineHeight": 1.4,
+                      "fontFamily": "$body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "lOxdA",
+                      "name": "Stat Block",
+                      "width": "fill_container",
+                      "fill": "$ironPanel",
+                      "cornerRadius": 2,
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "kgJdy",
+                          "name": "Stat Grit",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "BqFJe",
+                              "name": "K",
+                              "fill": "$muted",
+                              "content": "Grit",
+                              "fontFamily": "$body",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "iBKaF",
+                              "name": "V",
+                              "fill": "$text",
+                              "content": "+2",
+                              "fontFamily": "$body",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "rz2z0",
+                          "name": "Stat Lane",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "V9gOC",
+                              "name": "K",
+                              "fill": "$muted",
+                              "content": "Lane",
+                              "fontFamily": "$body",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "zuSGl",
+                              "name": "V",
+                              "fill": "$text",
+                              "content": "Any (1×)",
+                              "fontFamily": "$body",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "q3P1ag",
+                          "name": "Stat Slot",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "OYlPV",
+                              "name": "K",
+                              "fill": "$muted",
+                              "content": "Slot",
+                              "fontFamily": "$body",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "vGZKt",
+                              "name": "V",
+                              "fill": "$text",
+                              "content": "trinket0",
+                              "fontFamily": "$body",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ijgB0",
+                      "name": "Actions",
+                      "width": "fill_container",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "id": "ekyTd",
+                          "type": "ref",
+                          "ref": "BNyIh",
+                          "name": "Equip Btn",
+                          "width": "fill_container"
+                        },
+                        {
+                          "id": "lUjRT",
+                          "type": "ref",
+                          "ref": "U97jua",
+                          "name": "Drop Btn",
+                          "width": "fill_container",
+                          "descendants": {
+                            "RijUF": {
+                              "content": "Move → Hotbar"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "zCGhX",
+                      "name": "Detail Foot",
+                      "fill": "$muted",
+                      "content": "No durability in v1",
+                      "fontFamily": "$body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IwKeH",
+              "name": "Footer",
+              "width": "fill_container",
+              "height": 120,
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "tVZsd",
+                  "name": "Currency Row",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ZLB1z",
+                      "name": "Curr Label",
+                      "fill": "$muted",
+                      "content": "Currencies",
+                      "fontFamily": "$body",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "id": "M5esl",
+                      "type": "ref",
+                      "ref": "OH4lh",
+                      "name": "Gold Chip"
+                    },
+                    {
+                      "id": "nLRKE",
+                      "type": "ref",
+                      "ref": "OH4lh",
+                      "name": "Scrap Chip",
+                      "descendants": {
+                        "oUDqW": {
+                          "content": "14"
+                        },
+                        "V4v43X": {
+                          "content": "Scrap"
+                        }
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "id": "HVqkq",
+                      "name": "Shared Note",
+                      "fill": "$muted",
+                      "content": "shared campaign gold · non-slot",
+                      "fontFamily": "$body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "DB0Iy",
+                  "name": "Hotbar Row",
+                  "width": "fill_container",
+                  "fill": "$ironDeep",
+                  "cornerRadius": 2,
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "gap": 6,
+                  "padding": [
+                    8,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "X73nB",
+                      "name": "HB Label",
+                      "fill": "$gold",
+                      "content": "Hotbar",
+                      "fontFamily": "$display",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "DVIj8",
+                      "name": "HB Slot Wrap 0",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "f2hmiD",
+                          "type": "ref",
+                          "ref": "J6hEr",
+                          "name": "Key 1",
+                          "descendants": {
+                            "g8s5DE": {
+                              "content": "1"
+                            }
+                          }
+                        },
+                        {
+                          "id": "plevW",
+                          "type": "ref",
+                          "ref": "u3s2v",
+                          "name": "HB 0 Equipped",
+                          "descendants": {
+                            "SsnsX": {
+                              "content": "⚔"
+                            },
+                            "Qd3wK": {
+                              "content": "1"
+                            },
+                            "FEtO7": {
+                              "content": ""
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "wlEtD",
+                      "name": "HB Slot Wrap 1",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "wKlE5",
+                          "type": "ref",
+                          "ref": "J6hEr",
+                          "name": "Key 2",
+                          "descendants": {
+                            "g8s5DE": {
+                              "content": "2"
+                            }
+                          }
+                        },
+                        {
+                          "id": "j0akFH",
+                          "type": "ref",
+                          "ref": "A3tmGZ",
+                          "name": "HB 1",
+                          "descendants": {
+                            "VhnAF": {
+                              "content": "✚"
+                            },
+                            "NDjPA": {
+                              "content": "4"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "CUzHM",
+                      "name": "HB Slot Wrap 2",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "Tk2WG",
+                          "type": "ref",
+                          "ref": "J6hEr",
+                          "name": "Key 3",
+                          "descendants": {
+                            "g8s5DE": {
+                              "content": "3"
+                            }
+                          }
+                        },
+                        {
+                          "id": "HjyUy",
+                          "type": "ref",
+                          "ref": "vq70d",
+                          "name": "HB Empty 2"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Cs8L0",
+                      "name": "HB Slot Wrap 3",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "TjLru",
+                          "type": "ref",
+                          "ref": "J6hEr",
+                          "name": "Key 4",
+                          "descendants": {
+                            "g8s5DE": {
+                              "content": "4"
+                            }
+                          }
+                        },
+                        {
+                          "id": "G8CDWX",
+                          "type": "ref",
+                          "ref": "vq70d",
+                          "name": "HB Empty 3"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vQAtb",
+                      "name": "HB Slot Wrap 4",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "d14zSg",
+                          "type": "ref",
+                          "ref": "J6hEr",
+                          "name": "Key 5",
+                          "descendants": {
+                            "g8s5DE": {
+                              "content": "5"
+                            }
+                          }
+                        },
+                        {
+                          "id": "pdLZL",
+                          "type": "ref",
+                          "ref": "A3tmGZ",
+                          "name": "HB 4",
+                          "descendants": {
+                            "VhnAF": {
+                              "content": "↑"
+                            },
+                            "NDjPA": {
+                              "content": "240"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YsFFI",
+                      "name": "HB Slot Wrap 5",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "nTuUN",
+                          "type": "ref",
+                          "ref": "J6hEr",
+                          "name": "Key 6",
+                          "descendants": {
+                            "g8s5DE": {
+                              "content": "6"
+                            }
+                          }
+                        },
+                        {
+                          "id": "GUAqA",
+                          "type": "ref",
+                          "ref": "vq70d",
+                          "name": "HB Empty 5"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "OQlvC",
+                      "name": "HB Slot Wrap 6",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "EhP7G",
+                          "type": "ref",
+                          "ref": "J6hEr",
+                          "name": "Key 7",
+                          "descendants": {
+                            "g8s5DE": {
+                              "content": "7"
+                            }
+                          }
+                        },
+                        {
+                          "id": "kQwvh",
+                          "type": "ref",
+                          "ref": "vq70d",
+                          "name": "HB Empty 6"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "y96FJ",
+                      "name": "HB Slot Wrap 7",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "KE1Ae",
+                          "type": "ref",
+                          "ref": "J6hEr",
+                          "name": "Key 8",
+                          "descendants": {
+                            "g8s5DE": {
+                              "content": "8"
+                            }
+                          }
+                        },
+                        {
+                          "id": "Bt0mO",
+                          "type": "ref",
+                          "ref": "vq70d",
+                          "name": "HB Empty 7"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "f70PKY",
+              "type": "ref",
+              "ref": "jgY4V",
+              "name": "Sort Menu Demo",
+              "layoutPosition": "absolute",
+              "x": 1180,
+              "y": 78
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Rsuu3",
+      "x": 700,
+      "y": 1140,
+      "name": "02 — Camp Chest · REVIEW",
+      "clip": true,
+      "width": 1920,
+      "height": 1080,
+      "fill": "$stageSky",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "O18TN3",
+          "x": 0,
+          "y": 0,
+          "name": "Dim",
+          "fill": "$dim",
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "type": "frame",
+          "id": "DNuDb",
+          "x": 200,
+          "y": 140,
+          "name": "Camp Panel",
+          "width": 1520,
+          "height": 800,
+          "fill": "$ironPanel",
+          "cornerRadius": 3,
+          "stroke": "$border",
+          "strokeWidth": 2,
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "T30StA",
+              "name": "C Top",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "OPIsW",
+                  "name": "C Title Col",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "uOhah",
+                      "name": "C Eye",
+                      "fill": "$gold",
+                      "content": "PER-PLAYER · SAVE-PERSISTED",
+                      "fontFamily": "$body",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1.2
+                    },
+                    {
+                      "type": "text",
+                      "id": "p2LaQg",
+                      "name": "C Title",
+                      "fill": "$text",
+                      "content": "Camp Chest",
+                      "fontFamily": "$display",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "olvhG",
+                  "name": "C Hint",
+                  "fill": "$muted",
+                  "content": "Trade / gift between players · co-op opens own stash",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "P4ZMH",
+              "name": "Split",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "xV09Z",
+                  "name": "Player Bag Side",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$ironDeep",
+                  "cornerRadius": 3,
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ztSSP",
+                      "name": "L Title",
+                      "fill": "$gold",
+                      "content": "Your Bag",
+                      "fontFamily": "$display",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "CD7IO",
+                      "name": "Bag Grid",
+                      "width": 272,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "gGATL",
+                          "name": "L Row 0",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "a5o7A",
+                              "type": "ref",
+                              "ref": "A3tmGZ",
+                              "name": "L 0",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "VhnAF": {
+                                  "content": "⚔"
+                                },
+                                "NDjPA": {
+                                  "content": "1"
+                                }
+                              }
+                            },
+                            {
+                              "id": "VmGIU",
+                              "type": "ref",
+                              "ref": "A3tmGZ",
+                              "name": "L 1",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "VhnAF": {
+                                  "content": "✚"
+                                },
+                                "NDjPA": {
+                                  "content": "4"
+                                }
+                              }
+                            },
+                            {
+                              "id": "M4Ktjn",
+                              "type": "ref",
+                              "ref": "A3tmGZ",
+                              "name": "L 2",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "VhnAF": {
+                                  "content": "◇"
+                                },
+                                "NDjPA": {
+                                  "content": "20"
+                                }
+                              }
+                            },
+                            {
+                              "id": "R1dYT",
+                              "type": "ref",
+                              "ref": "A3tmGZ",
+                              "name": "L 3",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "VhnAF": {
+                                  "content": "↑"
+                                },
+                                "NDjPA": {
+                                  "content": "80"
+                                }
+                              }
+                            },
+                            {
+                              "id": "oBoTM",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "LE 4",
+                              "width": 48,
+                              "height": 48
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "hol4s",
+                          "name": "L Row 1",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "aPNS5",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "LE 5",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "xFUjK",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "LE 6",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "a5C4DE",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "LE 7",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "ZkvBN",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "LE 8",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "VMzCV",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "LE 9",
+                              "width": 48,
+                              "height": 48
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ygoOf",
+                          "name": "L Row 2",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "SZyrk",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "LE 10",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "mSbOZ",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "LE 11",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "J4VDEc",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "LE 12",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "Q0m4z",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "LE 13",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "M7W9A",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "LE 14",
+                              "width": 48,
+                              "height": 48
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "NaWbJ",
+                  "name": "Transfer",
+                  "width": 120,
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "CM3Wz",
+                      "type": "ref",
+                      "ref": "BNyIh",
+                      "name": "To Chest",
+                      "descendants": {
+                        "j3nvpz": {
+                          "content": "→ Chest"
+                        }
+                      }
+                    },
+                    {
+                      "id": "p0qWa",
+                      "type": "ref",
+                      "ref": "U97jua",
+                      "name": "To Bag",
+                      "descendants": {
+                        "RijUF": {
+                          "content": "← Bag"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "F8pQ80",
+                  "name": "Chest Side",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$ironDeep",
+                  "cornerRadius": 3,
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ZsjtE",
+                      "name": "R Title",
+                      "fill": "$gold",
+                      "content": "Camp Stash",
+                      "fontFamily": "$display",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "XVvCh",
+                      "name": "Chest Grid",
+                      "width": 272,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "VzXRe",
+                          "name": "R Row 0",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "wsAtB",
+                              "type": "ref",
+                              "ref": "A3tmGZ",
+                              "name": "R 0",
+                              "width": 48,
+                              "height": 48,
+                              "descendants": {
+                                "VhnAF": {
+                                  "content": "▣"
+                                },
+                                "NDjPA": {
+                                  "content": "1"
+                                }
+                              }
+                            },
+                            {
+                              "id": "wuENs",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 1",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "v9twr9",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 2",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "aMAt1",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 3",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "DU3pc",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 4",
+                              "width": 48,
+                              "height": 48
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "a5eA5b",
+                          "name": "R Row 1",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "ObDEc",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 5",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "S22ffA",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 6",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "avPtB",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 7",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "EM35z",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 8",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "J29Xhu",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 9",
+                              "width": 48,
+                              "height": 48
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "qqcLs",
+                          "name": "R Row 2",
+                          "width": 272,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "og2ww",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 10",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "Z1WtJ",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 11",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "ERA0n",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 12",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "LRQzq",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 13",
+                              "width": 48,
+                              "height": 48
+                            },
+                            {
+                              "id": "s0Tjt0",
+                              "type": "ref",
+                              "ref": "vq70d",
+                              "name": "RE 14",
+                              "width": 48,
+                              "height": 48
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "xxxwF",
+      "x": 2680,
+      "y": 1140,
+      "name": "03 — Spec · DEC-0050",
+      "clip": true,
+      "width": 900,
+      "height": 1080,
+      "fill": "$chrome",
+      "layout": "vertical",
+      "gap": 14,
+      "padding": 28,
+      "children": [
+        {
+          "type": "text",
+          "id": "aC5JW",
+          "name": "S Eye",
+          "fill": "$gold",
+          "content": "LOCKED DECISIONS",
+          "fontFamily": "$body",
+          "fontSize": 11,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "text",
+          "id": "A2rMnh",
+          "name": "S Title",
+          "fill": "$text",
+          "content": "Inventory UX Spec",
+          "fontFamily": "$display",
+          "fontSize": 24,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "Qw5cH",
+          "name": "S Sub",
+          "fill": "$muted",
+          "content": "From DEC-0050 + gearing-system.md · draft Pencil mock",
+          "fontFamily": "$body",
+          "fontSize": 12,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "JGy5P",
+          "name": "Spec Hotbar",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "j9b79Q",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Hotbar",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "tE1Cx",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "8 slots — weapons + utility; select to use",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "VcMy6",
+          "name": "Spec Armor",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "u4ocG",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Armor",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "Z2JFsC",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "head · chest · legs named slots",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "WHEdk",
+          "name": "Spec Trinkets",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "vZsEP",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Trinkets",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "P1bR2",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "4 accessory slots (trinket0–3); shields ok",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "CtpPB",
+          "name": "Spec Bag",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "I1Ebkh",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Bag",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "cc1hF",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Base 20 slots · one entry each · upgrades expand",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "fmmsA",
+          "name": "Spec Stacks",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "clxMu",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Stacks",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "wrUhw",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Resources 99 · ammo ~1000 dedicated",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ZJpTf",
+          "name": "Spec Quest",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "JZuN2",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Quest",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "b9x5hF",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Separate quest-item bag (not this mock — see quest systems / DEC-0050); never bag slots",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "uWaql",
+          "name": "Spec Camp",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "CMrhF",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Camp",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "hmvUg",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Per-player chest · persists · trade/gift",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "IF8FQ",
+          "name": "Spec Currency",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "zH994",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Currency",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "pUknw",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Non-slot counters (icon + amount)",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "WTAY6",
+          "name": "Spec Durability",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "i1rAYt",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Durability",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "fhbuF",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "None in v1",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "P9fgq",
+          "name": "Spec Affinity",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "FhOxi",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Affinity",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "nSNi7",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Positive bonus on matching lane; off-lane 1×",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "vipzl",
+          "name": "Spec Abilities",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "NENmy",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Abilities",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "juXBN",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Class abilities = separate UI (~3–4), not hotbar",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QKSSM",
+          "name": "Spec Sort",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "GQab4",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Sort",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "XzinC",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Bag sort: Kind / Name / Newest / Stack / Rarity",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ejq0f",
+          "name": "Spec States",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "x0YXjC",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Slot states",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "brxwb",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "empty · filled · hover · focus · active · equipped · disabled",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Z2A7v",
+          "name": "Spec Bags",
+          "width": "fill_container",
+          "fill": "$ironPanel",
+          "cornerRadius": 2,
+          "layout": "vertical",
+          "gap": 2,
+          "padding": [
+            10,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "RKGYx",
+              "name": "K",
+              "fill": "$gold",
+              "content": "Player bags",
+              "fontFamily": "$display",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "p1KlX",
+              "name": "V",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "3 bag equip slots · each pouch adds capacity (demo +10) · base 20",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "body": {
+      "type": "string",
+      "value": "Roboto"
+    },
+    "display": {
+      "type": "string",
+      "value": "Cinzel"
+    },
+    "chrome": {
+      "type": "color",
+      "value": "#151719"
+    },
+    "text": {
+      "type": "color",
+      "value": "#F1EEE8"
+    },
+    "gold": {
+      "type": "color",
+      "value": "#D5B978"
+    },
+    "muted": {
+      "type": "color",
+      "value": "#9BA3A7"
+    },
+    "iron": {
+      "type": "color",
+      "value": "#3A342C"
+    },
+    "ironPanel": {
+      "type": "color",
+      "value": "#2D2923"
+    },
+    "ironDeep": {
+      "type": "color",
+      "value": "#1E1C18"
+    },
+    "ironLight": {
+      "type": "color",
+      "value": "#6A5A44"
+    },
+    "border": {
+      "type": "color",
+      "value": "#66563C"
+    },
+    "parchment": {
+      "type": "color",
+      "value": "#C9B896"
+    },
+    "parchmentDeep": {
+      "type": "color",
+      "value": "#B8A078"
+    },
+    "parchmentChoice": {
+      "type": "color",
+      "value": "#E8DCC6"
+    },
+    "ink": {
+      "type": "color",
+      "value": "#483E30"
+    },
+    "inkMuted": {
+      "type": "color",
+      "value": "#605444"
+    },
+    "dim": {
+      "type": "color",
+      "value": "#151719B3"
+    },
+    "focusRing": {
+      "type": "color",
+      "value": "#D5B978"
+    },
+    "mainAccent": {
+      "type": "color",
+      "value": "#C4A24A"
+    },
+    "sideAccent": {
+      "type": "color",
+      "value": "#6A8A9A"
+    },
+    "factionAccent": {
+      "type": "color",
+      "value": "#8B5A3C"
+    },
+    "success": {
+      "type": "color",
+      "value": "#3F6B4A"
+    },
+    "danger": {
+      "type": "color",
+      "value": "#8B4338"
+    },
+    "stageSky": {
+      "type": "color",
+      "value": "#2A3A42"
+    },
+    "hudPanel": {
+      "type": "color",
+      "value": "#151719EE"
+    },
+    "slotIdle": {
+      "type": "color",
+      "value": "#1E1C18"
+    },
+    "slotSelected": {
+      "type": "color",
+      "value": "#3C3426"
+    },
+    "slotStroke": {
+      "type": "color",
+      "value": "#66563C"
+    },
+    "affinity": {
+      "type": "color",
+      "value": "#6B8F71"
+    },
+    "reviewAmber": {
+      "type": "color",
+      "value": "#C4A24A"
+    },
+    "slotHover": {
+      "type": "color",
+      "value": "#2A2620"
+    },
+    "slotHoverStroke": {
+      "type": "color",
+      "value": "#E0C990"
+    },
+    "slotFocus": {
+      "type": "color",
+      "value": "#332E26"
+    },
+    "slotFocusStroke": {
+      "type": "color",
+      "value": "#F1EEE8"
+    },
+    "slotActive": {
+      "type": "color",
+      "value": "#3C3426"
+    },
+    "slotDisabled": {
+      "type": "color",
+      "value": "#161410"
+    },
+    "slotDisabledStroke": {
+      "type": "color",
+      "value": "#4A4034"
+    },
+    "slotEquipped": {
+      "type": "color",
+      "value": "#243028"
+    },
+    "slotEquippedStroke": {
+      "type": "color",
+      "value": "#6B8F71"
+    }
+  },
+  "fileToken": "556bc374-bc33-4222-aef7-4feac1928915"
+}

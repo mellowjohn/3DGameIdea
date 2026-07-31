@@ -8,11 +8,18 @@
 
 namespace engine {
 
-/// Runtime surface inputs for the opaque PBR lighting path (TICKET-0040).
+/// Runtime surface inputs for the lit PBR path (TICKET-0040 / 0238 / 0239).
 struct PbrSurfaceParams {
     float roughness = 1.0f;
     float metallic = 0.0f;
     std::array<float, 3> emissive{0.0f, 0.0f, 0.0f};
+    float emissive_pulse_hz = 0.0f;
+    float emissive_pulse_min = 0.35f;
+    /// When true, pixel shader discards fragments with alpha below opacity_cutoff.
+    bool alpha_clip = false;
+    float opacity_cutoff = 0.5f;
+    /// Surface alpha when not sampling an albedo texture (vertex/baseColor.a).
+    float surface_alpha = 1.0f;
 
     [[nodiscard]] static PbrSurfaceParams dielectric_default() { return {}; }
 
@@ -21,13 +28,31 @@ struct PbrSurfaceParams {
         params.roughness = material.roughness;
         params.metallic = material.metallic;
         params.emissive = material.emissive;
+        params.surface_alpha = material.base_color[3];
+        if (material.opacity_mode == OpacityMode::Masked) {
+            params.alpha_clip = true;
+            params.opacity_cutoff = material.opacity_cutoff;
+        }
+        if (material.shader == MaterialShaderProfile::EmissiveMagic) {
+            params.emissive_pulse_hz = material.emissive_pulse_hz;
+            params.emissive_pulse_min = material.emissive_pulse_min;
+        }
         return params;
+    }
+
+    /// Scale authored emissive by pulse envelope (1 when Hz == 0).
+    [[nodiscard]] std::array<float, 3> emissive_at_time(float time_seconds) const {
+        if (emissive_pulse_hz <= 0.0f) return emissive;
+        constexpr float k_pi = 3.14159265f;
+        const float wave = 0.5f + 0.5f * std::sin(2.0f * k_pi * emissive_pulse_hz * time_seconds);
+        const float scale = emissive_pulse_min + (1.0f - emissive_pulse_min) * wave;
+        return {emissive[0] * scale, emissive[1] * scale, emissive[2] * scale};
     }
 };
 
-/// Masked opacity requires a dedicated pipeline; blended water uses the water pass.
+/// Opaque and masked materials draw through the lit PBR path; blended water uses the water pass.
 [[nodiscard]] inline bool material_supports_opaque_pbr_runtime(const MaterialAsset& material) noexcept {
-    return material.opacity_mode == OpacityMode::Opaque;
+    return material.opacity_mode == OpacityMode::Opaque || material.opacity_mode == OpacityMode::Masked;
 }
 
 [[nodiscard]] inline bool material_supports_water_runtime(const MaterialAsset& material) noexcept {

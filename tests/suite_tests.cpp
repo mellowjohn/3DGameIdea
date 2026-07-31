@@ -10,12 +10,16 @@
 #include "engine/assets/particle_emitter_asset.h"
 #include "engine/vfx/particle_system.h"
 #include <map>
+#include <optional>
 #include "engine/automation/command.h"
 #include "engine/automation/editor_bridge.h"
 #include "engine/automation/editor_session.h"
 #include "engine/automation/scene_commands.h"
 #include "engine/assets/script_bindings_asset.h"
 #include "engine/animation/animator_runtime.h"
+#include "engine/animation/bone_attachment.h"
+#include "engine/animation/cpu_skinning.h"
+#include "engine/world/transform_utils.h"
 #include "engine/audio/audio_engine.h"
 #include "engine/animation/animation_preview.h"
 #include "engine/animation/root_motion.h"
@@ -24,6 +28,8 @@
 #include "engine/physics/rigidbody_locomotion.h"
 #include "engine/scripting/lua_runtime.h"
 #include "engine/assets/hud_asset.h"
+#include "engine/assets/item_catalog_asset.h"
+#include "engine/inventory/inventory_runtime.h"
 #include "engine/assets/ui_canvas_asset.h"
 #include "engine/assets/ui_canvas_mutate.h"
 #include "engine/assets/world_forge_archetypes_asset.h"
@@ -214,6 +220,29 @@ int main(int argc,char**argv){
         std::ofstream(root/"assets/a.txt")<<"a"; engine::AssetRegistry assets; r.check(assets.scan(root).has_value(),"scan succeeds");
         r.check(assets.records().size()==1,"one asset found"); r.check(assets.validate().empty(),"dependencies valid");
         engine::MaterialAsset material;material.base_color={0.2f,0.3f,0.4f,1.0f};material.roughness=0.8f;material.physics.surface="stone";r.check(material.validate().has_value(),"material valid");auto parsed=engine::MaterialAsset::from_json(material.to_json());r.check(parsed&&parsed.value().to_json()==material.to_json(),"material deterministic round trip");
+        r.check(parsed&&parsed.value().shader==engine::MaterialShaderProfile::StylizedOpaque,"default shader is stylized_opaque");
+        r.check(!engine::MaterialAsset::from_json(R"({"schemaVersion":1,"shader":"node_graph","baseColor":[1,1,1,1],"roughness":1,"metallic":0,"opacityMode":"opaque","physics":{"friction":0.8,"restitution":0.05,"density":1000,"surface":"default"}})"),
+            "unknown shader profile rejected");
+        const auto legacy=engine::MaterialAsset::from_json(R"({"schemaVersion":1,"baseColor":[1,1,1,1],"roughness":1,"metallic":0,"opacityMode":"opaque","physics":{"friction":0.8,"restitution":0.05,"density":1000,"surface":"default"}})");
+        r.check(legacy&&legacy.value().shader==engine::MaterialShaderProfile::StylizedOpaque,"legacy material defaults shader");
+        r.check(!engine::is_valid_material_map_path("../secret.png")&&!engine::is_valid_material_map_path("C:/abs.png"),
+            "unsafe material map paths rejected");
+        r.check(engine::is_valid_material_map_path("assets/vfx/wind_streak.png"),"valid material map path accepted");
+        engine::MaterialAsset mapped;mapped.physics.surface="default";mapped.albedo_map="assets/vfx/wind_streak.png";
+        r.check(mapped.validate().has_value(),"albedoMap path format validates");
+        r.check(!mapped.validate_texture_maps(root),"albedoMap missing under temp root fails closed");
+        std::filesystem::create_directories(root/"assets/vfx");
+        std::ofstream(root/"assets/vfx/wind_streak.png",std::ios::binary)<<"not-a-real-png-but-exists";
+        r.check(mapped.validate_texture_maps(root).has_value(),"albedoMap present under project root passes");
+        mapped.albedo_map="../escape.png";r.check(!mapped.validate(),"parent traversal albedoMap rejected");mapped.albedo_map="assets/vfx/wind_streak.png";
+        engine::MaterialAsset magic;magic.shader=engine::MaterialShaderProfile::EmissiveMagic;magic.emissive={1.0f,2.0f,0.5f};magic.emissive_pulse_hz=1.0f;magic.emissive_pulse_min=0.25f;magic.physics.surface="default";
+        r.check(magic.validate().has_value(),"emissive_magic with pulse validates");
+        magic.emissive_pulse_hz=-1.0f;r.check(!magic.validate(),"negative pulse Hz rejected");magic.emissive_pulse_hz=1.0f;
+        magic.emissive={0,0,0};r.check(!magic.validate(),"pulse without emissive rejected");magic.emissive={1,2,0.5f};
+        const auto magic_pbr=engine::PbrSurfaceParams::from_material(magic);
+        r.check(magic_pbr.emissive_pulse_hz==1.0f&&magic_pbr.emissive_pulse_min==0.25f,"from_material copies pulse params");
+        const auto peak=magic_pbr.emissive_at_time(0.25f);const auto trough=magic_pbr.emissive_at_time(0.75f);
+        r.check(peak[0]>trough[0]&&peak[1]>trough[1],"emissive pulse peaks above trough");
         material.metallic=1.5f;r.check(!material.validate(),"invalid metallic rejected");material.metallic=0;material.base_color[3]=0.5f;r.check(!material.validate(),"opaque alpha mismatch rejected");r.check(!engine::MaterialAsset::from_json("{}"),"malformed material rejected");
         const auto gltf=root/"assets/sample.gltf";std::ofstream(gltf)<<R"({"asset":{"version":"2.0"},"buffers":[{"byteLength":96,"uri":"data:application/octet-stream;base64,AAAAvwAAAAAAAAC/AAAAPwAAAAAAAAC/AAAAPwAAAAAAAAA/AAAAvwAAAAAAAAA/AAAAAAAAAEAAAAAAAAABAAQAAQACAAQAAgADAAQAAwAAAAQAAAADAAIAAAACAAEA"}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":60},{"buffer":0,"byteOffset":60,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":5,"type":"VEC3"},{"bufferView":1,"componentType":5123,"count":18,"type":"SCALAR"}],"meshes":[{"primitives":[{"attributes":{"POSITION":0},"indices":1}]}]})";auto mesh=engine::import_gltf_mesh(gltf);r.check(mesh&&mesh.value().vertices.size()==18,"glTF triangle mesh imported");r.check(mesh&&!mesh.value().has_skinning(),"static glTF has no skinning");
         const auto colored=root/"assets/colored.gltf";std::ofstream(colored)<<R"({"asset":{"version":"2.0"},"buffers":[{"byteLength":144,"uri":"data:application/octet-stream;base64,AAAAvwAAAAAAAAC/AAAAPwAAAAAAAAC/AAAAPwAAAAAAAAA/AAAAvwAAAAAAAAA/AAAAAAAAAEAAAAAAAACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AAABAAQAAQACAAQAAgADAAQAAwAAAAQAAAADAAIAAAACAAEA"}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":60},{"buffer":0,"byteOffset":60,"byteLength":48},{"buffer":0,"byteOffset":108,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":5,"type":"VEC3"},{"bufferView":1,"componentType":5126,"count":4,"type":"VEC3"},{"bufferView":2,"componentType":5123,"count":18,"type":"SCALAR"}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"COLOR_0":1},"indices":2}]}]})";
@@ -396,6 +425,47 @@ int main(int argc,char**argv){
         auto kept=clip_library.get(animated);
         r.check(!failed_reload&&kept&&kept.value()->clips[0].duration_seconds==2.0f,"failed animation reload keeps previous clips");
 
+        // Sagittal mirroring: the right-handed Blockbench rig is imported verbatim into the
+        // left-handed runtime, so a clip keying `RightUpperArm` must drive the visually-right limb
+        // (`LeftUpperArm`) with a pose reflected through the YZ plane, while unkeyed channels stay
+        // on the target joint's own rest.
+        const auto mirror_src=root/"assets/mirror-arm.gltf";
+        std::ofstream(mirror_src)<<R"({
+"asset":{"version":"2.0"},
+"nodes":[{"name":"RightUpperArm"},{"name":"LeftUpperArm"}],
+"animations":[{"name":"Attack","samplers":[{"input":0,"output":1,"interpolation":"LINEAR"}],"channels":[{"sampler":0,"target":{"node":0,"path":"rotation"}}]}],
+"accessors":[
+{"bufferView":0,"componentType":5126,"count":2,"type":"SCALAR","max":[1.0],"min":[0.0]},
+{"bufferView":1,"componentType":5126,"count":2,"type":"VEC4"}
+],
+"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":8},{"buffer":0,"byteOffset":8,"byteLength":32}],
+"buffers":[{"byteLength":40,"uri":"data:application/octet-stream;base64,AAAAAAAAgD8AAAAAAAAAAAAAAD/Xs10/AAAAAAAAAAAAAAA/17NdPw=="}]
+})";
+        engine::AnimationClipLibrary mirror_clips;
+        r.check(mirror_clips.load(mirror_src).has_value(),"sagittal fixture clip loads");
+        engine::ImportedSkin mirror_skin;
+        mirror_skin.joint_node_indices={0,1};
+        mirror_skin.joint_names={"RightUpperArm","LeftUpperArm"};
+        engine::ImportedJointRestLocal right_rest;right_rest.translation={0.37f,1.28f,0.0f};
+        engine::ImportedJointRestLocal left_rest;left_rest.translation={-0.37f,1.28f,0.0f};
+        mirror_skin.joint_rest_locals={right_rest,left_rest};
+        mirror_skin.inverse_bind_matrices.assign(2,{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1});
+        engine::AnimatorClipWeight mirror_weight;
+        mirror_weight.clip_source="assets/mirror-arm.gltf";mirror_weight.clip="Attack";
+        mirror_weight.weight=1.0f;mirror_weight.time_seconds=0.5f;
+        auto mirrored_poses=engine::sample_skinned_local_poses(mirror_skin,mirror_clips,root,{mirror_weight});
+        r.check(mirrored_poses&&mirrored_poses.value().size()==2,"sagittal sample returns one pose per joint");
+        if(mirrored_poses&&mirrored_poses.value().size()==2){
+            const auto& right=mirrored_poses.value()[0];
+            const auto& left=mirrored_poses.value()[1];
+            r.check(std::abs(left.rotation[2]+0.5f)<1e-3f&&std::abs(left.rotation[3]-0.8660254f)<1e-3f,
+                "clip keyed on RightUpperArm drives LeftUpperArm with reflected rotation");
+            r.check(std::abs(right.rotation[2])<1e-4f&&std::abs(right.rotation[3]-1.0f)<1e-4f,
+                "unkeyed sagittal counterpart keeps rest rotation");
+            r.check(std::abs(left.translation[0]+0.37f)<1e-4f&&std::abs(right.translation[0]-0.37f)<1e-4f,
+                "unkeyed translation channels keep each joint's own rest offset");
+        }
+
         const auto prefab=root/"assets/prefabs/campfire.prefab.json";std::filesystem::create_directories(prefab.parent_path());std::ofstream(prefab)<<R"({"schemaVersion":1,"mesh":"assets/models/campfire.gltf","light":{"color":[1.0,0.62,0.28],"radius":20.0,"strength":1.35,"offset":[0.0,0.35,0.0]},"entities":[]})";auto campfire=engine::PrefabAsset::load(prefab);r.check(campfire&&campfire.value().light.has_value()&&campfire.value().light->radius==20.0f,"prefab point light parsed");
         const auto compositional=root/"assets/prefabs/tree.prefab.json";std::ofstream(compositional)<<R"({"schemaVersion":2,"entities":[{"name":"Trunk","transform":{"position":[0,0,0],"rotation":[0,0,0,1],"scale":[1,2,1]},"parent":null,"mesh":{"primitive":"cylinder","color":[0.3,0.2,0.1]}},{"name":"Canopy","transform":{"position":[0,1.6,0],"rotation":[0,0,0,1],"scale":[1.2,0.8,1.2]},"parent":null,"mesh":{"primitive":"sphere","color":[0.1,0.2,0.1]}}]})";
         auto tree_prefab=engine::PrefabAsset::load(compositional);r.check(tree_prefab&&tree_prefab.value().is_compositional()&&tree_prefab.value().parts.size()==2,"compositional prefab parts parsed");
@@ -465,13 +535,16 @@ int main(int argc,char**argv){
         r.check(engine::material_supports_opaque_pbr_runtime(test_material),"opaque material supports PBR runtime");
         const auto pbr=engine::PbrSurfaceParams::from_material(test_material);
         r.check(pbr.roughness==0.25f&&pbr.metallic==0.8f&&pbr.emissive[0]==2.0f,"material PBR params resolve");
+        r.check(!pbr.alpha_clip,"opaque material disables alpha clip");
         const auto lit=engine::evaluate_pbr_light({0.2f,0.4f,0.6f},pbr,{0,1,0},{0,0,1},{0,1,0},{1,1,1});
         r.check(lit[0]>0.0f&&lit[1]>0.0f&&lit[2]>0.0f,"metallic PBR returns positive radiance under headlight");
         const auto rough_dielectric=engine::evaluate_pbr_light({0.5f,0.5f,0.5f},engine::PbrSurfaceParams::dielectric_default(),
             {0,1,0},{0,0,1},{0,1,0},{1,1,1});
         r.check(rough_dielectric[0]>0.0f,"dielectric rough PBR returns positive radiance");
-        test_material.opacity_mode=engine::OpacityMode::Masked;
-        r.check(!engine::material_supports_opaque_pbr_runtime(test_material),"masked material fails closed for PBR runtime");
+        test_material.opacity_mode=engine::OpacityMode::Masked;test_material.base_color[3]=1.0f;test_material.opacity_cutoff=0.4f;
+        r.check(engine::material_supports_opaque_pbr_runtime(test_material),"masked material draws through lit PBR path");
+        const auto masked_pbr=engine::PbrSurfaceParams::from_material(test_material);
+        r.check(masked_pbr.alpha_clip&&masked_pbr.opacity_cutoff==0.4f,"masked material enables alpha clip cutoff");
         test_material.opacity_mode=engine::OpacityMode::Blended;
         r.check(!engine::material_supports_opaque_pbr_runtime(test_material),"blended material fails closed for PBR runtime");
         test_material.opacity_mode=engine::OpacityMode::Opaque;
@@ -2812,6 +2885,16 @@ int main(int argc,char**argv){
             "image widget parses path");
         r.check(image_widget&&image_widget.value().widgets[0].image_mode==engine::HudImageMode::Contain,
             "imageMode contain parses");
+        const auto image_bind_widget=engine::HudAsset::parse(
+            R"({"schemaVersion":1,"id":"x","widgets":[{"id":"i","type":"image","size":[64,64],"imageBind":"slot.icon","imageMode":"contain"}]})",
+            "ok.hud.json");
+        r.check(image_bind_widget.has_value()&&image_bind_widget.value().widgets[0].image_bind=="slot.icon",
+            "imageBind parses");
+        const auto tooltip_widget=engine::HudAsset::parse(
+            R"({"schemaVersion":1,"id":"x","widgets":[{"id":"b","type":"button","size":[40,40],"bind":"a","tooltip":"Close"}]})",
+            "ok.hud.json");
+        r.check(tooltip_widget.has_value()&&tooltip_widget.value().widgets[0].tooltip=="Close",
+            "tooltip parses");
         {
             float x0=0,y0=0,x1=0,y1=0;
             engine::hud_image_fit_rect(0,0,100,50,200,100,engine::HudImageMode::Stretch,x0,y0,x1,y1);
@@ -2850,6 +2933,13 @@ int main(int argc,char**argv){
         r.check(has_objective,"player HUD includes quest objective widget");
         runtime.set_visible("player_health", false);
         r.check(!runtime.is_visible("player_health"),"hud_set_visible hides widget");
+        runtime.set_image("slot.icon", "assets/ui/icons/items/ashfell_arming_sword.png");
+        r.check(runtime.get_image("slot.icon")&&
+            *runtime.get_image("slot.icon")=="assets/ui/icons/items/ashfell_arming_sword.png",
+            "set_image stores path");
+        runtime.set_image("slot.icon", "");
+        r.check(runtime.get_image("slot.icon")&&runtime.get_image("slot.icon")->empty(),
+            "set_image empty clears path");
         engine::WorldUiBillboardRuntime billboards;
         billboards.sync_interact_prompt(true,"Press E to talk",1.0f,2.0f,3.0f);
         r.check(billboards.size()==1,"interact prompt upserts billboard");
@@ -3071,6 +3161,65 @@ int main(int argc,char**argv){
                     "mutate remove restores input count");
             }
         }
+    }else if(suite=="inventory"){
+        const auto project=std::filesystem::path(ENGINE_REPOSITORY_ROOT)/"samples"/"open-world-rpg";
+        const auto catalog=engine::load_project_item_catalog(project);
+        r.check(catalog.has_value(),"project item catalog loads");
+        r.check(catalog&&catalog.value().find("ashfell_arming_sword"),"catalog has ashfell_arming_sword");
+        r.check(catalog&&catalog.value().find("vein_iron_pendant"),"catalog has vein_iron_pendant");
+        r.check(catalog&&catalog.value().find("field_bandage"),"catalog has field_bandage");
+        engine::InventoryRuntime inv;
+        r.check(inv.bind(&catalog.value()).has_value(),"inventory binds catalog");
+        r.check(inv.grant("field_bandage",3).has_value(),"grant bandage stacks");
+        r.check(inv.grant("ashfell_arming_sword",1).has_value(),"grant starter sword");
+        r.check(!inv.grant("not_a_real_item",1),"unknown item id fail-closed");
+        r.check(inv.set_hotbar(0,"ashfell_arming_sword",1).has_value(),"set hotbar weapon");
+        r.check(inv.set_equip("trinket0","vein_iron_pendant",1).has_value(),"equip trinket");
+        r.check(inv.select_hotbar(0).has_value(),"select hotbar 0");
+        r.check(inv.active_hotbar_item().item_id=="ashfell_arming_sword","active hotbar is sword");
+        {
+            const engine::ItemDef* sword=catalog.value().find("ashfell_arming_sword");
+            r.check(sword&&!sword->world_mesh.empty(),"sword has worldMesh for hand attach");
+            r.check(sword&&sword->world_mesh.find("ashfell_arming_sword")!=std::string::npos,"sword worldMesh path");
+            bool one_handed=false,melee=false;
+            for(const auto& tag:sword->tags){if(tag=="one_handed")one_handed=true;if(tag=="melee")melee=true;}
+            r.check(one_handed&&melee,"sword tagged one_handed+melee");
+        }
+        r.check(inv.select_hotbar(1).has_value(),"select empty hotbar 1");
+        r.check(inv.active_hotbar_item().empty(),"empty hotbar clears active weapon");
+        r.check(inv.select_hotbar(0).has_value(),"reselect sword hotbar");
+        const auto snap=inv.status();
+        r.check(snap.selected_hotbar==0,"selectedHotbar tracks equip slot");
+        r.check(snap.hotbar.size()==8,"hotbar has 8 slots");
+        r.check(snap.bag.size()==20,"bag has 20 slots");
+        r.check(snap.equipped.trinkets[0].item_id=="vein_iron_pendant","trinket0 set");
+        bool bandage_in_bag=false;
+        for(const auto& stack:snap.bag){
+            if(stack.item_id=="field_bandage"&&stack.count==3) bandage_in_bag=true;
+        }
+        r.check(bandage_in_bag,"bandage stack held in bag");
+        r.check(inv.grant("crude_arrow",40).has_value(),"grant ammo");
+        r.check(!inv.status().ammo.empty()&&inv.status().ammo[0].item_id=="crude_arrow","ammo slot used");
+        r.check(inv.select_ui("bag",0).has_value(),"select bag slot");
+        (void)inv.equip_selected();
+        r.check(true,"equip_selected invoked without crash");
+        r.check(inv.grant("outrider_shortbow",1).has_value(),"grant shortbow for move");
+        int bow_bag=-1;
+        {
+            const auto after_grant=inv.status();
+            for(int i=0;i<static_cast<int>(after_grant.bag.size());++i){
+                if(after_grant.bag[static_cast<std::size_t>(i)].item_id=="outrider_shortbow"){
+                    bow_bag=i;
+                    break;
+                }
+            }
+        }
+        r.check(bow_bag>=0,"shortbow landed in bag");
+        r.check(inv.move_to("bag",bow_bag,{},"hotbar",1,{}).has_value(),"drag move bag→hotbar");
+        r.check(inv.status().hotbar[1].item_id=="outrider_shortbow","hotbar 1 holds shortbow after move");
+        r.check(inv.move_to("hotbar",1,{},"bag",-1,{}).has_value(),"drag move hotbar→bag");
+        r.check(inv.move_to("equip",-1,"trinket0","bag",-1,{}).has_value(),"move trinket to bag");
+        r.check(inv.status().equipped.trinkets[0].empty(),"trinket0 empty after move");
     }else if(suite=="automation"){
         const auto project=std::filesystem::path(ENGINE_REPOSITORY_ROOT)/"samples"/"open-world-rpg";
         const auto plan=engine::classify_scene_plan("place a tree in the scene","worlds/vertical-slice.world.json");
@@ -4073,6 +4222,77 @@ end
         r.check(preview&&preview.value().ok&&preview.value().final_state=="attack",
             "animation preview CLI helper reaches attack state");
 
+        // Bone welds (Motor6D-style item attach): euler convention, socket chain, and inverse solve.
+        {
+            const auto quat_close=[](const std::array<float,4>& a,const std::array<float,4>& b,float tol){
+                const float dot=a[0]*b[0]+a[1]*b[1]+a[2]*b[2]+a[3]*b[3];
+                return std::abs(std::abs(dot)-1.0f)<tol;
+            };
+            const std::array<std::array<float,3>,6> euler_cases{{
+                {0.0f,0.0f,0.0f},{-90.0f,0.0f,0.0f},{0.0f,0.0f,90.0f},
+                {30.0f,-45.0f,120.0f},{12.5f,175.0f,-33.0f},{89.0f,10.0f,-10.0f}}};
+            bool euler_round_trips=true;
+            for(const auto& euler:euler_cases){
+                const auto q=engine::quaternion_from_euler_deg(euler);
+                const auto back=engine::euler_deg_from_quaternion(q);
+                if(!quat_close(q,engine::quaternion_from_euler_deg(back),1e-4f)) euler_round_trips=false;
+            }
+            r.check(euler_round_trips,"weld euler <-> quaternion round trips for every axis order");
+            const auto gimbal=engine::euler_deg_from_quaternion(engine::quaternion_from_euler_deg({90.0f,20.0f,40.0f}));
+            r.check(quat_close(engine::quaternion_from_euler_deg(gimbal),
+                engine::quaternion_from_euler_deg({90.0f,20.0f,40.0f}),1e-3f),
+                "weld euler survives gimbal lock at pitch 90");
+
+            // Joint one metre up in a character drawn at 0.655 scale two metres out on +X.
+            engine::BoneSocketChain chain;
+            chain.owner_world.position={2.0f,0.0f,0.0f};
+            chain.visual_local.scale={0.655f,0.655f,0.655f};
+            chain.joint_model={1,0,0,0, 0,1,0,0, 0,0,1,0, 0,1,0,1};
+            const auto socket=engine::bone_socket_world(chain);
+            r.check(std::abs(socket.position[0]-2.0f)<1e-4f&&std::abs(socket.position[1]-0.655f)<1e-4f,
+                "socket world applies the skinned mesh part scale to the joint");
+            r.check(std::abs(socket.scale[0]-0.655f)<1e-4f,"socket world carries the character scale");
+
+            engine::BoneWeld weld;
+            weld.joint="RightHand";
+            weld.offset={0.0f,0.5f,0.0f};
+            weld.euler_deg={-90.0f,0.0f,0.0f};
+            const auto welded=engine::weld_world_transform(socket,weld);
+            r.check(std::abs(welded.position[1]-(0.655f+0.5f*0.655f))<1e-4f,
+                "weld offset is scaled by the socket, not applied in raw world metres");
+
+            const auto solved=engine::weld_from_world_transform(socket,welded,weld.joint);
+            const bool offset_recovered=std::abs(solved.offset[0]-weld.offset[0])<1e-3f&&
+                std::abs(solved.offset[1]-weld.offset[1])<1e-3f&&std::abs(solved.offset[2]-weld.offset[2])<1e-3f;
+            r.check(offset_recovered,"weld inverse solve recovers the authored offset");
+            r.check(quat_close(engine::quaternion_from_euler_deg(solved.euler_deg),
+                engine::quaternion_from_euler_deg(weld.euler_deg),1e-3f),
+                "weld inverse solve recovers the authored rotation");
+            const auto resolved_again=engine::weld_world_transform(socket,solved);
+            r.check(std::abs(resolved_again.position[1]-welded.position[1])<1e-3f,
+                "gizmo write-back round trip holds the mesh in place");
+
+            // A joint matrix must not lose its translation on the way into a TransformComponent.
+            const std::array<float,16> joint_matrix{1,0,0,0, 0,1,0,0, 0,0,1,0, 0.25f,1.5f,-0.75f,1};
+            const auto joint_transform=engine::transform_from_column_major(joint_matrix);
+            r.check(std::abs(joint_transform.position[0]-0.25f)<1e-5f&&
+                std::abs(joint_transform.position[1]-1.5f)<1e-5f&&
+                std::abs(joint_transform.position[2]+0.75f)<1e-5f,
+                "column-major joint matrix keeps its translation");
+
+            auto catalog=engine::ItemCatalogAsset::parse(R"({"schemaVersion":1,"entities":[
+{"id":"welded_blade","kind":"weapon","worldMesh":"assets/models/blade.gltf",
+ "handAttach":{"joint":"RightHand","gripOffset":[0.1,-0.2,0.3],"gripEulerDeg":[-90,0,0],"gripScale":[0.5,0.5,0.5]}},
+{"id":"unwelded_blade","kind":"weapon","worldMesh":"assets/models/blade.gltf"}]})","welds");
+            r.check(catalog.has_value(),"item catalog with gripScale parses");
+            if(catalog){
+                const auto* welded_def=catalog.value().find("welded_blade");
+                r.check(welded_def&&welded_def->hand_attach.grip_scale[0]==0.5f,"gripScale round trips from item JSON");
+                const auto* plain=catalog.value().find("unwelded_blade");
+                r.check(plain&&plain->hand_attach.grip_scale[0]==1.0f,"missing gripScale defaults to 1");
+            }
+        }
+
         std::filesystem::remove_all(root);
     }else if(suite=="audio"){
         const auto root=std::filesystem::temp_directory_path()/("engine-audio-suite-"+engine::make_correlation_id());
@@ -4132,6 +4352,9 @@ end
         std::filesystem::remove_all(root);
     }else if(suite=="particles"){
         using engine::ParticleEmitterAsset;
+        using engine::ParticleFlipbookLayout;
+        using engine::ParticleFlipbookMode;
+        using engine::ParticleOrientation;
         using engine::ParticleSystem;
         using engine::PrefabAsset;
         using engine::PrefabParticleEmitter;
@@ -4169,6 +4392,39 @@ end
 
         const auto bad = ParticleEmitterAsset::parse(R"({"schemaVersion":2,"id":"x"})");
         r.check(!bad && bad.error().code == "PARTICLE-SCHEMA", "unsupported schema fails closed");
+
+        const auto bad_tex = ParticleEmitterAsset::parse(
+            R"({"schemaVersion":1,"id":"x","texture":"../secret.png","rate":1,"maxParticles":4})");
+        r.check(!bad_tex && bad_tex.error().code == "PARTICLE-TEXTURE-PATH-INVALID",
+            "particle texture path traversal fails closed");
+
+        const auto project = std::filesystem::path(ENGINE_REPOSITORY_ROOT) / "samples/open-world-rpg";
+        const auto hit = ParticleEmitterAsset::load(project / "assets/vfx/hit_spark.particle.json");
+        r.check(hit.has_value(), "hit_spark recipe sample loads");
+        if (hit) {
+            r.check(hit.value().validate_texture(project).has_value(), "hit_spark texture exists");
+        }
+        const auto dodge_dust = ParticleEmitterAsset::load(project / "assets/vfx/dodge_dust.particle.json");
+        r.check(dodge_dust.has_value(), "dodge_dust recipe sample loads");
+        if (dodge_dust) {
+            r.check(dodge_dust.value().id == "dodge_dust", "dodge_dust particle id");
+            r.check(dodge_dust.value().validate_texture(project).has_value(), "dodge_dust texture exists");
+            r.check(dodge_dust.value().orientation == ParticleOrientation::VelocityParallel,
+                "dodge_dust uses VelocityParallel streaks");
+        }
+        const auto aura = ParticleEmitterAsset::load(project / "assets/vfx/corrupt_aura.particle.json");
+        r.check(aura.has_value(), "corrupt_aura recipe sample loads");
+        if (aura) {
+            r.check(aura.value().validate_texture(project).has_value(), "corrupt_aura texture exists");
+        }
+        const auto missing_tex = ParticleEmitterAsset::parse(
+            R"({"schemaVersion":1,"id":"x","texture":"assets/vfx/does_not_exist.png","rate":1,"maxParticles":4})");
+        r.check(missing_tex.has_value(), "missing texture still parses without project root");
+        if (missing_tex) {
+            const auto missing = missing_tex.value().validate_texture(project);
+            r.check(!missing && missing.error().code == "PARTICLE-TEXTURE-MISSING",
+                "missing particle texture fails closed with project root");
+        }
 
         const auto sample = ParticleEmitterAsset::load(
             std::filesystem::path(ENGINE_REPOSITORY_ROOT) / "samples/open-world-rpg/assets/vfx/campfire_flame.particle.json");
@@ -4251,7 +4507,9 @@ end
             r.check(list.size() >= 3, "campfire has layered flame/embers/smoke emitters");
             bool has_flame = false;
             for (const auto& emitter : list) {
-                if (emitter.asset.find("campfire_flame.particle.json") != std::string::npos) has_flame = true;
+                if (emitter.asset.find("campfire_flame.particle.json") != std::string::npos ||
+                    emitter.asset.find("stylized_flame_molten.particle.json") != std::string::npos)
+                    has_flame = true;
             }
             r.check(has_flame, "campfire particle path points at flame asset");
         }
@@ -4330,29 +4588,67 @@ end
         system.debug_burst(8);
         r.check(system.active_particle_count() >= 8, "debug burst emits particles");
 
+        // Gameplay one-shot burst: survives sync_placements and reports active particles.
+        {
+            ParticleSystem burst_sys;
+            burst_sys.set_seed(99);
+            if (sample) burst_sys.register_asset("assets/vfx/campfire_flame.particle.json", sample.value());
+            const bool spawned = burst_sys.spawn_burst("assets/vfx/campfire_flame.particle.json",
+                {1.0f, 0.5f, -2.0f}, 12, std::array<float, 3>{-1.0f, 0.1f, 0.0f});
+            r.check(spawned, "spawn_burst succeeds for registered asset");
+            r.check(burst_sys.active_particle_count() >= 12, "spawn_burst emits requested count");
+            r.check(burst_sys.emitter_count() >= 1, "spawn_burst creates a transient emitter");
+            PrefabAsset empty_prefab;
+            empty_prefab.schema_version = 2;
+            std::map<std::string, PrefabAsset> empty_catalog;
+            empty_catalog["assets/prefabs/test/empty.prefab.json"] = empty_prefab;
+            burst_sys.sync_placements(empty_catalog, {});
+            r.check(burst_sys.emitter_count() >= 1, "spawn_burst emitter survives sync_placements");
+            r.check(burst_sys.active_particle_count() >= 12, "burst particles survive sync_placements");
+            for (int i = 0; i < 90; ++i) burst_sys.update(1.0f / 30.0f, {0.0f, 1.0f, 0.0f});
+            r.check(burst_sys.emitter_count() == 0, "finished burst emitters are culled");
+            r.check(!burst_sys.spawn_burst("assets/vfx/missing.particle.json", {0, 0, 0}, 4),
+                "spawn_burst fails closed for missing asset");
+            r.check(!burst_sys.spawn_burst("assets/vfx/campfire_flame.particle.json", {0, 0, 0}, 0),
+                "spawn_burst rejects zero count");
+        }
+
         const auto wind_asset = ParticleEmitterAsset::load(
             std::filesystem::path(ENGINE_REPOSITORY_ROOT) / "samples/open-world-rpg/assets/vfx/wind_trail.particle.json");
         r.check(wind_asset.has_value(), "wind_trail particle asset loads");
         if (wind_asset) {
             r.check(wind_asset.value().id == "wind_trail", "wind_trail particle id");
             r.check(!wind_asset.value().texture.empty(), "wind_trail references streak texture");
+            r.check(wind_asset.value().orientation == ParticleOrientation::VelocityParallel,
+                "wind_trail uses VelocityParallel");
+            r.check(wind_asset.value().aspect_ratio > 1.0f, "wind_trail aspectRatio elongates streak");
+            r.check(!wind_asset.value().rotation_start_random, "wind_trail disables random roll");
+            r.check(wind_asset.value().flipbook_layout == ParticleFlipbookLayout::Grid4x4,
+                "wind_trail uses morphing flipbook");
+            r.check(wind_asset.value().flipbook_mode == ParticleFlipbookMode::Loop,
+                "wind_trail flipbook loops");
             r.check(std::filesystem::exists(std::filesystem::path(ENGINE_REPOSITORY_ROOT) /
                         "samples/open-world-rpg" / wind_asset.value().texture),
-                "wind_streak.png exists");
+                "wind streak flipbook exists");
             system.register_asset("assets/vfx/wind_trail.particle.json", wind_asset.value());
             system.set_ambient_wind(true, "assets/vfx/wind_trail.particle.json", {0.0f, 1.0f, 0.0f},
-                {1.0f, 0.0f, 0.2f}, 1.0f);
+                {1.0f, 0.0f, 0.2f}, 1.0f, 0.85f, 5.0f);
             r.check(system.ambient_wind_enabled(), "ambient wind emitter enabled");
             r.check(system.emitter_count() == 2, "ambient wind preserved with prefab emitter");
             for (int i = 0; i < 45; ++i) system.update(1.0f / 60.0f, {0.0f, 1.0f, 0.0f});
             bool has_textured = false;
+            bool has_wind_aspect = false;
+            bool has_wind_flip = false;
             for (const auto& draw : system.draw_instances()) {
                 if (draw.texture_index != 0) {
                     has_textured = true;
-                    break;
+                    if (draw.aspect > 1.0f) has_wind_aspect = true;
+                    if (draw.uv_scale_u < 0.99f) has_wind_flip = true;
                 }
             }
             r.check(has_textured, "ambient wind particles use texture index");
+            r.check(has_wind_aspect, "ambient wind draw instances carry aspectRatio");
+            r.check(has_wind_flip, "ambient wind particles animate flipbook UVs");
         }
     }else if(suite=="game_session"){
         engine::QuestRuntime quests;

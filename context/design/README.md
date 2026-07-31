@@ -6,14 +6,21 @@ Working design surfaces for humans (especially Dom + owner). Not runtime contrac
 
 | Tab | Purpose |
 | --- | --- |
-| [Dom Open Questions](dom-open-questions.md) | Prioritized P0/P1/P2 lore & geography questions Dom still needs to answer |
+| [Dom Open Questions](dom-open-questions.md) | Prioritized P0/P1/P2 lore & geography leftovers — Act 0 Landfall mostly answered 2026-07-29; Act 1 coastal next |
 | [Dom Answered Questions](dom-answered-questions.md) | Archive of Dom + owner locks (do not re-litigate) |
 | [World Forge Map Canvas](world-forge-map-canvas.pen) | Pencil map-canvas layout exploration |
 | [RPG Engine UI](rpg-engine-ui.pen) | Pencil exploration of full editor shell + player HUD/modals (World Forge chrome language) |
 | [Dialogue UI](dialogue-ui.pen) | Pencil: line/choices/prompt + research pass (AA chips, keys, portrait, prompt strip, history/Esc, settings) |
+| [Quest UI](quest-ui.pen) | Pencil: quest flow + minimap/full-map navigation · [DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux) |
+| [Inventory UI](inventory-ui.pen) | Pencil: bag / equip / hotbar / quest bag / camp chest · [DEC-0050](../decisions/index.md#dec-0050-inventory-ux-item-kinds-and-positive-soft-affinity) · REVIEW draft |
+| [Quest assets](quest-assets/) | Transparent quest markers (`?`/`!`, pins, minimap dots, offscreen chevron) → `assets/ui/quest/` |
+| [Quest UI recording](recording_quest_ui_progression_2026-07-29.md) | 2026-07-29 Dom+John: journal kinds draft, accept UX |
+| [Power progression recording](recording_archetype_quests_power_progression_2026-07-29.md) | 2026-07-29: locks → DEC-0051 |
 | [Player HUD](player-hud.pen) | Pencil: Dragon Age–inspired combat HUD + asset board (vector chrome) |
+| [Act 0 Menu / Creation](act0-menu-creation-ui.pen) | Pencil v3.2: zoned canvas (**APPROVED** / **REVIEW** / **REFERENCE** / **LEGACY**) · color sticker sheet · main menu · cinematic prologue · cathedral class glass · landscape difficulty glass · appearance + medallion · Settings |
 | [HUD assets](hud-assets/) | Concept PNGs for combat HUD chrome |
 | [Dialogue assets](dialogue-assets/) | Concept PNGs for dialogue chrome (same UI language) |
+| [Menu assets](menu-assets/) | Concept PNGs for main menu / creation chrome + transparent title logo |
 
 Shown in the engine **Design Docs** viewport tab (section `design`) alongside features/story/art markdown. Open **Dom Open Questions** and use the **Form** radio to answer + Submit (writes the markdown). Markdown preview supports horizontal scroll for wide tables.
 

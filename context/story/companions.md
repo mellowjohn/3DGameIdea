@@ -30,6 +30,7 @@ Imported spine: [`sources/wrathful-conquest-act0.twee`](sources/wrathful-conques
 - Player finds him trapped under a wheelbarrow on the approach to Calrenoth; he introduces himself as Knight of Tessera, King’s Guard.
 - First-impression branches color his attitude (eager help / rude focus on the keep / combat bravado).
 - He vouches for the player to **Commander Grenge**, escorts the rear-drawbridge mission with **Sergeant Larrell**, and remains the primary companion through the Creotar vision handoff.
+- **Post–Act 0 camp (D-P1-19):** Arkand is the **tutorial guide** — storage chest, rest for HP, travel from camp — in lore-friendly lines. Companions with pending beats show talk flags; player chooses who to speak to.
 - Grenge jokes about Arkand getting stuck under carts again — seeds SQ-01 “Cart Again” banter later.
 
 Canon status for these beats: **draft** until beat-sheet review.

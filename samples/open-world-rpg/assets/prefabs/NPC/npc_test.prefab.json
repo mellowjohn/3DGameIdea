@@ -1,25 +1,12 @@
-{
+﻿{
   "schemaVersion": 2,
   "entities": [
     {
       "name": "Body",
       "transform": {
-        "position": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "rotation": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
-        ],
-        "scale": [
-          0.655,
-          0.655,
-          0.655
-        ]
+        "position": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0, 1.0],
+        "scale": [0.655, 0.655, 0.655]
       },
       "parent": null,
       "mesh": {
@@ -28,6 +15,14 @@
     }
   ],
   "components": [
+    {
+      "id": "animator-0",
+      "type": "animator",
+      "data": {
+        "controller": "assets/animators/player.animator.json",
+        "defaultState": "idle"
+      }
+    },
     {
       "id": "collision-0",
       "type": "collider",
@@ -38,22 +33,9 @@
         "radius": 0.3,
         "halfHeight": 0.6,
         "transform": {
-          "position": [
-            0.0,
-            0.9,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "scale": [
-            1.0,
-            1.0,
-            1.0
-          ]
+          "position": [0.0, 0.9, 0.0],
+          "rotation": [0.0, 0.0, 0.0, 1.0],
+          "scale": [1.0, 1.0, 1.0]
         }
       }
     },
@@ -67,22 +49,9 @@
         "radius": 1.6,
         "interaction": "talk_sandbox",
         "transform": {
-          "position": [
-            0.0,
-            0.9,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "scale": [
-            1.0,
-            1.0,
-            1.0
-          ]
+          "position": [0.0, 0.9, 0.0],
+          "rotation": [0.0, 0.0, 0.0, 1.0],
+          "scale": [1.0, 1.0, 1.0]
         }
       }
     }

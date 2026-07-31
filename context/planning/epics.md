@@ -111,17 +111,23 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 ## EPIC-0005: Materials, shaders, and post-process
 
 - Status: ready
-- Goal: Shader/material authoring path and post-process effects (including ambient occlusion).
+- Goal: Shader/material authoring path and post-process effects (including ambient occlusion). Prefer **code-first master shaders + JSON params** for MCP/agent authorship ([DEC-0049](../decisions/index.md#dec-0049-agent-writable-material-shader-profiles)); no Unity-style shader graph investment.
 - Roadmap home: extends active material assets; visual polish toward M8/M11.
-- Priority guidance: **P0 owner override 2026-07-17:** TICKET-0191 (glTF UV/albedo). **P1 owner override 2026-07-23:** TICKET-0219 (CSM shadows) on quality/perf track. Otherwise P2 — not ahead of M5 P0 (TICKET-0102).
+- Priority guidance: **P0 owner override 2026-07-17:** TICKET-0191 (glTF UV/albedo). **P1 owner override 2026-07-23:** TICKET-0219 (CSM shadows) on quality/perf track. **P2 owner override 2026-07-28:** TICKET-0238–0241 agent material/VFX path. Otherwise P2 — not ahead of M5 P0 (TICKET-0102).
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
 | TICKET-0040 | Dynamic material / PBR rendering slice | done | P2 | Opaque PBR shipped (owner approved); [`tickets/TICKET-0040.md`](tickets/TICKET-0040.md) |
-| TICKET-0041 | Shader authoring strategy (graphs vs code-first) | proposed | P2 | Decision interview before large investment |
+| TICKET-0041 | Shader authoring strategy (graphs vs code-first) | needs-approval | P2 | DEC-0049: masters + JSON, not graphs; [`tickets/TICKET-0041.md`](tickets/TICKET-0041.md) |
 | TICKET-0042 | Post-process stack with ambient occlusion | done | P2 | SSAO v1 shipped (owner approved); [`tickets/TICKET-0042.md`](tickets/TICKET-0042.md) |
 | TICKET-0191 | glTF mesh UV + albedo texture import/render | needs-approval | P0 | Owner override; sample `baseColorTexture` for player mesh; [`tickets/TICKET-0191.md`](tickets/TICKET-0191.md) |
 | TICKET-0219 | Cascaded directional sun shadows (CSM v1) | needs-approval | P1 | Outdoor CSM landed; [`tickets/TICKET-0219.md`](tickets/TICKET-0219.md); [`../features/csm-shadows.md`](../features/csm-shadows.md) |
+| TICKET-0238 | Material shader profiles + emissive pulse | needs-approval | P2 | `shader` enum + pulse params; MCP JSON; [`tickets/TICKET-0238.md`](tickets/TICKET-0238.md) |
+| TICKET-0239 | Masked cutout material draw path | needs-approval | P2 | Alpha clip on masked; [`tickets/TICKET-0239.md`](tickets/TICKET-0239.md) |
+| TICKET-0240 | Material texture slots (albedo/emissive maps) | needs-approval | P2 | Authored `.material.json` map paths; [`tickets/TICKET-0240.md`](tickets/TICKET-0240.md) |
+| TICKET-0241 | Particle MCP apply + VFX recipes | needs-approval | P2 | `engine_asset_apply` particles + recipe catalog; [`tickets/TICKET-0241.md`](tickets/TICKET-0241.md) |
+| TICKET-0242 | Bloom post-process (emissive glow) | needs-approval | P2 | Soft glow for fire cores; [`tickets/TICKET-0242.md`](tickets/TICKET-0242.md) |
+| TICKET-0243 | Stylized flame VFX goal (mesh + particle) | needs-approval | P2 | Hero prefab + recipes; [`tickets/TICKET-0243.md`](tickets/TICKET-0243.md); [`../art/stylized-flame-goal.md`](../art/stylized-flame-goal.md) |
 
 ## EPIC-0016: Water and hydrology
 
@@ -228,10 +234,11 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 - Status: proposed
 - Goal: Finish M10 specialized tools beyond the active editor MVP slice.
 - Roadmap home: **M10**.
-- Priority guidance: **TICKET-0135 (P2, ready)** animation tools panel after M5 exit owner approval. TICKET-0147–0151 + 0182 in needs-approval (desktop QA). Other children P3 until M10 pull-forward.
+- Priority guidance: **Owner override 2026-07-31:** **TICKET-0245 (P0, active)** universal asset bake (editor/MCP/CLI + verify gates). **TICKET-0135 (P2, ready)** animation tools panel after M5 exit owner approval. TICKET-0147–0151 + 0182 in needs-approval (desktop QA). Other children P3 until M10 pull-forward.
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
+| TICKET-0245 | Universal Asset Bake (Editor + MCP + CLI) | needs-approval | P0 | Owner override; named bake + fail-closed verify; GoodPlayerModel ingest; [`tickets/TICKET-0245.md`](tickets/TICKET-0245.md) |
 | TICKET-0182 | Editor Design Docs tab (read-only context MD) | needs-approval | P0 | Owner override; Viewports **Design Docs**; [`tickets/TICKET-0182.md`](tickets/TICKET-0182.md) |
 | TICKET-0131 | Imported mesh thumbnails | proposed | P3 | |
 | TICKET-0132 | Viewport gizmos for prefab part editing | proposed | P3 | |
@@ -247,6 +254,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0150 | Viewport green collider overlays (box/sphere) | needs-approval | P2 | Implemented; awaiting owner approval; [`tickets/TICKET-0150.md`](tickets/TICKET-0150.md) |
 | TICKET-0151 | Expose existing prefab colliders as entity components | needs-approval | P2 | Implemented; awaiting owner approval; [`tickets/TICKET-0151.md`](tickets/TICKET-0151.md) |
 | TICKET-0209 | Editor + player UI Pencil chrome from rpg-engine-ui.pen | needs-approval | P2 | Shared ImGui chrome + header; parchment HUD/modals; [`tickets/TICKET-0209.md`](tickets/TICKET-0209.md); [`../design/rpg-engine-ui.pen`](../design/rpg-engine-ui.pen) |
+| TICKET-0244 | MCP Scene camera + play-test session tools | needs-approval | P1 | `engine_editor_camera` + `engine_editor_session`; article framing; [`tickets/TICKET-0244.md`](tickets/TICKET-0244.md) |
 
 ## EPIC-0010: Particles and visual effects
 
@@ -387,18 +395,19 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 - Status: ready
 - Goal: Ship item-driven gear depth (soft archetype affinity, act-tier + obscure rares, acquisition loops) on a Souls-lite three-chain combat baseline per [DEC-0048](../decisions/index.md#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity); seed Thrator Act 1–2 easter-egg warlord content.
 - Roadmap home: **M6–M9** RPG systems + combat slice (design first; runtime after inventory / melee foundations).
-- Priority guidance: **P3** for runtime children until inventory (TICKET-0111) and combat slice (EPIC-0011) move; **TICKET-0231** design lock is **needs-approval**. **TICKET-0237** Act 0 loot slice is **P2 ready** (thin inventory + Landfall finds). Story Thrator stub may proceed as docs without runtime mounts.
+- Priority guidance: **Owner override 2026-07-31:** **TICKET-0246 (P1, needs-approval)** — held-item weld + inspector gizmo correctness, reported broken from a live session. Otherwise **P3** for runtime children until inventory (TICKET-0111) and combat slice (EPIC-0011) move; **TICKET-0231** design lock is **needs-approval**. **TICKET-0237** Act 0 loot slice is **P2 ready** (thin inventory + Landfall finds). Story Thrator stub may proceed as docs without runtime mounts.
 - Scope boundary: [`../features/gearing-system.md`](../features/gearing-system.md); soft-extends DEC-0032 mounts when glad mount ships.
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
 | TICKET-0231 | Gearing design + DEC-0048 recorded | needs-approval | P2 | Feature note + decision + epic seed; [`tickets/TICKET-0231.md`](tickets/TICKET-0231.md) |
-| TICKET-0232 | Item equip model + soft lane multipliers | proposed | P3 | Extends TICKET-0111; no hard class locks; [`tickets/TICKET-0232.md`](tickets/TICKET-0232.md) |
+| TICKET-0232 | Item equip model + soft lane multipliers | proposed | P3 | Extends TICKET-0111; **positive** affinity ([DEC-0050](../decisions/index.md#dec-0050-inventory-ux-item-kinds-and-positive-soft-affinity)); hotbar 8 + 4 trinkets; [`tickets/TICKET-0232.md`](tickets/TICKET-0232.md) |
 | TICKET-0233 | Three weapon chains + universal ability use | proposed | P3 | Souls-lite action; ability caveats OK; aligns EPIC-0011; [`tickets/TICKET-0233.md`](tickets/TICKET-0233.md) |
 | TICKET-0234 | Act-tier loot + obscure rare chase schema | proposed | P3 | Power bands + hard-to-find OP rares; [`tickets/TICKET-0234.md`](tickets/TICKET-0234.md) |
 | TICKET-0235 | Mining/materials stub (craft loop later) | proposed | P3 | Ores/crystals materials only in v1; [`tickets/TICKET-0235.md`](tickets/TICKET-0235.md) |
 | TICKET-0236 | Thrator warlord SQ-13 + glad mount reward draft | ready | P3 | Act 1–2 easter egg; Orgrimmar-flavored; [`tickets/TICKET-0236.md`](tickets/TICKET-0236.md) |
-| TICKET-0237 | Act 0 Landfall loot slice (thin inventory + finds) | ready | P2 | ~4–8 items on siege→camp path; MVP readiness `coding_inventory_thin_act0` / `gameplay_act0_loot_slice`; [`tickets/TICKET-0237.md`](tickets/TICKET-0237.md) |
+| TICKET-0237 | Act 0 Landfall loot slice (thin inventory + finds) | needs-approval | P2 | Thin InventoryRuntime + pen inventory UI + loot grants; suites hud/inventory green; [`tickets/TICKET-0237.md`](tickets/TICKET-0237.md) |
+| TICKET-0246 | Bone weld toolset for held item attach | needs-approval | P1 | Owner report: gizmo + hand weld broken; `engine::BoneWeld` API, socket chain fix, weld gizmo (move/rotate/scale + snap); [`tickets/TICKET-0246.md`](tickets/TICKET-0246.md) |
 
 ## Suggested work order
 
@@ -407,4 +416,4 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 3. **Owner — batch when at desktop:** ~65 other `needs-approval` tickets (World Forge, UI, rigidbody, quest/dialogue, 0191/0182). Drag to `done` or request rework.
 4. **Hold new work until approval backlog thins:** World Forge UI/cartography, UI canvas, water (0200–0204), rigidbody chain extensions, dialogue phase 2+ (0169–0179).
 5. **P3 until M5 exit + owner sign-off:** M6–M11 runtime, mini-map, combat slice, particles, ship gate.
-6. **Decision gate (no code yet):** TICKET-0041 shader authoring strategy interview before large shader-graph investment.
+6. **Owner override — agent look authorship:** **TICKET-0238–0243** (needs-approval): materials → particles → bloom → stylized flame hero.

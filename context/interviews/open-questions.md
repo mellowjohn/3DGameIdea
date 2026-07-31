@@ -20,31 +20,31 @@ These do not block starting v2 compositional prefab work under [DEC-0008](../dec
 
 Filed from TICKET-0021 review. Full gap list: [`context/story/factions.md`](../story/factions.md#gaps-blocking-world-forge-schema-ticket-0011-and-mid-campaign-beats). Do not invent answers in schema or beat docs.
 
-- ~~Luceran–Frangitur–Shroud: what grants Chaotic Imperium command, and how much agency Luceran retains?~~ — **draft lock 2026-07-22:** Frangitur trapped in Shroud; Luceran commands binding; Act 3 “free Creotar” frees Frangitur.
-- Cristallo: ~~faith, hierarchy, politics~~ — **partial lock 2026-07-22** (Old/New Testament split, White Lotus, crystal cleanses Nefarium). Still open: hierarchy titles, crystal name/location, puppet sub-faction name.
-- Arrotrebae: ~~council structure~~ (**draft lock:** tribal-leaders council, rite-passed seats only). ~~Decision rules~~ **locked 2026-07-22:** majority consensus + champion duel. Still open: council seat roster; Luceran-lost tribe **names**. **The Thalassar** (`thalassar`) locked — not Luceran-fallen; **Underflow** Luceran-influenced.
+- ~~Luceran–Frangitur–Shroud: what grants Chaotic Imperium command, and how much agency Luceran retains?~~ — **draft lock 2026-07-22 / 07-29:** Frangitur trapped in Shroud; Luceran commands binding; Shroud = prison + Imperium mantle; Act 3 “free Creotar” frees Frangitur; Creotar Act 0 guidance **partially true**.
+- Cristallo: ~~faith, hierarchy, politics~~ — **partial lock 2026-07-22** (Old/New Testament split, White Lotus, **Claritas** cleanses Nefarium). Still open: hierarchy titles, Claritas court map pin, puppet sub-faction name.
+- Arrotrebae: ~~council structure~~ (**draft lock:** tribal-leaders council, rite-passed seats only). ~~Decision rules~~ **locked 2026-07-22:** majority consensus + champion duel. Still open: council seat roster; Luceran-lost tribe **names**. **The Thalassar** (`thalassar`) locked — not Luceran-fallen; **Underflow** Luceran-influenced **coerced ally**.
 - **The Thalassar (locked 2026-07-20):** succession shape + powers locked; council seat vs others open. Liturgy mask **Muirthalia**. Minor relic **Anál Muir** (`anal_muir`). False patron **The Sea of Whispers** — [`factions.md`](../story/factions.md#the-sea-of-whispers).
-- **The Underflow (locked 2026-07-20):** Act 0 inland orc warband (`underflow`); liturgy mask **Grakk-Maren**; war-chief **Drul’gath** (`drul_gath`); A1 usurper path draft — [`factions.md`](../story/factions.md#the-underflow).
+- **The Underflow (locked 2026-07-20):** Act 0 inland orc warband (`underflow`); liturgy mask **Grakk-Maren**; war-chief **Drul’gath** (`drul_gath`); A1 usurper path draft; Act 0 stance **coerced ally** (D-P0-14) — [`factions.md`](../story/factions.md#the-underflow).
 - ~~Calrenoth pair public liturgy names (D-P0-04)~~ — **locked:** **Muirthalia** / **Grakk-Maren**.
 - ~~**Neutral coastal trade port display name**~~ — **Ledgeport** (`ledgeport`) **confirmed**. ~~Ferry wiring to Cristallo~~ **yes** to **Porto Lucente** (`porto_lucente`) U-bay (2026-07-22); world coords (D-P2-08).
 - ~~Exact placement evergreen wake vs Ledgeport vs Calrenoth (D-P0-05)~~ — Calrenoth keep; evergreen wake **deprecated** as competing Act 1 geography; focus = **Ledgeport**. ~~DEC-0032 wake/camp~~ → **DA campsite post–Act 0** locked (D-P0-10, 2026-07-22).
-- **Relic hierarchy (draft):** minor tribal relics ≪ Nefarium Shroud confirmed for **Anál Muir**; Cristallo Creator crystal **cleanses Nefarium** (White Lotus guardians) — name/location open.
-- Orc warbands: ~~which warband held the Nefarium Shroud~~ — **The Black Howl** (first war); **Grul’thaz** prior bearer (2026-07-22). **The Underflow** = Act 0 minor warband + Luceran-influenced.
+- **Relic hierarchy (draft):** minor tribal relics ≪ Nefarium Shroud confirmed for **Anál Muir**; Cristallo Creator crystal **Claritas** **cleanses Nefarium** (White Lotus; staff-borne by Cristallo leader) — court map pin open.
+- Orc warbands: ~~which warband held the Nefarium Shroud~~ — **The Black Howl** (first war); **Grul’thaz** prior bearer (2026-07-22). **The Underflow** = Act 0 minor warband + Luceran-influenced coerced ally.
 - Player influence: **model** resolved as [DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer). **Numeric thresholds** remain open.
 - Kingdom of Tessera: playable faction choice vs political arena around other factions?
 - ~~Campaign structure~~ — **resolved** [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances).
-- **Faction theaters / Act 0–1 geography (draft 2026-07-20):** Cristallo = central island; Tessera = west; Imperium = south; Calrenoth tip **confirmed**; Act 0 **Landfall**; **The Thalassar** + **The Underflow**; Act 1 hub **Ledgeport** (focus region). Exact coordinates, borders, 4×4 km footprint still open — [`official-world-map.md`](../story/official-world-map.md#draft-faction-theaters-2026-07-20).
+- **Faction theaters / Act 0–1 geography (draft 2026-07-20):** Cristallo = central island; Tessera = west; Imperium = south; Calrenoth tip **confirmed**; Act 0 **Landfall** (**final** title); **The Thalassar** + **The Underflow**; Act 1 hub **Ledgeport** (focus region). Exact coordinates, borders, 4×4 km footprint still open — [`official-world-map.md`](../story/official-world-map.md#draft-faction-theaters-2026-07-20).
 - Imperium heraldry: dark-crusade / fractured-creator art shipped (`heraldry-chaotic_imperium.png`); owner lock vs revise.
 - **Act 1 dual-path intro (locked draft):** Arrotrebae/Thalassar path ↔ Cristallo path by travel; light standing in Act 1.
 - **Act 1 assassination / succession (draft locks):** lieutenant boss leads plot; trials + champion path + Underflow usurper; person names **TBD**; quest id + standing rewards open — Dom rows **D-P1-12** / **D-P1-15** / **D-P1-16** in [`dom-open-questions.md`](../design/dom-open-questions.md); beat sheet [`campaign-beat-sheet.md`](../story/campaign-beat-sheet.md).
-- **Act 0+ cast / hub authoring (queued 2026-07-22):** ~~Underflow war-chief~~ **Drul’gath** locked; ~~Grenge/Larrell/Damius fates~~ survive-by-default + optional hostage (D-P0-12); ~~Asher–Luceran kinship~~ **established** half-brothers (D-P0-13). Remaining: Ledgeport faces, Vanessa intro, camp tutorial beats, White Lotus contacts — see Dom **D-P1-13…20** + create backlog in [`dom-open-questions.md`](../design/dom-open-questions.md#story-authoring-priority-create-backlog).
+- **Act 0+ cast / hub authoring:** ~~Underflow war-chief~~ **Drul’gath** locked; ~~Grenge/Larrell/Damius fates~~ survive-by-default (D-P0-12); ~~optional hostage~~ **Larrell** if not saved (D-P0-12b); ~~Asher–Luceran kinship~~ **established** half-brothers (D-P0-13); ~~camp tutorial~~ Arkand-guided (D-P1-19); ~~Creotar honesty~~ **partially true** (D-P2-14); ~~crystal name~~ **Claritas** (D-P2-02b); ~~Underflow stance~~ coerced ally (D-P0-14); ~~House Ashfell name~~ confirmed (D-P1-21); ~~Landfall title~~ **final** (D-P0-15). Leftovers: coords **D-P2-08**, faces **D-P1-21b** / **D-P1-22** in [`dom-open-questions.md`](../design/dom-open-questions.md).
 
 **Update 2026-07-15:** Open-world vs chapter-lock **resolved** as [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances). Beat sheet: [`campaign-beat-sheet.md`](../story/campaign-beat-sheet.md). Remaining story opens from Act 0 Twine:
 
-- ~~Creotar vs Creo/Frangitur~~ — **resolved 2026-07-20:** Creotar = Creo (short); Frangitur = fallen form. Destroy-Shroud guidance vs Frangitur “rip Tessera apart” irony still open.
-- Crystal **name/location** (Twine stubs empty); **White Lotus** guardians + cleanse behavior locked 2026-07-22
+- ~~Creotar vs Creo/Frangitur~~ — **resolved 2026-07-20:** Creotar = Creo (short); Frangitur = fallen form. ~~Destroy-Shroud guidance~~ — **partially true** (D-P2-14, 2026-07-29).
+- ~~Crystal **name**~~ — **Claritas** (D-P2-02b); court map pin open with D-P2-08; **White Lotus** guardians + cleanse behavior locked 2026-07-22
 - ~~Wake-up / O’hlundian evergreens vs first hub~~ — first hub = **Ledgeport** (confirmed). Named evergreen wake deprecated; **DA campsite post–Act 0** locked (D-P0-10, 2026-07-22)
-- ~~Wild God revival chronology vs Calrenoth Act 0 spine~~ — **resolved** for default spine: Calrenoth / **Landfall** (Wild God remains alternate/open)
+- ~~Wild God revival chronology vs Calrenoth Act 0 spine~~ — **resolved** for default spine: Calrenoth / **Landfall** final title (Wild God remains alternate/open)
 - Acts 1–4 not yet in Twine (planning beats only)
 - Which consequential side quests ([side-quest-catalog.md](../story/side-quest-catalog.md)) can flip faction lock-in vs only nudge standing (blocked on morality thresholds)
 
@@ -55,10 +55,24 @@ Filed from TICKET-0021 review. Full gap list: [`context/story/factions.md`](../s
 Still open:
 
 - Combat **systems** and party/build **comps** per lane (readiness `archetype_systems_comps_pass`)
-- Dom confirm/rename House Ashfell + name Lodge/Guild/house faces (D-P1-21 / D-P1-22)
-- First home-org quest seeds (`archetype_lane_org_quests`)
-- Outrider + Runecaster kit turnarounds
+- ~~Confirm/rename House Ashfell~~ — **confirmed** 2026-07-29; name Lodge/Guild/house **faces** (D-P1-21b / D-P1-22)
+- First home-org quest seeds (`archetype_lane_org_quests`) — journal **Archetype** tab locked ([DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux)); optional for main story, needed for full lane power; rewards per-quest gear and/or ability
+- ~~What an archetype-quest **unlock** grants~~ — **locked:** per-quest gear and/or ability, act-scaled ([DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux))
+- Schema `kind: archetype` widen when seeds land
+- ~~Outrider + Runecaster kit turnarounds~~ — first-pass sheets in `context/art/reference/` (revise after Blockbench kit pass)
 - Advanced specialization lists (post-demo)
+
+## Character power progression (XP / levels)
+
+**Resolved 2026-07-29** as [DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux): **no traditional XP / player level**. Power from gear, boss/act loot bands, archetype quests, and story milestones; abilities also from gear/trinket archetype affinity. Provenance: [`../design/recording_archetype_quests_power_progression_2026-07-29.md`](../design/recording_archetype_quests_power_progression_2026-07-29.md).
+
+Still open (implementation / content, not product fork):
+
+- Exact Act 0 boss presence (session interrupted)
+- Numeric act loot-band thresholds / which chapter bosses bump which band
+- Schema ship timing for `kind: archetype` enum (journal UX locked; widen when lane-org seeds land)
+- HUD chip screen corner polish (top-left draft)
+- Minimap marker art for tracked objectives (TICKET-0062)
 
 ## Campaign gating (TICKET-0020)
 
@@ -66,14 +80,14 @@ Resolved 2026-07-15 as [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with
 
 Still open from beat sheet / Act 0 Twine import:
 
-- ~~Wake-up / camp location after Creotar vision~~ — DEC-0032 evergreen wake under **reconcile** with Ledgeport-first Act 1 geography (Dom D-P0-10).
+- ~~Wake-up / camp location after Creotar vision~~ — **DA campsite post–Act 0**; **Arkand**-guided tutorial (D-P1-19).
 - ~~Whether Calrenoth remains ruined on the seamless map after Act 0~~ — **resolved** DEC-0032: yes, ruined/impacted revisit.
 - ~~Creotar identity vs Creo/Frangitur~~ — **resolved 2026-07-20:** Creotar = Creo; Frangitur = fallen form ([frangitur-the-great-evil.md](../story/frangitur-the-great-evil.md)).
-- ~~Wild God revival chronology vs Calrenoth Act 0 spine~~ — **resolved** for default spine: Act 0 Calrenoth / **Landfall** (Wild God remains alternate/open).
+- ~~Wild God revival chronology vs Calrenoth Act 0 spine~~ — **resolved** for default spine: Act 0 Calrenoth / **Landfall** final title (Wild God remains alternate/open).
 - Vanessa introduction beat timing.
-- Morality thresholds and ending matrix (Act 4).
+- Morality thresholds and ending matrix (Act 4) — soft Shroud destroy-vs-control sketch 2026-07-29.
 - Twine draft orc names (Grul’thaz / Shadowpaw) — not established until owner review (also TICKET-0021).
-- Act 0 supporting cast (Grenge / Larrell / Damius) survival and later-act roles — draft nodes in relationships asset; still open for continuity.
+- ~~Act 0 supporting cast survival~~ — survive-by-default; optional hostage = **Larrell** if not saved (D-P0-12b).
 
 ## UI canvas scale modes (non-blocking)
 
@@ -148,3 +162,21 @@ Still open (implementation tuning, not product forks):
 - Water persistence file path and cell schema (mirror terrain 33×33 / 40 m or region-based meshes).
 - Whether shallow water allows walking, wading slowdown only, or forced swim.
 - Ferry scripted crossing: fade vs visible hull animation duration defaults.
+
+## Inventory / item system (DEC-0048 + DEC-0050)
+
+**Resolved 2026-07-29** as [DEC-0050](../decisions/index.md#dec-0050-inventory-ux-item-kinds-and-positive-soft-affinity) (extends [DEC-0048](../decisions/index.md#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity)): 8-slot hotbar use model; 4 accessory/trinket slots; slot bag (not weight); stacks 99 / ammo ~1000; per-player camp storage; separate quest inventory; **positive** soft affinity (bonus, not off-lane nerf); data+Lua effects; kind tags + labels; no durability v1; save shape bag/hotbar/equipped/camp + non-slot currencies. Feature: [`../features/gearing-system.md`](../features/gearing-system.md). Recording: [`../design/recording_item_system_2026-07-29.md`](../design/recording_item_system_2026-07-29.md).
+
+**Equip slots (locked 2026-07-29 follow-up):** `head` / `chest` / `legs` + `trinket0`…`trinket3`; stats from armor + trinkets + weapons.
+
+**Bag capacity (locked 2026-07-29 follow-up):** base **20** slots; expandable via craft/loot bag upgrades.
+
+Still open (implementation tune / content polish, not product forks):
+
+- Bag upgrade **steps**, soft **max** capacity, and whether upgrade bags are consumed, equipped, or permanent unlocks.
+- Numeric **lane bonus** magnitudes (positive multipliers / which stats).
+- Vendor price curves and Ledgeport undermarket catalog (post–Act 0).
+- Whether `soldiers_scrap_pouch` opens into scrap rolls vs is a single consumable/material entry.
+- Full craft UI loop timing (TICKET-0235 materials stub first).
+- Act 0 starter **armor** pieces (if any beyond cloth kits that are appearance-only).
+

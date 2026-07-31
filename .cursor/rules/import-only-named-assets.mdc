@@ -1,0 +1,37 @@
+---
+description: When importing or rebaking models, only touch the named assets — never blanket-rebake or rewrite unrelated meshes/atlases.
+alwaysApply: true
+---
+
+# Import / Bake: Change Only What You Need
+
+When bringing Blockbench/glTF props into `samples/open-world-rpg` or fixing one asset’s faces/scale/atlas:
+
+## Rules
+
+1. **Name the targets.** Bake with an explicit filter: `python tools/bake_tier1_props_gltf.py outrider_shortbow` — never run the baker with no args unless the owner asked to rebake everything.
+2. **Do not rewrite unrelated runtime files.** Leave other `assets/models/*.gltf` / `*.png`, prefabs, and world placements alone unless the task names them.
+3. **Baker defaults stay conservative.** New winding/atlas/double-side behavior must be **opt-in per `PROPS` entry** (`double_sided`, `double_sided_thin`, `clean_backdrop`, `max_atlas`, …). Do not change global bake heuristics in a way that alters bush/crate/campfire/etc. when those props are rebaked later.
+4. **Before/after scope check.** After a bake or copy, `git status` on `assets/models/` (and prefabs) and revert anything outside the requested set.
+5. **Texture atlases are sacred.** Do not “fix” another prop’s PNG/atlas while importing a weapon. Prefer `clean_backdrop: False` / higher `max_atlas` only on the prop that needs it.
+6. **Recover collateral damage.** If a prior step touched extras (e.g. `bush.png`), restore from git immediately: `git checkout HEAD -- path/to/file`.
+
+## Examples
+
+```text
+❌ BAD: python tools/bake_tier1_props_gltf.py
+        (rebakes every PROPS entry; risks atlas/winding drift on shipping props)
+
+✅ GOOD: python tools/bake_tier1_props_gltf.py outrider_shortbow ashfell_arming_sword
+
+❌ BAD: Change bake_tier1_props_gltf.py so ALL prims auto double-side / new UV snap
+✅ GOOD: Add "double_sided_thin": True only on outrider_shortbow’s PROPS entry
+
+❌ BAD: Notice bush.png dirty after a sword import and leave it
+✅ GOOD: git checkout HEAD -- samples/open-world-rpg/assets/models/bush.png bush.gltf
+```
+
+## Related
+
+- Import checklist: `skills/import-blockbench-models/SKILL.md`
+- Mesh bake notes: `context/formats/mesh-assets.md`

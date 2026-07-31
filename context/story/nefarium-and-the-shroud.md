@@ -29,13 +29,17 @@ The Shroud is a prison disguised as a source of power. It appears neither wholly
 
 The established account says **The Black Howl** orc warband leader **Grul’thaz the Black Howl** (Shadowpaw clan) wore the Shroud during the **first war** before Luceran recovered it (draft lock 2026-07-22). Luceran then wore it believing he could contain its corruption, but the Shroud gained control over him and transformed him into Luceran the Hollow.
 
-**Imperium command (draft lock, 2026-07-22):** Luceran holds Chaotic Imperium command because **Frangitur is trapped within the Shroud** and Luceran controls that binding — not mere political myth alone.
+**Imperium command (draft lock, 2026-07-22; purpose 2026-07-29):** Luceran holds Chaotic Imperium command because **Frangitur is trapped within the Shroud** and Luceran controls that binding — not mere political myth alone. Writer truth: the Shroud was forged to **contain Frangitur** and **bind** Imperium chaos (Helm-of-Domination / scourge analogy). Breaking it **releases Frangitur** and drops the binding so the hordes have no master until something (or someone) takes the mantle again.
 
-## Competing Prison Proposal
+## Shroud as prison and mantle (draft lock, 2026-07-29)
 
-An alternate draft says ancient rulers forged the Shroud from pure Nefarium to contain an ancient cosmic evil. Under that version, the imprisoned being whispers through cracks in the seal and manipulates heroes into destroying the Shroud. A prophecy that its breaking would make the world “free” refers secretly to the prisoner's freedom rather than the people's.
+The Shroud is both a **prison** for Frangitur and a **mantle of command** over Chaotic Imperium forces. Creotar’s Act 0 “destroy the Shroud” counsel is **partially true** — Luceran’s misuse must be stopped — but the “free Creotar by breaking the seal” framing is Luceran/Frangitur manipulation.
 
-This version may identify Frangitur as the prisoner, a fragment of him, or a separate being. It is preserved as a proposal and is not currently canon.
+**First-war cautionary model:** after **Grul’thaz** fell and the Shroud lacked a wielder, Imperium forces ran wild; Luceran took the burden believing he could contain chaos and became **Luceran the Hollow**. Endgame sketch: after Frangitur is defeated, Imperium again has **no masters** — players may **destroy** the threat for good or forge/wield a Shroud to **control** it (control path = corruption).
+
+## Competing Prison Proposal (superseded)
+
+An older alternate draft said ancient rulers forged the Shroud from pure Nefarium to contain an ancient cosmic evil, with prophecy twists. That proposal is **superseded** by the 2026-07-29 lock above (Frangitur as the contained being + Imperium binding). Keep only for provenance; do not treat as a second competing canon.
 
 ## Throne Room
 
@@ -48,10 +52,10 @@ The throne imagery suggests that the Shroud waits for a suitable vessel and that
 ## Open Questions and Conflicts
 
 - Reconcile the Shroud being worn in battle with the later image of it fused immovably to the throne.
-- Decide who forged the Shroud and whether it was designed as a prison, a weapon, a mantle of command, or some combination.
+- ~~Decide who forged the Shroud and whether it was designed as a prison, a weapon, a mantle of command, or some combination~~ — **partial lock 2026-07-29:** prison for Frangitur + mantle binding Imperium; exact forger still open.
 - Decide whether Frangitur created Nefarium before or after his fall and how a Shroud made from it could imprison him.
 - Standardize the spelling as **Nefarium Shroud**; one source also uses “Nefarion Shroud.”
-- ~~Decide whether wearing the Shroud grants command of the Chaotic Imperium~~ — **partial lock 2026-07-22:** Luceran commands while Frangitur is trapped in the Shroud; throne-fused vs battle-worn imagery still open.
+- ~~Decide whether wearing the Shroud grants command of the Chaotic Imperium~~ — **partial lock 2026-07-22 / 07-29:** Luceran commands while Frangitur is trapped in the Shroud; break releases Frangitur and drops binding; throne-fused vs battle-worn imagery still open.
 - Define whether cult claims that Nefarium is a divine fragment are true, false, or incomplete.
 - Specify which visual energy color is primary: crimson, sickly green, or context-dependent.
-- Cristallo Creator-origin crystal **cleanses** Nefarium corruption (inverse relic) — see [factions.md](factions.md#the-cristallo); name/location open.
+- Cristallo Creator-origin crystal **Claritas** **cleanses** Nefarium corruption (inverse relic) — see [factions.md](factions.md#the-cristallo); court map pin still open.

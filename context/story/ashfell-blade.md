@@ -6,14 +6,14 @@
 
 ## Role
 
-**Ashfell Blade** is the melee starting archetype. Players begin as the steel arm of **House Ashfell** — a draft noble-house obligation under King Asher’s war levy — not as a generic “fighter class.”
+**Ashfell Blade** is the melee starting archetype. Players begin as the steel arm of **House Ashfell** — a noble-house / Grey Warden–flavored warrior obligation under King Asher’s war levy (display name **confirmed** Dom + owner 2026-07-29) — not as a generic “fighter class.”
 
 See [Character Creation](character-creation.md) for the shared protagonist premise and the other starting archetypes.
 
 ## Home org
 
-- **House Ashfell** (draft display name; Dom may confirm or rename).
-- Theme: Asher’s war-levy clients — banner line and conscript scrap under one roof.
+- **House Ashfell** (**confirmed** display name; faces still open — D-P1-21b).
+- Theme: Asher’s war-levy clients — banner line and conscript scrap under one roof; affinity against the **Nefarium Shroud** / Imperium (side-quest support when aligned).
 - **Sub-themes:** **Fighter** (formal contracts / levy steel) and **Brawler** (street muscle / irregular war).
 
 ## Background
@@ -47,7 +47,7 @@ Companion selection directly affects the protagonist's relationships and develop
 
 ## Open Questions and Conflicts
 
-- Dom confirm/rename House Ashfell; seed house NPCs and ranks.
+- Seed House Ashfell NPCs and ranks (D-P1-21b).
 - Define Fighter vs Brawler mechanical split (systems/comps pass).
 - A second opening concept says a Wild God revives the protagonist after their settlement burns — chronology vs Calrenoth spine still open as alternate.
 - Define King Asher's personality beyond established half-brother kinship; refine “brittle / absent support.”

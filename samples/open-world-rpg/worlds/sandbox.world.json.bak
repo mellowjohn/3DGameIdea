@@ -1598,7 +1598,7 @@
       "transform": {
         "position": [
           -13.729999542236328,
-          1.9073562622070313,
+          1.9073562622070312,
           45.779998779296875
         ],
         "rotation": [
@@ -2202,8 +2202,8 @@
       "transform": {
         "position": [
           33.908538818359375,
-          2.7889480590820313,
-          21.550796508789063
+          2.7889480590820312,
+          21.550796508789062
         ],
         "rotation": [
           0.0,
@@ -2776,7 +2776,7 @@
         "position": [
           68.66000366210938,
           2.410562515258789,
-          -20.610000610351563
+          -20.610000610351562
         ],
         "rotation": [
           0.0,
@@ -7573,7 +7573,7 @@
         "position": [
           69.25,
           2.115058422088623,
-          93.33999633789063
+          93.33999633789062
         ],
         "rotation": [
           0.0,
@@ -9031,7 +9031,7 @@
       "name": "forest_bush_447",
       "transform": {
         "position": [
-          21.025650024414063,
+          21.025650024414062,
           2.813842296600342,
           36.17523956298828
         ],
@@ -9094,7 +9094,7 @@
       "name": "forest_tree_965",
       "transform": {
         "position": [
-          66.47000122070313,
+          66.47000122070312,
           1.5494980812072754,
           58.849998474121094
         ],
@@ -9477,7 +9477,7 @@
         "position": [
           32.789737701416016,
           3.047079563140869,
-          11.313674926757813
+          11.313674926757812
         ],
         "rotation": [
           0.0,
@@ -11253,7 +11253,7 @@
         "position": [
           7.340000152587891,
           2.7896547317504883,
-          89.72000122070313
+          89.72000122070312
         ],
         "rotation": [
           0.0,
@@ -12334,7 +12334,7 @@
         ],
         "rotation": [
           0.0,
-          0.6380996704101563,
+          0.6380996704101562,
           0.0,
           -0.769953727722168
         ],
@@ -13158,7 +13158,7 @@
         "position": [
           44.63999938964844,
           2.4344754219055176,
-          80.33999633789063
+          80.33999633789062
         ],
         "rotation": [
           0.0,
@@ -14175,7 +14175,7 @@
         "position": [
           40.81999969482422,
           2.6241049766540527,
-          99.22000122070313
+          99.22000122070312
         ],
         "rotation": [
           0.0,
@@ -15446,7 +15446,7 @@
       "name": "forest_tree_2152",
       "transform": {
         "position": [
-          -20.110000610351563,
+          -20.110000610351562,
           2.6948299407958984,
           97.55000305175781
         ],
@@ -15655,7 +15655,7 @@
       },
       "parent": null,
       "placement": {
-        "prefab": "assets/prefabs/Scene Assets/wall_torch.prefab.json",
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
         "cell": [
           0,
           0
@@ -16850,7 +16850,7 @@
       "name": "forest_tree_211",
       "transform": {
         "position": [
-          21.634902954101563,
+          21.634902954101562,
           2.7700624465942383,
           39.772705078125
         ],
@@ -17992,7 +17992,7 @@
       "transform": {
         "position": [
           31.120023727416992,
-          3.2158584594726563,
+          3.2158584594726562,
           13.506559371948242
         ],
         "rotation": [
@@ -18627,7 +18627,7 @@
         "position": [
           -29.309999465942383,
           2.4806530475616455,
-          78.72000122070313
+          78.72000122070312
         ],
         "rotation": [
           0.0,
@@ -18945,7 +18945,7 @@
         "position": [
           -17.56999969482422,
           2.490081787109375,
-          104.83999633789063
+          104.83999633789062
         ],
         "rotation": [
           0.0,
@@ -20214,7 +20214,7 @@
       "name": "forest_bush_2111",
       "transform": {
         "position": [
-          -17.360000610351563,
+          -17.360000610351562,
           2.2734932899475098,
           67.69999694824219
         ],
@@ -20494,7 +20494,7 @@
       "components": [
         {
           "data": {
-            "controller": "assets/animators/example.animator.json"
+            "controller": "assets/animators/player.animator.json"
           },
           "id": "animator-0",
           "overridden": true,
@@ -21002,7 +21002,7 @@
         "position": [
           29.2293643951416,
           2.6431314945220947,
-          29.905410766601563
+          29.905410766601562
         ],
         "rotation": [
           0.0,
@@ -21765,7 +21765,7 @@
         "position": [
           -11.5600004196167,
           2.5759952068328857,
-          -16.360000610351563
+          -16.360000610351562
         ],
         "rotation": [
           0.0,
@@ -22715,7 +22715,7 @@
         "position": [
           31.389999389648438,
           2.715564250946045,
-          101.58999633789063
+          101.58999633789062
         ],
         "rotation": [
           0.0,
@@ -25347,7 +25347,7 @@
         "position": [
           32.0099983215332,
           2.6116418838500977,
-          83.22000122070313
+          83.22000122070312
         ],
         "rotation": [
           0.0,
@@ -25716,6 +25716,423 @@
             "trigger": false
           },
           "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "8d954532-5940-45ee-8c46-cef0204047af",
+      "name": "prop_ashfell_arming_sword",
+      "transform": {
+        "position": [
+          22.076600000000003,
+          4.001,
+          18.4
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/ashfell_arming_sword.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "4a2030dd-a219-4854-b413-fa3fb4c5c027",
+      "name": "prop_outrider_shortbow",
+      "transform": {
+        "position": [
+          22.776600000000002,
+          4.001,
+          17.8
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/outrider_shortbow.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "70266502-8575-48aa-92f8-259b5fd1870c",
+      "name": "prop_guild_rune_focus",
+      "transform": {
+        "position": [
+          21.6766,
+          4.001,
+          17.2
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/guild_rune_focus.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "9bc38762-06ce-40b3-9bbb-91bf8bd0d7ef",
+      "name": "prop_outrider_arrow",
+      "transform": {
+        "position": [
+          23.276600000000002,
+          4.001,
+          18.8
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/outrider_arrow.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "be17a704-e7ca-4df1-a549-a6b6bea27208",
+      "name": "prop_loot_bag_a",
+      "transform": {
+        "position": [
+          19.076600000000003,
+          4.001,
+          16.4
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/loot_bag.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.22,
+              0.22,
+              0.22
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.22,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "open_loot_bag",
+            "layer": "trigger",
+            "radius": 1.1,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.3,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "e845e784-0c5f-423e-95a3-68778ca8c55f",
+      "name": "prop_loot_bag_b",
+      "transform": {
+        "position": [
+          23.6766,
+          4.001,
+          16.2
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/loot_bag.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.22,
+              0.22,
+              0.22
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.22,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "open_loot_bag",
+            "layer": "trigger",
+            "radius": 1.1,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.3,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "9ab1e5c3-02f6-4206-842e-97465d781bb9",
+      "name": "prop_supply_chest",
+      "transform": {
+        "position": [
+          18.076600000000003,
+          4.001,
+          19.2
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/supply_chest.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.51
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "open_supply_chest",
+            "layer": "trigger",
+            "radius": 1.35,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.55,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
           "overridden": false,
           "source": "prefab",
           "type": "collider"

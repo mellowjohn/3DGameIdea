@@ -53,7 +53,8 @@ Controllers may author `timelineEvents[]` (state + time + name + optional layer/
 
 ## Out of scope
 
-- Play-test player **GPU LBS skinning** landed (TICKET-0227); catalog-wide / Animation tools viewport polish remain follow-on.
+- Play-test **GPU LBS skinning** (TICKET-0227 / DEC-0047): per-entity `AnimatorRuntime` attach for every scene entity with an `animator` component (propagate prefab components first so `npc_test` inherits its controller); CPU skin matrices upload into a **16-slot bone CB ring**; prop/shadow draws bind the entity’s slot via `skin_entity_id`. Locomotion/combat params still drive only the spawn entity. Player visual uses yaw π (mesh −Z vs loco +Z); because the right-handed Blockbench glTF is imported verbatim into the left-handed runtime, `sample_clip_pose_for_joint` samples the sagittal counterpart joint and reflects the local pose through the YZ plane, so Attack reads right-handed in-engine exactly as it does in Blockbench (see `context/testing/findings.md`, 2026-07-31). Catalog-wide / Animation tools viewport polish remain follow-on.
+- Sample `player.animator.json` drives Idle/Walk/Run + Jump/Fall/Land, Attack/Block (one-handed melee hotbar gate), directional Dodge (Shift + stamina spend + scripted dash + dodge_dust burst), HitReact/Death/Revive, Interact/InteractPickup from play-test input + locomotion grounded/speed.
 - Runtime IK solve (metadata only today — [`../formats/rig-assets.md`](../formats/rig-assets.md), TICKET-0106).
 - Auto combat-volume enable from events; play-session animator wiring polish.
 - Lua-authored state machines (rejected unless a new decision supersedes DEC-0022).

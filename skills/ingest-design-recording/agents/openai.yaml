@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ingest Design Recording"
+  short_description: "Turn Dom/owner transcripts into canon locks"
+  default_prompt: "Use $ingest-design-recording to ingest this design recording into Dom Q&A and story canon."

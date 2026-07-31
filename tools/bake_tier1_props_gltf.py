@@ -1,4 +1,4 @@
-"""Bake Blockbench Tier-1 prop glTFs (crate, bush, tall bush, campfire, barrel, lantern, wall torch) for the engine."""
+"""Bake Blockbench Tier-1 prop glTFs (crate, bush, tall bush, campfire, barrel, lantern, wall torch, ashfell arming sword, outrider shortbow/arrow, guild rune focus, loot bag) for the engine."""
 
 from __future__ import annotations
 
@@ -31,7 +31,8 @@ PROPS = [
         "dst": MODELS / "bush.gltf",
         "png": MODELS / "bush.png",
         "target_height": 1.25,
-        "generator": "AI RPG Engine bush bake from Bush.gltf v1",
+        "generator": "AI RPG Engine bush bake from Bush.gltf v2-foliage-atlas",
+        "foliage_atlas": True,
         "scene_name": "Bush",
         "mesh_name": "Bush",
         "mat_name": "BushAtlas",
@@ -42,7 +43,12 @@ PROPS = [
         "dst": MODELS / "bush_tall.gltf",
         "png": MODELS / "bush_tall.png",
         "target_height": 1.9,
-        "generator": "AI RPG Engine tall bush bake from Tall_Bush.gltf v2-uv-snap",
+        "generator": "AI RPG Engine tall bush bake from Tall_Bush.gltf v6-foliage-soft-inpaint",
+        "foliage_atlas": True,
+        # Tall_Bush.png still carries Blockbench chrome islands; strict green filter
+        # collapses the atlas to ~6 muddy shades. Soft clean + tiny dilate matches HEAD look.
+        "foliage_strict_colors": False,
+        "foliage_inpaint_radius": 2,
         "scene_name": "TallBush",
         "mesh_name": "TallBush",
         "mat_name": "TallBushAtlas",
@@ -94,6 +100,75 @@ PROPS = [
         "scene_name": "WallTorch",
         "mesh_name": "WallTorch",
         "mat_name": "WallTorchAtlas",
+    },
+    {
+        "name": "ashfell_arming_sword",
+        "src": REPO / "tools/art/ashfell-arming-sword/Ashfell_Arming_Sword.gltf",
+        "dst": MODELS / "ashfell_arming_sword.gltf",
+        "png": MODELS / "ashfell_arming_sword.png",
+        # Overall tip-to-pommel ~1.05 m (arming sword; Ashfell Blade starter).
+        "target_height": 1.05,
+        # Keep full atlas; pale steel/leather paint must not be punched as BB backdrop.
+        "max_atlas": 1024,
+        "clean_backdrop": False,
+        # Grip/guard cylinders ship with mixed winding; double-side so D3D cull doesn't eat them.
+        "double_sided": True,
+        "generator": "AI RPG Engine ashfell arming sword bake from Ashfell_Arming_Sword.gltf v3-full-atlas-doubleside",
+        "scene_name": "AshfellArmingSword",
+        "mesh_name": "AshfellArmingSword",
+        "mat_name": "AshfellArmingSwordAtlas",
+    },
+    {
+        "name": "outrider_shortbow",
+        "src": REPO / "tools/art/outrider-shortbow/Outrider_Shortbow.gltf",
+        "dst": MODELS / "outrider_shortbow.gltf",
+        "png": MODELS / "outrider_shortbow.png",
+        # Tip-to-tip shortbow ≈ 1.05 m when upright (Outrider starter).
+        "target_height": 1.05,
+        # String prim only — opt-in; does not change other Tier-1 props.
+        "double_sided_thin": True,
+        "generator": "AI RPG Engine outrider shortbow bake from Outrider_Shortbow.gltf v5-string-doubleside-optin",
+        "scene_name": "OutriderShortbow",
+        "mesh_name": "OutriderShortbow",
+        "mat_name": "OutriderShortbowAtlas",
+    },
+    {
+        "name": "outrider_arrow",
+        "src": REPO / "tools/art/outrider-arrow/Outrider_Arrow.gltf",
+        "dst": MODELS / "outrider_arrow.gltf",
+        "png": MODELS / "outrider_arrow.png",
+        # Shaft tip-to-nock ≈ 0.75 m (lies along longest axis in export).
+        "scale_mode": "max_extent",
+        "target_span": 0.75,
+        "target_height": 0.75,
+        "generator": "AI RPG Engine outrider arrow bake from Outrider_Arrow.gltf v2-max-extent",
+        "scene_name": "OutriderArrow",
+        "mesh_name": "OutriderArrow",
+        "mat_name": "OutriderArrowAtlas",
+    },
+    {
+        "name": "guild_rune_focus",
+        "src": REPO / "tools/art/guild-rune-focus/Guild_Rune_Focus.gltf",
+        "dst": MODELS / "guild_rune_focus.gltf",
+        "png": MODELS / "guild_rune_focus.png",
+        # Inscribed focus — readable world clutter / starter prop (was 0.28 m, too tiny).
+        "target_height": 0.55,
+        "generator": "AI RPG Engine guild rune focus bake from Guild_Rune_Focus.gltf v2-0.55m",
+        "scene_name": "GuildRuneFocus",
+        "mesh_name": "GuildRuneFocus",
+        "mat_name": "GuildRuneFocusAtlas",
+    },
+    {
+        "name": "loot_bag",
+        "src": REPO / "tools/art/loot-bag/Loot_Bag.gltf",
+        "dst": MODELS / "loot_bag.gltf",
+        "png": MODELS / "loot_bag.png",
+        # Drawstring pouch ≈ 0.45 m (world find container).
+        "target_height": 0.45,
+        "generator": "AI RPG Engine loot bag bake from Loot_Bag.gltf v2",
+        "scene_name": "LootBag",
+        "mesh_name": "LootBag",
+        "mat_name": "LootBagAtlas",
     },
 ]
 
@@ -208,15 +283,37 @@ def is_blockbench_backdrop(px) -> bool:
     return False
 
 
-def clean_blockbench_atlas(tex: Image.Image) -> Image.Image:
-    """Punch Blockbench backdrop texels to transparent so UV snap lands on real paint."""
+def is_foliage_or_bark_px(px) -> bool:
+    """Dark olive / leaf green / bark brown — reject Blockbench chrome and neon fills."""
+    r, g, b, a = px
+    if a < 8:
+        return False
+    mx = max(r, g, b)
+    # Bark / soil browns
+    if r >= g and r > b + 8 and 25 <= r <= 190 and g <= r + 15 and b < r - 5:
+        return True
+    # Olive / leaf greens (dark through mid)
+    if g >= r - 5 and g >= b and 18 <= g <= 170 and mx < 185:
+        return True
+    # Brighter leaf only when clearly green-dominant and not neon
+    if g > r + 8 and g > b + 8 and g <= 200 and mx < 210:
+        return True
+    return False
+
+
+def clean_blockbench_atlas(tex: Image.Image, foliage: bool = False, foliage_strict: bool = True) -> Image.Image:
+    """Punch Blockbench backdrop / chrome texels to transparent so UV snap lands on real paint."""
     out = tex.convert("RGBA")
     px = out.load()
     w, h = out.size
     cleared = 0
     for y in range(h):
         for x in range(w):
-            if is_blockbench_backdrop(px[x, y]):
+            sample = px[x, y]
+            drop = is_blockbench_backdrop(sample)
+            if foliage and foliage_strict and sample[3] >= 8 and not is_foliage_or_bark_px(sample):
+                drop = True
+            if drop:
                 px[x, y] = (0, 0, 0, 0)
                 cleared += 1
     print(f"  cleared Blockbench backdrop texels: {cleared}")
@@ -234,7 +331,11 @@ def bake_prop(prop: dict) -> None:
     g = json.loads(src.read_text(encoding="utf-8"))
     tex = load_atlas(g, src)
     if prop.get("clean_backdrop", True):
-        tex = clean_blockbench_atlas(tex)
+        tex = clean_blockbench_atlas(
+            tex,
+            foliage=bool(prop.get("foliage_atlas", False)),
+            foliage_strict=bool(prop.get("foliage_strict_colors", True)),
+        )
     # Keep pixel-art atlases small for engine point sampling + faster UV snap.
     max_atlas = int(prop.get("max_atlas", 512))
     if max(tex.size) > max_atlas:
@@ -281,6 +382,40 @@ def bake_prop(prop: dict) -> None:
                 if 0 <= xx < tw and 0 <= yy < th and nearest_brown[yy][xx] is None:
                     nearest_brown[yy][xx] = src_xy
                     qb.append((xx, yy))
+
+    # Sparse Blockbench atlases leave transparent black gutters. OPAQUE materials still
+    # sample those texels when UV triangles stretch across islands → black "broken" faces.
+    # Inpaint RGB from nearest opaque so interpolated UVs stay prop-colored.
+    #
+    # Foliage: only dilate islands a few pixels. Filling the whole atlas (old v5 path)
+    # collapses unique leaf colors into muddy camo + edge streaks when UVs graze gutters.
+    foliage = bool(prop.get("foliage_atlas", False))
+    dilate_r = int(prop.get("foliage_inpaint_radius", 6)) if foliage else None
+    inpainted = 0
+    if opaque:
+        for y in range(th):
+            for x in range(tw):
+                px = tex.getpixel((x, y))
+                if px[3] >= 8:
+                    continue
+                src = nearest_opaque[y][x]
+                if foliage:
+                    if src is None or dilate_r is None:
+                        continue
+                    sx, sy = src
+                    if abs(sx - x) > dilate_r or abs(sy - y) > dilate_r:
+                        continue
+                    r, gch, b, _ = tex.getpixel(src)
+                    tex.putpixel((x, y), (r, gch, b, 255))
+                else:
+                    if src is None:
+                        tex.putpixel((x, y), (40, 70, 30, 255))
+                    else:
+                        r, gch, b, _ = tex.getpixel(src)
+                        tex.putpixel((x, y), (r, gch, b, 255))
+                inpainted += 1
+    mode = f"foliage_dilate={dilate_r}" if foliage else "full"
+    print(f"atlas inpainted transparent texels: {inpainted} ({mode})")
 
     def resolve_uv(u: float, v: float, prefer_brown: bool = False):
         """Sample atlas; if texel is transparent, snap UV to nearest opaque pixel (prop shader uses albedo tex)."""
@@ -353,12 +488,16 @@ def bake_prop(prop: dict) -> None:
                 read_accessor(g, prim["indices"]) if "indices" in prim else range(len(pos))
             )
             world_pos = [transform_point(m, p) for p in pos]
-            # Keep cylinder/stone geometry; flip winding when Blockbench exports inside-out
-            # (engine prop pipeline culls back faces — matches Blockbench shaded view).
-            if len(idx) >= 3 and world_pos:
-                cx_p = sum(p[0] for p in world_pos) / len(world_pos)
-                cy_p = sum(p[1] for p in world_pos) / len(world_pos)
-                cz_p = sum(p[2] for p in world_pos) / len(world_pos)
+            # Default (all Tier-1 props): flip WHOLE prim when majority-inward.
+            # Weapon opt-ins only — never auto-mutate unrelated props:
+            #   double_sided=True      → emit both windings for every prim (sword)
+            #   double_sided_thin=True → double-side skinny cord/string prims only (bow)
+            used = sorted({int(i) for i in idx}) if idx else list(range(len(world_pos)))
+            used_pos = [world_pos[i] for i in used] if used else world_pos
+            if len(idx) >= 3 and used_pos:
+                cx_p = sum(p[0] for p in used_pos) / len(used_pos)
+                cy_p = sum(p[1] for p in used_pos) / len(used_pos)
+                cz_p = sum(p[2] for p in used_pos) / len(used_pos)
                 outward = inward = 0
                 for i in range(0, len(idx) - 2, 3):
                     a = world_pos[idx[i]]
@@ -391,6 +530,33 @@ def bake_prop(prop: dict) -> None:
             for i in idx:
                 indices.append(base + i)
 
+            want_double = False
+            why = ""
+            if bool(prop.get("double_sided", False)) and len(idx) >= 3:
+                want_double = True
+                why = "prop.double_sided"
+            elif bool(prop.get("double_sided_thin", False)) and len(idx) >= 3 and used_pos:
+                xs_p = [p[0] for p in used_pos]
+                ys_p = [p[1] for p in used_pos]
+                zs_p = [p[2] for p in used_pos]
+                ext = (max(xs_p) - min(xs_p), max(ys_p) - min(ys_p), max(zs_p) - min(zs_p))
+                max_ext = max(ext) if ext else 0.0
+                min_ext = min(e for e in ext if e > 1e-9) if any(e > 1e-9 for e in ext) else 0.0
+                uniq_count = len(
+                    {(round(p[0], 5), round(p[1], 5), round(p[2], 5)) for p in used_pos}
+                )
+                aspect = (min_ext / max_ext) if max_ext > 1e-9 else 1.0
+                # Cord/string only — not the whole bow stave (flat but many verts).
+                if aspect < 0.03 or (uniq_count <= 48 and aspect < 0.15):
+                    want_double = True
+                    why = f"prop.double_sided_thin aspect={aspect:.4f} uniq={uniq_count}"
+            if want_double:
+                for i in range(0, len(idx) - 2, 3):
+                    indices.append(base + idx[i])
+                    indices.append(base + idx[i + 2])
+                    indices.append(base + idx[i + 1])
+                flipped_prims += 1
+                print(f"  double-sided ({why}) node={node.get('name')!r} tris={len(idx)//3}")
     xs = [p[0] for p in positions]
     ys = [p[1] for p in positions]
     zs = [p[2] for p in positions]
@@ -404,6 +570,9 @@ def bake_prop(prop: dict) -> None:
     span_z = maxz - minz
     if scale_mode == "max_xz":
         span = max(span_x, span_z)
+        scale = target_span / span if span > 1e-6 else 1.0
+    elif scale_mode == "max_extent":
+        span = max(span_x, height, span_z)
         scale = target_span / span if span > 1e-6 else 1.0
     else:
         scale = target_height / height if height > 1e-6 else 1.0
@@ -463,6 +632,8 @@ def bake_prop(prop: dict) -> None:
         "materials": [
             {
                 "name": mat_name,
+                # Sparse Blockbench atlases must stay OPAQUE — MASK punches holes on UV gutters.
+                "alphaMode": "OPAQUE",
                 "pbrMetallicRoughness": {
                     "baseColorTexture": {"index": 0},
                     "metallicFactor": 0.0,

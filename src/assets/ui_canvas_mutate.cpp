@@ -126,6 +126,8 @@ Result<UiCanvasAsset> mutate_ui_canvas_asset(UiCanvasAsset canvas, const std::st
             widget.label = params.value("label", std::string{});
             widget.text = params.value("text", std::string{});
             widget.image = params.value("image", std::string{});
+            widget.image_bind = params.value("imageBind", std::string{});
+            widget.tooltip = params.value("tooltip", std::string{});
             if (params.contains("imageMode")) {
                 const auto mode = parse_image_mode(params["imageMode"].get<std::string>());
                 if (!mode) return Result<UiCanvasAsset>::failure(mode.error());
@@ -225,6 +227,8 @@ Result<UiCanvasAsset> mutate_ui_canvas_asset(UiCanvasAsset canvas, const std::st
             if (params.contains("bind")) widget->bind = params["bind"].get<std::string>();
             if (params.contains("maxBind")) widget->max_bind = params["maxBind"].get<std::string>();
             if (params.contains("image")) widget->image = params["image"].get<std::string>();
+            if (params.contains("imageBind")) widget->image_bind = params["imageBind"].get<std::string>();
+            if (params.contains("tooltip")) widget->tooltip = params["tooltip"].get<std::string>();
             if (params.contains("imageMode")) {
                 const auto mode = parse_image_mode(params["imageMode"].get<std::string>());
                 if (!mode) return Result<UiCanvasAsset>::failure(mode.error());

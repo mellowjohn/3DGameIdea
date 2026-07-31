@@ -1,0 +1,4 @@
+interface:
+  display_name: "Author Particle VFX"
+  short_description: "Clone flame/torch particle recipes via MCP"
+  default_prompt: "Use $author-particle-vfx to add or tune this particle effect from the recipe catalog."

@@ -10,8 +10,13 @@ This repository builds a from-scratch 3D game engine designed for effective coll
 4. Use `skills/grill-me/SKILL.md` when the user wants aggressive ambiguity pressure-testing ("grill me"); use `skills/teach/SKILL.md` when they need a question explained before answering; use `skills/evaluate/SKILL.md` when reviewing `needs-approval` tickets or PRs for approve/defer/rework; use `skills/desktop-qa/SKILL.md` when the owner runs a Windows session to clear the approval backlog.
 5. For assigned backlog work (`TICKET-####`, Ready/Active board, agent queue), use `skills/engine-ticket-workflow/SKILL.md` and the Priority ladder in `context/planning/epics.md`.
 6. When creating or updating epics/tickets, follow `.cursor/rules/epic-ticket-population.mdc` (full `epics.md` + Notion bodies; `needs-approval` before owner `done`). When **authoring** or promoting tickets to `ready`, use `skills/write-engine-ticket/SKILL.md` for testable acceptance criteria and verification.
-7. When importing Blockbench/glTF props into `open-world-rpg`, use `skills/import-blockbench-models/SKILL.md` (bake → prefab → place → verify).
-8. Inspect existing code and tests before proposing new abstractions.
+7. When importing Blockbench/glTF props into `open-world-rpg`, use `skills/import-blockbench-models/SKILL.md` (bake → prefab → place → verify). For the skinned player kit, use `skills/import-player-character/SKILL.md`. Prefer **`engine asset-bake --target <name>`** (or Diagnostics → **Assets**) for named rebakes with fail-closed verify — see TICKET-0245. When **authoring or reshaping** Blockbench meshes (characters/props from concept orthos, loop cuts, vertex polish), use `skills/blockbench-mesh-authoring/SKILL.md` before bake.
+8. Live editor / MCP scene work: `skills/live-editor-mcp/SKILL.md` (plan → apply → verify; rebuild lease on C++). **UI canvases (`*.uicanvas.json`): MCP mutate/hud_apply only — never Python generate/dump.** See `.cursor/rules/ui-canvas-mcp-first.mdc`.
+9. Dom/owner voice transcripts → canon: `skills/ingest-design-recording/SKILL.md`.
+10. Act 0 Pencil UI mocks / menu chrome: `skills/pencil-ui-chrome/SKILL.md`.
+11. Particle / stylized flame VFX recipes: `skills/author-particle-vfx/SKILL.md`.
+12. Blog / article screen capture (Windows record + stills): `skills/record-article-capture/SKILL.md`.
+13. Inspect existing code and tests before proposing new abstractions.
 
 ## Content vs Engine Workflow
 
@@ -41,7 +46,7 @@ Update the context library in the same change for accepted decisions; feature st
 
 Link to source rather than duplicating implementation details. Never record secrets, credentials, generated output, or transient debugging notes.
 
-Record material defects and surprising behavior in `context/testing/findings.md`, including reproduction, impact, cause, resolution, verification, and remaining risk. Do not record routine compile mistakes that have no reusable lesson.
+Record material defects and surprising behavior in `context/testing/findings.md`, including reproduction, impact, cause, resolution, verification, and remaining risk. Do not record routine compile mistakes that have no reusable lesson. When the **same asset-pipeline failure class** repeats (missing player clips, muddy foliage atlases, corrupted Tier-1 props), update `context/testing/recurring-asset-failures.md` with a concrete path forward and link it from the finding.
 
 ## Definition of Done
 

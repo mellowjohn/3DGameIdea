@@ -1,0 +1,52 @@
+---
+description: Prefer Blockbench meshes over stacked cubes; use extrude and vertex moves to join shapes
+alwaysApply: true
+---
+
+# Blockbench: Prefer Meshes for Shape
+
+When authoring props and weapons in Blockbench (especially curved or organic forms), do **not** default to stacked cubes only.
+
+Owner guidance (Outrider shortbow session): build with **meshes**; use **extrude** and **move vertices / faces / edges** to attach and grow parts so the model stays connected.
+
+## Prefer
+
+- **Mesh** elements for limbs, bows, blades with taper, cylinders that need real facets, and any silhouette that should read as a continuous curve
+- Faceted cross-sections that match concept art (often **6–8 sides** for wood/metal rings and tips)
+- **Extrude** a face or edge loop, then **move** the new verts/faces to the next station on the silhouette — grow one connected mesh instead of floating separate pieces
+- Cubes only for genuinely boxy parts (crates) or when the owner explicitly wants a cube blockout
+
+## Workflow
+
+1. Match concept silhouette with a centerline (waypoints) and a cross-section radius that tapers.
+2. Seed an end-cap or grip ring as a mesh face loop.
+3. **Extrude** → **move** (and scale the ring for taper) along the path until tip-to-tip reads correctly.
+4. Keep decorative extras as separate meshes only when they should read as layered parts (leather wrap bands, cord bindings, string) — not for the main stave curve.
+5. Texture / paint after geometry is locked unless the owner asks otherwise.
+
+## Rules
+
+1. For recurves, tapers, and rounded weapon profiles, build with meshes first; cubes are a last resort or a quick blockout the owner asked to replace.
+2. Octagonal / faceted concept parts → mesh (or cylinder with matching side count), not a cube plus a 45° overlay hack unless the owner wants that look.
+3. Prefer one continuous primary mesh for the main body (e.g. bow stave through grip and limbs). Extrude from rings into limbs; move verts to path stations; taper by scaling the active ring.
+4. Do not leave disconnected limb meshes floating near a grip/ring with a visible gap — join by extrusion / shared topology.
+5. Cube blockouts are fine only when the owner says “blockout / graybox” or “shape first / texture later” — switch to meshes when refining accuracy.
+
+## Examples
+
+```text
+❌ BAD: Outrider shortbow as only rotated cube segments for the whole limb curve
+✅ GOOD: Continuous mesh stave (loft or extrude-along-path) with octagonal cross-section; wrap bands separate
+
+❌ BAD: Tip “octagon” = two cubes, one rotated 45°
+✅ GOOD: 8-sided mesh tip cap, extruded from the limb end
+
+❌ BAD: Disconnected limb mesh floating near a ring with a visible gap
+✅ GOOD: Extrude from the ring face, move verts to the next limb station so the stave is continuous
+```
+
+## Provenance
+
+- Captured from owner notes while blocking `outrider_shortbow` / Outrider Bow in Blockbench (mesh + extrude/move preference).
+- WIP source: `tools/art/outrider-shortbow/Outrider_Shortbow.bbmodel`
+- Concept: `context/art/concepts/starter-outrider-shortbow.png`

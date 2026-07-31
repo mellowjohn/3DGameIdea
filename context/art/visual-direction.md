@@ -67,5 +67,5 @@ Typography should reinforce dark fantasy without reducing usability. Ornamental 
 
 - Flat shading versus softened normals on terrain and props.
 - Degree of texture use versus palette-driven materials.
-- Outrider and Runecaster starting-kit concept references.
+- ~~Outrider and Runecaster starting-kit concept references~~ — first-pass turnarounds in [character-direction.md](character-direction.md).
 - Final licensed font files and fallback coverage — **approved 2026-07-15** (TICKET-0144): Cinzel for in-scene game UI; Roboto for engine chrome; JetBrains Mono for diagnostics; ImGui fallback if files missing.

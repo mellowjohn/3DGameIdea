@@ -1,63 +1,3423 @@
 {
-  "schemaVersion": 1,
+  "designResolution": [
+    1920.0,
+    1080.0
+  ],
   "id": "inventory",
-  "designResolution": [1920, 1080],
+  "schemaVersion": 1,
   "widgets": [
     {
+      "anchor": "center",
+      "color": [
+        21.0,
+        23.0,
+        25.0,
+        180.0
+      ],
       "id": "inventory_dim",
-      "type": "panel",
-      "anchor": "center",
-      "offset": [0, 0],
-      "size": [1920, 1080],
-      "opacity": 0.7,
-      "color": [21, 23, 25, 255]
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        1920.0,
+        1080.0
+      ],
+      "type": "panel"
     },
     {
-      "id": "inventory_panel",
-      "type": "panel",
       "anchor": "center",
-      "offset": [0, 0],
-      "size": [720, 520],
-      "color": [45, 41, 35, 250]
+      "color": [
+        45.0,
+        41.0,
+        35.0,
+        250.0
+      ],
+      "id": "inventory_frame",
+      "offset": [
+        0.0,
+        -10.0
+      ],
+      "size": [
+        1520.0,
+        900.0
+      ],
+      "type": "panel"
     },
     {
-      "id": "inventory_title",
-      "type": "text",
       "anchor": "center",
-      "offset": [0, -210],
-      "size": [480, 56],
       "bind": "inventory.title",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 28.0,
+      "id": "inventory_title",
+      "offset": [
+        -640.0,
+        -420.0
+      ],
+      "size": [
+        320.0,
+        36.0
+      ],
       "text": "Inventory",
-      "textAlign": "center",
       "textVAlign": "middle",
-      "fontSize": 44,
-      "color": [241, 238, 232, 255]
+      "type": "text"
     },
     {
-      "id": "inventory_hint",
-      "type": "text",
       "anchor": "center",
-      "offset": [0, -20],
-      "size": [560, 80],
-      "bind": "inventory.hint",
-      "text": "I to close · weight 12 / 40",
+      "bind": "inventory.tab_bag",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "inventory_tab_bag",
+      "offset": [
+        0.0,
+        -420.0
+      ],
+      "size": [
+        100.0,
+        32.0
+      ],
+      "text": "BAG",
       "textAlign": "center",
       "textVAlign": "middle",
-      "fontSize": 24,
-      "color": [155, 163, 167, 255]
+      "tooltip": "Bag and equipment",
+      "type": "button"
     },
     {
-      "id": "inventory_close",
-      "type": "button",
       "anchor": "center",
-      "offset": [0, 180],
-      "size": [240, 48],
+      "bind": "inventory.tab_craft",
+      "color": [
+        90.0,
+        78.0,
+        62.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "inventory_tab_craft",
+      "offset": [
+        110.0,
+        -420.0
+      ],
+      "size": [
+        100.0,
+        32.0
+      ],
+      "text": "CRAFT",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "tooltip": "Crafting (coming later)",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
       "bind": "inventory.close",
-      "text": "Close",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 16.0,
+      "id": "inventory_close",
+      "offset": [
+        680.0,
+        -420.0
+      ],
+      "size": [
+        36.0,
+        32.0
+      ],
+      "text": "X",
       "textAlign": "center",
       "textVAlign": "middle",
-      "fontSize": 30,
-      "color": [213, 185, 120, 255]
+      "tooltip": "Close (I / Esc)",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        255.0
+      ],
+      "id": "inventory_equip_col",
+      "offset": [
+        -560.0,
+        -40.0
+      ],
+      "size": [
+        300.0,
+        580.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        255.0
+      ],
+      "id": "inventory_bag_col",
+      "offset": [
+        -20.0,
+        -40.0
+      ],
+      "size": [
+        480.0,
+        580.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        255.0
+      ],
+      "id": "inventory_props_panel",
+      "offset": [
+        540.0,
+        -40.0
+      ],
+      "size": [
+        300.0,
+        580.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.equippedLabel",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 14.0,
+      "id": "inventory_equipped_label",
+      "offset": [
+        -560.0,
+        -290.0
+      ],
+      "size": [
+        240.0,
+        22.0
+      ],
+      "text": "Equipped",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_equip_head_bg",
+      "offset": [
+        -560.0,
+        -240.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_equip_head_icon",
+      "imageBind": "inventory.equip.head.icon",
+      "imageMode": "contain",
+      "offset": [
+        -560.0,
+        -240.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.equip.head",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_equip_head_btn",
+      "offset": [
+        -560.0,
+        -240.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_equip_chest_bg",
+      "offset": [
+        -560.0,
+        -170.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_equip_chest_icon",
+      "imageBind": "inventory.equip.chest.icon",
+      "imageMode": "contain",
+      "offset": [
+        -560.0,
+        -170.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.equip.chest",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_equip_chest_btn",
+      "offset": [
+        -560.0,
+        -170.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_equip_legs_bg",
+      "offset": [
+        -560.0,
+        -100.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_equip_legs_icon",
+      "imageBind": "inventory.equip.legs.icon",
+      "imageMode": "contain",
+      "offset": [
+        -560.0,
+        -100.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.equip.legs",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_equip_legs_btn",
+      "offset": [
+        -560.0,
+        -100.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.trinketLabel",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 13.0,
+      "id": "inventory_trinket_label",
+      "offset": [
+        -560.0,
+        -40.0
+      ],
+      "size": [
+        240.0,
+        20.0
+      ],
+      "text": "Trinkets",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_equip_trinket0_bg",
+      "offset": [
+        -593.0,
+        10.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_equip_trinket0_icon",
+      "imageBind": "inventory.equip.trinket0.icon",
+      "imageMode": "contain",
+      "offset": [
+        -593.0,
+        10.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.equip.trinket0",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_equip_trinket0_btn",
+      "offset": [
+        -593.0,
+        10.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_equip_trinket1_bg",
+      "offset": [
+        -527.0,
+        10.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_equip_trinket1_icon",
+      "imageBind": "inventory.equip.trinket1.icon",
+      "imageMode": "contain",
+      "offset": [
+        -527.0,
+        10.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.equip.trinket1",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_equip_trinket1_btn",
+      "offset": [
+        -527.0,
+        10.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_equip_trinket2_bg",
+      "offset": [
+        -593.0,
+        76.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_equip_trinket2_icon",
+      "imageBind": "inventory.equip.trinket2.icon",
+      "imageMode": "contain",
+      "offset": [
+        -593.0,
+        76.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.equip.trinket2",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_equip_trinket2_btn",
+      "offset": [
+        -593.0,
+        76.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_equip_trinket3_bg",
+      "offset": [
+        -527.0,
+        76.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_equip_trinket3_icon",
+      "imageBind": "inventory.equip.trinket3.icon",
+      "imageMode": "contain",
+      "offset": [
+        -527.0,
+        76.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.equip.trinket3",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_equip_trinket3_btn",
+      "offset": [
+        -527.0,
+        76.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bagsLabel",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 13.0,
+      "id": "inventory_bags_label",
+      "offset": [
+        -560.0,
+        160.0
+      ],
+      "size": [
+        240.0,
+        20.0
+      ],
+      "text": "Bags",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_equip_0_bg",
+      "offset": [
+        -628.0,
+        210.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_equip_0_icon",
+      "imageBind": "inventory.bagEquip.0.icon",
+      "imageMode": "contain",
+      "offset": [
+        -628.0,
+        210.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bagEquip.0",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_equip_0_btn",
+      "offset": [
+        -628.0,
+        210.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "tooltip": "Bag I — expand capacity (soon)",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_equip_1_bg",
+      "offset": [
+        -560.0,
+        210.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_equip_1_icon",
+      "imageBind": "inventory.bagEquip.1.icon",
+      "imageMode": "contain",
+      "offset": [
+        -560.0,
+        210.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bagEquip.1",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_equip_1_btn",
+      "offset": [
+        -560.0,
+        210.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "tooltip": "Bag II — expand capacity (soon)",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_equip_2_bg",
+      "offset": [
+        -492.0,
+        210.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_equip_2_icon",
+      "imageBind": "inventory.bagEquip.2.icon",
+      "imageMode": "contain",
+      "offset": [
+        -492.0,
+        210.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bagEquip.2",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_equip_2_btn",
+      "offset": [
+        -492.0,
+        210.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "tooltip": "Bag III — expand capacity (soon)",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bagLabel",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 14.0,
+      "id": "inventory_bag_label",
+      "offset": [
+        -180.0,
+        -290.0
+      ],
+      "size": [
+        80.0,
+        22.0
+      ],
+      "text": "Bag",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bagCap",
+      "color": [
+        155.0,
+        163.0,
+        167.0,
+        255.0
+      ],
+      "fontSize": 13.0,
+      "id": "inventory_bag_cap",
+      "offset": [
+        -80.0,
+        -290.0
+      ],
+      "size": [
+        120.0,
+        22.0
+      ],
+      "text": "0 / 20",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.sort",
+      "color": [
+        90.0,
+        78.0,
+        62.0,
+        255.0
+      ],
+      "fontSize": 13.0,
+      "id": "inventory_sort",
+      "offset": [
+        130.0,
+        -290.0
+      ],
+      "size": [
+        120.0,
+        28.0
+      ],
+      "text": "SORT",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "tooltip": "Cycle sort: name / kind / newest",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_0_bg",
+      "offset": [
+        -164.0,
+        -230.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_0_icon",
+      "imageBind": "inventory.bag.0.icon",
+      "imageMode": "contain",
+      "offset": [
+        -164.0,
+        -230.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.0",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_0_btn",
+      "offset": [
+        -164.0,
+        -230.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.0.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_0_count",
+      "offset": [
+        -156.0,
+        -212.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_1_bg",
+      "offset": [
+        -92.0,
+        -230.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_1_icon",
+      "imageBind": "inventory.bag.1.icon",
+      "imageMode": "contain",
+      "offset": [
+        -92.0,
+        -230.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.1",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_1_btn",
+      "offset": [
+        -92.0,
+        -230.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.1.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_1_count",
+      "offset": [
+        -84.0,
+        -212.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_2_bg",
+      "offset": [
+        -20.0,
+        -230.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_2_icon",
+      "imageBind": "inventory.bag.2.icon",
+      "imageMode": "contain",
+      "offset": [
+        -20.0,
+        -230.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.2",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_2_btn",
+      "offset": [
+        -20.0,
+        -230.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.2.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_2_count",
+      "offset": [
+        -12.0,
+        -212.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_3_bg",
+      "offset": [
+        52.0,
+        -230.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_3_icon",
+      "imageBind": "inventory.bag.3.icon",
+      "imageMode": "contain",
+      "offset": [
+        52.0,
+        -230.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.3",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_3_btn",
+      "offset": [
+        52.0,
+        -230.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.3.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_3_count",
+      "offset": [
+        60.0,
+        -212.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_4_bg",
+      "offset": [
+        124.0,
+        -230.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_4_icon",
+      "imageBind": "inventory.bag.4.icon",
+      "imageMode": "contain",
+      "offset": [
+        124.0,
+        -230.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.4",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_4_btn",
+      "offset": [
+        124.0,
+        -230.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.4.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_4_count",
+      "offset": [
+        132.0,
+        -212.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_5_bg",
+      "offset": [
+        -164.0,
+        -158.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_5_icon",
+      "imageBind": "inventory.bag.5.icon",
+      "imageMode": "contain",
+      "offset": [
+        -164.0,
+        -158.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.5",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_5_btn",
+      "offset": [
+        -164.0,
+        -158.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.5.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_5_count",
+      "offset": [
+        -156.0,
+        -140.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_6_bg",
+      "offset": [
+        -92.0,
+        -158.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_6_icon",
+      "imageBind": "inventory.bag.6.icon",
+      "imageMode": "contain",
+      "offset": [
+        -92.0,
+        -158.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.6",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_6_btn",
+      "offset": [
+        -92.0,
+        -158.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.6.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_6_count",
+      "offset": [
+        -84.0,
+        -140.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_7_bg",
+      "offset": [
+        -20.0,
+        -158.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_7_icon",
+      "imageBind": "inventory.bag.7.icon",
+      "imageMode": "contain",
+      "offset": [
+        -20.0,
+        -158.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.7",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_7_btn",
+      "offset": [
+        -20.0,
+        -158.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.7.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_7_count",
+      "offset": [
+        -12.0,
+        -140.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_8_bg",
+      "offset": [
+        52.0,
+        -158.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_8_icon",
+      "imageBind": "inventory.bag.8.icon",
+      "imageMode": "contain",
+      "offset": [
+        52.0,
+        -158.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.8",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_8_btn",
+      "offset": [
+        52.0,
+        -158.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.8.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_8_count",
+      "offset": [
+        60.0,
+        -140.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_9_bg",
+      "offset": [
+        124.0,
+        -158.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_9_icon",
+      "imageBind": "inventory.bag.9.icon",
+      "imageMode": "contain",
+      "offset": [
+        124.0,
+        -158.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.9",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_9_btn",
+      "offset": [
+        124.0,
+        -158.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.9.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_9_count",
+      "offset": [
+        132.0,
+        -140.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_10_bg",
+      "offset": [
+        -164.0,
+        -86.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_10_icon",
+      "imageBind": "inventory.bag.10.icon",
+      "imageMode": "contain",
+      "offset": [
+        -164.0,
+        -86.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.10",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_10_btn",
+      "offset": [
+        -164.0,
+        -86.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.10.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_10_count",
+      "offset": [
+        -156.0,
+        -68.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_11_bg",
+      "offset": [
+        -92.0,
+        -86.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_11_icon",
+      "imageBind": "inventory.bag.11.icon",
+      "imageMode": "contain",
+      "offset": [
+        -92.0,
+        -86.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.11",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_11_btn",
+      "offset": [
+        -92.0,
+        -86.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.11.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_11_count",
+      "offset": [
+        -84.0,
+        -68.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_12_bg",
+      "offset": [
+        -20.0,
+        -86.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_12_icon",
+      "imageBind": "inventory.bag.12.icon",
+      "imageMode": "contain",
+      "offset": [
+        -20.0,
+        -86.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.12",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_12_btn",
+      "offset": [
+        -20.0,
+        -86.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.12.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_12_count",
+      "offset": [
+        -12.0,
+        -68.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_13_bg",
+      "offset": [
+        52.0,
+        -86.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_13_icon",
+      "imageBind": "inventory.bag.13.icon",
+      "imageMode": "contain",
+      "offset": [
+        52.0,
+        -86.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.13",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_13_btn",
+      "offset": [
+        52.0,
+        -86.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.13.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_13_count",
+      "offset": [
+        60.0,
+        -68.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_14_bg",
+      "offset": [
+        124.0,
+        -86.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_14_icon",
+      "imageBind": "inventory.bag.14.icon",
+      "imageMode": "contain",
+      "offset": [
+        124.0,
+        -86.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.14",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_14_btn",
+      "offset": [
+        124.0,
+        -86.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.14.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_14_count",
+      "offset": [
+        132.0,
+        -68.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_15_bg",
+      "offset": [
+        -164.0,
+        -14.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_15_icon",
+      "imageBind": "inventory.bag.15.icon",
+      "imageMode": "contain",
+      "offset": [
+        -164.0,
+        -14.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.15",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_15_btn",
+      "offset": [
+        -164.0,
+        -14.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.15.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_15_count",
+      "offset": [
+        -156.0,
+        4.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_16_bg",
+      "offset": [
+        -92.0,
+        -14.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_16_icon",
+      "imageBind": "inventory.bag.16.icon",
+      "imageMode": "contain",
+      "offset": [
+        -92.0,
+        -14.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.16",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_16_btn",
+      "offset": [
+        -92.0,
+        -14.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.16.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_16_count",
+      "offset": [
+        -84.0,
+        4.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_17_bg",
+      "offset": [
+        -20.0,
+        -14.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_17_icon",
+      "imageBind": "inventory.bag.17.icon",
+      "imageMode": "contain",
+      "offset": [
+        -20.0,
+        -14.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.17",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_17_btn",
+      "offset": [
+        -20.0,
+        -14.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.17.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_17_count",
+      "offset": [
+        -12.0,
+        4.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_18_bg",
+      "offset": [
+        52.0,
+        -14.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_18_icon",
+      "imageBind": "inventory.bag.18.icon",
+      "imageMode": "contain",
+      "offset": [
+        52.0,
+        -14.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.18",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_18_btn",
+      "offset": [
+        52.0,
+        -14.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.18.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_18_count",
+      "offset": [
+        60.0,
+        4.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_bag_19_bg",
+      "offset": [
+        124.0,
+        -14.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_bag_19_icon",
+      "imageBind": "inventory.bag.19.icon",
+      "imageMode": "contain",
+      "offset": [
+        124.0,
+        -14.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.bag.19",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_bag_19_btn",
+      "offset": [
+        124.0,
+        -14.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bag.19.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bag_19_count",
+      "offset": [
+        132.0,
+        4.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        255.0
+      ],
+      "id": "inventory_craft_panel",
+      "offset": [
+        -20.0,
+        -40.0
+      ],
+      "size": [
+        480.0,
+        580.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.craftBody",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 18.0,
+      "id": "inventory_craft_body",
+      "offset": [
+        -20.0,
+        -40.0
+      ],
+      "size": [
+        400.0,
+        80.0
+      ],
+      "text": "Crafting comes later.",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.propsKind",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_props_kind",
+      "offset": [
+        540.0,
+        -290.0
+      ],
+      "size": [
+        260.0,
+        18.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.propsName",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 20.0,
+      "id": "inventory_props_name",
+      "offset": [
+        540.0,
+        -258.0
+      ],
+      "size": [
+        260.0,
+        40.0
+      ],
+      "text": "—",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        32.0,
+        30.0,
+        28.0,
+        255.0
+      ],
+      "id": "inventory_props_icon_bg",
+      "offset": [
+        540.0,
+        -170.0
+      ],
+      "size": [
+        96.0,
+        96.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_props_icon",
+      "imageBind": "inventory.props.icon",
+      "imageMode": "contain",
+      "offset": [
+        540.0,
+        -170.0
+      ],
+      "size": [
+        84.0,
+        84.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.propsDesc",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 14.0,
+      "id": "inventory_props_desc",
+      "offset": [
+        540.0,
+        -30.0
+      ],
+      "size": [
+        260.0,
+        140.0
+      ],
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.equip",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 16.0,
+      "id": "inventory_equip_btn",
+      "offset": [
+        540.0,
+        150.0
+      ],
+      "size": [
+        240.0,
+        40.0
+      ],
+      "text": "EQUIP",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "tooltip": "Equip selected item",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.unequip",
+      "color": [
+        90.0,
+        78.0,
+        62.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "inventory_unequip_btn",
+      "offset": [
+        540.0,
+        202.0
+      ],
+      "size": [
+        240.0,
+        36.0
+      ],
+      "text": "UNEQUIP",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "tooltip": "Unequip selected item",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        255.0
+      ],
+      "id": "inventory_footer_bg",
+      "offset": [
+        0.0,
+        380.0
+      ],
+      "size": [
+        1440.0,
+        100.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.gold",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "inventory_gold",
+      "offset": [
+        -560.0,
+        380.0
+      ],
+      "size": [
+        200.0,
+        24.0
+      ],
+      "text": "0 gold",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.bindLabel",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_bind_label",
+      "offset": [
+        -280.0,
+        352.0
+      ],
+      "size": [
+        70.0,
+        18.0
+      ],
+      "text": "Hotbar",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_hotbar_0_bg",
+      "offset": [
+        -244.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_hotbar_0_icon",
+      "imageBind": "inventory.hotbar.0.icon",
+      "imageMode": "contain",
+      "offset": [
+        -244.0,
+        388.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.hotbar.0",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_hotbar_0_btn",
+      "offset": [
+        -244.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.hotbar.0.key",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 11.0,
+      "id": "inventory_hotbar_0_key",
+      "offset": [
+        -262.0,
+        404.0
+      ],
+      "size": [
+        18.0,
+        14.0
+      ],
+      "text": "1",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_hotbar_1_bg",
+      "offset": [
+        -180.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_hotbar_1_icon",
+      "imageBind": "inventory.hotbar.1.icon",
+      "imageMode": "contain",
+      "offset": [
+        -180.0,
+        388.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.hotbar.1",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_hotbar_1_btn",
+      "offset": [
+        -180.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.hotbar.1.key",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 11.0,
+      "id": "inventory_hotbar_1_key",
+      "offset": [
+        -198.0,
+        404.0
+      ],
+      "size": [
+        18.0,
+        14.0
+      ],
+      "text": "2",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_hotbar_2_bg",
+      "offset": [
+        -116.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_hotbar_2_icon",
+      "imageBind": "inventory.hotbar.2.icon",
+      "imageMode": "contain",
+      "offset": [
+        -116.0,
+        388.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.hotbar.2",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_hotbar_2_btn",
+      "offset": [
+        -116.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.hotbar.2.key",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 11.0,
+      "id": "inventory_hotbar_2_key",
+      "offset": [
+        -134.0,
+        404.0
+      ],
+      "size": [
+        18.0,
+        14.0
+      ],
+      "text": "3",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_hotbar_3_bg",
+      "offset": [
+        -52.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_hotbar_3_icon",
+      "imageBind": "inventory.hotbar.3.icon",
+      "imageMode": "contain",
+      "offset": [
+        -52.0,
+        388.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.hotbar.3",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_hotbar_3_btn",
+      "offset": [
+        -52.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.hotbar.3.key",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 11.0,
+      "id": "inventory_hotbar_3_key",
+      "offset": [
+        -70.0,
+        404.0
+      ],
+      "size": [
+        18.0,
+        14.0
+      ],
+      "text": "4",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_hotbar_4_bg",
+      "offset": [
+        12.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_hotbar_4_icon",
+      "imageBind": "inventory.hotbar.4.icon",
+      "imageMode": "contain",
+      "offset": [
+        12.0,
+        388.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.hotbar.4",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_hotbar_4_btn",
+      "offset": [
+        12.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.hotbar.4.key",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 11.0,
+      "id": "inventory_hotbar_4_key",
+      "offset": [
+        -6.0,
+        404.0
+      ],
+      "size": [
+        18.0,
+        14.0
+      ],
+      "text": "5",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_hotbar_5_bg",
+      "offset": [
+        76.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_hotbar_5_icon",
+      "imageBind": "inventory.hotbar.5.icon",
+      "imageMode": "contain",
+      "offset": [
+        76.0,
+        388.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.hotbar.5",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_hotbar_5_btn",
+      "offset": [
+        76.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.hotbar.5.key",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 11.0,
+      "id": "inventory_hotbar_5_key",
+      "offset": [
+        58.0,
+        404.0
+      ],
+      "size": [
+        18.0,
+        14.0
+      ],
+      "text": "6",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_hotbar_6_bg",
+      "offset": [
+        140.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_hotbar_6_icon",
+      "imageBind": "inventory.hotbar.6.icon",
+      "imageMode": "contain",
+      "offset": [
+        140.0,
+        388.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.hotbar.6",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_hotbar_6_btn",
+      "offset": [
+        140.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.hotbar.6.key",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 11.0,
+      "id": "inventory_hotbar_6_key",
+      "offset": [
+        122.0,
+        404.0
+      ],
+      "size": [
+        18.0,
+        14.0
+      ],
+      "text": "7",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_hotbar_7_bg",
+      "offset": [
+        204.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_hotbar_7_icon",
+      "imageBind": "inventory.hotbar.7.icon",
+      "imageMode": "contain",
+      "offset": [
+        204.0,
+        388.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.hotbar.7",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_hotbar_7_btn",
+      "offset": [
+        204.0,
+        388.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.hotbar.7.key",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 11.0,
+      "id": "inventory_hotbar_7_key",
+      "offset": [
+        186.0,
+        404.0
+      ],
+      "size": [
+        18.0,
+        14.0
+      ],
+      "text": "8",
+      "textVAlign": "middle",
+      "type": "text"
     }
   ]
 }

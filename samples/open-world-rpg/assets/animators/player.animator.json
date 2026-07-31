@@ -1,0 +1,445 @@
+{
+  "schemaVersion": 1,
+  "kind": "animatorController",
+  "id": "player_locomotion",
+  "parameters": [
+    {"name": "speed", "type": "float", "default": 0.0},
+    {"name": "grounded", "type": "bool", "default": true},
+    {"name": "jump", "type": "trigger"},
+    {"name": "attack", "type": "trigger"},
+    {"name": "block", "type": "bool", "default": false},
+    {"name": "dodge", "type": "trigger"},
+    {"name": "dodgeBack", "type": "trigger"},
+    {"name": "dodgeLeft", "type": "trigger"},
+    {"name": "dodgeRight", "type": "trigger"},
+    {"name": "hit", "type": "trigger"},
+    {"name": "die", "type": "trigger"},
+    {"name": "interact", "type": "trigger"},
+    {"name": "interactPickup", "type": "trigger"},
+    {"name": "revive", "type": "trigger"}
+  ],
+  "layers": [{
+    "name": "base",
+    "defaultState": "idle",
+    "blendMode": "override",
+    "states": [
+      {
+        "name": "idle",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "Idle",
+          "loop": true
+        }
+      },
+      {
+        "name": "locomotion",
+        "motion": {
+          "type": "blendTree1D",
+          "parameter": "speed",
+          "children": [
+            {
+              "threshold": 0.0,
+              "clipSource": "assets/models/player.gltf",
+              "clip": "Idle",
+              "loop": true
+            },
+            {
+              "threshold": 0.35,
+              "clipSource": "assets/models/player.gltf",
+              "clip": "Walk",
+              "loop": true
+            },
+            {
+              "threshold": 1.0,
+              "clipSource": "assets/models/player.gltf",
+              "clip": "Run",
+              "loop": true
+            }
+          ]
+        }
+      },
+      {
+        "name": "jump",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "Jump",
+          "loop": false
+        }
+      },
+      {
+        "name": "fall",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "Fall",
+          "loop": true
+        }
+      },
+      {
+        "name": "land",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "Land",
+          "loop": false
+        }
+      },
+      {
+        "name": "attack",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "Attack",
+          "loop": false
+        }
+      },
+      {
+        "name": "block",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "Block",
+          "loop": true
+        }
+      },
+      {
+        "name": "dodge",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "Dodge",
+          "loop": false
+        }
+      },
+      {
+        "name": "dodgeBack",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "DodgeBack",
+          "loop": false
+        }
+      },
+      {
+        "name": "dodgeLeft",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "DodgeLeft",
+          "loop": false
+        }
+      },
+      {
+        "name": "dodgeRight",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "DodgeRight",
+          "loop": false
+        }
+      },
+      {
+        "name": "hitReact",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "HitReact",
+          "loop": false
+        }
+      },
+      {
+        "name": "death",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "Death",
+          "loop": false
+        }
+      },
+      {
+        "name": "interact",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "Interact",
+          "loop": false
+        }
+      },
+      {
+        "name": "interactPickup",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "InteractPickup",
+          "loop": false
+        }
+      },
+      {
+        "name": "revive",
+        "motion": {
+          "type": "clip",
+          "clipSource": "assets/models/player.gltf",
+          "clip": "Revive",
+          "loop": false
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "from": "*",
+        "to": "death",
+        "duration": 0.08,
+        "conditions": [{"parameter": "die", "op": "trigger"}]
+      },
+      {
+        "from": "death",
+        "to": "idle",
+        "duration": 0.15,
+        "hasExitTime": true,
+        "exitTime": 0.95,
+        "conditions": [{"parameter": "revive", "op": "trigger"}]
+      },
+      {
+        "from": "*",
+        "to": "hitReact",
+        "duration": 0.06,
+        "conditions": [{"parameter": "hit", "op": "trigger"}]
+      },
+      {
+        "from": "hitReact",
+        "to": "idle",
+        "duration": 0.12,
+        "hasExitTime": true,
+        "exitTime": 0.9
+      },
+      {
+        "from": "*",
+        "to": "attack",
+        "duration": 0.05,
+        "conditions": [{"parameter": "attack", "op": "trigger"}]
+      },
+      {
+        "from": "attack",
+        "to": "idle",
+        "duration": 0.1,
+        "hasExitTime": true,
+        "exitTime": 0.9
+      },
+      {
+        "from": "*",
+        "to": "block",
+        "duration": 0.08,
+        "conditions": [
+          {"parameter": "block", "op": "equal", "value": true},
+          {"parameter": "grounded", "op": "equal", "value": true}
+        ]
+      },
+      {
+        "from": "block",
+        "to": "idle",
+        "duration": 0.1,
+        "conditions": [{"parameter": "block", "op": "equal", "value": false}]
+      },
+      {
+        "from": "*",
+        "to": "dodge",
+        "duration": 0.05,
+        "conditions": [{"parameter": "dodge", "op": "trigger"}]
+      },
+      {
+        "from": "*",
+        "to": "dodgeBack",
+        "duration": 0.05,
+        "conditions": [{"parameter": "dodgeBack", "op": "trigger"}]
+      },
+      {
+        "from": "*",
+        "to": "dodgeLeft",
+        "duration": 0.05,
+        "conditions": [{"parameter": "dodgeLeft", "op": "trigger"}]
+      },
+      {
+        "from": "*",
+        "to": "dodgeRight",
+        "duration": 0.05,
+        "conditions": [{"parameter": "dodgeRight", "op": "trigger"}]
+      },
+      {
+        "from": "dodge",
+        "to": "idle",
+        "duration": 0.1,
+        "hasExitTime": true,
+        "exitTime": 0.9
+      },
+      {
+        "from": "dodgeBack",
+        "to": "idle",
+        "duration": 0.1,
+        "hasExitTime": true,
+        "exitTime": 0.9
+      },
+      {
+        "from": "dodgeLeft",
+        "to": "idle",
+        "duration": 0.1,
+        "hasExitTime": true,
+        "exitTime": 0.9
+      },
+      {
+        "from": "dodgeRight",
+        "to": "idle",
+        "duration": 0.1,
+        "hasExitTime": true,
+        "exitTime": 0.9
+      },
+      {
+        "from": "*",
+        "to": "interact",
+        "duration": 0.08,
+        "conditions": [{"parameter": "interact", "op": "trigger"}]
+      },
+      {
+        "from": "interact",
+        "to": "idle",
+        "duration": 0.12,
+        "hasExitTime": true,
+        "exitTime": 0.9
+      },
+      {
+        "from": "*",
+        "to": "interactPickup",
+        "duration": 0.08,
+        "conditions": [{"parameter": "interactPickup", "op": "trigger"}]
+      },
+      {
+        "from": "interactPickup",
+        "to": "idle",
+        "duration": 0.12,
+        "hasExitTime": true,
+        "exitTime": 0.9
+      },
+      {
+        "from": "*",
+        "to": "jump",
+        "duration": 0.05,
+        "conditions": [{"parameter": "jump", "op": "trigger"}]
+      },
+      {
+        "from": "jump",
+        "to": "fall",
+        "duration": 0.08,
+        "hasExitTime": true,
+        "exitTime": 0.45,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": false}]
+      },
+      {
+        "from": "jump",
+        "to": "land",
+        "duration": 0.08,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": true}]
+      },
+      {
+        "from": "idle",
+        "to": "fall",
+        "duration": 0.1,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": false}]
+      },
+      {
+        "from": "locomotion",
+        "to": "fall",
+        "duration": 0.1,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": false}]
+      },
+      {
+        "from": "land",
+        "to": "fall",
+        "duration": 0.08,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": false}]
+      },
+      {
+        "from": "attack",
+        "to": "fall",
+        "duration": 0.08,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": false}]
+      },
+      {
+        "from": "block",
+        "to": "fall",
+        "duration": 0.08,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": false}]
+      },
+      {
+        "from": "dodge",
+        "to": "fall",
+        "duration": 0.08,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": false}]
+      },
+      {
+        "from": "dodgeBack",
+        "to": "fall",
+        "duration": 0.08,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": false}]
+      },
+      {
+        "from": "dodgeLeft",
+        "to": "fall",
+        "duration": 0.08,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": false}]
+      },
+      {
+        "from": "dodgeRight",
+        "to": "fall",
+        "duration": 0.08,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": false}]
+      },
+      {
+        "from": "fall",
+        "to": "land",
+        "duration": 0.08,
+        "conditions": [{"parameter": "grounded", "op": "equal", "value": true}]
+      },
+      {
+        "from": "land",
+        "to": "idle",
+        "duration": 0.1,
+        "hasExitTime": true,
+        "exitTime": 0.85
+      },
+      {
+        "from": "land",
+        "to": "locomotion",
+        "duration": 0.1,
+        "hasExitTime": true,
+        "exitTime": 0.55,
+        "conditions": [
+          {"parameter": "grounded", "op": "equal", "value": true},
+          {"parameter": "speed", "op": "greater", "value": 0.1}
+        ]
+      },
+      {
+        "from": "idle",
+        "to": "locomotion",
+        "duration": 0.1,
+        "conditions": [
+          {"parameter": "grounded", "op": "equal", "value": true},
+          {"parameter": "speed", "op": "greater", "value": 0.1}
+        ]
+      },
+      {
+        "from": "locomotion",
+        "to": "idle",
+        "duration": 0.1,
+        "conditions": [
+          {"parameter": "grounded", "op": "equal", "value": true},
+          {"parameter": "speed", "op": "lessOrEqual", "value": 0.1}
+        ]
+      }
+    ]
+  }],
+  "timelineEvents": [
+    {"state": "attack", "time": 0.28, "name": "hitFrame", "layer": "base", "payload": {"phase": "strike"}},
+    {"state": "land", "time": 0.05, "name": "footstep", "layer": "base", "payload": {"phase": "land"}}
+  ]
+}

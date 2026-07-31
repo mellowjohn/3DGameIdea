@@ -146,8 +146,15 @@ void HudRuntime::clear() {
     numbers_.clear();
     bools_.clear();
     texts_.clear();
+    images_.clear();
+    typed_full_.clear();
+    typed_chars_.clear();
+    typed_cps_.clear();
+    text_scroll_y_.clear();
     visibility_.clear();
     enabled_.clear();
+    color_overrides_.clear();
+    button_hover_t_.clear();
 }
 
 void HudRuntime::reset_player_health(double current, double max) {
@@ -209,6 +216,11 @@ void HudRuntime::set_text(const std::string& bind, std::string value) {
         set_visible("quest_objective_eyebrow", show);
         set_visible("quest_objective_text", show);
     }
+}
+
+void HudRuntime::set_image(const std::string& bind, std::string path) {
+    if (bind.empty()) return;
+    images_[bind] = std::move(path);
 }
 
 void HudRuntime::set_text_typed(const std::string& bind, std::string value, float chars_per_second) {
@@ -305,6 +317,12 @@ std::optional<bool> HudRuntime::get_bool(const std::string& bind) const {
 std::optional<std::string> HudRuntime::get_text(const std::string& bind) const {
     const auto it = texts_.find(bind);
     if (it == texts_.end()) return std::nullopt;
+    return it->second;
+}
+
+std::optional<std::string> HudRuntime::get_image(const std::string& bind) const {
+    const auto it = images_.find(bind);
+    if (it == images_.end()) return std::nullopt;
     return it->second;
 }
 
@@ -413,7 +431,8 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
         return ImVec2{x, y};
     };
     const auto draw_widget_image = [&](const ImVec2& origin, const ImVec2& max, float rounding, float opacity,
-        const std::string& image_path, HudImageMode image_mode, ImU32 fallback_fill) -> bool {
+        const std::string& image_path, HudImageMode image_mode, ImU32 fallback_fill,
+        ImU32 image_tint = IM_COL32(255, 255, 255, 255)) -> bool {
         if (image_path.empty()) {
             draw_list->AddRectFilled(origin, max, with_opacity(fallback_fill, opacity), rounding);
             return true;
@@ -423,8 +442,11 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
                 float draw_min_x = origin.x, draw_min_y = origin.y, draw_max_x = max.x, draw_max_y = max.y;
                 hud_image_fit_rect(origin.x, origin.y, max.x, max.y, static_cast<float>(tex->width),
                     static_cast<float>(tex->height), image_mode, draw_min_x, draw_min_y, draw_max_x, draw_max_y);
-                const int alpha = static_cast<int>(std::lround(std::clamp(opacity, 0.0f, 1.0f) * 255.0f));
-                const ImU32 tint = IM_COL32(255, 255, 255, alpha);
+                const int base_a = static_cast<int>((image_tint >> IM_COL32_A_SHIFT) & 0xFF);
+                const int alpha = static_cast<int>(
+                    std::lround(std::clamp(opacity, 0.0f, 1.0f) * static_cast<float>(base_a)));
+                const ImU32 tint = (image_tint & ~IM_COL32_A_MASK) |
+                    (static_cast<ImU32>(std::clamp(alpha, 0, 255)) << IM_COL32_A_SHIFT);
                 draw_list->AddImageRounded(static_cast<ImTextureID>(tex->imgui_tex_id), ImVec2{draw_min_x, draw_min_y},
                     ImVec2{draw_max_x, draw_max_y}, ImVec2{0.0f, 0.0f}, ImVec2{1.0f, 1.0f}, tint, rounding);
                 return true;
@@ -441,6 +463,16 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
             draw_text(text_pos, font_sz, with_opacity(text_col_default, opacity), stem.c_str(), 18.0f);
         }
         return false;
+    };
+    const auto resolve_widget_image = [&](const HudWidget& widget) -> std::string {
+        if (!widget.image_bind.empty()) {
+            if (const auto bound = get_image(widget.image_bind)) {
+                // Empty bind value means cleared — do not keep a stale path.
+                if (!bound->empty()) return *bound;
+            }
+            return {};
+        }
+        return widget.image;
     };
     const auto draw_focus_ring = [&](const ImVec2& origin, const ImVec2& max, float rounding) {
         const float pad = 2.0f * scale;
@@ -468,8 +500,37 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
                 widget.id == "hud_minimap_feed" || widget.id == "hud_minimap_dot" ||
                 widget.id == "dialogue_portrait_outer" || widget.id == "dialogue_portrait_mid" ||
                 widget.id == "dialogue_portrait_viewport";
-            if (!widget.image.empty()) {
-                draw_widget_image(origin, max, rounding, opacity, widget.image, widget.image_mode, panel_col_default);
+                    const bool hotbar_slot =
+                widget.id.rfind("hud_hotbar_", 0) == 0 && widget.id.find("_key") == std::string::npos &&
+                widget.id.find("_icon") == std::string::npos;
+            const std::string panel_image = resolve_widget_image(widget);
+            if (!panel_image.empty()) {
+                const ImU32 tint = to_col(widget_rgba(widget), IM_COL32(255, 255, 255, 255));
+                draw_widget_image(origin, max, rounding, opacity, panel_image, widget.image_mode, panel_col_default,
+                    tint);
+                if (hotbar_slot) {
+                    // Selection: Lua sets hud.hotbar.N.selected for the active equip slot.
+                    bool selected = false;
+                    if (!widget.id.empty()) {
+                        const char digit = widget.id.back();
+                        if (digit >= '1' && digit <= '8') {
+                            const std::string bind = std::string("hud.hotbar.") + digit + ".selected";
+                            selected = get_bool(bind).value_or(false);
+                        }
+                    }
+                    if (selected) {
+                        // Strong gold plate + outer ring so equipped reads at a glance on the combat HUD.
+                        draw_list->AddRectFilled(origin, max, with_opacity(IM_COL32(255, 170, 40, 90), opacity),
+                            rounding);
+                        const float pad = 4.0f * scale;
+                        draw_list->AddRect(ImVec2{origin.x - pad, origin.y - pad},
+                            ImVec2{max.x + pad, max.y + pad}, IM_COL32(255, 190, 60, 255), rounding + pad, 0,
+                            std::max(3.5f, scale * 1.8f));
+                    } else {
+                        draw_list->AddRect(origin, max, with_opacity(bar_border, opacity), rounding, 0,
+                            std::max(1.0f, scale));
+                    }
+                }
             } else if (circle_panel) {
                 const ImVec2 center{(origin.x + max.x) * 0.5f, (origin.y + max.y) * 0.5f};
                 const float radius = std::min(width, height) * 0.5f;
@@ -483,8 +544,6 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
             } else {
                 draw_list->AddRectFilled(origin, max, with_opacity(to_col(widget_rgba(widget), panel_col_default), opacity),
                     rounding);
-                const bool hotbar_slot =
-                    widget.id.rfind("hud_hotbar_", 0) == 0 && widget.id.find("_key") == std::string::npos;
                 const bool dialogue_key =
                     widget.id.rfind("dialogue_choice_", 0) == 0 && widget.id.size() > 5 &&
                     widget.id.compare(widget.id.size() - 4, 4, "_key") == 0;
@@ -497,7 +556,8 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
         }
 
         if (widget.type == HudWidgetType::Image) {
-            draw_widget_image(origin, max, rounding, opacity, widget.image, widget.image_mode, panel_col_default);
+            draw_widget_image(origin, max, rounding, opacity, resolve_widget_image(widget), widget.image_mode,
+                panel_col_default);
             continue;
         }
 
@@ -652,8 +712,9 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
             const float grow = 2.0f * scale * hover_e;
             const ImVec2 draw_min{origin.x - grow, origin.y - grow};
             const ImVec2 draw_max{max.x + grow, max.y + grow};
-            if (!widget.image.empty()) {
-                draw_widget_image(draw_min, draw_max, rounding, opacity, widget.image, widget.image_mode,
+            const std::string button_image = resolve_widget_image(widget);
+            if (!button_image.empty()) {
+                draw_widget_image(draw_min, draw_max, rounding, opacity, button_image, widget.image_mode,
                     button_col_default);
             } else {
                 const ImU32 base_fill = to_col(widget_rgba(widget), button_col_default);
@@ -690,7 +751,7 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
                 // Softer ink on choice rows — near-black + outline looked bold/muddy.
                 // Image buttons use ink on light plates (authored gold/parchment chrome).
                 const ImU32 btn_text = dialogue_choice ? IM_COL32(74, 64, 50, 255)
-                    : (!widget.image.empty() || lum > 420 ? text_col_default : chrome_text_col);
+                    : (!button_image.empty() || lum > 420 ? text_col_default : chrome_text_col);
                 draw_list->AddText(btn_font, screen_font, text_pos, with_opacity(btn_text, opacity), label.c_str(),
                     nullptr, wrap_w);
             }
@@ -774,7 +835,8 @@ std::string HudRuntime::widget_display_label(const HudWidget& widget) const {
     }
     if (!widget.label.empty()) return widget.label;
     if (!widget.text.empty()) return widget.text;
-    return widget.bind;
+    // Do not fall back to the bind id — empty icon/slot hit-targets would paint "inventory.select.bag.0".
+    return {};
 }
 
 std::vector<std::string> HudRuntime::focusable_widget_ids() const {

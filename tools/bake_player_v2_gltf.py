@@ -1,7 +1,9 @@
-"""Bake Player_V2_rigged.gltf into engine-ready player.gltf (skinned + Idle).
+"""Bake skinned player glTF into engine-ready player.gltf (all clips preserved).
 
-Preserves skins, JOINTS_0/WEIGHTS_0, and animations. Cleans Blockbench marker
-colors from the atlas, pads UV islands, normalizes feet to y=0 / ~2.75 m tall.
+Prefers repo `tools/art/player/GoodPlayerModel.gltf`; Documents paths are
+optional fallbacks. Preserves skins, JOINTS_0/WEIGHTS_0, and all animations.
+Cleans Blockbench marker colors from the atlas, pads UV islands, normalizes
+feet to y=0 / ~2.75 m tall. Prefer `python tools/asset_bake.py --target player`.
 """
 from __future__ import annotations
 
@@ -11,25 +13,32 @@ import json
 import shutil
 import struct
 from pathlib import Path
+from typing import Any
 
 from PIL import Image
 
 REPO = Path(__file__).resolve().parents[1]
-# Prefer a fresh Blockbench glTF re-export when present.
+# Repo-canonical first; Documents only as optional drop-folder fallbacks.
 SRC_CANDIDATES = [
+    REPO / "tools/art/player/GoodPlayerModel.gltf",
+    Path(r"c:\Users\johnr\Documents\Models\GoodPlayerModel.gltf"),
+    Path(r"c:\Users\johnr\Documents\GoodPlayerModel.gltf"),
+    REPO / "tools/art/player/Player_V2_rigged.gltf",
     Path(r"c:\Users\johnr\Documents\Models\Player_V2_rigged.gltf"),
     Path(r"c:\Users\johnr\Documents\Player_V2_rigged.gltf"),
-    REPO / "tools/art/player/Player_V2_rigged.gltf",
 ]
-# Prefer the authored atlas when present (cleaner than re-extracting after a bad pad).
 SRC_PNG_CANDIDATES = [
-    Path(r"c:\Users\johnr\Documents\Player_V2.png"),
+    REPO / "tools/art/player/GoodPlayerModel.png",
+    Path(r"c:\Users\johnr\Documents\Models\GoodPlayerModel.png"),
+    Path(r"c:\Users\johnr\Documents\GoodPlayerModel.png"),
     REPO / "tools/art/player/Player_V2.png",
+    Path(r"c:\Users\johnr\Documents\Player_V2.png"),
 ]
 DST = REPO / "samples/open-world-rpg/assets/models/player.gltf"
 PNG_DST = DST.with_name("player.png")
 ART_DIR = REPO / "tools/art/player"
 TARGET_HEIGHT = 2.75
+GENERATOR = "AI RPG Engine bake_player_v2_gltf.py (GoodPlayerModel-2026-07-31-winding)"
 
 
 def first_existing(paths: list[Path]) -> Path | None:
@@ -90,6 +99,105 @@ def write_f32_accessor(g: dict, raw: bytearray, acc_idx: int, values) -> None:
         zs = [v[2] for v in values]
         acc["min"] = [min(xs), min(ys), min(zs)]
         acc["max"] = [max(xs), max(ys), max(zs)]
+
+
+def write_u16_accessor(g: dict, raw: bytearray, acc_idx: int, values) -> None:
+    acc, offset, comps, size, stride, ctype = accessor_meta(g, acc_idx)
+    assert ctype == 5123 and comps == 1
+    for i, val in enumerate(values):
+        o = offset + i * stride
+        struct.pack_into("<H", raw, o, int(val))
+
+
+# Blockbench hand digit cubes often export majority-inward; D3D backface cull hides them.
+_HAND_JOINT_TOKENS = ("Hand", "Thumb", "Index", "Middle", "Ring", "Pinky")
+
+
+def flip_inward_hand_faces(g: dict, raw: bytearray, prim: dict) -> int:
+    """Flip triangles dominated by hand/digit joints when majority-inward. Returns flipped tri count."""
+    attrs = prim.get("attributes") or {}
+    if "POSITION" not in attrs or "JOINTS_0" not in attrs or "WEIGHTS_0" not in attrs:
+        return 0
+    if "indices" not in prim or not (g.get("skins") or []):
+        return 0
+
+    pos = read_accessor(g, raw, attrs["POSITION"])
+    joints_attr = read_accessor(g, raw, attrs["JOINTS_0"])
+    weights_attr = read_accessor(g, raw, attrs["WEIGHTS_0"])
+    idx = [int(i) for i in read_accessor(g, raw, prim["indices"])]
+    skin_joints = g["skins"][0]["joints"]
+    joint_names = [g["nodes"][ji].get("name") or "" for ji in skin_joints]
+    hand_ids = {
+        i
+        for i, name in enumerate(joint_names)
+        if any(tok in name for tok in _HAND_JOINT_TOKENS)
+    }
+    if not hand_ids:
+        return 0
+
+    def dominant_joint(jv, wv) -> int:
+        best_i = 0
+        best_w = -1.0
+        for k in range(4):
+            w = float(wv[k] if isinstance(wv, (list, tuple)) else wv)
+            j = int(jv[k] if isinstance(jv, (list, tuple)) else jv)
+            if w > best_w:
+                best_w = w
+                best_i = j
+        return best_i
+
+    flipped = 0
+    negate_normals: set[int] = set()
+    for ji in sorted(hand_ids):
+        verts = [
+            vi
+            for vi, (jv, wv) in enumerate(zip(joints_attr, weights_attr))
+            if dominant_joint(jv, wv) == ji
+        ]
+        if len(verts) < 3:
+            continue
+        vset = set(verts)
+        cx = sum(pos[v][0] for v in verts) / len(verts)
+        cy = sum(pos[v][1] for v in verts) / len(verts)
+        cz = sum(pos[v][2] for v in verts) / len(verts)
+        outward = inward = 0
+        tris: list[int] = []
+        for t in range(0, len(idx) - 2, 3):
+            a, b, c = idx[t], idx[t + 1], idx[t + 2]
+            if a not in vset or b not in vset or c not in vset:
+                continue
+            tris.append(t)
+            ax, ay, az = pos[a]
+            bx, by, bz = pos[b]
+            cx2, cy2, cz2 = pos[c]
+            ab = (bx - ax, by - ay, bz - az)
+            ac = (cx2 - ax, cy2 - ay, cz2 - az)
+            nx = ab[1] * ac[2] - ab[2] * ac[1]
+            ny = ab[2] * ac[0] - ab[0] * ac[2]
+            nz = ab[0] * ac[1] - ab[1] * ac[0]
+            fx = (ax + bx + cx2) / 3.0
+            fy = (ay + by + cy2) / 3.0
+            fz = (az + bz + cz2) / 3.0
+            if nx * (fx - cx) + ny * (fy - cy) + nz * (fz - cz) >= 0.0:
+                outward += 1
+            else:
+                inward += 1
+        if inward <= outward or not tris:
+            continue
+        for t in tris:
+            idx[t + 1], idx[t + 2] = idx[t + 2], idx[t + 1]
+            negate_normals.update(idx[t : t + 3])
+            flipped += 1
+
+    if flipped:
+        write_u16_accessor(g, raw, prim["indices"], idx)
+        if "NORMAL" in attrs and negate_normals:
+            nrm = list(read_accessor(g, raw, attrs["NORMAL"]))
+            for vi in negate_normals:
+                x, y, z = nrm[vi]
+                nrm[vi] = (-x, -y, -z)
+            write_f32_accessor(g, raw, attrs["NORMAL"], nrm)
+    return flipped
 
 
 def mat4_mul(a, b):
@@ -313,8 +421,21 @@ def is_flat_black(c) -> bool:
     return a < 8 or max(r, g, b) < 28
 
 
+def is_blockbench_canvas(c) -> bool:
+    """Yellow/cream Blockbench canvas chrome (often edge-connected)."""
+    r, g, b, a = c
+    if a < 8:
+        return False
+    # Strong yellow: high R/G, much lower B (not peach skin).
+    return r >= 200 and g >= 190 and (g - b) >= 70
+
+
+def is_edge_backdrop(c) -> bool:
+    return is_flat_black(c) or is_blockbench_canvas(c)
+
+
 def is_content(c) -> bool:
-    """Skin, warm cloth, pupils — not Blockbench markers or UV gutters."""
+    """Skin, warm cloth, soft accents — not Blockbench markers or UV gutters."""
     r, g, b, a = c
     if a < 8:
         return False
@@ -322,20 +443,37 @@ def is_content(c) -> bool:
     # Pure black backdrop is not content (cleared before pad).
     if mx < 28:
         return False
+    # Blockbench yellow canvas / yellow overlay markers
+    if is_blockbench_canvas(c):
+        return False
     # Warm dark cloth (shorts) — brown-black, not pure gutter
     if mx < 90 and r >= g >= b and (r - b) >= 8:
         return True
     # Near-white is Blockbench UV island padding / overlay — not sclera on this atlas.
     if r > 200 and g > 200 and b > 200:
         return False
-    # Warm skin / leather (R dominant over B, not neon-flat)
-    if r >= g >= b and (r - g) >= 25 and (r - b) >= 50:
+    # Soft elevated blues/greys (eyes, metal) — low chroma, not neon markers.
+    if mn >= 150 and mx <= 235 and (mx - mn) < 70:
+        return True
+    # Soft blush / warm cheek (R high, G≈B mid-low — not Blockbench pink overlays)
+    if r >= 220 and 100 <= g <= 150 and abs(g - b) <= 12 and (r - g) >= 40:
+        return True
+    # Warm skin / leather (peach: R>G>B with real G-B gap; skips flat pink overlays)
+    if (
+        r >= g >= b
+        and (r - g) >= 25
+        and (r - b) >= 50
+        and (g - b) >= 12
+        and (g - b) < 70
+    ):
         return True
     # Dark brown shorts (low-mid, warm)
     if r > g >= b and mx < 160 and (r - b) >= 20 and (mx - mn) < 90:
         return True
-    # Reject high-value high-chroma marker paints (yellow/pink/cyan/lime)
-    if mx >= 200 and (mx - mn) >= 40:
+    # Reject neon marker paints (lime/cyan/pink/yellow) — high chroma spikes
+    if mx >= 200 and (mx - mn) >= 80:
+        return False
+    if mx >= 240 and (mx - mn) >= 60:
         return False
     # Soft mid tones that aren't neon
     if mx < 200 and (mx - mn) < 100:
@@ -348,7 +486,7 @@ def is_marker(c) -> bool:
 
 
 def clear_edge_background(img: Image.Image) -> Image.Image:
-    """Flood-fill flat black/transparent from the atlas edges → alpha 0.
+    """Flood-fill flat black / yellow canvas from the atlas edges → alpha 0.
 
     Keeps interior black pupils (not edge-connected). Warm dark cloth is not flat black.
     """
@@ -362,7 +500,7 @@ def clear_edge_background(img: Image.Image) -> Image.Image:
     q: deque[tuple[int, int]] = deque()
 
     def try_seed(x: int, y: int) -> None:
-        if seen[y][x] or not is_flat_black(px[x, y]):
+        if seen[y][x] or not is_edge_backdrop(px[x, y]):
             return
         seen[y][x] = True
         q.append((x, y))
@@ -380,7 +518,7 @@ def clear_edge_background(img: Image.Image) -> Image.Image:
         px[x, y] = (0, 0, 0, 0)
         cleared += 1
         for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
-            if 0 <= nx < w and 0 <= ny < h and not seen[ny][nx] and is_flat_black(px[nx, ny]):
+            if 0 <= nx < w and 0 <= ny < h and not seen[ny][nx] and is_edge_backdrop(px[nx, ny]):
                 seen[ny][nx] = True
                 q.append((nx, ny))
     print(f"  cleared edge backdrop pixels: {cleared}")
@@ -512,6 +650,7 @@ def ensure_idle_animation(g: dict, raw: bytearray) -> bytearray:
     if any(a.get("name") == "Idle" for a in g.get("animations", [])):
         return raw
     donors = [
+        ART_DIR / "GoodPlayerModel.gltf",
         ART_DIR / "Player_V2_rigged.gltf",
         DST,
         REPO / "samples/open-world-rpg/assets/models/player.gltf",
@@ -629,54 +768,89 @@ def ensure_idle_animation(g: dict, raw: bytearray) -> bytearray:
     return raw
 
 
-def main() -> None:
-    src_path = first_existing(SRC_CANDIDATES)
-    if src_path is None:
-        raise SystemExit(f"missing source; tried: {SRC_CANDIDATES}")
+def bake(
+    source_override: Path | None = None,
+    project_root: Path | None = None,
+) -> dict[str, Any]:
+    """Bake player kit. Returns metadata for asset_bake orchestrator."""
+    dst = (project_root / "assets/models/player.gltf") if project_root else DST
+    png_dst = dst.with_name("player.png")
+
+    if source_override is not None:
+        src_path = Path(source_override)
+        if not src_path.exists():
+            raise FileNotFoundError(f"missing source override: {src_path}")
+    else:
+        src_path = first_existing(SRC_CANDIDATES)
+        if src_path is None:
+            raise FileNotFoundError(f"missing source; tried: {SRC_CANDIDATES}")
 
     print("Loading", src_path)
     g = json.loads(src_path.read_text(encoding="utf-8"))
+    source_clip_names = [a.get("name") for a in g.get("animations") or []]
     raw = read_blob(g)
+    # Only restore Idle when missing — never strip other clips from a full export.
     raw = ensure_idle_animation(g, raw)
     write_blob(g, bytes(raw))
 
-    # Keep an unscaled source (with Idle) under tools/art for the next rebake.
     ART_DIR.mkdir(parents=True, exist_ok=True)
-    art_gltf = ART_DIR / "Player_V2_rigged.gltf"
+    src_stem = "GoodPlayerModel" if "GoodPlayerModel" in src_path.name else "Player_V2_rigged"
+    art_gltf = ART_DIR / f"{src_stem}.gltf"
+    # Cache the unscaled source (with Idle restored if needed) for the next rebake.
     art_gltf.write_text(json.dumps(g, separators=(",", ":")), encoding="utf-8")
     print("Cached unscaled source", art_gltf)
     for bb in (
+        Path(r"c:\Users\johnr\Documents\GoodPlayerModel.bbmodel"),
+        Path(r"c:\Users\johnr\Documents\GoodPlayerModel_rigged.bbmodel"),
+        Path(r"c:\Users\johnr\Documents\Models\GoodPlayerModel.bbmodel"),
+        ART_DIR / "GoodPlayerModel_rigged.bbmodel",
         Path(r"c:\Users\johnr\Documents\Player_V2_rigged.bbmodel"),
         Path(r"c:\Users\johnr\Documents\Models\Player_V2_rigged.bbmodel"),
     ):
         if bb.exists():
-            shutil.copy2(bb, ART_DIR / "Player_V2_rigged.bbmodel")
+            dest_bb = ART_DIR / (
+                "GoodPlayerModel_rigged.bbmodel" if "GoodPlayer" in bb.name else "Player_V2_rigged.bbmodel"
+            )
+            if bb.resolve() != dest_bb.resolve():
+                shutil.copy2(bb, dest_bb)
             break
     raw = read_blob(g)
 
-    src_png = first_existing(SRC_PNG_CANDIDATES)
+    png_candidates = []
+    if source_override is not None:
+        beside = Path(source_override).with_suffix(".png")
+        if beside.exists():
+            png_candidates.append(beside)
+    png_candidates.extend(SRC_PNG_CANDIDATES)
+    src_png = first_existing(png_candidates)
+    if src_png is not None and "GoodPlayerModel" in src_path.name and "Player_V2" in src_png.name:
+        print("Ignoring mismatched atlas", src_png)
+        src_png = None
     if src_png is not None:
         tex = Image.open(src_png).convert("RGBA")
         print("Atlas from", src_png)
-        shutil.copy2(src_png, ART_DIR / "Player_V2.png")
+        art_png = ART_DIR / src_png.name
+        if src_png.resolve() != art_png.resolve():
+            shutil.copy2(src_png, art_png)
     else:
         img_uri = g["images"][0]["uri"]
         assert img_uri.startswith("data:image/png;base64,")
         tex = Image.open(io.BytesIO(base64.b64decode(img_uri.split(",", 1)[1]))).convert("RGBA")
         print("Atlas from embedded glTF image")
+        tex.save(ART_DIR / f"{src_stem}.png", format="PNG")
+        src_png = ART_DIR / f"{src_stem}.png"
 
     print("Cleaning atlas...")
     tex = clean_atlas(tex, pad_radius=12)
     ART_DIR.mkdir(parents=True, exist_ok=True)
-    PNG_DST.parent.mkdir(parents=True, exist_ok=True)
-    tex.save(PNG_DST, format="PNG")
-    shutil.copy2(PNG_DST, ART_DIR / "player.png")
+    png_dst.parent.mkdir(parents=True, exist_ok=True)
+    tex.save(png_dst, format="PNG")
+    shutil.copy2(png_dst, ART_DIR / "player.png")
     g["images"] = [{"uri": "player.png"}]
     g["textures"] = [{"source": 0, "sampler": 0}]
     if "samplers" not in g:
         g["samplers"] = [{}]
 
-    # Opaque — avoid MASK punching holes on padded edges
     if g.get("materials"):
         mat = g["materials"][0]
         mat["alphaMode"] = "OPAQUE"
@@ -684,7 +858,6 @@ def main() -> None:
         mat.setdefault("pbrMetallicRoughness", {})["baseColorTexture"] = {"index": 0}
         mat["pbrMetallicRoughness"]["metallicFactor"] = 0
         mat["pbrMetallicRoughness"]["roughnessFactor"] = 1
-        # Prefer atlas over solid factor once textured
         mat["pbrMetallicRoughness"].pop("baseColorFactor", None)
 
     prim = g["meshes"][0]["primitives"][0]
@@ -705,6 +878,11 @@ def main() -> None:
         g, raw, pos_acc, [(s * x + tx, s * y + ty, s * z + tz) for x, y, z in pos]
     )
 
+    # After positions are final: flip inward hand/digit faces (Blockbench cubes → D3D cull).
+    hand_flipped = flip_inward_hand_faces(g, raw, prim)
+    if hand_flipped:
+        print(f"Flipped {hand_flipped} inward hand/digit triangles")
+
     skeleton_root = g["skins"][0].get("skeleton")
     for i, node in enumerate(g["nodes"]):
         if "translation" in node:
@@ -720,10 +898,6 @@ def main() -> None:
             node.pop("rotation", None)
             node.pop("scale", None)
 
-    # Joint locals were scaled as pure translations (no joint scale). Recompute
-    # IBMs as inv(worldJoint) so bind-pose skinning stays identity. The old
-    # IBM * inv(M) path left a 1/s scale in IBM while joints stayed unscaled,
-    # which exploded ear/hand verts into floating dots above the head.
     worlds = joint_world_matrices(g)
     for skin in g.get("skins", []):
         ibm_acc = skin.get("inverseBindMatrices")
@@ -732,6 +906,7 @@ def main() -> None:
         ibms = [mat4_invert(worlds[joint]) for joint in skin["joints"]]
         write_f32_accessor(g, raw, ibm_acc, ibms)
 
+    # Scale ALL animation translation tracks (preserve every clip).
     for anim in g.get("animations", []):
         for ch in anim.get("channels", []):
             if ch.get("target", {}).get("path") != "translation":
@@ -743,19 +918,36 @@ def main() -> None:
     raw = ensure_color0(g, raw, prim, tex)
     write_blob(g, bytes(raw))
 
-    g.setdefault("asset", {})["generator"] = "AI RPG Engine bake_player_v2_gltf.py"
+    g.setdefault("asset", {})["generator"] = GENERATOR
     g["asset"]["version"] = "2.0"
 
+    baked_clips = [a.get("name") for a in g.get("animations") or []]
     raw2 = read_blob(g)
     pos2 = read_accessor(g, raw2, pos_acc)
     print(
         f"baked mesh y[{min(p[1] for p in pos2):.3f},{max(p[1] for p in pos2):.3f}] "
         f"h={max(p[1] for p in pos2) - min(p[1] for p in pos2):.3f}"
     )
+    print(f"clips source={source_clip_names} baked={baked_clips}")
 
-    DST.write_text(json.dumps(g, separators=(",", ":")), encoding="utf-8")
-    print("Wrote", DST)
-    print("Wrote", PNG_DST)
+    dst.write_text(json.dumps(g, separators=(",", ":")), encoding="utf-8")
+    print("Wrote", dst)
+    print("Wrote", png_dst)
+    return {
+        "source": str(src_path),
+        "atlasSource": str(src_png) if src_png else None,
+        "mesh": str(dst),
+        "atlas": str(png_dst),
+        "generator": GENERATOR,
+        "sourceClips": source_clip_names,
+        "bakedClips": baked_clips,
+        "scale": s,
+        "targetHeight": TARGET_HEIGHT,
+    }
+
+
+def main() -> None:
+    bake()
 
 
 if __name__ == "__main__":

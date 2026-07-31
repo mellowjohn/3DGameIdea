@@ -1,7 +1,9 @@
 #pragma once
 
 #include "engine/assets/asset_registry.h"
+#include "engine/assets/material_asset.h"
 #include "engine/assets/prefab_asset.h"
+#include "engine/vfx/particle_system.h"
 #include "engine/automation/editor_bridge.h"
 #include "engine/automation/scene_commands.h"
 #include "engine/automation/terrain_edit_commands.h"
@@ -29,6 +31,7 @@ class UiCanvasStack;
 class QuestRuntime;
 class StandingRuntime;
 class FlagRuntime;
+class InventoryRuntime;
 class DialogueRuntime;
 class HudRuntime;
 
@@ -38,6 +41,7 @@ struct EditorSessionContext {
     QuestRuntime* quest_runtime = nullptr;
     StandingRuntime* standing_runtime = nullptr;
     FlagRuntime* flag_runtime = nullptr;
+    InventoryRuntime* inventory_runtime = nullptr;
     DialogueRuntime* dialogue_runtime = nullptr;
     HudRuntime* hud_runtime = nullptr;
     UiCanvasStack* ui_canvas_stack = nullptr;
@@ -47,6 +51,8 @@ struct EditorSessionContext {
     std::filesystem::path project_root;
     std::optional<EntityId>* selected = nullptr;
     std::map<std::string, PrefabAsset>* prefab_catalog = nullptr;
+    std::map<std::string, MaterialAsset>* material_cache = nullptr;
+    ParticleSystem* particle_system = nullptr;
     bool* scene_dirty = nullptr;
     bool* prefab_meshes_dirty = nullptr;
     bool* static_render_cache_dirty = nullptr;

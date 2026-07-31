@@ -181,6 +181,7 @@ Result<HudAsset> HudAsset::parse(const std::string& text, const std::string& sou
             widget.label = node.value("label", std::string{});
             widget.text = node.value("text", std::string{});
             widget.image = node.value("image", std::string{});
+            widget.image_bind = node.value("imageBind", std::string{});
             if (node.contains("imageMode")) {
                 const auto mode = parse_image_mode(node["imageMode"].get<std::string>());
                 if (!mode) return Result<HudAsset>::failure(mode.error());
@@ -217,6 +218,7 @@ Result<HudAsset> HudAsset::parse(const std::string& text, const std::string& sou
                 if (!valign) return Result<HudAsset>::failure(valign.error());
                 widget.text_v_align = valign.value();
             }
+            widget.tooltip = node.value("tooltip", std::string{});
             if (widget.type == HudWidgetType::Bar && widget.bind.empty()) {
                 return Result<HudAsset>::failure(
                     hud_error("HUD-BAR-BIND", "Bar widget requires bind: " + widget.id, "Set bind to a number key."));
@@ -279,6 +281,7 @@ std::string HudAsset::to_json() const {
         if (!widget.label.empty()) node["label"] = widget.label;
         if (!widget.text.empty()) node["text"] = widget.text;
         if (!widget.image.empty()) node["image"] = widget.image;
+        if (!widget.image_bind.empty()) node["imageBind"] = widget.image_bind;
         if (widget.image_mode != HudImageMode::Stretch) node["imageMode"] = image_mode_name(widget.image_mode);
         if (widget.has_color())
             node["color"] = {widget.color[0], widget.color[1], widget.color[2], widget.color[3]};
@@ -288,6 +291,7 @@ std::string HudAsset::to_json() const {
         if (!widget.enabled) node["enabled"] = false;
         if (widget.text_align != HudTextAlign::Left) node["textAlign"] = text_align_name(widget.text_align);
         if (widget.text_v_align != HudTextVAlign::Top) node["textVAlign"] = text_v_align_name(widget.text_v_align);
+        if (!widget.tooltip.empty()) node["tooltip"] = widget.tooltip;
         widgets_json.push_back(std::move(node));
     }
     json["widgets"] = std::move(widgets_json);

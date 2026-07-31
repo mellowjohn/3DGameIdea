@@ -8,4 +8,4 @@ Testing is layered so failures appear near their source:
 4. Run real-GPU smoke tests and deterministic content simulations.
 5. Add stress, fuzz, cancellation, low-resource, migration, and failure-injection tests as their systems land.
 
-Every confirmed defect must be evaluated for a regression test. Machine-readable test results, benchmark conditions, and material findings belong in the context library.
+Every confirmed defect must be evaluated for a regression test. Machine-readable test results, benchmark conditions, and material findings belong in the context library. Recurring sample-asset failure classes (clips, foliage atlases, corrupted prop bakes) keep a path-forward playbook in [`recurring-asset-failures.md`](recurring-asset-failures.md) — update it when the same class hits again.

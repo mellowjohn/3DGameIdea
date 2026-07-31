@@ -7,6 +7,19 @@
         "--project",
         "C:/Users/johnr/Documents/3DGameIdea/samples/open-world-rpg"
       ]
+    },
+    "blockbench": {
+      "url": "http://localhost:3000/bb-mcp"
+    },
+    "windows-computer-use": {
+      "command": "C:/Users/johnr/Documents/3DGameIdea/tools/windows-computer-use/.venv/Scripts/python.exe",
+      "args": [
+        "-m",
+        "windows_computer_use"
+      ],
+      "env": {
+        "MCP_OUTPUT_DIR": "C:/Users/johnr/Documents/3DGameIdea/out/article-captures"
+      }
     }
   }
 }

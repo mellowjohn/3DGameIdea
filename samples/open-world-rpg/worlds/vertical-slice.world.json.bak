@@ -29,7 +29,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.20000000298023224,
+              0.5799999833106995
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.20000000298023224,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "02b172e4-734c-444f-aff7-25693570139b",
@@ -59,7 +96,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "0394f009-d589-4cbb-a3cc-9e7b428abc4b",
@@ -89,7 +160,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "0680c289-e8a4-4022-9c9a-cb551ee0487e",
@@ -119,7 +224,40 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "07713b05-4a70-4f87-b337-749dd91acd68",
@@ -149,7 +287,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "08434962-fb6a-4f06-abe6-07708d1ec9ce",
@@ -179,7 +351,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "0ac66bff-a23b-4f39-936b-d7aa2a10fdda",
@@ -209,7 +415,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "0bf1e960-3168-43d6-b5c4-5aa737976329",
@@ -239,7 +479,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "0d804902-6ed0-46dd-b891-416e41e54768",
@@ -269,7 +543,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "1050a616-3d60-4218-b326-4cc4502c6496",
@@ -299,7 +607,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "1065fe83-8cd3-40b5-bcb1-62b001a1cdb5",
@@ -329,7 +671,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "12b0c76f-53e9-4390-8352-8a0632880377",
@@ -359,7 +735,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "13e6bbd1-6d57-4d1f-b928-2afdffe58a10",
@@ -389,7 +799,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.20000000298023224,
+              0.5799999833106995
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.20000000298023224,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "14da6869-6d6b-4059-ada3-a3def6d40268",
@@ -419,7 +866,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "150e0aaa-5dba-4d4d-b77a-b31c9c7191f8",
@@ -449,7 +930,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "15fa7e0d-a794-4e19-a72b-8b16ccb0d15a",
@@ -479,7 +994,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "162d3479-d668-4bbc-999d-6ef82ddec2db",
@@ -509,7 +1058,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "1ce509ff-c94b-4d6a-b450-046e8f82354f",
@@ -539,7 +1125,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "1ed609f9-b9bb-40e1-a5f8-dca599a68409",
@@ -569,7 +1189,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "1f1957b9-2125-4619-97b7-e7b5d3ee6170",
@@ -599,7 +1253,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "22a23ec9-9c8a-419d-96b9-0d9991ee4089",
@@ -629,7 +1320,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "24668ef0-a371-4c0f-9867-f676f1c3cc9d",
@@ -659,7 +1384,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "26dec142-ff3e-4b83-9dc8-17f1c7c1e357",
@@ -753,7 +1512,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "2db0aa7e-4590-476a-a6d0-09188e76111b",
@@ -783,7 +1576,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "303416da-fa52-4d7b-85f5-4582df6381db",
@@ -813,7 +1640,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "303bd8b0-3e4c-40f7-889e-fb05270c9803",
@@ -843,7 +1704,44 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "31625fd8-d4ce-4641-8137-ab8da0469876",
@@ -873,7 +1771,40 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 1.100000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "31f74a48-ada1-4f83-ae70-d4e43e2954b7",
@@ -903,7 +1834,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "340739f0-0648-41be-bf7b-b7818789b5e9",
@@ -933,7 +1898,44 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "35918048-09b4-4811-ab69-91154c0c93e8",
@@ -963,7 +1965,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "35a6919c-8cea-4e42-886e-986fe2e16295",
@@ -993,7 +2029,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "3956c8b7-7c91-469d-a7ab-db6e08b21912",
@@ -1023,7 +2093,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "39af337c-c315-4374-9827-562d4e663636",
@@ -1053,7 +2160,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "3a52adfa-14e5-47ea-89f4-fe746c61f5c9",
@@ -1083,7 +2224,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "3d19d531-d394-439b-afe3-b811af7a77ba",
@@ -1113,7 +2288,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "42c0104c-5af3-4f06-9ea2-3fb059267f9f",
@@ -1143,7 +2352,44 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "444be8f3-74b0-4843-ad1b-2f61ae7a02ef",
@@ -1173,7 +2419,40 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "459f9915-9c26-4ae0-916c-dc77e5c0ca6f",
@@ -1203,7 +2482,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "4be5afdf-aef7-4810-b505-78875c896c92",
@@ -1233,7 +2546,40 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.699999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "4bf95383-e5e4-4ab5-b2ea-340b729e2dd3",
@@ -1263,7 +2609,40 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 1.100000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "4cf50c0f-6741-49e2-b831-a6a4af11071b",
@@ -1293,7 +2672,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.20000000298023224,
+              0.5799999833106995
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.20000000298023224,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "4f5f765b-b104-4632-aa8a-b8780257bcef",
@@ -1323,7 +2739,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "4f6f95da-3c60-44f2-9dcf-d88f491bdf88",
@@ -1353,7 +2803,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "524feaf0-4557-47b8-9ede-21b2ce42ed6d",
@@ -1383,7 +2867,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "5295c0e8-a2ea-4b87-a2a5-9154471fda16",
@@ -1413,7 +2934,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "52b0f779-19a6-41ed-b623-1c96d78fa12f",
@@ -1443,7 +2998,44 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "53831489-9c44-449c-b005-6bdcb45246cc",
@@ -1473,7 +3065,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "53befa2b-d82d-49cf-92e9-c1e640ed9a26",
@@ -1503,7 +3129,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "53d8bcb1-15ea-4f36-82eb-0938cf75c1ac",
@@ -1533,7 +3193,40 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "55489c15-1127-44ae-bfa2-082b1b3a8d1a",
@@ -1563,7 +3256,40 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 1.100000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "57b70db5-02dd-447b-be30-0a9b0f6b6001",
@@ -1593,7 +3319,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "598db317-6d61-46bb-850d-ef6e38b7ecc5",
@@ -1623,7 +3386,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "59dd8aea-f7d8-4401-981e-330addc81ef5",
@@ -1653,7 +3450,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "5d00dfd0-afc8-4847-90db-0c4642dd4b23",
@@ -1683,7 +3514,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "5d2e9480-adee-44f8-b2c0-ec1dbb64c4a0",
@@ -1713,7 +3578,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "5fabda3b-bb6c-4854-9bc9-db314e2b2ded",
@@ -1743,7 +3642,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "604b02db-ee2f-4a8a-bfe3-c3523062d7be",
@@ -1773,7 +3706,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "612af632-89e6-4e23-8db5-560d4645637a",
@@ -1803,7 +3770,44 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "628aa225-f054-4be3-8235-07c460b0d1d2",
@@ -1833,7 +3837,40 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 1.100000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "628b7c7e-d6df-4b11-99bb-c57c3bd81f82",
@@ -1863,7 +3900,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "63659a7e-3636-4410-bb99-6daadcb8d42a",
@@ -1893,7 +3964,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "647664dd-f539-449d-b3bb-e244e3ac8cc0",
@@ -1923,7 +4028,44 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "64e09a7f-c31f-47fb-9467-e4952a6331cc",
@@ -1953,7 +4095,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "661d6b58-6475-4769-87ee-965c682be089",
@@ -1983,7 +4162,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "69045f34-1005-4367-a4f4-f0b45a413f4e",
@@ -2013,7 +4226,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "698f36ba-f09e-4d3d-8981-18d963729944",
@@ -2043,7 +4290,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "6aa06b2c-a0b9-4121-8429-f6d7e13c657a",
@@ -2073,7 +4357,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.07999999821186066,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.46000000834465027,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "6d68882d-74a7-431c-af59-f3d5f3e25da0",
@@ -2103,7 +4421,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "6d77040f-b0e4-44d2-ae93-5477aa9212a9",
@@ -2133,7 +4485,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "6e205984-9f80-4a25-9eeb-9903d230d2c1",
@@ -2163,7 +4549,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "6f34b901-a2be-4680-816c-c3640757fd4c",
@@ -2193,7 +4613,40 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "706765fa-83dc-4ab9-9b25-a1be92b4441b",
@@ -2223,7 +4676,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "70b68136-555b-437c-94a7-ca7bc1a7415a",
@@ -2253,7 +4743,44 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "71e7b862-f3ad-4236-9374-83063a4837a4",
@@ -2283,7 +4810,40 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 1.100000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "71e982f4-804b-46e2-a786-61f8afd1947e",
@@ -2313,7 +4873,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.07999999821186066,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.46000000834465027,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "7269fe6c-f497-4a86-af7a-1cefe139e791",
@@ -2343,7 +4937,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "72bae308-3fe2-4a52-bd31-c67902eb6e05",
@@ -2373,7 +5001,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.20000000298023224,
+              0.5799999833106995
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.20000000298023224,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "72d3a99d-0f12-44a2-bc46-71091f35e1c2",
@@ -2408,7 +5073,7 @@
       "components": [
         {
           "data": {
-            "controller": "assets/animators/example.animator.json"
+            "controller": "assets/animators/player.animator.json"
           },
           "id": "animator-0",
           "overridden": true,
@@ -2417,15 +5082,15 @@
         },
         {
           "data": {
-            "halfHeight": 1.2000000476837158,
+            "halfHeight": 0.6000000238418579,
             "id": "collision-0",
             "layer": "dynamic",
-            "radius": 0.44999998807907104,
+            "radius": 0.30000001192092896,
             "shape": "capsule",
             "transform": {
               "position": [
                 0.0,
-                1.649999976158142,
+                0.8999999761581421,
                 0.0
               ],
               "rotation": [
@@ -2491,7 +5156,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "75077c1f-3c53-4523-93d4-43ed24bbaf02",
@@ -2521,7 +5220,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "75ff3b05-273c-4d77-83ae-b555fb0627b0",
@@ -2551,7 +5284,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "7619fd84-39d6-4c25-9277-7ea121b86db2",
@@ -2581,7 +5348,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "7707373b-aea6-4d07-b80e-93ac89a9ed57",
@@ -2611,7 +5415,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "7707e63f-1761-4238-adb1-340e68952d2d",
@@ -2641,7 +5479,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "791baf9d-01d4-4c52-8954-4aa91fcde093",
@@ -2671,7 +5543,44 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.20000000298023224,
+              0.5799999833106995
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.20000000298023224,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "7a52dee0-b8a0-4905-9fd1-1f888c75e9e9",
@@ -2765,7 +5674,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "8251019e-7388-492a-a7da-98f2a2144533",
@@ -2795,7 +5738,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "828d7ec4-bfd9-4caa-b303-8fd5ccda2a52",
@@ -2825,7 +5805,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "835409e7-16e5-43ee-88de-ee117c59a964",
@@ -2855,7 +5869,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "8393ebab-aca0-43d5-9515-381012e58d9b",
@@ -2885,7 +5936,44 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "83e8e43e-a92c-446c-9ded-d86f9133b557",
@@ -2915,7 +6003,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "85465928-53b6-4a57-a0ca-932c5d7a1f08",
@@ -2945,7 +6067,40 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "86078de5-e84f-447d-9a45-f662f76cd6ea",
@@ -2975,7 +6130,40 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "869ae238-e2a2-40f0-9fe7-11a76319bef4",
@@ -3005,7 +6193,40 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 1.100000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "86f90c45-a63d-4e98-9044-7ef5bfc267c5",
@@ -3035,7 +6256,40 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 1.100000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "87e73ee8-026e-45c6-be72-a2bd3c878126",
@@ -3065,7 +6319,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "889efab1-9a42-4d57-b9c6-61266a31dad4",
@@ -3095,7 +6383,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "8b6c46ac-812f-4800-88d8-2c74b7da91d2",
@@ -3125,7 +6447,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "8c5d3bca-ef00-4bfc-bb20-56e08a455308",
@@ -3155,7 +6511,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.20000000298023224,
+              0.5799999833106995
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.20000000298023224,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "8f0b5f7a-e383-4d9b-8602-da4b273435ea",
@@ -3294,7 +6687,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "925f054a-1c27-417f-b29f-1168947e2c2a",
@@ -3324,7 +6751,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "93d38146-a752-4a8b-8cdc-9a4053ed1dfd",
@@ -3354,7 +6815,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "940d4899-d3e7-42d5-b9b4-a7d5c3c1c676",
@@ -3384,7 +6882,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "9432342f-5ef6-4645-bb1f-0c9900a841cc",
@@ -3414,7 +6946,40 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "94f1cde4-10fc-48b5-8f82-5e700c0b1b58",
@@ -3444,7 +7009,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "95ba3d09-c1b9-4aeb-8fe7-1fa9195f376a",
@@ -3474,7 +7076,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "9633d44f-9cd6-4c52-943d-deffbe8dd099",
@@ -3504,7 +7140,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "96680aee-31b5-4ab9-ad30-9285a54dfecf",
@@ -3534,7 +7204,40 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 1.100000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "981ca454-0e6d-4dcf-893e-92744af51fc0",
@@ -3564,7 +7267,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "989f16e8-1cab-4f28-8b3c-460a22e18e20",
@@ -3594,7 +7331,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "9c719aa1-59c9-470d-9f01-5971d299668a",
@@ -3624,7 +7398,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "9e50f0d3-ec00-4cdc-b0af-082a4457a8e0",
@@ -3654,7 +7462,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "a04459c2-3223-474b-8a20-6f3e7bc63511",
@@ -3684,7 +7526,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "a0f9982d-ade8-4b09-84a0-919795475a38",
@@ -3714,7 +7590,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "a1b2c3d4-e5f6-4789-a012-3456789abcde",
@@ -3722,11 +7632,11 @@
       "transform": {
         "position": [
           3.4329404830932617,
-          -339.6676940917969,
+          -18693.48046875,
           15.758028984069824
         ],
         "rotation": [
-          -0.06406918168067932,
+          -0.06406917423009872,
           0.7668728828430176,
           -0.07177054136991501,
           -0.6345471739768982
@@ -3825,7 +7735,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "a931c7be-6914-4c6f-b1b8-ac5889c1b3c8",
@@ -3855,7 +7799,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "a9883bbf-703c-47bb-b96c-aadd1a7f81a5",
@@ -3885,7 +7863,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "aa7b27af-db54-4745-9ffa-4e18286f4a88",
@@ -3915,7 +7930,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "ac21aa35-948b-42ac-b91d-0e3963a757ae",
@@ -3945,7 +7994,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "aea446d3-dc2c-472d-9f89-5c1e9b169e5e",
@@ -3975,7 +8058,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "aef7c5dc-7bda-4032-a33f-75ef9ac750ed",
@@ -4005,7 +8122,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b223c14a-0cae-4c09-be99-3547609683c6",
@@ -4035,7 +8186,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b226f179-c0e1-4027-beaa-1922b1183122",
@@ -4065,7 +8253,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3cd612b-91bc-4ed8-b89c-871be93655cf",
@@ -4095,7 +8317,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3e4f502-8a2c-4d1e-9f3a-100000000002",
@@ -4125,7 +8384,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3e4f503-8a2c-4d1e-9f3a-100000000003",
@@ -4155,7 +8448,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3e4f505-8a2c-4d1e-9f3a-100000000005",
@@ -4185,7 +8512,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3e4f506-8a2c-4d1e-9f3a-100000000006",
@@ -4215,7 +8576,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3e4f507-8a2c-4d1e-9f3a-100000000007",
@@ -4245,7 +8640,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3e4f508-8a2c-4d1e-9f3a-100000000008",
@@ -4275,7 +8704,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3e4f509-8a2c-4d1e-9f3a-100000000009",
@@ -4305,7 +8768,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3e4f50b-8a2c-4d1e-9f3a-10000000000b",
@@ -4335,7 +8832,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3e4f50c-8a2c-4d1e-9f3a-10000000000c",
@@ -4365,7 +8896,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3e4f50d-8a2c-4d1e-9f3a-10000000000d",
@@ -4395,7 +8960,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b3e4f50e-8a2c-4d1e-9f3a-10000000000e",
@@ -4425,7 +9024,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "b9864597-7650-4d6a-bd9b-235a06a34143",
@@ -4455,7 +9088,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.07999999821186066,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.46000000834465027,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "ba3c0a6d-3ffd-4ec0-92c9-3c59c8350226",
@@ -4485,7 +9152,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "bb15821e-3b3a-4635-b9ea-daef8c7a448b",
@@ -4515,7 +9219,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.07999999821186066,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.46000000834465027,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "bbad201d-4c55-4f5d-b84e-a567cc6be9c7",
@@ -4545,7 +9283,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "bbe697ec-0a63-40fd-bd60-76e4d8c59096",
@@ -4575,7 +9347,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "bfe35e07-e220-4404-ae91-895ebd2083ff",
@@ -4605,7 +9411,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "c1a19333-c3b7-45f1-a397-ef67c2470dea",
@@ -4635,7 +9475,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "c42a5a45-82a3-4ad6-b8ac-2858f5ea241b",
@@ -4665,7 +9539,40 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "c46a1580-ecd6-4b05-9656-1ef8ec4d50f0",
@@ -4695,7 +9602,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "c54c628d-be12-4760-b8ed-682c8ece6980",
@@ -4725,7 +9666,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "c570e6ba-c31f-43d8-b172-e9ae897cc439",
@@ -4755,7 +9730,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "c787c0d8-5698-4183-840b-d48902967d70",
@@ -4785,7 +9794,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "c7b674bd-4a39-43a2-a552-562498475761",
@@ -4815,7 +9858,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "c82b2eb8-72df-45c0-a0e9-2577bebd140a",
@@ -4845,7 +9922,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "c8959c1e-ec65-454c-8008-43292b843083",
@@ -4875,7 +9986,41 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "c8cbe35b-e470-4f96-be9e-1536411af0f9",
@@ -4905,7 +10050,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "c97a2020-4bbd-4353-bc05-6c9fdb83fdfc",
@@ -4935,7 +10114,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "cbc8ab44-8a77-4848-8fce-a1662b7e5d3b",
@@ -4965,7 +10178,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "cf062460-7dc1-47ab-a287-0abf31b264dd",
@@ -4995,7 +10242,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.07999999821186066,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.46000000834465027,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "cf32b142-eb67-4b0b-b81d-2457a383a910",
@@ -5025,7 +10306,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "d32163ad-34a9-4700-a902-ccaa02117524",
@@ -5055,7 +10370,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "d3691c2e-707f-4910-b466-087199db25b6",
@@ -5085,7 +10434,44 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "d4c360e3-0154-4440-9acd-cf1c03bff6ac",
@@ -5115,7 +10501,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "d6cc89ac-ebd0-41b1-a497-bb1a1a529f38",
@@ -5145,7 +10568,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "d9e731a1-ced2-41c2-9433-02abcd3fcdf1",
@@ -5175,7 +10635,44 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "dcf82a90-8c68-4131-96c5-6a06c21b2bc5",
@@ -5205,7 +10702,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "dffb8420-5582-4c7d-9f79-12cd166f76a7",
@@ -5235,7 +10766,40 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "e2c117d8-97c4-4644-a7d0-75f10ebd2819",
@@ -5265,7 +10829,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.07999999821186066,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.46000000834465027,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "e3665067-ff62-4e1a-9a45-bb2016648004",
@@ -5295,7 +10893,40 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 1.100000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "e884a527-f2da-47c5-8f07-b1c9384019f0",
@@ -5325,7 +10956,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "e8c07a0f-032c-4b6a-9001-6706f5191197",
@@ -5355,7 +11020,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "ec8766a6-aabd-4f3a-9bb3-d0117f7c2b58",
@@ -5385,7 +11084,41 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "ec9087ae-81ea-4247-bd96-ecd9b4469892",
@@ -5415,7 +11148,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "ee2afa62-18ce-49ba-a399-0081cca8e28b",
@@ -5445,7 +11212,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "f24678ad-d759-4981-90db-fb62940a8c0c",
@@ -5475,7 +11279,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "f2a21b1f-05eb-4f55-b59a-f1b4028ddf12",
@@ -5505,7 +11346,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "f3138bb8-56e5-45df-9be4-7f2854c77492",
@@ -5535,7 +11410,40 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "f3a1a96a-366c-44a1-af2c-fdd9cc3de769",
@@ -5565,7 +11473,44 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.20000000298023224,
+              0.5799999833106995
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.20000000298023224,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "f4539b7c-36be-44dc-beff-6c3dcc5af36d",
@@ -5595,7 +11540,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.20000000298023224,
+              0.5799999833106995
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.20000000298023224,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "f4a8c29f-1657-4029-aa94-1c9f3975e6c9",
@@ -5625,7 +11607,41 @@
           -1,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.07999999821186066,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.46000000834465027,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "f59414aa-16c8-4817-8d23-481a832f2956",
@@ -5655,7 +11671,41 @@
           0,
           -1
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "f825ae66-e07f-4caa-9bae-204084cb543a",
@@ -5685,7 +11735,44 @@
           -1,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "f871f2c7-ad8e-48cd-b986-75a4f03b8a56",
@@ -5715,7 +11802,40 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     },
     {
       "id": "fe8959b1-4976-4c82-8e87-419ef4ecc8e4",
@@ -5745,7 +11865,44 @@
           0,
           0
         ]
-      }
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
     }
   ],
   "worldId": "73e785e5-03bf-4a1b-bbc9-81d8f19527a2",

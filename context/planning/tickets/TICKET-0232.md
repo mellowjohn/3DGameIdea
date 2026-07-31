@@ -8,7 +8,7 @@
 
 ## Goal
 
-Extend inventory/item data so any archetype can equip any gear, with lane efficiency multipliers favoring Ashfell Blade / Outrider / Runecaster without hard class locks.
+Extend inventory/item data so any archetype can use any gear, with **positive** lane efficiency bonuses favoring Ashfell Blade / Outrider / Runecaster (1× baseline off-lane; no punitive nerf) per DEC-0050.
 
 ## Context links
 
@@ -19,11 +19,12 @@ Extend inventory/item data so any archetype can equip any gear, with lane effici
 
 ## Acceptance criteria
 
-- [ ] Item/equip schema documents slots + optional `laneMultipliers` (or equivalent) for the three starting lanes
-- [ ] Equip validation allows off-lane weapons; no reject-on-mismatch
+- [ ] Item/equip schema documents hotbar (8) + armor (`head`/`chest`/`legs`) + trinket slots (4) + bag slots + optional `laneMultipliers` (or equivalent) for the three starting lanes
+- [ ] Use validation allows off-lane weapons; no reject-on-mismatch; multipliers are bonuses over 1× baseline
 - [ ] Efficiency application is deterministic and covered by a named suite or headless validate path
 - [ ] Invalid/malformed multiplier data fails closed with a stable error code
 - [ ] Format/feature docs updated; ids from display names per `ids-from-display-names.mdc`
+- [ ] Align with DEC-0050 kind tags + labels; no durability fields required for v1
 
 ## Out of scope
 

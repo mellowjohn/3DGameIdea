@@ -1,0 +1,94 @@
+{
+  "components": [
+    {
+      "data": {
+        "halfExtent": [
+          0.22,
+          0.22,
+          0.22
+        ],
+        "layer": "staticWorld",
+        "shape": "box",
+        "transform": {
+          "position": [
+            0,
+            0.22,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "trigger": false
+      },
+      "id": "collision-0",
+      "type": "collider"
+    },
+    {
+      "data": {
+        "id": "collision-interact",
+        "interaction": "open_loot_bag",
+        "layer": "trigger",
+        "radius": 1.1,
+        "shape": "sphere",
+        "transform": {
+          "position": [
+            0,
+            0.3,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "trigger": true
+      },
+      "id": "collision-interact",
+      "type": "collider"
+    }
+  ],
+  "entities": [
+    {
+      "mesh": {
+        "asset": "assets/models/loot_bag.gltf"
+      },
+      "name": "LootBag",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

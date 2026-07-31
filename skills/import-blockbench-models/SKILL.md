@@ -36,12 +36,17 @@ Typical sizes (adjust with owner): crate ~1.0 m height; bush ~1.25 m; tall bush 
 
 ## 2. Bake
 
-Default Tier-1 static props:
+Default Tier-1 static props (always pass explicit names unless rebaking everything on purpose):
 
 ```bash
-python tools/bake_tier1_props_gltf.py
+engine asset-bake --project samples/open-world-rpg --target bush_tall --json
+# or: python tools/asset_bake.py --target bush_tall --json
+# low-level: python tools/bake_tier1_props_gltf.py bush_tall
 ```
 
+List registered targets: `engine asset-bake --project samples/open-world-rpg --list --json` (or Diagnostics → **Assets** tab).
+
+If a foliage prop looks muddy/camo or a prior import corrupted a mesh, use [`recurring-asset-failures.md`](../../context/testing/recurring-asset-failures.md) before inventing a new bake heuristic.
 Add a `PROPS` entry in that script (or a dedicated `tools/bake_<name>_gltf.py` following stones/stump/dead-log). Bake must:
 
 | Step | Why |
@@ -120,6 +125,20 @@ Same change set:
 | Prefab is 12 bytes / garbage | MCP `source` without `json` | Restore from git; rewrite full JSON |
 | Stale look after rebake | GPU mesh still old | Restart editor/MCP; re-place instance if needed |
 | Looks good in Blockbench, bad in engine | BB display ≠ D3D cull / atlas sample | Trust engine screenshot; fix bake, don’t box-rebuild |
+| Bright yellow/pink “broken” faces on bushes | Blockbench chrome/neon in sparse atlas | Bake with `foliage_atlas` + inpaint (`v5-foliage-atlas-inpaint`) |
+| In-game mesh “corrupted” / punched holes | Stale bake, MASK+sparse atlas, or bad source overwrite | See **Recover corrupted prop** below |
+
+## Recover corrupted prop
+
+When the runtime mesh looks broken but you still have a good Blockbench export:
+
+1. Export/save glTF + PNG under `Documents/Models/` (and keep `.bbmodel` if present).
+2. Copy into `tools/art/<slug>/` (overwrite).
+3. Rebake: `python tools/bake_tier1_props_gltf.py <name>` (bump `generator` in the `PROPS` entry so reloads are obvious).
+4. Confirm prefab JSON still references `assets/models/<name>.gltf` and is full JSON.
+5. Restart `engine.exe` editor/MCP so GPU reloads the mesh; screenshot to verify.
+
+Documented in detail in [`context/formats/mesh-assets.md`](../../context/formats/mesh-assets.md) (Recovering a corrupted Tier-1 prop mesh).
 
 ## Quick commands
 

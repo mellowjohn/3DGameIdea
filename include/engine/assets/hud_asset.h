@@ -29,6 +29,9 @@ struct HudWidget {
     std::string text;
     /// Optional project-relative image path (PNG). Empty = no image / solid fill.
     std::string image;
+    /// Optional bind key for a runtime image path (`hud_set_image` / `ui_canvas_set_image`).
+    /// When set, the bound path overrides authored `image` (empty bind value = no image).
+    std::string image_bind;
     /// How `image` fits the widget rect (`stretch` fills; `contain` letterboxes).
     HudImageMode image_mode = HudImageMode::Stretch;
     /// Optional RGBA 0–255. Alpha 0 means "use draw defaults".
@@ -45,6 +48,8 @@ struct HudWidget {
     HudTextAlign text_align = HudTextAlign::Left;
     /// Vertical text alignment within the widget box (text widgets).
     HudTextVAlign text_v_align = HudTextVAlign::Top;
+    /// Optional hover tooltip (iron/gold chip). Inventory `select.*` slots prefer live item text.
+    std::string tooltip;
     [[nodiscard]] bool has_color() const noexcept { return color[3] > 0.0f; }
 };
 

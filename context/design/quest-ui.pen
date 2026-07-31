@@ -1,0 +1,5008 @@
+{
+  "version": "2.14",
+  "children": [
+    {
+      "type": "frame",
+      "id": "kitRoot",
+      "x": 0,
+      "y": 0,
+      "name": "00 — Components",
+      "clip": true,
+      "width": 560,
+      "height": 1680,
+      "fill": "$chrome",
+      "stroke": "$border",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 28,
+      "children": [
+        {
+          "type": "text",
+          "id": "kitEyebrow",
+          "name": "Eyebrow",
+          "fill": "$gold",
+          "content": "QUEST UI · KIT",
+          "fontFamily": "$body",
+          "fontSize": 11,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "text",
+          "id": "kitTitle",
+          "name": "Title",
+          "fill": "$text",
+          "content": "Reusable pieces",
+          "fontFamily": "$display",
+          "fontSize": 26,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "kitBlurb",
+          "name": "Blurb",
+          "fill": "$muted",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Iron / gold chrome · Cinzel titles. Journal kinds tint: main gold · side steel-blue · faction bronze · archetype violet. Accept uses dialogue parchment bottom-center.",
+          "fontFamily": "$body",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "compKindBadge",
+          "name": "Kind Badge",
+          "reusable": true,
+          "fill": "$ironDeep",
+          "stroke": "$mainAccent",
+          "strokeWidth": 1,
+          "gap": 6,
+          "padding": [
+            4,
+            10
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "kindDot",
+              "name": "Dot",
+              "fill": "$mainAccent",
+              "width": 8,
+              "height": 8
+            },
+            {
+              "type": "text",
+              "id": "kindLabel",
+              "name": "Label",
+              "fill": "$gold",
+              "content": "MAIN",
+              "fontFamily": "$body",
+              "fontSize": 11,
+              "fontWeight": "700",
+              "letterSpacing": 1.2
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "compObjectiveRow",
+          "name": "Objective Row",
+          "reusable": true,
+          "width": 480,
+          "fill": "$ironDeep",
+          "gap": 12,
+          "padding": [
+            10,
+            12
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "objCheck",
+              "name": "Check Well",
+              "width": 22,
+              "height": 22,
+              "fill": "$iron",
+              "stroke": "$gold",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "objCheckMark",
+                  "name": "Mark",
+                  "fill": "$gold",
+                  "content": "✓",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "objTextCol",
+              "name": "Text Col",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 2,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "objSummary",
+                  "name": "Summary",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Meet Arkand at the siege and learn the keep is under attack.",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "objState",
+                  "name": "State",
+                  "fill": "$muted",
+                  "content": "Current · dialogue hook dlg_act0_meet_arkand",
+                  "fontFamily": "$body",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "compQuestChip",
+          "name": "Quest Chip",
+          "reusable": true,
+          "width": 360,
+          "fill": "$hudPanel",
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 6,
+          "padding": [
+            12,
+            14
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "chipTop",
+              "name": "Chip Top",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "chipEyebrow",
+                  "name": "Eyebrow",
+                  "fill": "$gold",
+                  "content": "QUEST",
+                  "fontFamily": "$body",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.4
+                },
+                {
+                  "type": "text",
+                  "id": "chipKind",
+                  "name": "Kind",
+                  "fill": "$mainAccent",
+                  "content": "MAIN",
+                  "fontFamily": "$body",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "chipTitle",
+              "name": "Title",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Act 0 — Calrenoth Fall",
+              "fontFamily": "$display",
+              "fontSize": 15,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "chipObjective",
+              "name": "Objective",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Secure Larrell’s rear drawbridge and signal the retreat.",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "compJournalRow",
+          "name": "Journal Row",
+          "reusable": true,
+          "width": 480,
+          "fill": "$ironDeep",
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "gap": 12,
+          "padding": [
+            12,
+            14
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "jrAccent",
+              "name": "Accent",
+              "width": 4,
+              "height": 36,
+              "fill": "$mainAccent"
+            },
+            {
+              "type": "frame",
+              "id": "jrText",
+              "name": "Text",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 3,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "jrTitle",
+                  "name": "Title",
+                  "fill": "$text",
+                  "content": "Act 0 — Calrenoth Fall",
+                  "fontFamily": "$display",
+                  "fontSize": 15,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "jrMeta",
+                  "name": "Meta",
+                  "fill": "$muted",
+                  "content": "Active · 2 / 4 objectives · consequential",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "compToast",
+          "name": "Quest Toast",
+          "reusable": true,
+          "width": 420,
+          "fill": "$ironPanel",
+          "stroke": "$gold",
+          "strokeWidth": 1,
+          "gap": 14,
+          "padding": [
+            14,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "toastIcon",
+              "name": "Icon Well",
+              "width": 36,
+              "height": 36,
+              "fill": "$ironDeep",
+              "stroke": "$gold",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "toastGlyph",
+                  "name": "Glyph",
+                  "fill": "$gold",
+                  "content": "!",
+                  "fontFamily": "$display",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "toastText",
+              "name": "Text",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 2,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "toastEyebrow",
+                  "name": "Eyebrow",
+                  "fill": "$gold",
+                  "content": "QUEST UPDATED",
+                  "fontFamily": "$body",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "text",
+                  "id": "toastBody",
+                  "name": "Body",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Objective complete — reach Calrenoth and report to Commander Grenge.",
+                  "fontFamily": "$body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "compForkChoice",
+          "name": "Fork Choice",
+          "reusable": true,
+          "width": 480,
+          "fill": "$parchmentChoice",
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 6,
+          "padding": [
+            14,
+            16
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "forkLabel",
+              "name": "Label",
+              "fill": "$ink",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Stay and help Larrell hold the rear",
+              "fontFamily": "$body",
+              "fontSize": 15,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "forkFlag",
+              "name": "Flag",
+              "fill": "$inkMuted",
+              "content": "Sets act0.helped_larrell · clears sibling flags",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "compPrimaryBtn",
+          "name": "Primary Button",
+          "reusable": true,
+          "fill": "$ironDeep",
+          "stroke": "$gold",
+          "strokeWidth": 2,
+          "padding": [
+            12,
+            22
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "btnLabel",
+              "name": "Label",
+              "fill": "$gold",
+              "content": "OPEN JOURNAL",
+              "fontFamily": "$display",
+              "fontSize": 14,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "compTab",
+          "name": "Journal Tab",
+          "reusable": true,
+          "fill": "$ironDeep",
+          "stroke": "$gold",
+          "strokeWidth": 1,
+          "padding": [
+            8,
+            16
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "tabLabel",
+              "name": "Label",
+              "fill": "$gold",
+              "content": "MAIN",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "700",
+              "letterSpacing": 1.1
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "kitNote",
+          "name": "Kit Note",
+          "fill": "$muted",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Instance these in flow screens. Override labels / accents per main · side · faction.",
+          "fontFamily": "$body",
+          "fontSize": 12,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "ax5GU",
+          "name": "Archetype Badge",
+          "reusable": true,
+          "fill": "$ironDeep",
+          "stroke": "$archetypeAccent",
+          "strokeWidth": 1,
+          "gap": 6,
+          "padding": [
+            4,
+            10
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "NkaV6",
+              "name": "Dot",
+              "fill": "$archetypeAccent",
+              "width": 8,
+              "height": 8
+            },
+            {
+              "type": "text",
+              "id": "ueBjd",
+              "name": "Label",
+              "fill": "$archetypeAccent",
+              "content": "ARCHETYPE",
+              "fontFamily": "$body",
+              "fontSize": 11,
+              "fontWeight": "700",
+              "letterSpacing": 1.2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "flowMap",
+      "x": 600,
+      "y": 0,
+      "name": "01 — User Flow",
+      "clip": true,
+      "width": 1480,
+      "height": 720,
+      "fill": "$chrome",
+      "stroke": "$border",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 32,
+      "children": [
+        {
+          "type": "frame",
+          "id": "flowHead",
+          "name": "Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 6,
+          "children": [
+            {
+              "type": "text",
+              "id": "flowEyebrow",
+              "name": "Eyebrow",
+              "fill": "$gold",
+              "content": "APPROVED DRAFT · DEC-0051 · PLAYER QUEST FLOW",
+              "fontFamily": "$body",
+              "fontSize": 11,
+              "fontWeight": "700",
+              "letterSpacing": 1.4
+            },
+            {
+              "type": "text",
+              "id": "flowTitle",
+              "name": "Title",
+              "fill": "$text",
+              "content": "How quests work in play",
+              "fontFamily": "$display",
+              "fontSize": 28,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "flowBlurb",
+              "name": "Blurb",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "DEC-0051: no XP. Accept ?→dialogue; track ≤3 chips; journal Main·Side·Faction·Archetype; abandon non-main; quests parent events; standing on complete. Power = gear + chapter bosses + archetype/story unlocks.",
+              "fontFamily": "$body",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "flowSteps",
+          "name": "Steps Row",
+          "width": "fill_container",
+          "gap": 12,
+          "children": [
+            {
+              "type": "frame",
+              "id": "step1",
+              "name": "Step Accept",
+              "width": "fill_container",
+              "fill": "$ironPanel",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "s1n",
+                  "name": "Num",
+                  "fill": "$gold",
+                  "content": "01",
+                  "fontFamily": "$display",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "s1t",
+                  "name": "Title",
+                  "fill": "$text",
+                  "content": "Accept",
+                  "fontFamily": "$display",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "s1b",
+                  "name": "Body",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "World ? over NPC → Press E → bottom-center dialogue (startId). Toast fires. Tracker chip appears top-left.",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "step2",
+              "name": "Step Track",
+              "width": "fill_container",
+              "fill": "$ironPanel",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "s2n",
+                  "name": "Num",
+                  "fill": "$gold",
+                  "content": "02",
+                  "fontFamily": "$display",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "s2t",
+                  "name": "Title",
+                  "fill": "$text",
+                  "content": "Track",
+                  "fontFamily": "$display",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "s2b",
+                  "name": "Body",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "HUD tracks up to 3 quests (kind filter). Chip click → minimap location. Top-left draft. Bind quest.objectiveText (+ multi-track later).",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "step3",
+              "name": "Step Advance",
+              "width": "fill_container",
+              "fill": "$ironPanel",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "s3n",
+                  "name": "Num",
+                  "fill": "$gold",
+                  "content": "03",
+                  "fontFamily": "$display",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "s3t",
+                  "name": "Title",
+                  "fill": "$text",
+                  "content": "Advance",
+                  "fontFamily": "$display",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "s3b",
+                  "name": "Body",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Scripts / MCP call complete_objective for current step only. Toast + chip refresh. Dialogue does not auto-advance.",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "step4",
+              "name": "Step Fork",
+              "width": "fill_container",
+              "fill": "$ironPanel",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "s4n",
+                  "name": "Num",
+                  "fill": "$gold",
+                  "content": "04",
+                  "fontFamily": "$display",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "s4t",
+                  "name": "Title",
+                  "fill": "$text",
+                  "content": "Fork",
+                  "fontFamily": "$display",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "s4b",
+                  "name": "Body",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "resolve_fork sets one outcomeFlag, clears siblings. Consequential forks may dual-confirm in co-op.",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "step5",
+              "name": "Step Resolve",
+              "width": "fill_container",
+              "fill": "$ironPanel",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "s5n",
+                  "name": "Num",
+                  "fill": "$gold",
+                  "content": "05",
+                  "fontFamily": "$display",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "s5t",
+                  "name": "Title",
+                  "fill": "$text",
+                  "content": "Resolve",
+                  "fontFamily": "$display",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "s5b",
+                  "name": "Body",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Complete panel: items (hover), gold, standing ±, lore journal beat. standingRewards apply on complete. Abandon non-main only.",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "flowLegend",
+          "name": "Legend",
+          "width": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "leg1",
+              "name": "Main",
+              "fill": "$mainAccent",
+              "content": "● Main",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "leg2",
+              "name": "Side",
+              "fill": "$sideAccent",
+              "content": "● Side",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "leg3",
+              "name": "Faction",
+              "fill": "$factionAccent",
+              "content": "● Faction (standing)",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "iCSmV",
+              "name": "Archetype",
+              "fill": "$archetypeAccent",
+              "content": "● Archetype (lane)",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "leg4",
+              "name": "Sample",
+              "fill": "$muted",
+              "content": "Samples: mq_act0_calrenoth · sq_01_cart_again · lane-org seeds TBD",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "screenTracker",
+      "x": 600,
+      "y": 760,
+      "name": "02 — HUD Tracker",
+      "clip": true,
+      "width": 1920,
+      "height": 1080,
+      "fill": "$stageSky",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "trkGround",
+          "x": 0,
+          "y": 620,
+          "name": "Ground Band",
+          "fill": "#1A2428",
+          "width": 1920,
+          "height": 460
+        },
+        {
+          "type": "text",
+          "id": "trkZone",
+          "x": 40,
+          "y": 40,
+          "name": "Zone Label",
+          "fill": "$gold",
+          "content": "REVIEW · HUD TRACK ≤3 · DEC-0051",
+          "fontFamily": "$body",
+          "fontSize": 12,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "frame",
+          "id": "trkChip",
+          "x": 40,
+          "y": 72,
+          "name": "Active Chip",
+          "width": 380,
+          "fill": "$hudPanel",
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 6,
+          "padding": [
+            14,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "trkChipTop",
+              "name": "Top",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "trkChipEb",
+                  "name": "Eyebrow",
+                  "fill": "$gold",
+                  "content": "QUEST",
+                  "fontFamily": "$body",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.4
+                },
+                {
+                  "type": "text",
+                  "id": "trkChipKd",
+                  "name": "Kind",
+                  "fill": "$mainAccent",
+                  "content": "MAIN",
+                  "fontFamily": "$body",
+                  "fontSize": 10,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "trkChipTitle",
+              "name": "Title",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Act 0 — Calrenoth Fall",
+              "fontFamily": "$display",
+              "fontSize": 16,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "trkChipObj",
+              "name": "Objective",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Secure Larrell’s rear drawbridge and signal the retreat.",
+              "fontFamily": "$body",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "trkChipHint",
+              "name": "Hint",
+              "fill": "$ironLight",
+              "content": "Click → focus minimap marker · M full map · track ≤3",
+              "fontFamily": "$body",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "trkNote",
+          "x": 40,
+          "y": 920,
+          "name": "Note",
+          "width": 520,
+          "fill": "$ironPanel",
+          "layout": "vertical",
+          "gap": 6,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "trkNoteT",
+              "name": "Title",
+              "fill": "$gold",
+              "content": "Design notes",
+              "fontFamily": "$display",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "trkNoteB",
+              "name": "Body",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "DEC-0051: up to 3 tracked with kind filter. Map markers TICKET-0062. Chip corner top-left until polish.",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "trkHotbar",
+          "x": 720,
+          "y": 960,
+          "name": "Hotbar Ghost",
+          "width": 480,
+          "height": 72,
+          "fill": "$ironDeep",
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "gap": 8,
+          "padding": 8,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "rectangle",
+              "id": "hb1",
+              "name": "Slot1",
+              "fill": "$slotIdle",
+              "width": 56,
+              "height": 56,
+              "stroke": "$gold",
+              "strokeWidth": 1
+            },
+            {
+              "type": "rectangle",
+              "id": "hb2",
+              "name": "Slot2",
+              "fill": "$slotIdle",
+              "width": 56,
+              "height": 56,
+              "stroke": "$border",
+              "strokeWidth": 1
+            },
+            {
+              "type": "rectangle",
+              "id": "hb3",
+              "name": "Slot3",
+              "fill": "$slotIdle",
+              "width": 56,
+              "height": 56,
+              "stroke": "$border",
+              "strokeWidth": 1
+            },
+            {
+              "type": "rectangle",
+              "id": "hb4",
+              "name": "Slot4",
+              "fill": "$slotIdle",
+              "width": 56,
+              "height": 56,
+              "stroke": "$border",
+              "strokeWidth": 1
+            },
+            {
+              "type": "rectangle",
+              "id": "hb5",
+              "name": "Slot5",
+              "fill": "$slotIdle",
+              "width": 56,
+              "height": 56,
+              "stroke": "$border",
+              "strokeWidth": 1
+            },
+            {
+              "type": "rectangle",
+              "id": "hb6",
+              "name": "Slot6",
+              "fill": "$slotIdle",
+              "width": 56,
+              "height": 56,
+              "stroke": "$border",
+              "strokeWidth": 1
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "EKkEh",
+          "x": 40,
+          "y": 250,
+          "name": "Side Chip",
+          "width": 380,
+          "fill": "$hudPanel",
+          "stroke": "$sideAccent",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 4,
+          "padding": [
+            12,
+            14
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "pIx8L",
+              "name": "Top",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "EWTag",
+                  "name": "Eyebrow",
+                  "fill": "$gold",
+                  "content": "QUEST",
+                  "fontFamily": "$body",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.4
+                },
+                {
+                  "type": "text",
+                  "id": "As90x",
+                  "name": "Kind",
+                  "fill": "$sideAccent",
+                  "content": "SIDE",
+                  "fontFamily": "$body",
+                  "fontSize": 10,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "gM78K",
+              "name": "Title",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Cart Again",
+              "fontFamily": "$display",
+              "fontSize": 15,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "lQRHm",
+              "name": "Objective",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Clear 2–3 Imperium scavengers.",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "qdypW",
+          "x": 40,
+          "y": 400,
+          "name": "Archetype Chip",
+          "width": 380,
+          "fill": "$hudPanel",
+          "stroke": "$archetypeAccent",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 4,
+          "padding": [
+            12,
+            14
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "W62clO",
+              "name": "Top",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "UoANY",
+                  "name": "Eyebrow",
+                  "fill": "$gold",
+                  "content": "QUEST",
+                  "fontFamily": "$body",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.4
+                },
+                {
+                  "type": "text",
+                  "id": "c3Bnx",
+                  "name": "Kind",
+                  "fill": "$archetypeAccent",
+                  "content": "ARCHETYPE",
+                  "fontFamily": "$body",
+                  "fontSize": 10,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "A2NxBV",
+              "name": "Title",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Ashfell Trial (draft)",
+              "fontFamily": "$display",
+              "fontSize": 15,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "jA4pF",
+              "name": "Objective",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Report to House Ashfell mentor — unlock pending seed.",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "screenToast",
+      "x": 2580,
+      "y": 760,
+      "name": "03 — Accept / Update Toast",
+      "clip": true,
+      "width": 1920,
+      "height": 1080,
+      "fill": "$stageSky",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "toastGround",
+          "x": 0,
+          "y": 620,
+          "name": "Ground",
+          "fill": "#1A2428",
+          "width": 1920,
+          "height": 460
+        },
+        {
+          "type": "text",
+          "id": "toastZone",
+          "x": 40,
+          "y": 40,
+          "name": "Zone",
+          "fill": "$gold",
+          "content": "REVIEW · TRANSIENT FEEDBACK",
+          "fontFamily": "$body",
+          "fontSize": 12,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "frame",
+          "id": "toastAccepted",
+          "x": 720,
+          "y": 120,
+          "name": "Accepted Toast",
+          "width": 480,
+          "fill": "$ironPanel",
+          "stroke": "$gold",
+          "strokeWidth": 2,
+          "layout": "vertical",
+          "gap": 10,
+          "padding": 20,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "taEb",
+              "name": "Eyebrow",
+              "fill": "$gold",
+              "content": "QUEST STARTED",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "700",
+              "letterSpacing": 1.6
+            },
+            {
+              "type": "text",
+              "id": "taTitle",
+              "name": "Title",
+              "fill": "$text",
+              "content": "Cart Again",
+              "fontFamily": "$display",
+              "fontSize": 24,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "taBody",
+              "name": "Body",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Find Guard Pellin pinned under an overturned supply cart.",
+              "textAlign": "center",
+              "fontFamily": "$body",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "taKind",
+              "name": "Kind",
+              "fill": "$sideAccent",
+              "content": "SIDE · sq_01_cart_again",
+              "fontFamily": "$body",
+              "fontSize": 11,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "toastUpdated",
+          "x": 720,
+          "y": 360,
+          "name": "Updated Toast",
+          "width": 480,
+          "fill": "$ironPanel",
+          "stroke": "$success",
+          "strokeWidth": 1,
+          "gap": 14,
+          "padding": [
+            16,
+            18
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "tuIcon",
+              "name": "Icon",
+              "width": 40,
+              "height": 40,
+              "fill": "$success",
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "tuCheck",
+                  "name": "Check",
+                  "fill": "$text",
+                  "content": "✓",
+                  "fontFamily": "$body",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tuText",
+              "name": "Text",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 2,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "tuEb",
+                  "name": "Eyebrow",
+                  "fill": "$gold",
+                  "content": "OBJECTIVE COMPLETE",
+                  "fontFamily": "$body",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "text",
+                  "id": "tuBody",
+                  "name": "Body",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Next: Clear 2–3 Imperium scavengers.",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "toastNote",
+          "x": 720,
+          "y": 980,
+          "name": "Note",
+          "fill": "$muted",
+          "content": "Toasts auto-dismiss ~3s. Do not block input. Stack max 2.",
+          "fontFamily": "$body",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "screenJournal",
+      "x": 600,
+      "y": 1900,
+      "name": "04 — Quest Journal",
+      "clip": true,
+      "width": 1920,
+      "height": 1080,
+      "fill": "$dim",
+      "layout": "none",
+      "children": [
+        {
+          "type": "text",
+          "id": "jZone",
+          "x": 40,
+          "y": 24,
+          "name": "Zone",
+          "fill": "$gold",
+          "content": "REVIEW · JOURNAL (J) · PAUSE STACK",
+          "fontFamily": "$body",
+          "fontSize": 12,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "frame",
+          "id": "jModal",
+          "x": 260,
+          "y": 80,
+          "name": "Journal Modal",
+          "clip": true,
+          "width": 1400,
+          "height": 900,
+          "fill": "$ironPanel",
+          "stroke": "$gold",
+          "strokeWidth": 2,
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "jHeader",
+              "name": "Header",
+              "width": "fill_container",
+              "height": 72,
+              "fill": "$ironDeep",
+              "padding": [
+                0,
+                28
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "jHeadLeft",
+                  "name": "Left",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "jHeadEb",
+                      "name": "Eyebrow",
+                      "fill": "$gold",
+                      "content": "CODEX",
+                      "fontFamily": "$body",
+                      "fontSize": 11,
+                      "fontWeight": "700",
+                      "letterSpacing": 1.4
+                    },
+                    {
+                      "type": "text",
+                      "id": "jHeadTitle",
+                      "name": "Title",
+                      "fill": "$text",
+                      "content": "Quest Journal",
+                      "fontFamily": "$display",
+                      "fontSize": 24,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "jClose",
+                  "name": "Close",
+                  "fill": "$muted",
+                  "content": "ESC  Close",
+                  "fontFamily": "$body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jTabs",
+              "name": "Tabs",
+              "width": "fill_container",
+              "height": 48,
+              "fill": "$iron",
+              "gap": 6,
+              "padding": [
+                0,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "tabMain",
+                  "name": "Tab Main",
+                  "fill": "$ironDeep",
+                  "stroke": "$gold",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "tabMainL",
+                      "name": "Label",
+                      "fill": "$gold",
+                      "content": "MAIN",
+                      "fontFamily": "$body",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "tabSide",
+                  "name": "Tab Side",
+                  "fill": "$ironDeep",
+                  "padding": [
+                    8,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "tabSideL",
+                      "name": "Label",
+                      "fill": "$muted",
+                      "content": "SIDE",
+                      "fontFamily": "$body",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "tabFaction",
+                  "name": "Tab Faction",
+                  "fill": "$ironDeep",
+                  "padding": [
+                    8,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "tabFacL",
+                      "name": "Label",
+                      "fill": "$muted",
+                      "content": "FACTION",
+                      "fontFamily": "$body",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "TifT8",
+                  "name": "Tab Archetype",
+                  "fill": "$ironDeep",
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "j59n0a",
+                      "name": "Label",
+                      "fill": "$muted",
+                      "content": "ARCHETYPE",
+                      "fontFamily": "$body",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "tabDone",
+                  "name": "Tab Done",
+                  "fill": "$ironDeep",
+                  "padding": [
+                    8,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "tabDoneL",
+                      "name": "Label",
+                      "fill": "$muted",
+                      "content": "COMPLETED",
+                      "fontFamily": "$body",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jBody",
+              "name": "Body",
+              "width": "fill_container",
+              "height": "fill_container",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "jList",
+                  "name": "List",
+                  "width": 420,
+                  "height": "fill_container",
+                  "fill": "$ironDeep",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "jRowActive",
+                      "name": "Row Active",
+                      "width": "fill_container",
+                      "fill": "$iron",
+                      "stroke": "$gold",
+                      "strokeWidth": 1,
+                      "gap": 12,
+                      "padding": [
+                        12,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "id": "jRowA",
+                          "name": "Accent",
+                          "fill": "$mainAccent",
+                          "width": 4,
+                          "height": 40
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jRowAT",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 3,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jRowATitle",
+                              "name": "Title",
+                              "fill": "$text",
+                              "content": "Act 0 — Calrenoth Fall",
+                              "fontFamily": "$display",
+                              "fontSize": 15,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "jRowAMeta",
+                              "name": "Meta",
+                              "fill": "$muted",
+                              "content": "Active · 3 / 4 · consequential",
+                              "fontFamily": "$body",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jRowIdle",
+                      "name": "Row Idle",
+                      "width": "fill_container",
+                      "fill": "$iron",
+                      "gap": 12,
+                      "padding": [
+                        12,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "id": "jRowIA",
+                          "name": "Accent",
+                          "fill": "$sideAccent",
+                          "width": 4,
+                          "height": 40
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jRowIT",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 3,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jRowITitle",
+                              "name": "Title",
+                              "fill": "$text",
+                              "content": "Cart Again",
+                              "fontFamily": "$display",
+                              "fontSize": 15,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "jRowIMeta",
+                              "name": "Meta",
+                              "fill": "$muted",
+                              "content": "Active · 1 / 4 · side",
+                              "fontFamily": "$body",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "jListHint",
+                      "name": "Hint",
+                      "fill": "$ironLight",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "DEC-0051 locked tabs. Abandon Side/Faction/Archetype (re-accept OK). Main cannot abandon. Blend tags OK when story-fit.",
+                      "fontFamily": "$body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "jDetail",
+                  "name": "Detail",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$parchment",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": 28,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "jdHead",
+                      "name": "Detail Head",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "jdHeadL",
+                          "name": "Left",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jdKind",
+                              "name": "Kind",
+                              "fill": "$inkMuted",
+                              "content": "MAIN QUEST · ACT 0",
+                              "fontFamily": "$body",
+                              "fontSize": 11,
+                              "fontWeight": "700",
+                              "letterSpacing": 1.2
+                            },
+                            {
+                              "type": "text",
+                              "id": "jdTitle",
+                              "name": "Title",
+                              "fill": "$ink",
+                              "content": "Act 0 — Calrenoth Fall",
+                              "fontFamily": "$display",
+                              "fontSize": 26,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jdBadge",
+                          "name": "Badge",
+                          "fill": "$ironDeep",
+                          "padding": [
+                            6,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jdBadgeL",
+                              "name": "Label",
+                              "fill": "$gold",
+                              "content": "CONSEQUENTIAL",
+                              "fontFamily": "$body",
+                              "fontSize": 11,
+                              "fontWeight": "700",
+                              "letterSpacing": 1
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "jdSummary",
+                      "name": "Summary",
+                      "fill": "$inkMuted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Siege of Calrenoth, drawbridge retreat, Creotar vision. Progress is explicit — dialogue hooks speak; QuestRuntime advances.",
+                      "fontFamily": "$body",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "jdObjHead",
+                      "name": "Objectives Head",
+                      "fill": "$ink",
+                      "content": "Objectives",
+                      "fontFamily": "$display",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jdObj1",
+                      "name": "Obj Done 1",
+                      "width": "fill_container",
+                      "fill": "$parchmentDeep",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "jdO1m",
+                          "name": "Mark",
+                          "fill": "$success",
+                          "content": "✓",
+                          "fontFamily": "$body",
+                          "fontSize": 16,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "jdO1t",
+                          "name": "Text",
+                          "fill": "$inkMuted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Meet Arkand at the siege",
+                          "fontFamily": "$body",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jdObj2",
+                      "name": "Obj Done 2",
+                      "width": "fill_container",
+                      "fill": "$parchmentDeep",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "jdO2m",
+                          "name": "Mark",
+                          "fill": "$success",
+                          "content": "✓",
+                          "fontFamily": "$body",
+                          "fontSize": 16,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "jdO2t",
+                          "name": "Text",
+                          "fill": "$inkMuted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Reach Calrenoth and report to Commander Grenge",
+                          "fontFamily": "$body",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jdObj3",
+                      "name": "Obj Current",
+                      "width": "fill_container",
+                      "fill": "$parchmentChoice",
+                      "stroke": "$gold",
+                      "strokeWidth": 1,
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "jdO3m",
+                          "name": "Mark",
+                          "fill": "$gold",
+                          "content": "›",
+                          "fontFamily": "$body",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jdO3c",
+                          "name": "Col",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jdO3t",
+                              "name": "Text",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Secure Larrell’s rear drawbridge and signal the retreat",
+                              "fontFamily": "$body",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "jdO3h",
+                              "name": "Hook",
+                              "fill": "$inkMuted",
+                              "content": "Current · dialogue dlg_act0_drawbridge_retreat",
+                              "fontFamily": "$body",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jdObj4",
+                      "name": "Obj Locked",
+                      "opacity": 0.55,
+                      "width": "fill_container",
+                      "fill": "$parchmentDeep",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "jdO4m",
+                          "name": "Mark",
+                          "fill": "$inkMuted",
+                          "content": "○",
+                          "fontFamily": "$body",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "jdO4t",
+                          "name": "Text",
+                          "fill": "$inkMuted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Survive the Realm of Darkness vision",
+                          "fontFamily": "$body",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jdActions",
+                      "name": "Actions",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "end",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "jdAbandon",
+                          "name": "Abandon",
+                          "fill": "$parchmentDeep",
+                          "stroke": "$danger",
+                          "strokeWidth": 1,
+                          "padding": [
+                            10,
+                            18
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jdAbL",
+                              "name": "Label",
+                              "fill": "$danger",
+                              "content": "ABANDON",
+                              "fontFamily": "$display",
+                              "fontSize": 13,
+                              "fontWeight": "700",
+                              "letterSpacing": 1
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jdTrack",
+                          "name": "Track",
+                          "fill": "$ironDeep",
+                          "stroke": "$gold",
+                          "strokeWidth": 2,
+                          "padding": [
+                            10,
+                            18
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jdTrL",
+                              "name": "Label",
+                              "fill": "$gold",
+                              "content": "SET AS TRACKED",
+                              "fontFamily": "$display",
+                              "fontSize": 13,
+                              "fontWeight": "700",
+                              "letterSpacing": 1
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "screenFork",
+      "x": 2580,
+      "y": 1900,
+      "name": "05 — Consequential Fork",
+      "clip": true,
+      "width": 1920,
+      "height": 1080,
+      "fill": "$dim",
+      "layout": "none",
+      "children": [
+        {
+          "type": "text",
+          "id": "fkZone",
+          "x": 40,
+          "y": 24,
+          "name": "Zone",
+          "fill": "$gold",
+          "content": "REVIEW · FORK CONFIRM · resolve_fork",
+          "fontFamily": "$body",
+          "fontSize": 12,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "frame",
+          "id": "fkModal",
+          "x": 460,
+          "y": 180,
+          "name": "Fork Modal",
+          "width": 1000,
+          "fill": "$ironPanel",
+          "stroke": "$gold",
+          "strokeWidth": 2,
+          "layout": "vertical",
+          "gap": 20,
+          "padding": 32,
+          "children": [
+            {
+              "type": "text",
+              "id": "fkEb",
+              "name": "Eyebrow",
+              "fill": "$gold",
+              "content": "CONSEQUENTIAL CHOICE",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "700",
+              "letterSpacing": 1.6
+            },
+            {
+              "type": "text",
+              "id": "fkTitle",
+              "name": "Title",
+              "fill": "$text",
+              "content": "The rear drawbridge",
+              "fontFamily": "$display",
+              "fontSize": 28,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "fkBody",
+              "name": "Body",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Stay to help Larrell, or flee immediately into the Creotar segment. This writes a lasting outcome flag and clears the sibling.",
+              "fontFamily": "$body",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "fkChoices",
+              "name": "Choices",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "fkC1",
+                  "name": "Choice Help",
+                  "width": "fill_container",
+                  "fill": "$parchmentChoice",
+                  "stroke": "$gold",
+                  "strokeWidth": 2,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    14,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fkC1t",
+                      "name": "Label",
+                      "fill": "$ink",
+                      "content": "Stay and help Larrell hold the rear",
+                      "fontFamily": "$body",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "fkC1f",
+                      "name": "Flag",
+                      "fill": "$inkMuted",
+                      "content": "→ act0.helped_larrell",
+                      "fontFamily": "$body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "fkC2",
+                  "name": "Choice Flee",
+                  "width": "fill_container",
+                  "fill": "$parchment",
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    14,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fkC2t",
+                      "name": "Label",
+                      "fill": "$ink",
+                      "content": "Flee now — leave Larrell to the siege",
+                      "fontFamily": "$body",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "fkC2f",
+                      "name": "Flag",
+                      "fill": "$inkMuted",
+                      "content": "→ act0.fled_drawbridge",
+                      "fontFamily": "$body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fkCoop",
+              "name": "Co-op Banner",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "gap": 10,
+              "padding": [
+                12,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "fkCoopT",
+                  "name": "Text",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Co-op: both players must confirm (DEC-0042 dual confirm). Host applies resolve_fork once unanimous.",
+                  "fontFamily": "$body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fkActions",
+              "name": "Actions",
+              "width": "fill_container",
+              "gap": 12,
+              "justifyContent": "end",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "fkCancel",
+                  "name": "Cancel",
+                  "fill": "$ironDeep",
+                  "padding": [
+                    12,
+                    20
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fkCanL",
+                      "name": "Label",
+                      "fill": "$muted",
+                      "content": "BACK",
+                      "fontFamily": "$display",
+                      "fontSize": 13,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "fkConfirm",
+                  "name": "Confirm",
+                  "fill": "$ironDeep",
+                  "stroke": "$gold",
+                  "strokeWidth": 2,
+                  "padding": [
+                    12,
+                    20
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fkConfL",
+                      "name": "Label",
+                      "fill": "$gold",
+                      "content": "CONFIRM CHOICE",
+                      "fontFamily": "$display",
+                      "fontSize": 13,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "screenComplete",
+      "x": 600,
+      "y": 3040,
+      "name": "06 — Quest Complete",
+      "clip": true,
+      "width": 1920,
+      "height": 1080,
+      "fill": "$dim",
+      "layout": "none",
+      "children": [
+        {
+          "type": "text",
+          "id": "cpZone",
+          "x": 40,
+          "y": 24,
+          "name": "Zone",
+          "fill": "$gold",
+          "content": "REVIEW · COMPLETION",
+          "fontFamily": "$body",
+          "fontSize": 12,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "frame",
+          "id": "cpModal",
+          "x": 560,
+          "y": 220,
+          "name": "Complete Modal",
+          "width": 800,
+          "fill": "$ironPanel",
+          "stroke": "$gold",
+          "strokeWidth": 2,
+          "layout": "vertical",
+          "gap": 18,
+          "padding": 36,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "cpEb",
+              "name": "Eyebrow",
+              "fill": "$gold",
+              "content": "QUEST COMPLETE",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "700",
+              "letterSpacing": 1.8
+            },
+            {
+              "type": "text",
+              "id": "cpTitle",
+              "name": "Title",
+              "fill": "$text",
+              "content": "Cart Again",
+              "fontFamily": "$display",
+              "fontSize": 32,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "cpBody",
+              "name": "Body",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Rewards granted — no XP. Items, gold, standing ±, and a lore journal beat. Hover items for effects.",
+              "textAlign": "center",
+              "fontFamily": "$body",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "cpRewards",
+              "name": "Rewards",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "cpRewH",
+                  "name": "Head",
+                  "fill": "$gold",
+                  "content": "REWARDS",
+                  "fontFamily": "$body",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "text",
+                  "id": "cpRew1",
+                  "name": "R1",
+                  "fill": "$text",
+                  "content": "• Rusted King’s Guard buckle",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "cpRew2",
+                  "name": "R2",
+                  "fill": "$text",
+                  "content": "• Small coin",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "cpRew3",
+                  "name": "R3",
+                  "fill": "$text",
+                  "content": "• Standing Cristallo +10 (example) · applied on complete",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Moxh1",
+                  "name": "R4",
+                  "fill": "$text",
+                  "content": "• Lore journal: Pellin’s debt noted",
+                  "fontFamily": "$body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "cpBtn",
+              "name": "Continue",
+              "fill": "$ironDeep",
+              "stroke": "$gold",
+              "strokeWidth": 2,
+              "padding": [
+                14,
+                28
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "cpBtnL",
+                  "name": "Label",
+                  "fill": "$gold",
+                  "content": "CONTINUE",
+                  "fontFamily": "$display",
+                  "fontSize": 14,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.2
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "cpHint",
+              "name": "Hint",
+              "fill": "$ironLight",
+              "content": "Optional completeId dialogue plays before or after this panel (authored per quest).",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "screenGate",
+      "x": 2580,
+      "y": 3040,
+      "name": "07 — Soft Gate Block",
+      "clip": true,
+      "width": 1920,
+      "height": 1080,
+      "fill": "$stageSky",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "sgGround",
+          "x": 0,
+          "y": 620,
+          "name": "Ground",
+          "fill": "#1A2428",
+          "width": 1920,
+          "height": 460
+        },
+        {
+          "type": "text",
+          "id": "sgZone",
+          "x": 40,
+          "y": 40,
+          "name": "Zone",
+          "fill": "$gold",
+          "content": "REVIEW · SOFT GATE FROM QUEST FLAGS",
+          "fontFamily": "$body",
+          "fontSize": 12,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "frame",
+          "id": "sgChip",
+          "x": 660,
+          "y": 420,
+          "name": "Gate Chip",
+          "width": 600,
+          "fill": "$parchment",
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            16,
+            20
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "sgTitle",
+              "name": "Title",
+              "fill": "$ink",
+              "content": "The hill road is watched",
+              "fontFamily": "$display",
+              "fontSize": 18,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "sgBody",
+              "name": "Body",
+              "fill": "$inkMuted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Imperium checkpoint ahead — Signal Fire Debt left the all-clear burning. Press E to speak with the guard, or find another path.",
+              "textAlign": "center",
+              "fontFamily": "$body",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "sgFlag",
+              "name": "Flag",
+              "fill": "$inkMuted",
+              "content": "Requires ¬sq02.fire_lie  ·  soft_gate link",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "sgNote",
+          "x": 40,
+          "y": 920,
+          "name": "Note",
+          "width": 560,
+          "fill": "$ironPanel",
+          "layout": "vertical",
+          "gap": 6,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "sgNoteT",
+              "name": "Title",
+              "fill": "$gold",
+              "content": "World consequence",
+              "fontFamily": "$display",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "sgNoteB",
+              "name": "Body",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Fork outcomeFlags feed FlagRuntime. Soft gates read has(flag) — not a hard load barrier. World stays reachable; systems refuse or warn.",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "ZwtbF",
+      "x": 4580,
+      "y": 760,
+      "name": "08 — NPC Accept Flow",
+      "clip": true,
+      "width": 1920,
+      "height": 1080,
+      "fill": "$stageSky",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "H0S1AQ",
+          "x": 0,
+          "y": 620,
+          "name": "Ground",
+          "fill": "#1A2428",
+          "width": 1920,
+          "height": 460
+        },
+        {
+          "type": "text",
+          "id": "tj3l9",
+          "x": 40,
+          "y": 40,
+          "name": "Zone",
+          "fill": "$gold",
+          "content": "APPROVED DRAFT · ACCEPT · ? / ! MARKERS · DEC-0051",
+          "fontFamily": "$body",
+          "fontSize": 12,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "frame",
+          "id": "byaFf",
+          "x": 900,
+          "y": 380,
+          "name": "NPC Marker",
+          "width": 120,
+          "height": 160,
+          "layout": "vertical",
+          "gap": 8,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "K1qm4",
+              "name": "Quest Mark",
+              "width": 44,
+              "height": 44,
+              "fill": "$gold",
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "EXsLj",
+                  "name": "Glyph",
+                  "fill": "$ironDeep",
+                  "content": "?",
+                  "fontFamily": "$display",
+                  "fontSize": 28,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "ellipse",
+              "id": "SY9hQ",
+              "name": "Body",
+              "fill": "$iron",
+              "width": 56,
+              "height": 72
+            },
+            {
+              "type": "text",
+              "id": "M8E0g",
+              "name": "Name",
+              "fill": "$text",
+              "content": "Guard Pellin",
+              "fontFamily": "$body",
+              "fontSize": 12,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "YTI5f",
+              "x": 0,
+              "y": 0,
+              "name": "Turn-in Mark",
+              "enabled": false,
+              "width": 44,
+              "height": 44,
+              "fill": "$mainAccent",
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "WCoim",
+                  "name": "Glyph",
+                  "fill": "$ironDeep",
+                  "content": "!",
+                  "fontFamily": "$display",
+                  "fontSize": 28,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "xmFwl",
+          "x": 820,
+          "y": 560,
+          "name": "Interact Prompt",
+          "width": 280,
+          "fill": "$parchment",
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "padding": [
+            10,
+            14
+          ],
+          "justifyContent": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "HLmob",
+              "name": "Label",
+              "fill": "$ink",
+              "content": "Press E to talk",
+              "fontFamily": "$body",
+              "fontSize": 14,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "l58PA",
+          "x": 360,
+          "y": 720,
+          "name": "Dialogue Plate",
+          "width": 1200,
+          "fill": "$parchment",
+          "stroke": "$gold",
+          "strokeWidth": 2,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "Fbg7y",
+              "name": "Speaker",
+              "fill": "$ink",
+              "content": "Guard Pellin",
+              "fontFamily": "$display",
+              "fontSize": 18,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "XA9iA",
+              "name": "Line",
+              "fill": "$inkMuted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "The cart’s on me — scavengers took the road. Help me up and I’ll see you paid at the gate.",
+              "fontFamily": "$body",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "Y3fow3",
+              "name": "Choices",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "r6dm5D",
+                  "name": "Choice Accept",
+                  "width": "fill_container",
+                  "fill": "$parchmentChoice",
+                  "stroke": "$gold",
+                  "strokeWidth": 1,
+                  "padding": [
+                    10,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p6xcB",
+                      "name": "Label",
+                      "fill": "$ink",
+                      "content": "I’ll get you out — (starts Cart Again)",
+                      "fontFamily": "$body",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "HvYPJ",
+                  "name": "Choice Decline",
+                  "width": "fill_container",
+                  "fill": "$parchmentDeep",
+                  "padding": [
+                    10,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Y6IG9Q",
+                      "name": "Label",
+                      "fill": "$inkMuted",
+                      "content": "Not my problem.",
+                      "fontFamily": "$body",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Y5kLFC",
+          "x": 40,
+          "y": 920,
+          "name": "Note",
+          "width": 560,
+          "fill": "$ironPanel",
+          "layout": "vertical",
+          "gap": 6,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "DWD3V",
+              "name": "Title",
+              "fill": "$gold",
+              "content": "Accept UX (session lock)",
+              "fontFamily": "$display",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "H199Y",
+              "name": "Body",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "DEC-0051: ? available · ! active/turn-in (bob). Press E → bottom dialogue → quest_start. Toast + track chips follow.",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "MDc6p",
+      "x": 6580,
+      "y": 760,
+      "name": "09 — Minimap Navigation",
+      "clip": true,
+      "width": 1920,
+      "height": 1080,
+      "fill": "$stageSky",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "FTUEc",
+          "x": 0,
+          "y": 620,
+          "name": "Ground",
+          "fill": "#1A2428",
+          "width": 1920,
+          "height": 460
+        },
+        {
+          "type": "text",
+          "id": "EWHxU",
+          "x": 40,
+          "y": 32,
+          "name": "Zone",
+          "fill": "$gold",
+          "content": "REVIEW · MINIMAP · CLICK TRACKED CHIP → FOCUS MARKER",
+          "fontFamily": "$body",
+          "fontSize": 12,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "frame",
+          "id": "W9kVqU",
+          "x": 40,
+          "y": 72,
+          "name": "Focused Chip",
+          "width": 380,
+          "fill": "$hudPanel",
+          "stroke": "$gold",
+          "strokeWidth": 2,
+          "layout": "vertical",
+          "gap": 6,
+          "padding": [
+            14,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "b2xXh9",
+              "name": "Top",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "fGm33",
+                  "name": "Eyebrow",
+                  "fill": "$gold",
+                  "content": "TRACKED · FOCUSED",
+                  "fontFamily": "$body",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "text",
+                  "id": "GX00b",
+                  "name": "Kind",
+                  "fill": "$mainAccent",
+                  "content": "MAIN",
+                  "fontFamily": "$body",
+                  "fontSize": 10,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "UYp8o",
+              "name": "Title",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Act 0 — Calrenoth Fall",
+              "fontFamily": "$display",
+              "fontSize": 16,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "mHuOr",
+              "name": "Objective",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Secure Larrell’s rear drawbridge",
+              "fontFamily": "$body",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "FXxZY",
+              "name": "Hint",
+              "fill": "$ironLight",
+              "content": "Click chip → pulse marker on minimap · M full map",
+              "fontFamily": "$body",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "GV7bA",
+          "x": 1560,
+          "y": 48,
+          "name": "Minimap",
+          "clip": true,
+          "width": 320,
+          "height": 320,
+          "fill": "$ironDeep",
+          "stroke": "$gold",
+          "strokeWidth": 3,
+          "layout": "none",
+          "children": [
+            {
+              "type": "rectangle",
+              "id": "XcxTz",
+              "x": 0,
+              "y": 0,
+              "name": "Terrain",
+              "fill": "#243038",
+              "width": 320,
+              "height": 320
+            },
+            {
+              "type": "rectangle",
+              "id": "p9U5TJ",
+              "x": 40,
+              "y": 150,
+              "name": "Road",
+              "fill": "#3A454C",
+              "width": 240,
+              "height": 12
+            },
+            {
+              "type": "rectangle",
+              "id": "dJMjV",
+              "x": 200,
+              "y": 60,
+              "name": "Keep",
+              "fill": "#4A4038",
+              "width": 70,
+              "height": 55,
+              "stroke": "$border",
+              "strokeWidth": 1
+            },
+            {
+              "type": "ellipse",
+              "id": "nm5MM",
+              "x": 188,
+              "y": 48,
+              "name": "Waypoint Ring",
+              "fill": "#00000000",
+              "width": 96,
+              "height": 96,
+              "stroke": "$gold",
+              "strokeWidth": 3
+            },
+            {
+              "type": "ellipse",
+              "id": "nlG8c",
+              "x": 214,
+              "y": 74,
+              "name": "Quest Dot",
+              "fill": "$mainAccent",
+              "width": 44,
+              "height": 44,
+              "stroke": "$ironDeep",
+              "strokeWidth": 2
+            },
+            {
+              "type": "ellipse",
+              "id": "F05Rl",
+              "x": 70,
+              "y": 210,
+              "name": "Side Dot",
+              "fill": "$sideAccent",
+              "width": 28,
+              "height": 28,
+              "stroke": "$ironDeep",
+              "strokeWidth": 2
+            },
+            {
+              "type": "rectangle",
+              "id": "XI9h5",
+              "x": 150,
+              "y": 155,
+              "name": "Path1",
+              "fill": "$gold",
+              "width": 50,
+              "height": 6
+            },
+            {
+              "type": "rectangle",
+              "id": "EEpUo",
+              "x": 200,
+              "y": 120,
+              "name": "Path2",
+              "fill": "$gold",
+              "width": 6,
+              "height": 40
+            },
+            {
+              "type": "frame",
+              "id": "r4ZTG",
+              "x": 140,
+              "y": 140,
+              "name": "Player",
+              "width": 40,
+              "height": 40,
+              "layout": "none"
+            },
+            {
+              "type": "polygon",
+              "polygonCount": 3,
+              "id": "GaEcb",
+              "x": 148,
+              "y": 145,
+              "name": "Player Arrow",
+              "fill": "$text",
+              "width": 24,
+              "height": 28,
+              "stroke": "$gold",
+              "strokeWidth": 1
+            },
+            {
+              "type": "frame",
+              "id": "Z970KS",
+              "x": 8,
+              "y": 140,
+              "name": "Offscreen",
+              "width": 36,
+              "height": 36,
+              "fill": "$ironPanel",
+              "stroke": "$gold",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "RO2mI",
+                  "name": "Chevron",
+                  "fill": "$gold",
+                  "content": "‹",
+                  "fontFamily": "$display",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "uLUW7",
+          "x": 40,
+          "y": 320,
+          "name": "Callouts",
+          "width": 520,
+          "fill": "$ironPanel",
+          "layout": "vertical",
+          "gap": 10,
+          "padding": 18,
+          "children": [
+            {
+              "type": "text",
+              "id": "ghd9y",
+              "name": "T",
+              "fill": "$gold",
+              "content": "Minimap navigation",
+              "fontFamily": "$display",
+              "fontSize": 16,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "Lywbk",
+              "name": "B1",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "1. Track up to 3 quests. Selected chip gets gold focus stroke.",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "jFNm5",
+              "name": "B2",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "2. Click chip → waypoint ring pulses on that objective; gold path dashes toward it from the player.",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "LSmks",
+              "name": "B3",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "3. If the objective is off the minimap disk, an edge chevron points toward it (kind-tinted).",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "zjjTC",
+              "name": "B4",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "4. Press M (or Map from journal) to open the full map centered on the focused marker.",
+              "fontFamily": "$body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "OIwrw",
+      "x": 8580,
+      "y": 760,
+      "name": "10 — Full Map Navigation",
+      "clip": true,
+      "width": 1920,
+      "height": 1080,
+      "fill": "$dim",
+      "layout": "none",
+      "children": [
+        {
+          "type": "text",
+          "id": "wS3ww",
+          "x": 40,
+          "y": 24,
+          "name": "Zone",
+          "fill": "$gold",
+          "content": "REVIEW · FULL MAP (M) · FOCUS SELECTED QUEST",
+          "fontFamily": "$body",
+          "fontSize": 12,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "frame",
+          "id": "Z3Wetd",
+          "x": 160,
+          "y": 70,
+          "name": "Map Panel",
+          "clip": true,
+          "width": 1600,
+          "height": 920,
+          "fill": "$ironPanel",
+          "stroke": "$gold",
+          "strokeWidth": 2,
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "WYjfl",
+              "name": "Header",
+              "width": "fill_container",
+              "height": 64,
+              "fill": "$ironDeep",
+              "padding": [
+                0,
+                28
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "IVPwD",
+                  "name": "HL",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "W1MXal",
+                      "name": "Eb",
+                      "fill": "$gold",
+                      "content": "CARTOGRAPHY",
+                      "fontFamily": "$body",
+                      "fontSize": 11,
+                      "fontWeight": "700",
+                      "letterSpacing": 1.4
+                    },
+                    {
+                      "type": "text",
+                      "id": "sXIeP",
+                      "name": "Title",
+                      "fill": "$text",
+                      "content": "World Map",
+                      "fontFamily": "$display",
+                      "fontSize": 22,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "gB2b2",
+                  "name": "Close",
+                  "fill": "$muted",
+                  "content": "ESC  Close · click pin to track",
+                  "fontFamily": "$body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "HYXOZ",
+              "name": "Body",
+              "width": "fill_container",
+              "height": "fill_container",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ZP5O1",
+                  "name": "Map View",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#2A3A42",
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "vNwra",
+                      "x": 80,
+                      "y": 120,
+                      "name": "Land",
+                      "fill": "#3A4A42",
+                      "width": 900,
+                      "height": 520
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Rojjt",
+                      "x": 700,
+                      "y": 80,
+                      "name": "Water",
+                      "fill": "#2A4050",
+                      "width": 380,
+                      "height": 280
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "J2CkKk",
+                      "x": 200,
+                      "y": 360,
+                      "name": "Road",
+                      "fill": "#5A5048",
+                      "width": 520,
+                      "height": 14
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "LXiJ8",
+                      "x": 480,
+                      "y": 280,
+                      "name": "PathA",
+                      "fill": "$gold",
+                      "width": 10,
+                      "height": 90
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "e6zoUC",
+                      "x": 480,
+                      "y": 280,
+                      "name": "PathB",
+                      "fill": "$gold",
+                      "width": 120,
+                      "height": 10
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "PwVL6",
+                      "x": 560,
+                      "y": 200,
+                      "name": "Focus Ring",
+                      "fill": "#00000000",
+                      "width": 100,
+                      "height": 100,
+                      "stroke": "$gold",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "r7SXq",
+                      "x": 585,
+                      "y": 215,
+                      "name": "Main Pin",
+                      "width": 50,
+                      "height": 70,
+                      "layout": "vertical",
+                      "alignItems": "center"
+                    },
+                    {
+                      "type": "polygon",
+                      "polygonCount": 3,
+                      "id": "CTLFi",
+                      "x": 590,
+                      "y": 220,
+                      "name": "Pin Shape",
+                      "fill": "$mainAccent",
+                      "width": 40,
+                      "height": 55,
+                      "stroke": "$ironDeep",
+                      "strokeWidth": 2
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "KKksv",
+                      "x": 600,
+                      "y": 232,
+                      "name": "Pin Dot",
+                      "fill": "$ironDeep",
+                      "width": 20,
+                      "height": 20
+                    },
+                    {
+                      "type": "frame",
+                      "id": "wE2MU",
+                      "x": 520,
+                      "y": 160,
+                      "name": "Pin Label",
+                      "width": 220,
+                      "fill": "$hudPanel",
+                      "stroke": "$gold",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 2,
+                      "padding": [
+                        8,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "TuVMm",
+                          "name": "L1",
+                          "fill": "$gold",
+                          "content": "FOCUSED OBJECTIVE",
+                          "fontFamily": "$body",
+                          "fontSize": 10,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "text",
+                          "id": "fl0mW",
+                          "name": "L2",
+                          "fill": "$text",
+                          "content": "Larrell’s drawbridge",
+                          "fontFamily": "$display",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "VfAZa",
+                          "name": "L3",
+                          "fill": "$muted",
+                          "content": "Main · Calrenoth Fall",
+                          "fontFamily": "$body",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "polygon",
+                      "polygonCount": 3,
+                      "id": "gRAvc",
+                      "x": 450,
+                      "y": 340,
+                      "name": "Player",
+                      "fill": "$text",
+                      "width": 28,
+                      "height": 32,
+                      "stroke": "$gold",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "I90oun",
+                      "x": 280,
+                      "y": 400,
+                      "name": "Side Pin",
+                      "fill": "$sideAccent",
+                      "width": 36,
+                      "height": 36,
+                      "stroke": "$ironDeep",
+                      "strokeWidth": 2
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "zWvzu",
+                      "x": 720,
+                      "y": 420,
+                      "name": "Faction Pin",
+                      "fill": "$factionAccent",
+                      "width": 36,
+                      "height": 36,
+                      "stroke": "$ironDeep",
+                      "strokeWidth": 2
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "E0qG8",
+                      "x": 340,
+                      "y": 220,
+                      "name": "Arch Pin",
+                      "fill": "$archetypeAccent",
+                      "width": 36,
+                      "height": 36,
+                      "stroke": "$ironDeep",
+                      "strokeWidth": 2
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mHuQ8",
+                  "name": "Side Panel",
+                  "width": 360,
+                  "height": "fill_container",
+                  "fill": "$ironDeep",
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NKlq6",
+                      "name": "ST",
+                      "fill": "$gold",
+                      "content": "NAVIGATION",
+                      "fontFamily": "$body",
+                      "fontSize": 11,
+                      "fontWeight": "700",
+                      "letterSpacing": 1.4
+                    },
+                    {
+                      "type": "text",
+                      "id": "Y0kPa2",
+                      "name": "SH",
+                      "fill": "$text",
+                      "content": "How you get here",
+                      "fontFamily": "$display",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "OaGbH",
+                      "name": "S1",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Journal → Set as Tracked, or click a HUD chip, or press M while a quest is focused.",
+                      "fontFamily": "$body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "L7JHRi",
+                      "name": "S2",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Map opens centered on the focused objective. Gold path shows suggested approach (soft route, not a rail).",
+                      "fontFamily": "$body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "DcytZ",
+                      "name": "S3",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Click another pin to switch focus / tracking (still ≤3 tracked). Kind color matches journal tabs.",
+                      "fontFamily": "$body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "CXVPa",
+                      "name": "Legend",
+                      "width": "fill_container",
+                      "fill": "$ironPanel",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "hptLg",
+                          "name": "LT",
+                          "fill": "$gold",
+                          "content": "LEGEND",
+                          "fontFamily": "$body",
+                          "fontSize": 11,
+                          "fontWeight": "700",
+                          "letterSpacing": 1.2
+                        },
+                        {
+                          "type": "frame",
+                          "id": "p8TTS",
+                          "name": "Main",
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "ellipse",
+                              "id": "Sq7Fm",
+                              "name": "Dot",
+                              "fill": "$mainAccent",
+                              "width": 14,
+                              "height": 14
+                            },
+                            {
+                              "type": "text",
+                              "id": "LDM9m",
+                              "name": "Lab",
+                              "fill": "$text",
+                              "content": "Main",
+                              "fontFamily": "$body",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "x6f46f",
+                          "name": "Side",
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "ellipse",
+                              "id": "vEa8z",
+                              "name": "Dot",
+                              "fill": "$sideAccent",
+                              "width": 14,
+                              "height": 14
+                            },
+                            {
+                              "type": "text",
+                              "id": "SoAgA",
+                              "name": "Lab",
+                              "fill": "$text",
+                              "content": "Side",
+                              "fontFamily": "$body",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h9nNnD",
+                          "name": "Faction",
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "ellipse",
+                              "id": "KERtK",
+                              "name": "Dot",
+                              "fill": "$factionAccent",
+                              "width": 14,
+                              "height": 14
+                            },
+                            {
+                              "type": "text",
+                              "id": "asAMm",
+                              "name": "Lab",
+                              "fill": "$text",
+                              "content": "Faction",
+                              "fontFamily": "$body",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "b84BUG",
+                          "name": "Archetype",
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "ellipse",
+                              "id": "se299",
+                              "name": "Dot",
+                              "fill": "$archetypeAccent",
+                              "width": 14,
+                              "height": 14
+                            },
+                            {
+                              "type": "text",
+                              "id": "i7Z84k",
+                              "name": "Lab",
+                              "fill": "$text",
+                              "content": "Archetype",
+                              "fontFamily": "$body",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Spsvi",
+                      "name": "Track Btn",
+                      "fill": "$ironDeep",
+                      "stroke": "$gold",
+                      "strokeWidth": 2,
+                      "padding": [
+                        12,
+                        18
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "uISsu",
+                          "name": "Lab",
+                          "fill": "$gold",
+                          "content": "SET AS TRACKED",
+                          "fontFamily": "$display",
+                          "fontSize": 13,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "v8nvrf",
+      "x": 0,
+      "y": 4200,
+      "name": "00b — Icon Assets (REFERENCE)",
+      "clip": true,
+      "width": 900,
+      "height": 1100,
+      "fill": "$chrome",
+      "stroke": "$border",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 16,
+      "padding": 28,
+      "children": [
+        {
+          "type": "text",
+          "id": "WueW8",
+          "name": "Eyebrow",
+          "fill": "$gold",
+          "content": "REFERENCE · VECTOR STICKERS · runtime PNGs in quest-assets/",
+          "fontFamily": "$body",
+          "fontSize": 11,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "text",
+          "id": "odYVk",
+          "name": "Title",
+          "fill": "$text",
+          "content": "Quest icons sticker sheet",
+          "fontFamily": "$display",
+          "fontSize": 24,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "bXez9",
+          "name": "Blurb",
+          "fill": "$muted",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Pencil uses vector chrome here (image fills ignore PNG alpha). True-alpha PNGs: quest-assets/ → samples/.../assets/ui/quest/.",
+          "fontFamily": "$body",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "GgDJ6",
+          "name": "Row0",
+          "width": "fill_container",
+          "gap": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "O8D3D",
+              "name": "? Available",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "epfPm",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 10,
+                  "stroke": "$gold",
+                  "strokeWidth": 3,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 6,
+                      "id": "dwPmM",
+                      "x": 14,
+                      "y": 14,
+                      "name": "Inner",
+                      "fill": "$ironPanel",
+                      "width": 84,
+                      "height": 84,
+                      "stroke": "$gold",
+                      "strokeWidth": 1.5
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ZsNNR",
+                      "x": 8,
+                      "y": 8,
+                      "name": "Stud",
+                      "fill": "$gold",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "rKLIH",
+                      "x": 96,
+                      "y": 8,
+                      "name": "Stud",
+                      "fill": "$gold",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "N4eGX",
+                      "x": 8,
+                      "y": 96,
+                      "name": "Stud",
+                      "fill": "$gold",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "N8C0Vv",
+                      "x": 96,
+                      "y": 96,
+                      "name": "Stud",
+                      "fill": "$gold",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "text",
+                      "id": "ljvSb",
+                      "x": 0,
+                      "y": 18,
+                      "name": "Glyph",
+                      "fill": "$gold",
+                      "textGrowth": "fixed-width",
+                      "width": 112,
+                      "content": "?",
+                      "textAlign": "center",
+                      "fontFamily": "$display",
+                      "fontSize": 54,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "I0A0P",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "? Available",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "rqBUZ",
+              "name": "! Turn-in",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "QgbMo",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 10,
+                  "stroke": "$mainAccent",
+                  "strokeWidth": 3,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 6,
+                      "id": "iyKk0",
+                      "x": 14,
+                      "y": 14,
+                      "name": "Inner",
+                      "fill": "$ironPanel",
+                      "width": 84,
+                      "height": 84,
+                      "stroke": "$gold",
+                      "strokeWidth": 1.5
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "DUJEG",
+                      "x": 8,
+                      "y": 8,
+                      "name": "Stud",
+                      "fill": "$mainAccent",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "cXQ4L",
+                      "x": 96,
+                      "y": 8,
+                      "name": "Stud",
+                      "fill": "$mainAccent",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "XBX9w",
+                      "x": 8,
+                      "y": 96,
+                      "name": "Stud",
+                      "fill": "$mainAccent",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "YfvQK",
+                      "x": 96,
+                      "y": 96,
+                      "name": "Stud",
+                      "fill": "$mainAccent",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "text",
+                      "id": "hTuTE",
+                      "x": 0,
+                      "y": 18,
+                      "name": "Glyph",
+                      "fill": "$mainAccent",
+                      "textGrowth": "fixed-width",
+                      "width": 112,
+                      "content": "!",
+                      "textAlign": "center",
+                      "fontFamily": "$display",
+                      "fontSize": 54,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "pmSu8",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "! Turn-in",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "s0nTDT",
+              "name": "Pin Main",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "KgKJo",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 8,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "path",
+                      "id": "VIAyg",
+                      "x": 34,
+                      "y": 66,
+                      "name": "Tip",
+                      "geometry": "M22 36l22-34-44 0z",
+                      "viewBox": [
+                        0,
+                        0,
+                        44,
+                        36
+                      ],
+                      "fill": "$mainAccent",
+                      "width": 44,
+                      "height": 36
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "Aoxdl",
+                      "x": 22,
+                      "y": 14,
+                      "name": "Head",
+                      "fill": "$mainAccent",
+                      "width": 68,
+                      "height": 68,
+                      "stroke": "$ironDeep",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "UiGRX",
+                      "x": 40,
+                      "y": 32,
+                      "name": "Well",
+                      "fill": "$ironDeep",
+                      "width": 32,
+                      "height": 32,
+                      "stroke": "$gold",
+                      "strokeWidth": 2
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "DJuNF",
+                      "x": 48,
+                      "y": 40,
+                      "name": "Stud",
+                      "fill": "$text",
+                      "width": 16,
+                      "height": 16
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "YO3Wn",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "Pin Main",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "f7xUp1",
+          "name": "Row1",
+          "width": "fill_container",
+          "gap": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "AwqaO",
+              "name": "Pin Side",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "E0QFl6",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 8,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "path",
+                      "id": "wqwby",
+                      "x": 34,
+                      "y": 66,
+                      "name": "Tip",
+                      "geometry": "M22 36l22-34-44 0z",
+                      "viewBox": [
+                        0,
+                        0,
+                        44,
+                        36
+                      ],
+                      "fill": "$sideAccent",
+                      "width": 44,
+                      "height": 36
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "qQTbz",
+                      "x": 22,
+                      "y": 14,
+                      "name": "Head",
+                      "fill": "$sideAccent",
+                      "width": 68,
+                      "height": 68,
+                      "stroke": "$ironDeep",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "y1NRc",
+                      "x": 40,
+                      "y": 32,
+                      "name": "Well",
+                      "fill": "$ironDeep",
+                      "width": 32,
+                      "height": 32,
+                      "stroke": "$gold",
+                      "strokeWidth": 2
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "J5g9o",
+                      "x": 48,
+                      "y": 40,
+                      "name": "Stud",
+                      "fill": "$text",
+                      "width": 16,
+                      "height": 16
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "dlB6j",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "Pin Side",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Ga0wo",
+              "name": "Pin Faction",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "g2ctVl",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 8,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "path",
+                      "id": "AJQtp",
+                      "x": 34,
+                      "y": 66,
+                      "name": "Tip",
+                      "geometry": "M22 36l22-34-44 0z",
+                      "viewBox": [
+                        0,
+                        0,
+                        44,
+                        36
+                      ],
+                      "fill": "$factionAccent",
+                      "width": 44,
+                      "height": 36
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "CepTh",
+                      "x": 22,
+                      "y": 14,
+                      "name": "Head",
+                      "fill": "$factionAccent",
+                      "width": 68,
+                      "height": 68,
+                      "stroke": "$ironDeep",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "j6GgTf",
+                      "x": 40,
+                      "y": 32,
+                      "name": "Well",
+                      "fill": "$ironDeep",
+                      "width": 32,
+                      "height": 32,
+                      "stroke": "$gold",
+                      "strokeWidth": 2
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "x8MzdW",
+                      "x": 48,
+                      "y": 40,
+                      "name": "Stud",
+                      "fill": "$text",
+                      "width": 16,
+                      "height": 16
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "hhO4C",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "Pin Faction",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "t4KzL",
+              "name": "Pin Archetype",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "R2SuLq",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 8,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "path",
+                      "id": "OD5bg",
+                      "x": 34,
+                      "y": 66,
+                      "name": "Tip",
+                      "geometry": "M22 36l22-34-44 0z",
+                      "viewBox": [
+                        0,
+                        0,
+                        44,
+                        36
+                      ],
+                      "fill": "$archetypeAccent",
+                      "width": 44,
+                      "height": 36
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "kuH6Z",
+                      "x": 22,
+                      "y": 14,
+                      "name": "Head",
+                      "fill": "$archetypeAccent",
+                      "width": 68,
+                      "height": 68,
+                      "stroke": "$ironDeep",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "KVoRB",
+                      "x": 40,
+                      "y": 32,
+                      "name": "Well",
+                      "fill": "$ironDeep",
+                      "width": 32,
+                      "height": 32,
+                      "stroke": "$gold",
+                      "strokeWidth": 2
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "C27HwC",
+                      "x": 48,
+                      "y": 40,
+                      "name": "Stud",
+                      "fill": "$text",
+                      "width": 16,
+                      "height": 16
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "JLdit",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "Pin Archetype",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "eZL8g",
+          "name": "Row2",
+          "width": "fill_container",
+          "gap": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "L7q4W",
+              "name": "Mini Main",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "CSPuu",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 8,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "H8uxt",
+                      "x": 28,
+                      "y": 28,
+                      "name": "Outer",
+                      "fill": "$ironDeep",
+                      "width": 56,
+                      "height": 56,
+                      "stroke": "$mainAccent",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "dS21O",
+                      "x": 40,
+                      "y": 40,
+                      "name": "Inner",
+                      "fill": "$mainAccent",
+                      "width": 32,
+                      "height": 32
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "nVAqe",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "Mini Main",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "aVU7n",
+              "name": "Mini Side",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "tlEM6",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 8,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "w5F4iJ",
+                      "x": 28,
+                      "y": 28,
+                      "name": "Outer",
+                      "fill": "$ironDeep",
+                      "width": 56,
+                      "height": 56,
+                      "stroke": "$sideAccent",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "TFzW9",
+                      "x": 40,
+                      "y": 40,
+                      "name": "Inner",
+                      "fill": "$sideAccent",
+                      "width": 32,
+                      "height": 32
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "DAhGh",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "Mini Side",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "i4gsyw",
+              "name": "Mini Turn-in",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "E15euY",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 8,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "nWksF",
+                      "x": 28,
+                      "y": 28,
+                      "name": "Outer",
+                      "fill": "$ironDeep",
+                      "width": 56,
+                      "height": 56,
+                      "stroke": "$success",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "kXVzf",
+                      "x": 40,
+                      "y": 40,
+                      "name": "Inner",
+                      "fill": "$success",
+                      "width": 32,
+                      "height": 32
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "ACxtx",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "Mini Turn-in",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Pl54u",
+          "name": "Row3",
+          "width": "fill_container",
+          "gap": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "roYpj",
+              "name": "Player",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "U2rwha",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 8,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "path",
+                      "id": "YPF76",
+                      "x": 26,
+                      "y": 14,
+                      "name": "Arrow",
+                      "geometry": "M30 0l30 62-30-16-30 16z",
+                      "viewBox": [
+                        0,
+                        0,
+                        60,
+                        62
+                      ],
+                      "fill": "$text",
+                      "width": 60,
+                      "height": 62
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "uhYaZ",
+                      "x": 46,
+                      "y": 80,
+                      "name": "Pip",
+                      "fill": "$gold",
+                      "width": 20,
+                      "height": 20
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "AWCBd",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "Player",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "RcnVe",
+              "name": "Offscreen",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "BDR1M",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 8,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "path",
+                      "id": "IFUQ7",
+                      "x": 20,
+                      "y": 30,
+                      "name": "Chevron",
+                      "geometry": "M0 14l38 0 0-14 34 26-34 26 0-14-38 0z",
+                      "viewBox": [
+                        0,
+                        0,
+                        72,
+                        52
+                      ],
+                      "fill": "$gold",
+                      "width": 72,
+                      "height": 52
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "itD2U",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "Offscreen",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "woGYM",
+              "name": "Focus Ring",
+              "width": "fill_container",
+              "fill": "$ironDeep",
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "U0wwf",
+                  "name": "Icon",
+                  "width": 112,
+                  "height": 112,
+                  "fill": "$ironDeep",
+                  "cornerRadius": 8,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "KsbxS",
+                      "x": 14,
+                      "y": 14,
+                      "name": "Outer",
+                      "fill": "#00000000",
+                      "width": 84,
+                      "height": 84,
+                      "stroke": "$gold",
+                      "strokeWidth": 5
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "j6CuY",
+                      "x": 28,
+                      "y": 28,
+                      "name": "Inner",
+                      "fill": "#00000000",
+                      "width": 56,
+                      "height": 56,
+                      "stroke": "$mainAccent",
+                      "strokeWidth": 2
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "eUGxU",
+                      "x": 45,
+                      "y": 3,
+                      "name": "Stud",
+                      "fill": "$gold",
+                      "width": 10,
+                      "height": 10
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "szot1",
+                      "x": 91,
+                      "y": 45,
+                      "name": "Stud",
+                      "fill": "$gold",
+                      "width": 10,
+                      "height": 10
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "wrhtc",
+                      "x": 45,
+                      "y": 91,
+                      "name": "Stud",
+                      "fill": "$gold",
+                      "width": 10,
+                      "height": 10
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Nzd5a",
+                      "x": 3,
+                      "y": 45,
+                      "name": "Stud",
+                      "fill": "$gold",
+                      "width": 10,
+                      "height": 10
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "upamR",
+                  "name": "Cap",
+                  "fill": "$muted",
+                  "content": "Focus Ring",
+                  "fontFamily": "$body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "body": {
+      "type": "string",
+      "value": "Roboto"
+    },
+    "display": {
+      "type": "string",
+      "value": "Cinzel"
+    },
+    "chrome": {
+      "type": "color",
+      "value": "#151719"
+    },
+    "text": {
+      "type": "color",
+      "value": "#F1EEE8"
+    },
+    "gold": {
+      "type": "color",
+      "value": "#D5B978"
+    },
+    "muted": {
+      "type": "color",
+      "value": "#9BA3A7"
+    },
+    "iron": {
+      "type": "color",
+      "value": "#3A342C"
+    },
+    "ironPanel": {
+      "type": "color",
+      "value": "#2D2923"
+    },
+    "ironDeep": {
+      "type": "color",
+      "value": "#1E1C18"
+    },
+    "ironLight": {
+      "type": "color",
+      "value": "#6A5A44"
+    },
+    "border": {
+      "type": "color",
+      "value": "#66563C"
+    },
+    "parchment": {
+      "type": "color",
+      "value": "#C9B896"
+    },
+    "parchmentDeep": {
+      "type": "color",
+      "value": "#B8A078"
+    },
+    "parchmentChoice": {
+      "type": "color",
+      "value": "#E8DCC6"
+    },
+    "ink": {
+      "type": "color",
+      "value": "#483E30"
+    },
+    "inkMuted": {
+      "type": "color",
+      "value": "#605444"
+    },
+    "dim": {
+      "type": "color",
+      "value": "#151719B3"
+    },
+    "focusRing": {
+      "type": "color",
+      "value": "#D5B978"
+    },
+    "mainAccent": {
+      "type": "color",
+      "value": "#C4A24A"
+    },
+    "sideAccent": {
+      "type": "color",
+      "value": "#6A8A9A"
+    },
+    "factionAccent": {
+      "type": "color",
+      "value": "#8B5A3C"
+    },
+    "success": {
+      "type": "color",
+      "value": "#3F6B4A"
+    },
+    "danger": {
+      "type": "color",
+      "value": "#8B4338"
+    },
+    "stageSky": {
+      "type": "color",
+      "value": "#2A3A42"
+    },
+    "hudPanel": {
+      "type": "color",
+      "value": "#151719EE"
+    },
+    "slotIdle": {
+      "type": "color",
+      "value": "#1E1C18"
+    },
+    "archetypeAccent": {
+      "type": "color",
+      "value": "#7A6BB0"
+    }
+  },
+  "fileToken": "a5dae609-5a99-4f62-94a7-82eb74a90cec"
+}

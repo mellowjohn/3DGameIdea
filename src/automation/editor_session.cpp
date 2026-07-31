@@ -3,6 +3,7 @@
 #include "engine/assets/asset_registry.h"
 #include "engine/assets/material_asset.h"
 #include "engine/assets/mesh_asset.h"
+#include "engine/assets/particle_emitter_asset.h"
 #include "engine/assets/prefab_asset.h"
 #include "engine/assets/script_bindings_asset.h"
 #include "engine/assets/hud_asset.h"
@@ -13,8 +14,10 @@
 #include "engine/automation/terrain_edit_commands.h"
 #include "engine/automation/world_forge_commands.h"
 #include "engine/automation/project_git_commands.h"
+#include "engine/automation/asset_bake_commands.h"
 #include "engine/scripting/lua_runtime.h"
 #include "engine/quest/quest_runtime.h"
+#include "engine/inventory/inventory_runtime.h"
 #include "engine/standing/standing_runtime.h"
 #include "engine/flag/flag_runtime.h"
 #include "engine/dialogue/dialogue_runtime.h"
@@ -221,9 +224,14 @@ bool is_material_asset_path(const std::string& path) {
     return path.size() >= 15 && path.compare(path.size() - 15, 15, ".material.json") == 0;
 }
 
+bool is_particle_asset_path(const std::string& path) {
+    return path.size() >= 14 && path.compare(path.size() - 14, 14, ".particle.json") == 0;
+}
+
 std::string infer_asset_kind(const std::string& path) {
     if (is_prefab_asset_path(path)) return "prefab";
     if (is_material_asset_path(path)) return "material";
+    if (is_particle_asset_path(path)) return "particle";
     return "text";
 }
 
@@ -315,6 +323,21 @@ EditorBridgeResponse apply_asset_write(EditorSessionContext& context, const nloh
             return make_response(ExitCode::ValidationFailed, valid.error().message, {}, {valid.error()});
         if (const auto saved = parsed.value().save_atomic(absolute); !saved)
             return make_response(ExitCode::ValidationFailed, saved.error().message, {}, {saved.error()});
+        if (!context.project_root.empty()) {
+            if (const auto maps = parsed.value().validate_texture_maps(context.project_root); !maps)
+                return make_response(ExitCode::ValidationFailed, maps.error().message, {}, {maps.error()});
+        }
+        if (context.material_cache) (*context.material_cache)[relative] = parsed.value();
+    } else if (kind == "particle") {
+        const auto parsed = ParticleEmitterAsset::parse(payload.value(), relative);
+        if (!parsed) return make_response(ExitCode::ValidationFailed, parsed.error().message, {}, {parsed.error()});
+        if (!context.project_root.empty()) {
+            if (const auto texture = parsed.value().validate_texture(context.project_root); !texture)
+                return make_response(ExitCode::ValidationFailed, texture.error().message, {}, {texture.error()});
+        }
+        if (const auto saved = parsed.value().save_atomic(absolute); !saved)
+            return make_response(ExitCode::ValidationFailed, saved.error().message, {}, {saved.error()});
+        if (context.particle_system) context.particle_system->register_asset(relative, parsed.value());
     } else {
         const auto written = write_text_asset_atomic(absolute, payload.value());
         if (!written) return make_response(ExitCode::ValidationFailed, written.error().message, {}, {written.error()});
@@ -378,6 +401,14 @@ ScenePlanResult classify_scene_plan(const std::string& change_description, const
         result.requires_compile = "false";
         result.requires_reload = "prefab_catalog_refresh";
         result.recommendation = "Edit prefab JSON/components and refresh the editor catalog; non-overridden instances inherit.";
+    } else if (contains(lower_path, ".particle.json") || contains(lower_path, "assets/vfx") ||
+               contains(lower_desc, "particle") || contains(lower_desc, "vfx recipe") ||
+               contains(lower_desc, "emitter")) {
+        result.target_kind = "particle_asset";
+        result.requires_compile = "false";
+        result.requires_reload = "particle_hot_reload";
+        result.recommendation =
+            "Edit *.particle.json via engine_asset_apply (kind: particle); live editor registers the emitter immediately.";
     } else if (contains(lower_path, "terrain") || contains(lower_path, "terrain-edits") ||
                contains(lower_path, "terrain-paint") || contains(lower_path, "foliage") ||
                contains(lower_desc, "terrain") || contains(lower_desc, "sculpt") ||
@@ -1223,6 +1254,29 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
             }
             return apply_asset_write(context, params);
         }
+        if (operation == "asset_bake") {
+            if (params.value("action", std::string{}) == "reload") {
+                if (context.pending_mesh_reloads) {
+                    if (params.contains("meshes") && params["meshes"].is_array()) {
+                        for (const auto& mesh : params["meshes"]) {
+                            if (mesh.is_string()) context.pending_mesh_reloads->insert(mesh.get<std::string>());
+                        }
+                    }
+                    if (context.prefab_meshes_dirty) *context.prefab_meshes_dirty = true;
+                }
+                return make_response(ExitCode::Success, "Mesh reload queued", {}, {},
+                    {{"meshCount", std::to_string(params.value("meshes", nlohmann::json::array()).size())}});
+            }
+            auto response = apply_asset_bake_operation(context.project_root, params);
+            if (response.exit_code == ExitCode::Success && context.pending_mesh_reloads) {
+                for (const auto& mesh : response.changed_object_ids) {
+                    context.pending_mesh_reloads->insert(mesh);
+                }
+                if (context.prefab_meshes_dirty && !response.changed_object_ids.empty())
+                    *context.prefab_meshes_dirty = true;
+            }
+            return response;
+        }
         if (operation == "terrain_apply") {
             return apply_terrain_operation(context, params);
         }
@@ -1577,6 +1631,163 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
             return make_response(ExitCode::InvalidArguments, "Unknown quest_call kind", {},
                 {session_error("QUEST-CALL-KIND", "Unsupported kind: " + kind,
                     "Use start, complete_objective, abandon, resolve_fork, status, or list.")});
+        }
+        if (operation == "inventory_call") {
+            if (!context.inventory_runtime) {
+                return make_response(ExitCode::Unavailable, "Inventory runtime is not available", {},
+                    {session_error("INV-RUNTIME-MISSING", "No live InventoryRuntime on the editor session.",
+                        "Start the editor with MCP connection enabled.")});
+            }
+            auto kind = params.value("kind", std::string{});
+            std::transform(kind.begin(), kind.end(), kind.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            for (char& c : kind) {
+                if (c == '-' || c == ' ') c = '_';
+            }
+            const auto item_id = params.value("itemId", params.value("item_id", std::string{}));
+            const int count = params.value("count", 1);
+            const int slot = params.value("slot", params.value("hotbarSlot", -1));
+            const auto region = params.value("region", std::string{});
+            const auto equip_slot = params.value("equipSlot", params.value("equip_slot", std::string{}));
+            const int index = params.value("index", -1);
+
+            auto stack_meta = [](const InventoryStack& stack, const std::string& prefix) {
+                return std::map<std::string, std::string>{
+                    {prefix + "ItemId", stack.item_id},
+                    {prefix + "Count", std::to_string(stack.count)},
+                };
+            };
+
+            if (kind == "status") {
+                const auto snap = context.inventory_runtime->status();
+                std::string bag_ids;
+                for (std::size_t i = 0; i < snap.bag.size(); ++i) {
+                    if (snap.bag[i].empty()) continue;
+                    if (!bag_ids.empty()) bag_ids += ',';
+                    bag_ids += snap.bag[i].item_id + "x" + std::to_string(snap.bag[i].count);
+                }
+                std::string hotbar_ids;
+                for (std::size_t i = 0; i < snap.hotbar.size(); ++i) {
+                    if (snap.hotbar[i].empty()) continue;
+                    if (!hotbar_ids.empty()) hotbar_ids += ',';
+                    hotbar_ids += std::to_string(i) + ":" + snap.hotbar[i].item_id;
+                }
+                return make_response(ExitCode::Success, "Inventory status", {}, {},
+                    {{"kind", "status"}, {"bag", bag_ids}, {"hotbar", hotbar_ids},
+                        {"selectedHotbar", std::to_string(snap.selected_hotbar)},
+                        {"gold", std::to_string(snap.gold)},
+                        {"selectionRegion", snap.ui_selection.region},
+                        {"selectionIndex", std::to_string(snap.ui_selection.index)}});
+            }
+            if (kind == "grant") {
+                if (item_id.empty()) {
+                    return make_response(ExitCode::InvalidArguments, "itemId is required", {},
+                        {session_error("INV-CALL-ID", "inventory_call grant requires itemId.",
+                            "Example: {\"kind\":\"grant\",\"itemId\":\"field_bandage\",\"count\":1}")});
+                }
+                const auto result = context.inventory_runtime->grant(item_id, count);
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}, {"itemId", item_id}});
+                }
+                return make_response(ExitCode::Success, "Item granted", {}, {},
+                    {{"kind", kind}, {"itemId", item_id}, {"count", std::to_string(count)}});
+            }
+            if (kind == "set_hotbar" || kind == "sethotbar") {
+                if (item_id.empty() || slot < 0) {
+                    return make_response(ExitCode::InvalidArguments, "slot and itemId required", {},
+                        {session_error("INV-CALL-HOTBAR", "set_hotbar requires slot + itemId.",
+                            "Example: {\"kind\":\"set_hotbar\",\"slot\":0,\"itemId\":\"ashfell_arming_sword\"}")});
+                }
+                const auto result = context.inventory_runtime->set_hotbar(slot, item_id, count > 0 ? count : 1);
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}, {"itemId", item_id}});
+                }
+                return make_response(ExitCode::Success, "Hotbar set", {}, {},
+                    {{"kind", kind}, {"slot", std::to_string(slot)}, {"itemId", item_id}});
+            }
+            if (kind == "set_equip" || kind == "setequip") {
+                if (item_id.empty() || equip_slot.empty()) {
+                    return make_response(ExitCode::InvalidArguments, "equipSlot and itemId required", {},
+                        {session_error("INV-CALL-EQUIP", "set_equip requires equipSlot + itemId.",
+                            "Example: {\"kind\":\"set_equip\",\"equipSlot\":\"trinket0\",\"itemId\":\"vein_iron_pendant\"}")});
+                }
+                const auto result = context.inventory_runtime->set_equip(equip_slot, item_id, 1);
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}, {"itemId", item_id}});
+                }
+                return make_response(ExitCode::Success, "Equip set", {}, {},
+                    {{"kind", kind}, {"equipSlot", equip_slot}, {"itemId", item_id}});
+            }
+            if (kind == "select_hotbar" || kind == "selecthotbar") {
+                if (slot < 0) {
+                    return make_response(ExitCode::InvalidArguments, "slot required", {},
+                        {session_error("INV-CALL-SELECT", "select_hotbar requires slot 0..7.",
+                            "Example: {\"kind\":\"select_hotbar\",\"slot\":0}")});
+                }
+                const auto result = context.inventory_runtime->select_hotbar(slot);
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}});
+                }
+                auto meta = stack_meta(context.inventory_runtime->active_hotbar_item(), "active");
+                meta["kind"] = kind;
+                meta["slot"] = std::to_string(slot);
+                return make_response(ExitCode::Success, "Hotbar selected", {}, {}, std::move(meta));
+            }
+            if (kind == "select") {
+                const auto result = context.inventory_runtime->select_ui(region.empty() ? "none" : region, index, equip_slot);
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}});
+                }
+                return make_response(ExitCode::Success, "Selection updated", {}, {},
+                    {{"kind", kind}, {"region", region}, {"index", std::to_string(index)}});
+            }
+            if (kind == "equip_selected" || kind == "equipselected") {
+                const auto result = context.inventory_runtime->equip_selected();
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}});
+                }
+                return make_response(ExitCode::Success, "Equipped selection", {}, {}, {{"kind", kind}});
+            }
+            if (kind == "unequip_selected" || kind == "unequipselected") {
+                const auto result = context.inventory_runtime->unequip_selected();
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}});
+                }
+                return make_response(ExitCode::Success, "Unequipped selection", {}, {}, {{"kind", kind}});
+            }
+            if (kind == "move") {
+                const auto from_region = params.value("fromRegion", params.value("from_region", std::string{}));
+                const int from_index = params.value("fromIndex", params.value("from_index", -1));
+                const auto from_equip =
+                    params.value("fromEquipSlot", params.value("from_equip_slot", std::string{}));
+                const auto to_region = params.value("toRegion", params.value("to_region", std::string{}));
+                const int to_index = params.value("toIndex", params.value("to_index", -1));
+                const auto to_equip = params.value("toEquipSlot", params.value("to_equip_slot", std::string{}));
+                if (from_region.empty() || to_region.empty()) {
+                    return make_response(ExitCode::InvalidArguments, "inventory_call move requires fromRegion and toRegion",
+                        {}, {session_error("INV-CALL-MOVE", "Missing from/to region.",
+                            "Pass fromRegion/toRegion (bag|hotbar|equip).")},
+                        {{"kind", kind}});
+                }
+                const auto result = context.inventory_runtime->move_to(
+                    from_region, from_index, from_equip, to_region, to_index, to_equip);
+                if (!result) {
+                    return make_response(ExitCode::ValidationFailed, result.error().message, {}, {result.error()},
+                        {{"kind", kind}});
+                }
+                return make_response(ExitCode::Success, "Inventory move applied", {}, {},
+                    {{"kind", kind}, {"fromRegion", from_region}, {"toRegion", to_region}});
+            }
+            return make_response(ExitCode::InvalidArguments, "Unknown inventory_call kind", {},
+                {session_error("INV-CALL-KIND", "Unsupported kind: " + kind,
+                    "Use status, grant, set_hotbar, set_equip, select_hotbar, select, equip_selected, unequip_selected, move.")});
         }
         if (operation == "dialogue_call") {
             if (!context.dialogue_runtime) {
@@ -2046,7 +2257,7 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
         }
         return make_response(ExitCode::InvalidArguments, "Unknown editor operation", {},
             {session_error("EDITOR-OP-UNKNOWN", "Unsupported operation: " + operation,
-                "Use editor_status/scene_plan/.../hud_apply/world_forge_apply/project_git/ui_canvas_mutate/ui_stack/lua_call/quest_call/dialogue_call/standing_call/flag_call/coop_call.")});
+                "Use editor_status/editor_session/editor_camera/scene_plan/.../hud_apply/world_forge_apply/project_git/ui_canvas_mutate/ui_stack/lua_call/quest_call/inventory_call/dialogue_call/standing_call/flag_call/coop_call.")});
     } catch (const std::exception& exception) {
         return make_response(ExitCode::InternalError, "Editor operation failed", {},
             {session_error("EDITOR-OP-EXCEPTION", exception.what(), "Check params JSON and retry.")});

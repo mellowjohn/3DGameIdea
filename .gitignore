@@ -13,3 +13,4 @@ crash-bundles/
 /blog/.env
 /blog/.env.local
 /blog/.env.*.local
+/tools/windows-computer-use/.venv/

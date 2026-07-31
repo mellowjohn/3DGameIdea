@@ -1,12 +1,97 @@
 # Engineering Findings
 
-
-
-
-
-
-
 Record material defects or constraints that can prevent recurrence. Newest entries go first.
+
+**Recurring asset classes** (missing player clips, muddy foliage atlases, corrupted Tier-1 props): follow and extend [`recurring-asset-failures.md`](recurring-asset-failures.md). When the same failure class hits again, fix the asset, then update that playbook — do not leave the next agent to rediscover the path.
+
+## 2026-07-31 — Held weapon drifted off the hand; grip gizmo snapped back on release
+
+- Reproduction: Play-test with the Ashfell sword on hotbar 0. The sword floated at roughly double character scale near the hip instead of in the hand, and it kept the hand's animated pose only loosely. In Inspector → Held Weapon Attach, dragging the rotate gizmo moved the weapon, but the weapon jumped to a different orientation the moment the mouse released. Pausing with F6 dropped the character to bind pose while the weapon stayed at the last animated hand position.
+- Impact: Hand attach was not authorable — every gizmo edit landed somewhere other than where it was dragged, and the saved `handAttach` did not match what had been on screen.
+- Cause: four independent defects. (1) `transform_from_column_major` rebuilt the matrix with `XMMatrixSet` in transposed order, so `XMMatrixDecompose` read translation out of the bottom row of a matrix whose translation was in the right column — joint welds lost all translation and got the inverse rotation. (2) The socket chain was `entity world × joint global` and skipped the skinned mesh's prefab part transform, so the player prefab's `0.655` scale on `Body` never reached the weapon. (3) The gizmo write-back went through `ImGuizmo::DecomposeMatrixToComponents`, which returns Euler in X→Y→Z, and fed those angles to `XMQuaternionRotationRollPitchYaw`, which composes Z→X→Y; any rotation with two non-zero components came back wrong. (4) The skinning pass was gated on `simulating`, so pausing skipped it and `begin_bone_slot_frame` cleared the palette to identity.
+- Resolution: new `engine::BoneWeld` / `BoneSocketChain` module (`include/engine/animation/bone_attachment.h`, `src/animation/bone_attachment.cpp`) owns weld math as a Motor6D-style C0: `bone_socket_world` composes owner → visual part → joint, `weld_world_transform` applies the weld, and `weld_from_world_transform` is its exact inverse for manipulator write-back. `transform_from_column_major` now uses `XMLoadFloat4x4` directly. Gizmo results decompose straight to a quaternion (`transform_from_gizmo_matrix`) instead of round-tripping Euler, which also fixed the entity gizmo. The skinning pass runs whenever a test session is active, paused or not. The socket is captured once at drag start so an animating joint cannot pull the handles away mid-drag.
+- Verification: `animator` suite covers the Euler round-trip (including gimbal lock), socket composition with a scaled character, the weld solve round-trip, and `transform_from_column_major` translation. In-editor, the sword sits in the right hand at character scale and tracks the idle clip across frames.
+- Remaining risk: `weld_from_world_transform` assumes a uniformly scaled socket; a non-uniform joint scale would bake shear into the solved weld. The joint dropdown lists the live skin's joints only while a test session is active — with no session it falls back to the authored string.
+
+## 2026-07-31 — Attack looked left-handed; NPC poses shared player palette
+
+- Reproduction: Play-test Attack with Ashfell sword; swing read as screen-left arm vs Blockbench right. Placed `npc_test` / second `player.gltf` mirrored player Run. Dropping the π yaw offset made the player face the camera while moving (backwards art).
+- Impact: Combat read mirrored; all skinned scene copies shared one pose.
+- Cause: (1) The Blockbench glTF is right-handed (front −Z, `Right*` joints at +X) and is imported verbatim into the left-handed runtime, so the drawn character is the mirror of the authored one: the joint named `Right*` is the visual **left** limb, and every clip reads mirrored. (2) Play-test only attached the spawn animator and uploaded one bone palette for every skinned draw. (3) `npc_test` animator lived on the prefab until `propagate_prefab_components` ran.
+- Resolution: Keep yaw π for facing (mesh −Z front vs loco +Z). Mirror the **clip sample** instead of the geometry: `sample_clip_pose_for_joint` reads the sagittal counterpart channel (`RightUpperArm` <-> `LeftUpperArm`) and reflects the local pose through the YZ plane (`t.x → −t.x`, `q → (x, −y, −z, w)`), seeding from the reflected rest so unkeyed channels round-trip to their own rest. F5 propagates prefab components then attaches every entity with an `animator`; multi-slot bone CB keyed by entity id.
+- Two mirrors that do **not** work: negative entity `scale.x` (`XMMatrixDecompose` in prefab expand drops mirrored scales, and a mirrored model matrix inverts winding against the back-face-culling prop pipeline), and ReflectX conjugation of the palette (`S M S`) — that skins the *mirrored* bind vertex with unmirrored joint assignments and tears the rig apart.
+- Verification: Rebuild `engine`; from behind, Attack winds up and swings on the screen-right arm (`out/article-captures/play_20260731-130856.mp4`) with the rig intact; Run keeps opposed arm/leg swing facing the movement direction (`play_20260731-131052.mp4`); NPC Idle stays while player Runs.
+- Remaining risk: sagittal reflection assumes identity bind rotations and world-aligned joint axes — true for this Blockbench rig, wrong for a rig with rotated bind frames. Root motion in `AnimatorRuntime` is not mirrored, so X-axis root translation (DodgeLeft/Right) would travel opposite the visual once root motion is wired. >15 unique skinned entities/frame fall back to identity slot 0; co-op guest still lacks its own animator wiring.
+- **Path forward when this recurs:** Mirror at the clip sampler, not the transform or the palette. The permanent fix is a real RH→LH conversion at import (negate X on positions/normals/bind translations/IBMs plus flipped winding), which would let the sampler mirror be deleted. Do not remove yaw π without a play-test walk check; ensure `upload_entity_bone_slot` + `skin_entity_id` on expand — not a single `pending_skin_matrices` path.
+
+## 2026-07-31 — Prop instancing drew skinned player as T-pose (shadows still moved)
+
+- Reproduction: Play-test Idle/Run; character mesh T-posed while the cast shadow silhouette animated.
+- Impact: Locomotion looked broken even when CPU skin + animator succeeded.
+- Cause: Hardware-instanced prop VS ignored `BLENDWEIGHT`/`BLENDINDICES` and had no Bones CBV; shadow VS skinned correctly from the same palette.
+- Resolution: Prop root adds Bones CBV (b2, root param 6); prop VS LBS before model (zero-weight early-out for static props); `draw_prop_instances` binds the palette.
+- Verification: Rebuild `engine`; F5 — Idle arms off T-pose; shadow matches mesh.
+- Remaining risk: Mitigated by multi-slot bone CB + per-entity attach (see entry above).
+- **Path forward when this recurs:** Check prop VS for LBS + `bind_bone_constants(6)` on the prop root; compare shadow vs lit silhouette.
+
+- Reproduction: After GoodPlayerModel asset-bake, play-test showed missing palm/digit faces and often T-pose despite clips present in `player.bake.json`.
+- Impact: Hands look hollow; locomotion appears broken until editor restart.
+- Cause: (1) Hand/digit cubes majority-inward winding → D3D backface cull. (2) Mesh hot-reload updated skin while `AnimationClipLibrary` kept pre-bake clips (`reload_changed` never polled).
+- Resolution: Player baker flips inward hand tris + normals; gates `ASSET-BAKE-WINDING-HAND` / `ASSET-BAKE-CLIP-LOCO-THIN`; editor reloads clip sources when mesh keys reload.
+- Verification: Bake `hand_tris=288 outward=284 inward=4`; MSBuild `engine` ok; verify tests ok.
+- Remaining risk: Non-hand inward prims elsewhere still unflipped; Jump/Attack still unwired in animator.
+- **Path forward when this recurs:** [`recurring-asset-failures.md`](recurring-asset-failures.md) § Player — missing hand / finger faces; § Player — T-pose after Assets bake.
+
+## 2026-07-30 — Foliage bake full-inpaint muddied `bush_tall`
+
+- Reproduction: Tall bush in sandbox / open-world looked glitchy (camo streaks / speckles) after foliage atlas rebakes.
+- Impact: Scene dressing and GPU `bush_tall` foliage layer read as broken paint.
+- Cause: `bake_tier1_props_gltf.py` foliage path cleared non-olive Blockbench chrome then **inpainted the entire atlas** from nearest opaque, collapsing ~18 source shades into ~6 muddy fills with edge streaks. Source `Tall_Bush.png` is also a sparse Blockbench swatch atlas (faces/neon islands) — bake cannot invent leaf detail.
+- Resolution: `bush_tall` PROPS → soft clean (`foliage_strict_colors: false`) + small `foliage_inpaint_radius` (2); generator `v6-foliage-soft-inpaint`. Named rebake only.
+- Verification: Rebake `bush_tall`; atlas opaque unique colors ~16 (was ~6 after full inpaint); PNG write may need `engine.exe` killed if file locked.
+- Remaining risk: Source atlas still needs a foliage-only Blockbench retexture for real leaf read; soft clean can leave neon chrome if UV hits those islands.
+- **Path forward when this recurs:** [`recurring-asset-failures.md`](recurring-asset-failures.md) § Foliage — glitchy / muddy `bush_tall`.
+
+
+## 2026-07-30 — Play-test `ANIM-CLIP-MISSING: Clip 'Run'` on player.gltf
+
+- Reproduction: Game play-test; console `ANIM-CLIP-MISSING: Clip 'Run' not found in assets/models/player.gltf` (Fall similarly). Idle may still resolve.
+- Impact: Locomotion transitions fail closed; Run/Fall never play.
+- Cause: Baked `player.gltf` had only Idle/HandGrip while `player.animator.json` expects Idle/Run/Fall. Clips exist on `Player_V2_rigged.gltf` but were dropped or never re-baked into the sample mesh.
+- Resolution: `python tools/bake_player_v2_gltf.py` from the rigged V2 source; confirm animation names include Run + Fall.
+- Verification: `player.gltf` animations `['Idle', 'HandGrip', 'Run', 'Fall']`; play-test Idle↔Run↔Fall after mesh reload.
+- Remaining risk: Future clip-stripped exports overwrite the sample again; atlas clean can still reduce `player.png` color count — visual check after bake.
+- **Path forward when this recurs:** [`recurring-asset-failures.md`](recurring-asset-failures.md) § Player — `ANIM-CLIP-MISSING`.
+
+
+## 2026-07-28 — Per-entity skinning T-posed everyone (bone CB clobber)
+
+- Reproduction: After per-entity NPC animator work; play-test sandbox with player + npc_test — both stuck in T-pose despite ~1 ms CPU skin.
+- Impact: Player and NPC locomotion/Idle invisible.
+- Cause: Single UPLOAD bone CB rewritten between DrawInstanced calls (identity for props, then other entities). GPU still reading prior draws saw the last write.
+- Resolution: 16 aligned bone-palette slots per frame ring; bind CBV at slot offset; reuse slot per entity across shadow cascades; non-skinned draws bind identity slot 0 without rewriting skinned slots.
+- Verification: MCP screenshot before (T-pose); rebuild; play-test Idle/Run on player and Idle on NPC.
+- Remaining risk: >15 unique skinned entities in one frame reuse last slot (fail-closed).
+
+
+
+## 2026-07-28 — NPC copies of player.gltf mirrored play-test locomotion
+
+- Reproduction: Place pc_test\ (or any prefab using \player.gltf\); start Game play-test; walk/jump — NPCs deform with the same Idle/Run/Fall as the player.
+- Impact: Input-driven animation appeared shared across all skinned stand-ins.
+- Cause: GPU LBS used one bone palette per frame for every instance with blend weights.
+- Resolution: Per-entity animator attach on play-test; pose cache keyed by entity id; prop/shadow draws upload that entity's matrices. pc_test\ ships with \player.animator.json\ (default Idle). Player locomotion params still drive only the spawn entity.
+- Verification: Rebuild \engine\; play-test with npc_test — player Runs on WASD; NPCs stay on Idle independently.
+- Remaining risk: Many unique poses = more bone CB uploads per frame; co-op guest still lacks its own animator wiring.
+
+## 2026-07-28 � Play-test player stuck in T-pose after prop GPU batching
+
+- Reproduction: Game play-test with Player_V2 / `player.gltf`; Idle/Run animator attached; character remains bind/T-pose.
+- Impact: Locomotion clips never visible in play-test despite CPU skin matrices (~0.5�1 ms) and animator status succeeding.
+- Cause: Hardware-instanced prop pipeline drew all placed meshes (including the skinned player). Prop VS eventually declared a Bones CB, but the prop root signature had no bone CBV slot and `draw_prop_instances` never bound the palette � so GPU LBS never ran on the path that actually draws the player.
+- Resolution: Add Bones CBV (register b2) as prop root parameter 6; bind `bind_bone_constants(6)` for prop draws; prop VS LBS early-outs on zero blend weights so static props stay unchanged.
+- Verification: Rebuild `engine`; reload MCP; start play-test � Idle arms should leave T-pose; Run when moving. Console one-shot `Skin pose applied` with non-zero `armOffIdentity`.
+- Remaining risk: Mitigated for NPCs by per-instance skinEnable (see entry above); guest co-op and catalog-wide NPC animators remain follow-on.
 
 ## 2026-07-27 — MCP GPU screenshots swapped R/B (fire looked blue)
 

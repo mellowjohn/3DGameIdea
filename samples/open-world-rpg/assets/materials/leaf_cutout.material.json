@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "shader": "stylized_opaque",
+  "baseColor": [0.22, 0.42, 0.18, 1.0],
+  "roughness": 0.95,
+  "metallic": 0.0,
+  "opacityMode": "masked",
+  "opacityCutoff": 0.35,
+  "emissive": [0.0, 0.0, 0.0],
+  "emissivePulseHz": 0.0,
+  "emissivePulseMin": 0.35,
+  "albedoMap": "assets/vfx/wind_streak.png",
+  "emissiveMap": "",
+  "doubleSided": true,
+  "physics": {
+    "friction": 0.8,
+    "restitution": 0.05,
+    "density": 400.0,
+    "surface": "foliage"
+  }
+}

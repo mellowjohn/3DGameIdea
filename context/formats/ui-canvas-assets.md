@@ -63,13 +63,15 @@ Optional style / state / image fields:
 | `textVAlign` | `top` / `middle` / `bottom` |
 | `fontSize` | Design-space font size |
 | `image` | Project-relative texture path (e.g. `assets/ui/textures/btn.png`) |
+| `imageBind` | Optional bind key for a runtime image path (`hud_set_image` / `ui_canvas_set_image`). When set, the bound path overrides authored `image`; empty bind value draws no image |
 | `imageMode` | `stretch` (default) or `contain` within widget rect |
+| `tooltip` | Optional hover chip text (iron panel + gold rim). Inventory `inventory.select.*` slots prefer live item name/kind from `InventoryRuntime` |
 
 **Image draw (TICKET-0164):** when `image` is set, the runtime loads the PNG through `UiTextureCache` (WIC → D3D12 SRV on the ImGui heap) and draws it with `stretch` or `contain`. Missing files fall back to a purple placeholder with the filename stem.
 
 Structural MCP edits: `engine_ui_canvas_mutate`.
 
-Lua value helpers: `engine.hud_set_number` / `hud_set_bool` / `hud_get_bool` / `hud_set_text` / `hud_set_visible` / `hud_set_enabled`.
+Lua value helpers: `engine.hud_set_number` / `hud_set_bool` / `hud_get_bool` / `hud_set_text` / `hud_set_image` / `hud_set_visible` / `hud_set_enabled`. Modal canvases: `engine.ui_canvas_set_text` / `ui_canvas_set_image(canvasId, bind, path)`.
 
 ## Responsive draw
 

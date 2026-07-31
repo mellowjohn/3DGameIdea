@@ -26,7 +26,9 @@ bool RigidbodyLocomotion::refresh_ground_state() const {
     if (!center) return false;
     const float feet_offset = capsule_half_height_ + capsule_radius_;
     const WorldPosition feet{center.value().x, center.value().y - static_cast<double>(feet_offset), center.value().z};
-    const auto overlaps = world_->overlap_sphere({feet.x, feet.y + 0.05, feet.z}, 0.2f);
+    // Slightly generous foot probe so slope walks do not flicker airborne every frame.
+    const float probe_radius = capsule_radius_ * 0.85f > 0.28f ? capsule_radius_ * 0.85f : 0.28f;
+    const auto overlaps = world_->overlap_sphere({feet.x, feet.y + 0.12, feet.z}, probe_radius);
     if (!overlaps) return false;
     for (const auto& hit : overlaps.value()) {
         if (hit.body.value == body_.value) continue;
@@ -119,11 +121,13 @@ Result<void> RigidbodyLocomotion::move(const LocalPosition& wish_velocity, float
         jump_requested_ = false;
     }
 
+    // Stick to ground while supported so downhill gravity does not micro-launch the capsule.
+    if (supported && velocity[1] < 0.0f) velocity[1] = 0.0f;
+
     // Idle on ground: pin horizontal drift after friction (ice-slide guard).
     if (supported && !has_wish && !jump_requested_) {
         velocity[0] = 0.0f;
         velocity[2] = 0.0f;
-        if (velocity[1] < 0.0f) velocity[1] = 0.0f;
     }
 
     return world_->set_linear_velocity(body_, velocity);

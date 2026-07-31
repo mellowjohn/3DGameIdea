@@ -15,7 +15,9 @@ Dark-fantasy iron furniture over readable parchment or chrome text. Faceted ring
 | Combat HUD (always-on) | Dark iron panels, gold studs/borders, circular face + minimap | Chrome `#F1EEE8` on dark |
 | Dialogue modal | Parchment plate in iron/gold frame; circular speaker portrait | Ink `#483E30` on parchment |
 | Pause / inventory / main menu / settings | Dark iron modal plate + gold primary buttons | Chrome `#F1EEE8` |
-| Quest / toast chips | Semi-opaque dark iron, gold eyebrow | Chrome body, gold label |
+| Quest / toast chips | Semi-opaque dark iron, gold eyebrow; kind tint (main gold / side steel-blue / faction bronze / archetype violet); up to 3 tracked | Chrome body, gold label |
+| World quest marks | Floating **`?`** (available) / **`!`** (active turn-in), light bob — PNGs in [`../design/quest-assets/`](../design/quest-assets/) | Gold glyph on iron well |
+| Minimap / map pins | Kind-tinted pins + dots + offscreen chevron + player arrow ([DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux) / TICKET-0062) | Main / side / faction / archetype tints |
 | World billboards (Press E) | Small parchment chip, soft ink | Ink on parchment |
 | Cartography | Separate map language — [cartography-design.md](cartography-design.md) | Do not merge map parchment into combat HUD |
 
@@ -80,7 +82,7 @@ Tone chips (persuade / intimidate / etc.) keep distinct hues for gameplay readab
 | --- | --- |
 | Combat HUD layout | `samples/open-world-rpg/assets/ui/player.uicanvas.json` |
 | Dialogue layout | `samples/open-world-rpg/assets/ui/dialogue.uicanvas.json` |
-| Pencil mocks | `context/design/player-hud.pen`, `dialogue-ui.pen`, `rpg-engine-ui.pen` |
+| Pencil mocks | `context/design/player-hud.pen`, `dialogue-ui.pen`, `quest-ui.pen`, `inventory-ui.pen`, `rpg-engine-ui.pen` |
 | Concept PNGs (HUD) | `context/design/hud-assets/` → `assets/ui/hud/` |
 | Concept PNGs (dialogue) | `context/design/dialogue-assets/` → `assets/ui/dialogue/` |
 | Runtime draw defaults | `src/ui/hud_runtime.cpp` |

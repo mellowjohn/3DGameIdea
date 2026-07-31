@@ -33,7 +33,8 @@
   "entities": [
     {
       "mesh": {
-        "asset": "assets/models/wall_torch.gltf"
+        "asset": "assets/models/wall_torch.gltf",
+        "material": "assets/materials/flame_core_emissive.material.json"
       },
       "name": "WallTorch",
       "parent": null,
@@ -60,16 +61,16 @@
   "light": {
     "color": [
       1,
-      0.55,
-      0.2
+      0.52,
+      0.16
     ],
     "offset": [
       0,
-      0.68,
+      0.7,
       0.1
     ],
-    "radius": 18,
-    "strength": 1.55
+    "radius": 20,
+    "strength": 1.85
   },
   "particles": [
     {
@@ -82,7 +83,7 @@
       ]
     },
     {
-      "asset": "assets/vfx/wall_torch_flame.particle.json",
+      "asset": "assets/vfx/wall_torch_molten.particle.json",
       "enabled": true,
       "offset": [
         0,

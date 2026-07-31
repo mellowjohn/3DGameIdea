@@ -114,14 +114,43 @@ Result<const AnimationClip*> find_clip(const AnimationClipLibrary& library,
         "Match animator clip names to glTF animations[].name."));
 }
 
+/// Sagittal counterpart of a joint name (`RightUpperArm` <-> `LeftUpperArm`); unchanged for spine joints.
+std::string sagittal_joint_name(const std::string& name) {
+    struct Pair {
+        const char* from;
+        const char* to;
+    };
+    static constexpr Pair pairs[] = {{"Right", "Left"}, {"Left", "Right"}, {"right", "left"}, {"left", "right"}};
+    for (const auto& pair : pairs) {
+        const std::string from = pair.from;
+        if (name.size() > from.size() && name.compare(0, from.size(), from) == 0)
+            return std::string(pair.to) + name.substr(from.size());
+    }
+    return name;
+}
+
+/// Reflect a local pose through the YZ plane. Valid only while every joint's bind rotation is
+/// identity and its local axes stay world-aligned (true for the Blockbench player rig).
+JointLocalPose reflect_pose_across_x(JointLocalPose pose) {
+    pose.translation[0] = -pose.translation[0];
+    pose.rotation = {pose.rotation[0], -pose.rotation[1], -pose.rotation[2], pose.rotation[3]};
+    return pose;
+}
+
 Result<JointLocalPose> sample_clip_pose_for_joint(const AnimationClip& clip, float time_seconds,
     const std::string& joint_name, const JointLocalPose& rest) {
-    JointLocalPose pose = rest;
-    if (joint_name.empty()) return Result<JointLocalPose>::success(pose);
+    if (joint_name.empty()) return Result<JointLocalPose>::success(rest);
+    // The player glTF is authored right-handed (front −Z, `Right*` limbs at +X) and imported
+    // verbatim into the left-handed runtime, so the drawn character is the mirror of the Blockbench
+    // model — its visual right limb is the joint named `Left*`. Sample the sagittal counterpart and
+    // reflect the pose so clips read the same in-engine as they do in Blockbench (Attack swings with
+    // the right arm). Seeding from the reflected rest keeps unkeyed channels on their own rest pose.
+    JointLocalPose pose = reflect_pose_across_x(rest);
+    const std::string channel_name = sagittal_joint_name(joint_name);
     for (const auto& channel : clip.channels) {
         // Name-only: node indices are local to each glTF and must not retarget across clip sources
         // (player_clips node 0 is Hip; player.gltf node 0 is Head).
-        if (channel.target_node_name != joint_name) continue;
+        if (channel.target_node_name != channel_name) continue;
         if (channel.path == AnimationChannelPath::Translation) {
             auto sampled = sample_translation_channel(channel, time_seconds);
             if (!sampled) return Result<JointLocalPose>::failure(sampled.error());
@@ -136,7 +165,7 @@ Result<JointLocalPose> sample_clip_pose_for_joint(const AnimationClip& clip, flo
             pose.scale = sampled.value();
         }
     }
-    return Result<JointLocalPose>::success(pose);
+    return Result<JointLocalPose>::success(reflect_pose_across_x(pose));
 }
 
 } // namespace
@@ -225,10 +254,9 @@ Result<std::vector<JointLocalPose>> sample_skinned_local_poses(const ImportedSki
     return Result<std::vector<JointLocalPose>>::success(std::move(out));
 }
 
-Result<std::vector<std::array<float, 16>>> build_skin_matrices(const ImportedSkin& skin,
+Result<std::vector<std::array<float, 16>>> build_joint_global_matrices(const ImportedSkin& skin,
     const std::vector<JointLocalPose>& locals) {
     if (locals.size() != skin.joint_node_indices.size()
-        || skin.inverse_bind_matrices.size() != skin.joint_node_indices.size()
         || skin.joint_rest_locals.size() != skin.joint_node_indices.size()) {
         return Result<std::vector<std::array<float, 16>>>::failure(
             skin_error("SKIN-PARALLEL", "Skin joint arrays must be parallel for matrix build"));
@@ -259,12 +287,29 @@ Result<std::vector<std::array<float, 16>>> build_skin_matrices(const ImportedSki
         auto ok = compute(compute, j);
         if (!ok) return Result<std::vector<std::array<float, 16>>>::failure(ok.error());
     }
+    return Result<std::vector<std::array<float, 16>>>::success(std::move(global));
+}
 
-    std::vector<std::array<float, 16>> skins(joint_count);
-    for (std::size_t j = 0; j < joint_count; ++j) {
-        skins[j] = mul_mat4(global[j], skin.inverse_bind_matrices[j]);
+Result<std::vector<std::array<float, 16>>> build_skin_matrices(const ImportedSkin& skin,
+    const std::vector<JointLocalPose>& locals) {
+    if (skin.inverse_bind_matrices.size() != skin.joint_node_indices.size()) {
+        return Result<std::vector<std::array<float, 16>>>::failure(
+            skin_error("SKIN-PARALLEL", "Skin joint arrays must be parallel for matrix build"));
+    }
+    auto global = build_joint_global_matrices(skin, locals);
+    if (!global) return Result<std::vector<std::array<float, 16>>>::failure(global.error());
+    std::vector<std::array<float, 16>> skins(global.value().size());
+    for (std::size_t j = 0; j < global.value().size(); ++j) {
+        skins[j] = mul_mat4(global.value()[j], skin.inverse_bind_matrices[j]);
     }
     return Result<std::vector<std::array<float, 16>>>::success(std::move(skins));
+}
+
+std::optional<std::size_t> find_skin_joint_index(const ImportedSkin& skin, const std::string& joint_name) {
+    for (std::size_t i = 0; i < skin.joint_names.size(); ++i) {
+        if (skin.joint_names[i] == joint_name) return i;
+    }
+    return std::nullopt;
 }
 
 Result<void> cpu_skin_positions(const ImportedMesh& mesh, std::size_t skin_index,

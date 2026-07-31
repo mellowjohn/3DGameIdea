@@ -37,6 +37,8 @@ Volumes that should be discoverable use enter/exit to drive a world-space billbo
 | `talk_sandbox` / `talk_act0` | Press E to talk | `use` |
 | `use_campfire` | Press E to rest | `use` (heal + sound) |
 | `event_sandbox` | Press E to investigate | `use` (timeline start) |
+| `open_loot_bag` | Press E to search pouch | `use` (icon-only Landfall find stub → blackboard `loot.*`) |
+| `open_supply_chest` | Press E to open chest | `use` (icon-only Landfall find stub → blackboard `loot.*`) |
 
 ## Limitations
 

@@ -34,6 +34,7 @@
 #include "engine/assets/animator_controller_asset.h"
 #include "engine/assets/animation_clip_asset.h"
 #include "engine/animation/animator_runtime.h"
+#include "engine/animation/bone_attachment.h"
 #include "engine/animation/cpu_skinning.h"
 #include "engine/automation/scene_commands.h"
 #include "engine/automation/editor_bridge.h"
@@ -42,6 +43,7 @@
 #include "engine/automation/editor_screenshot.h"
 #include "engine/automation/live_automation_control.h"
 #include "engine/automation/project_git_commands.h"
+#include "engine/automation/asset_bake_commands.h"
 #include "engine/automation/build_coordination.h"
 #include "engine/automation/planning_backlog.h"
 #include "engine/automation/terrain_edit_commands.h"
@@ -52,6 +54,8 @@
 #include "engine/quest/quest_runtime.h"
 #include "engine/standing/standing_runtime.h"
 #include "engine/flag/flag_runtime.h"
+#include "engine/inventory/inventory_runtime.h"
+#include "engine/assets/item_catalog_asset.h"
 #include "engine/session/game_session.h"
 #include "engine/dialogue/dialogue_runtime.h"
 #include "engine/dialogue/dialogue_ui.h"
@@ -175,9 +179,13 @@ constexpr UINT k_particle_depth_slot = k_max_particle_textures; // after texture
 constexpr UINT k_particle_srv_count = k_max_particle_textures + 1;
 /** GPU skin palette size (DEC-0047). Player_V2 is 37 joints. */
 constexpr UINT k_max_bones = 64;
-constexpr UINT k_bone_cb_bytes =
+/** Aligned bytes for one entity's bone palette (64 * float4x4). */
+constexpr UINT k_bone_palette_bytes =
     ((k_max_bones * 64u) + (D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1u))
     & ~(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1u);
+/** Slot 0 = identity; slots 1..15 hold unique skinned entity poses for the frame. */
+constexpr UINT k_max_bone_slots = 16;
+constexpr UINT k_bone_cb_bytes = k_bone_palette_bytes * k_max_bone_slots;
 
 struct Vertex {
     float x = 0, y = 0, z = 0;
@@ -230,6 +238,8 @@ struct RenderInstance {
     std::optional<WorldBounds> bounds;
     // Precomputed at expand time so draw/LOD paths avoid hashing std::string every frame.
     std::uint64_t mesh_key_hash = 0;
+    // When set, GPU LBS uses this entity's bone-palette slot (empty → identity slot 0).
+    std::string skin_entity_id;
 };
 
 std::array<float, 24> pack_object_constants(const std::array<float, 16>& model, const PbrSurfaceParams& pbr,
@@ -343,6 +353,7 @@ struct PropGpuDraw {
     UINT instance_count = 0;
     D3D12_GPU_DESCRIPTOR_HANDLE albedo{};
     float use_albedo = 0.0f;
+    UINT bone_slot = 0;
 };
 static constexpr UINT k_prop_instance_float4s = 6;
 
@@ -580,7 +591,7 @@ PbrSurfaceParams resolve_part_pbr(const PrefabMeshSource& mesh, const PrefabAsse
 // it; omit (nullptr) for callers that do not have a mesh-bounds catalog handy (instance always draws then).
 void expand_prefab_render_instances(const PrefabAsset& prefab, const TransformComponent& placement_transform,
     std::vector<RenderInstance>& instances, const PrefabAsset::MaterialLookup& lookup_material = {},
-    const std::map<std::string, MeshBounds>* mesh_bounds = nullptr) {
+    const std::map<std::string, MeshBounds>* mesh_bounds = nullptr, const std::string& skin_entity_id = {}) {
     const auto bounds_for = [&](const std::string& key,
                                  const TransformComponent& transform) -> std::optional<WorldBounds> {
         if (!mesh_bounds) return std::nullopt;
@@ -596,6 +607,7 @@ void expand_prefab_render_instances(const PrefabAsset& prefab, const TransformCo
         instance.pbr = pbr;
         instance.bounds = bounds_for(key, transform);
         instance.mesh_key_hash = static_cast<std::uint64_t>(std::hash<std::string>{}(key));
+        instance.skin_entity_id = skin_entity_id;
         instances.push_back(std::move(instance));
     };
     if (!prefab.is_compositional()) {
@@ -673,8 +685,8 @@ struct StaticRenderCacheInput {
     std::map<std::string, PrefabAsset> prefab_catalog;
     std::map<std::string, MeshBounds> mesh_bounds;
     std::map<std::string, MaterialAsset> materials;
-    // Raw (unnormalized) prefab asset path plus the world transform to expand it at.
-    std::vector<std::pair<std::string, TransformComponent>> placements;
+    // Raw (unnormalized) prefab asset path, world transform, and optional skin entity id.
+    std::vector<std::tuple<std::string, TransformComponent, std::string>> placements;
 };
 
 struct StaticRenderCacheResult {
@@ -691,11 +703,14 @@ StaticRenderCacheResult build_static_render_cache(const StaticRenderCacheInput& 
     std::vector<std::pair<std::string, TransformComponent>> light_placements;
     light_placements.reserve(input.placements.size());
     for (const auto& placement : input.placements) {
-        if (const auto* prefab = find_prefab_in_catalog(input.prefab_catalog, placement.first)) {
-            expand_prefab_render_instances(*prefab, placement.second, result.instances, lookup_material,
-                &input.mesh_bounds);
+        const auto& prefab_asset = std::get<0>(placement);
+        const auto& transform = std::get<1>(placement);
+        const auto& skin_entity_id = std::get<2>(placement);
+        if (const auto* prefab = find_prefab_in_catalog(input.prefab_catalog, prefab_asset)) {
+            expand_prefab_render_instances(*prefab, transform, result.instances, lookup_material,
+                &input.mesh_bounds, skin_entity_id);
         }
-        light_placements.emplace_back(normalize_asset_path(placement.first), placement.second);
+        light_placements.emplace_back(normalize_asset_path(prefab_asset), transform);
     }
     result.lights = collect_point_lights(input.prefab_catalog, light_placements);
     result.build_ms =
@@ -1149,39 +1164,61 @@ public:
         auto created = create_upload_cb_ring(bone_cb_, bone_cb_mapped_, k_bone_cb_bytes, "GFX-BONE-CB",
             "GFX-BONE-CB-MAP", "Could not create bone constant buffer", "Could not map bone constant buffer");
         if (!created) return created;
-        // Identity palette so static meshes (zero weights) and unbound frames stay safe.
+        // Slot 0 = identity palette; remaining slots filled per skinned entity each frame.
         std::array<float, 16> identity{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
         for (UINT i = 0; i < frame_count; ++i) {
             auto* dst = static_cast<float*>(bone_cb_mapped_[i]);
-            for (UINT b = 0; b < k_max_bones; ++b)
-                std::memcpy(dst + b * 16, identity.data(), sizeof(identity));
+            for (UINT slot = 0; slot < k_max_bone_slots; ++slot) {
+                float* slot_dst = dst + (slot * k_bone_palette_bytes) / sizeof(float);
+                for (UINT b = 0; b < k_max_bones; ++b)
+                    std::memcpy(slot_dst + b * 16, identity.data(), sizeof(identity));
+            }
         }
-        pending_skin_matrix_count_ = 0;
+        bone_slot_next_ = 1;
+        bone_entity_slots_.clear();
         return Result<void>::success();
     }
 
-    void set_pending_skin_matrices(const std::vector<std::array<float, 16>>& matrices) {
-        pending_skin_matrix_count_ = 0;
-        if (matrices.empty()) return;
-        if (matrices.size() > k_max_bones) return; // fail closed — leave identity / prior bind pose
-        for (std::size_t i = 0; i < matrices.size(); ++i) pending_skin_matrices_[i] = matrices[i];
-        pending_skin_matrix_count_ = static_cast<UINT>(matrices.size());
+    void begin_bone_slot_frame() {
+        bone_slot_next_ = 1;
+        bone_entity_slots_.clear();
     }
 
-    void flush_pending_skin_matrices() {
-        if (!bone_cb_mapped_[frame_index_]) return;
+    /// Upload a palette into a dedicated slot (1..k_max_bone_slots-1). Returns 0 (identity) if full / invalid.
+    UINT upload_entity_bone_slot(const std::string& entity_id, const std::vector<std::array<float, 16>>& matrices) {
+        if (entity_id.empty() || matrices.empty() || matrices.size() > k_max_bones) return 0;
+        if (!bone_cb_mapped_[frame_index_]) return 0;
+        auto existing = bone_entity_slots_.find(entity_id);
+        UINT slot = 0;
+        if (existing != bone_entity_slots_.end()) {
+            slot = existing->second;
+        } else {
+            if (bone_slot_next_ >= k_max_bone_slots) return 0; // fail closed — identity
+            slot = bone_slot_next_++;
+            bone_entity_slots_[entity_id] = slot;
+        }
         auto* dst = static_cast<float*>(bone_cb_mapped_[frame_index_]);
+        float* slot_dst = dst + (slot * k_bone_palette_bytes) / sizeof(float);
         std::array<float, 16> identity{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
         for (UINT b = 0; b < k_max_bones; ++b) {
-            const float* src = (b < pending_skin_matrix_count_) ? pending_skin_matrices_[b].data() : identity.data();
-            std::memcpy(dst + b * 16, src, sizeof(identity));
+            const float* src = (b < matrices.size()) ? matrices[b].data() : identity.data();
+            std::memcpy(slot_dst + b * 16, src, sizeof(identity));
         }
+        return slot;
     }
 
-    void bind_bone_constants(UINT root_parameter_index) {
+    UINT bone_slot_for_entity(const std::string& entity_id) const {
+        if (entity_id.empty()) return 0;
+        const auto it = bone_entity_slots_.find(entity_id);
+        return it == bone_entity_slots_.end() ? 0 : it->second;
+    }
+
+    void bind_bone_constants(UINT root_parameter_index, UINT slot = 0) {
         if (!bone_cb_[frame_index_]) return;
+        if (slot >= k_max_bone_slots) slot = 0;
+        const D3D12_GPU_VIRTUAL_ADDRESS base = bone_cb_[frame_index_]->GetGPUVirtualAddress();
         command_list_->SetGraphicsRootConstantBufferView(root_parameter_index,
-            bone_cb_[frame_index_]->GetGPUVirtualAddress());
+            base + static_cast<UINT64>(slot) * k_bone_palette_bytes);
     }
 
     Result<void> upload_prop_vertices(const std::vector<Vertex>& vertices) {
@@ -1848,7 +1885,7 @@ public:
         command_list_->ResourceBarrier(1, &to_depth);
         command_list_->SetPipelineState(shadow_pipeline_.Get());
         command_list_->SetGraphicsRootSignature(shadow_root_signature_.Get());
-        bind_bone_constants(2);
+        bind_bone_constants(2, 0);
         command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         const std::array<float, 16> identity{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
         const auto bind_model = [&](const std::array<float, 16>& model) {
@@ -1869,6 +1906,7 @@ public:
                 XMMatrixTranslation(transform.position[0], transform.position[1], transform.position[2]);
             std::array<float, 16> placed_model{};
             XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4*>(placed_model.data()), scale * rotation * translation);
+            bind_bone_constants(2, bone_slot_for_entity(instance.skin_entity_id));
             bind_model(placed_model);
             command_list_->DrawInstanced(found->second.second, 1, found->second.first, 0);
         };
@@ -2191,7 +2229,6 @@ public:
         bool capture_game_rt = false, bool primary_is_game = false) {
         wait_for_current_frame();
         update_gpu_timestamp_if_ready();
-        flush_pending_skin_matrices();
         HRESULT hr = allocators_[frame_index_]->Reset();
         if (FAILED(hr)) return Result<void>::failure(device_error("GFX-ALLOCATOR-RESET", "Could not reset command allocator", hr));
         hr = command_list_->Reset(allocators_[frame_index_].Get(), pipeline_.Get());
@@ -4398,6 +4435,9 @@ private:
                 float4 windGustParams;
             };
             StructuredBuffer<float4> instanceRows : register(t2);
+            cbuffer Bones : register(b2) {
+                float4x4 boneMatrices[64];
+            };
             struct In {
                 float3 position:POSITION;
                 float3 color:COLOR;
@@ -4415,6 +4455,27 @@ private:
                 float4 material : TEXCOORD3;
                 float3 emissive : TEXCOORD4;
             };
+            float3 skinPosition(float3 position, uint4 joints, float4 weights) {
+                float wsum = weights.x + weights.y + weights.z + weights.w;
+                if (wsum < 1e-5) return position;
+                float4 hp = float4(position, 1.0);
+                float4 skinned =
+                    mul(boneMatrices[joints.x], hp) * weights.x +
+                    mul(boneMatrices[joints.y], hp) * weights.y +
+                    mul(boneMatrices[joints.z], hp) * weights.z +
+                    mul(boneMatrices[joints.w], hp) * weights.w;
+                return skinned.xyz;
+            }
+            float3 skinNormal(float3 normal, uint4 joints, float4 weights) {
+                float wsum = weights.x + weights.y + weights.z + weights.w;
+                if (wsum < 1e-5) return normal;
+                float3 n =
+                    mul((float3x3)boneMatrices[joints.x], normal) * weights.x +
+                    mul((float3x3)boneMatrices[joints.y], normal) * weights.y +
+                    mul((float3x3)boneMatrices[joints.z], normal) * weights.z +
+                    mul((float3x3)boneMatrices[joints.w], normal) * weights.w;
+                return n;
+            }
             Out vs(In input, uint instanceId : SV_InstanceID) {
                 Out o;
                 o.uv = input.uv;
@@ -4427,7 +4488,9 @@ private:
                     instanceRows[baseIndex + 3u]));
                 o.material = instanceRows[baseIndex + 4u];
                 o.emissive = instanceRows[baseIndex + 5u].xyz;
-                float3 localPos = input.position;
+                // LBS before model — shadows already skinned; prop path previously drew bind pose only.
+                float3 localPos = skinPosition(input.position, input.joints, input.weights);
+                float3 localN = skinNormal(input.normal, input.joints, input.weights);
                 if (windEnable > 0.5) {
                     const float3 instanceOrigin = mul(model, float4(0, 0, 0, 1)).xyz;
                     const float t = saturate(localPos.y / max(meshHeight, 0.25));
@@ -4445,7 +4508,7 @@ private:
                     localPos.x += windDir.x * lean * meshHeight;
                     localPos.z += windDir.y * lean * meshHeight;
                 }
-                o.normal = mul((float3x3)model, input.normal);
+                o.normal = mul((float3x3)model, localN);
                 float4 world = mul(model, float4(localPos, 1.0));
                 o.worldPos = world.xyz;
                 o.position = mul(viewProjection, world);
@@ -4529,7 +4592,7 @@ private:
         shadow_range.RegisterSpace = 0;
         shadow_range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-        D3D12_ROOT_PARAMETER parameters[6]{};
+        D3D12_ROOT_PARAMETER parameters[7]{};
         parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         parameters[0].Descriptor.ShaderRegister = 0;
         parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -4552,6 +4615,10 @@ private:
         parameters[5].DescriptorTable.NumDescriptorRanges = 1;
         parameters[5].DescriptorTable.pDescriptorRanges = &shadow_range;
         parameters[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        // Bones palette (b2) — same upload CB as shadow/main; static props early-out on zero weights.
+        parameters[6].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        parameters[6].Descriptor.ShaderRegister = 2;
+        parameters[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
         D3D12_STATIC_SAMPLER_DESC samplers[2]{};
         samplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
@@ -4568,7 +4635,7 @@ private:
         samplers[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
         D3D12_ROOT_SIGNATURE_DESC root{};
-        root.NumParameters = 6;
+        root.NumParameters = 7;
         root.pParameters = parameters;
         root.NumStaticSamplers = 2;
         root.pStaticSamplers = samplers;
@@ -4717,7 +4784,8 @@ public:
         std::vector<float> rows;
         std::vector<PropGpuDraw> draws;
         rows.reserve(4096);
-        std::map<std::string, std::vector<const RenderInstance*>> by_mesh;
+        // Batch by mesh + skin entity so each pose keeps its own bone-palette slot.
+        std::map<std::pair<std::string, std::string>, std::vector<const RenderInstance*>> by_mesh_skin;
         const auto consider = [&](const RenderInstance& instance) {
             if (instance.mesh_asset.empty()) return;
             if (instance.bounds && !frustum_intersects_aabb(frustum, *instance.bounds)) return;
@@ -4737,7 +4805,7 @@ public:
                 mesh_lod_far_keys_.insert(lod_key);
                 return;
             }
-            by_mesh[instance.mesh_asset].push_back(&instance);
+            by_mesh_skin[{instance.mesh_asset, instance.skin_entity_id}].push_back(&instance);
         };
         if (static_placed) {
             for (const auto& instance : *static_placed) consider(instance);
@@ -4745,15 +4813,16 @@ public:
         for (const auto& instance : dynamic_placed) consider(instance);
 
         UINT instance_offset = 0;
-        for (const auto& batch : by_mesh) {
-            if (batch.second.empty() || mesh_ranges_.find(batch.first) == mesh_ranges_.end()) continue;
+        for (const auto& batch : by_mesh_skin) {
+            if (batch.second.empty() || mesh_ranges_.find(batch.first.first) == mesh_ranges_.end()) continue;
             PropGpuDraw draw;
-            draw.mesh_key = batch.first;
+            draw.mesh_key = batch.first.first;
             draw.instance_offset = instance_offset;
             draw.instance_count = static_cast<UINT>(batch.second.size());
+            draw.bone_slot = bone_slot_for_entity(batch.first.second);
             draw.albedo = mesh_white_gpu_;
             draw.use_albedo = 0.0f;
-            const auto albedo_it = mesh_albedo_gpu_.find(batch.first);
+            const auto albedo_it = mesh_albedo_gpu_.find(batch.first.first);
             if (albedo_it != mesh_albedo_gpu_.end()) {
                 draw.albedo = albedo_it->second;
                 draw.use_albedo = 1.0f;
@@ -4795,6 +4864,7 @@ public:
         command_list_->SetPipelineState(prop_pipeline_.Get());
         command_list_->SetGraphicsRootSignature(prop_root_signature_.Get());
         bind_frame_constants(frame_constants);
+        bind_bone_constants(6, 0);
         bind_shadow_constants(); // still writes shadow CB; bind via root below
         if (shadow_cb_[frame_index_])
             command_list_->SetGraphicsRootConstantBufferView(3, shadow_cb_[frame_index_]->GetGPUVirtualAddress());
@@ -4809,6 +4879,7 @@ public:
         for (const auto& draw : draws) {
             const auto found = mesh_ranges_.find(draw.mesh_key);
             if (found == mesh_ranges_.end()) continue;
+            bind_bone_constants(6, draw.bone_slot);
             float wind_pack[8]{};
             pack_wind_constants(wind_field_, wind_pack);
             const bool sway = mesh_uses_wind_sway(draw.mesh_key);
@@ -5235,8 +5306,8 @@ private:
     std::array<void*, frame_count> particle_frame_cb_mapped_{};
     std::array<ComPtr<ID3D12Resource>, frame_count> bone_cb_;
     std::array<void*, frame_count> bone_cb_mapped_{};
-    std::array<std::array<float, 16>, k_max_bones> pending_skin_matrices_{};
-    UINT pending_skin_matrix_count_ = 0;
+    UINT bone_slot_next_ = 1;
+    std::map<std::string, UINT> bone_entity_slots_{};
     ComPtr<ID3D12Resource> foliage_instance_buffer_;
     std::vector<RetiredTerrainBuffer> foliage_retire_buffers_;
     ComPtr<ID3D12DescriptorHeap> foliage_srv_heap_;
@@ -5606,6 +5677,36 @@ struct EditorState {
     std::unique_ptr<WorldForgeEventsAsset> events_asset;
     std::string test_animator_entity_id;
     std::string test_skinned_mesh_asset;
+    /// Play-test held weapon: mesh path + column-major hand joint global (character model space).
+    std::string test_held_weapon_mesh;
+    std::optional<std::array<float, 16>> test_held_weapon_hand_global;
+    /// Prefab part local transform of the skinned character mesh. Joint globals live in that mesh's model
+    /// space, so a weld that skips this link misses the authored character scale.
+    TransformComponent test_skinned_visual_local;
+    /// Joint names of the animated character's skin, for the Inspector joint dropdown.
+    std::vector<std::string> test_skin_joint_names;
+    /// Live grip authoring (Inspector → Save writes item handAttach).
+    std::string held_attach_item_id;
+    BoneWeld held_attach_weld;
+    bool held_attach_dirty = false;
+    bool held_attach_gizmo_enabled = false;
+    ImGuizmo::OPERATION held_attach_gizmo_operation = ImGuizmo::TRANSLATE;
+    ImGuizmo::MODE held_attach_gizmo_mode = ImGuizmo::LOCAL;
+    std::array<float, 16> held_attach_gizmo_matrix{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    bool held_attach_gizmo_was_using = false;
+    bool held_attach_snap_enabled = true;
+    float held_attach_translate_snap = 0.01f;
+    float held_attach_rotate_snap = 5.0f;
+    float held_attach_scale_snap = 0.05f;
+    /// Socket captured when a grip drag starts. A joint that keeps animating under the manipulator would
+    /// otherwise make every drag solve against a different frame than the one on screen.
+    std::optional<TransformComponent> held_attach_drag_socket;
+    /// Hand joint in world space for the active held weapon (updated each play-test skin tick).
+    std::optional<TransformComponent> test_held_hand_world;
+    /// Orbit camera matrices for ImGuizmo overlay on the Game tab during play-test.
+    bool play_camera_matrices_valid = false;
+    std::array<float, 16> play_camera_view{};
+    std::array<float, 16> play_camera_projection{};
     bool show_movement_console = false;
     std::deque<std::string> console_lines;
     std::string asset_browser_folder;
@@ -5628,9 +5729,24 @@ struct EditorState {
     std::unique_ptr<WorldForgeQuestsAsset> quest_asset;
     std::unique_ptr<StandingRuntime> standing_runtime;
     std::unique_ptr<FlagRuntime> flag_runtime;
+    std::unique_ptr<ItemCatalogAsset> item_catalog;
+    std::unique_ptr<InventoryRuntime> inventory_runtime;
     std::unique_ptr<WorldForgeFactionsAsset> standing_factions_asset;
     std::unique_ptr<WorldForgeRelationshipsAsset> standing_relationships_asset;
     GameSession game_session;
+    /// Edge-detect for play-test combat / locomotion animator triggers.
+    bool test_anim_was_grounded = true;
+    bool test_anim_lmb_was_down = false;
+    bool test_anim_shift_was_down = false;
+    bool test_anim_dead = false;
+    bool test_anim_pending_jump = false;
+    double test_anim_last_health = 100.0;
+    /// Scripted dodge dash (play-test): remaining seconds and world-XZ unit direction.
+    float dodge_remaining = 0.0f;
+    float dodge_dir_x = 0.0f;
+    float dodge_dir_z = 1.0f;
+    /// Delay before stamina/magic regen resumes after a dodge spend.
+    float dodge_resource_regen_delay = 0.0f;
     /// When true (editor --coop-local), F5 starts a local dual-slot co-op session.
     bool coop_local = false;
     /// 0 = possess host (WASD + camera); 1 = possess guest. Toggle with F7 during coop_local play-test.
@@ -5677,6 +5793,15 @@ struct EditorState {
     /// Diagnostics → Coordination (TICKET-0228): agent build-lease dashboard caches.
     std::map<std::string, std::string> coordination_meta;
     std::string coordination_summary = "Refreshing coordination state...";
+    /// Diagnostics → Assets (TICKET-0245): named asset bake panel.
+    std::vector<AssetBakeTargetInfo> asset_bake_targets;
+    int asset_bake_selected = 0;
+    bool asset_bake_use_default_source = true;
+    char asset_bake_source_buffer[512]{};
+    std::string asset_bake_status = "Select a target and Bake.";
+    std::string asset_bake_report_json;
+    std::vector<EngineError> asset_bake_failures;
+    bool asset_bake_last_ok = false;
     double coordination_last_refresh = -1000.0;
     PlanningBacklog coordination_backlog;
     std::string coordination_backlog_error;
@@ -6314,6 +6439,7 @@ EditorSessionContext make_editor_session_context(EditorState& state, bool editor
     context.quest_runtime = state.quest_runtime.get();
     context.standing_runtime = state.standing_runtime.get();
     context.flag_runtime = state.flag_runtime.get();
+    context.inventory_runtime = state.inventory_runtime.get();
     context.dialogue_runtime = &state.dialogue_runtime;
     context.hud_runtime = state.ui_canvas_stack ? &state.ui_canvas_stack->hud() : nullptr;
     context.ui_canvas_stack = state.ui_canvas_stack.get();
@@ -7095,6 +7221,265 @@ void draw_material_asset_inspector(EditorState& state, MaterialAsset* terrain_ma
     if (state.test_session_active()) ImGui::TextDisabled("End test session to save material asset changes.");
 }
 
+/// Single source of truth for turning authored item data into a live weld. Both the Inspector and the
+/// play-test skin tick go through here; when they diverged the authored joint was silently ignored.
+BoneWeld weld_from_item_hand_attach(const ItemHandAttach& attach) {
+    BoneWeld weld;
+    weld.joint = attach.joint.empty() ? std::string{"RightHand"} : attach.joint;
+    weld.offset = attach.grip_offset;
+    weld.euler_deg = attach.grip_euler_deg;
+    weld.scale = attach.grip_scale;
+    return weld;
+}
+
+void store_transform_as_gizmo_matrix(const TransformComponent& transform, std::array<float, 16>& out_matrix) {
+    using namespace DirectX;
+    const auto model = XMMatrixScaling(transform.scale[0], transform.scale[1], transform.scale[2]) *
+        XMMatrixRotationQuaternion(XMLoadFloat4(reinterpret_cast<const XMFLOAT4*>(transform.rotation.data()))) *
+        XMMatrixTranslation(transform.position[0], transform.position[1], transform.position[2]);
+    XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4*>(out_matrix.data()), model);
+}
+
+/// ImGuizmo's own DecomposeMatrixToComponents returns Euler angles in X→Y→Z order, which does not match the
+/// roll/pitch/yaw order the engine rebuilds quaternions with. Decompose to a quaternion instead so a rotate
+/// drag on two axes lands where the handle was dragged.
+TransformComponent transform_from_gizmo_matrix(const std::array<float, 16>& matrix) {
+    using namespace DirectX;
+    const XMMATRIX model = XMLoadFloat4x4(reinterpret_cast<const XMFLOAT4X4*>(matrix.data()));
+    TransformComponent out;
+    XMVECTOR scale;
+    XMVECTOR rotation;
+    XMVECTOR translation;
+    if (!XMMatrixDecompose(&scale, &rotation, &translation, model)) {
+        float position_parts[3];
+        float rotation_parts[3];
+        float scale_parts[3];
+        ImGuizmo::DecomposeMatrixToComponents(matrix.data(), position_parts, rotation_parts, scale_parts);
+        out.position = {position_parts[0], position_parts[1], position_parts[2]};
+        out.scale = {scale_parts[0], scale_parts[1], scale_parts[2]};
+        return out;
+    }
+    XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(out.position.data()), translation);
+    XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(out.rotation.data()), rotation);
+    XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(out.scale.data()), scale);
+    return out;
+}
+
+void apply_held_attach_gizmo_to_weld(EditorState& state, const TransformComponent& socket_world) {
+    const auto weapon_world = transform_from_gizmo_matrix(state.held_attach_gizmo_matrix);
+    const BoneWeld solved = weld_from_world_transform(socket_world, weapon_world, state.held_attach_weld.joint);
+    state.held_attach_weld.offset = solved.offset;
+    state.held_attach_weld.euler_deg = solved.euler_deg;
+    if (state.held_attach_gizmo_operation == ImGuizmo::SCALE) state.held_attach_weld.scale = solved.scale;
+    state.held_attach_dirty = true;
+}
+
+/// Draw the move/rotate/scale ImGuizmo for play-test weld authoring. Returns true if active.
+bool draw_held_attach_gizmo(EditorState& state, const std::array<float, 16>& view,
+    const std::array<float, 16>& projection, const ImVec2& image_min, float width, float height) {
+    if (!state.held_attach_gizmo_enabled || !state.test_session_active() || !state.test_held_hand_world) return false;
+    if (state.test_held_weapon_mesh.empty()) return false;
+
+    ImGuizmo::SetOrthographic(false);
+    ImGuizmo::SetDrawlist();
+    ImGuizmo::SetRect(image_min.x, image_min.y, width, height);
+
+    // Solve against the socket the manipulator was seeded from, not a joint that has since animated on.
+    const TransformComponent socket_world =
+        state.held_attach_drag_socket.value_or(*state.test_held_hand_world);
+    if (!state.held_attach_gizmo_was_using) {
+        store_transform_as_gizmo_matrix(weld_world_transform(socket_world, state.held_attach_weld),
+            state.held_attach_gizmo_matrix);
+    }
+
+    ImGuizmo::OPERATION op = state.held_attach_gizmo_operation;
+    if (op != ImGuizmo::TRANSLATE && op != ImGuizmo::ROTATE && op != ImGuizmo::SCALE) op = ImGuizmo::TRANSLATE;
+    // ImGuizmo only draws scale handles in local space.
+    const ImGuizmo::MODE mode = (op == ImGuizmo::SCALE || state.held_attach_gizmo_mode == ImGuizmo::LOCAL)
+                                    ? ImGuizmo::LOCAL
+                                    : ImGuizmo::WORLD;
+    std::array<float, 3> snap{};
+    if (op == ImGuizmo::TRANSLATE) snap.fill(std::max(0.0001f, state.held_attach_translate_snap));
+    else if (op == ImGuizmo::ROTATE) snap.fill(std::max(0.01f, state.held_attach_rotate_snap));
+    else snap.fill(std::max(0.001f, state.held_attach_scale_snap));
+    ImGuizmo::Manipulate(view.data(), projection.data(), op, mode, state.held_attach_gizmo_matrix.data(), nullptr,
+        state.held_attach_snap_enabled ? snap.data() : nullptr);
+
+    const bool using_now = ImGuizmo::IsUsing();
+    if (using_now && !state.held_attach_gizmo_was_using) state.held_attach_drag_socket = socket_world;
+    if (using_now || state.held_attach_gizmo_was_using) {
+        apply_held_attach_gizmo_to_weld(state, socket_world);
+        const char* space = mode == ImGuizmo::WORLD ? "World" : "Local";
+        state.status = using_now
+                           ? (std::string("Weld gizmo ") + space + " (release when done; Save handAttach to persist)")
+                           : "Weld updated — Save handAttach to persist";
+    }
+    if (!using_now) state.held_attach_drag_socket.reset();
+    state.held_attach_gizmo_was_using = using_now;
+    return true;
+}
+
+void draw_held_weapon_attach_inspector(EditorState& state) {
+    if (!state.test_session_active() || !state.inventory_runtime) return;
+    ImGui::Separator();
+    ImGui::TextUnformatted("Held Weapon Weld");
+    ImGui::TextWrapped(
+        "Weld the active hotbar mesh to a character joint. Drag values or the gizmo and watch the Game view; Save writes handAttach into the item JSON.");
+
+    const auto stack = state.inventory_runtime->active_hotbar_item();
+    if (stack.empty()) {
+        ImGui::TextDisabled("Select a hotbar weapon with a worldMesh (keys 1–8).");
+        return;
+    }
+    const ItemDef* def = state.inventory_runtime->find_def(stack.item_id);
+    if (!def || def->world_mesh.empty()) {
+        ImGui::TextDisabled("Active hotbar item has no worldMesh to attach.");
+        return;
+    }
+
+    if (state.held_attach_item_id != stack.item_id) {
+        state.held_attach_item_id = stack.item_id;
+        state.held_attach_weld = weld_from_item_hand_attach(def->hand_attach);
+        state.held_attach_dirty = false;
+    }
+
+    ImGui::Text("Item: %s", def->display_name.empty() ? stack.item_id.c_str() : def->display_name.c_str());
+    ImGui::TextDisabled("%s", def->source_path.empty() ? "(no source path)" : def->source_path.c_str());
+
+    ImGui::PushID("held_weapon_attach");
+    // Joint list comes from the live skin so every bone in the rig is reachable, not a hand-picked six.
+    std::vector<std::string> joint_options = state.test_skin_joint_names;
+    if (joint_options.empty()) {
+        joint_options = {"RightHand", "RightMiddle1", "RightIndex1", "LeftHand", "LeftMiddle1", "LeftIndex1"};
+    }
+    const bool joint_resolved =
+        std::find(joint_options.begin(), joint_options.end(), state.held_attach_weld.joint) != joint_options.end();
+    if (!joint_resolved && !state.held_attach_weld.joint.empty())
+        joint_options.insert(joint_options.begin(), state.held_attach_weld.joint);
+    if (ImGui::BeginCombo("Joint", state.held_attach_weld.joint.c_str())) {
+        for (const auto& name : joint_options) {
+            const bool selected = name == state.held_attach_weld.joint;
+            if (ImGui::Selectable(name.c_str(), selected)) {
+                state.held_attach_weld.joint = name;
+                state.held_attach_dirty = true;
+            }
+            if (selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+    if (!joint_resolved && !state.test_skin_joint_names.empty()) {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "Joint not in this skin — weld falls back to a hand bone.");
+    }
+
+    // InputFloat3 so typing works during play-test; DragFloat3 for scrubbing (faster step than 0.005).
+    if (ImGui::InputFloat3("Grip Offset", state.held_attach_weld.offset.data(), "%.3f"))
+        state.held_attach_dirty = true;
+    if (ImGui::DragFloat3("##grip_offset_drag", state.held_attach_weld.offset.data(), 0.01f, -2.0f, 2.0f, "%.3f"))
+        state.held_attach_dirty = true;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Joint-local meters, before the character scale on the joint chain.");
+    if (ImGui::InputFloat3("Grip Euler Deg", state.held_attach_weld.euler_deg.data(), "%.1f"))
+        state.held_attach_dirty = true;
+    if (ImGui::DragFloat3("##grip_euler_drag", state.held_attach_weld.euler_deg.data(), 1.0f, -360.0f, 360.0f, "%.1f"))
+        state.held_attach_dirty = true;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("XYZ Euler degrees for the mesh vs the joint (sword tip is +Y in the bake).");
+    if (ImGui::InputFloat3("Grip Scale", state.held_attach_weld.scale.data(), "%.3f"))
+        state.held_attach_dirty = true;
+    if (ImGui::DragFloat3("##grip_scale_drag", state.held_attach_weld.scale.data(), 0.01f, 0.01f, 10.0f, "%.3f"))
+        state.held_attach_dirty = true;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Multiplies the character scale the joint already carries. 1 = same scale as the body.");
+
+    if (state.test_held_hand_world) {
+        const auto& socket = *state.test_held_hand_world;
+        ImGui::TextDisabled("Socket world: %.2f, %.2f, %.2f (scale %.3f)", socket.position[0], socket.position[1],
+            socket.position[2], socket.scale[0]);
+    } else {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "No live socket — the character skin has no bound joints.");
+    }
+
+    if (ImGui::Checkbox("Enable Weld Gizmo", &state.held_attach_gizmo_enabled)) {
+        state.held_attach_gizmo_was_using = false;
+        state.held_attach_drag_socket.reset();
+        if (state.held_attach_gizmo_enabled) {
+            state.gizmo_entity.reset();
+            state.particle_gizmo_index.reset();
+            state.particle_gizmo_entity.reset();
+            state.particle_gizmo_was_using = false;
+        }
+    }
+    if (state.held_attach_gizmo_enabled) {
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Move##grip", state.held_attach_gizmo_operation == ImGuizmo::TRANSLATE))
+            state.held_attach_gizmo_operation = ImGuizmo::TRANSLATE;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Rotate##grip", state.held_attach_gizmo_operation == ImGuizmo::ROTATE))
+            state.held_attach_gizmo_operation = ImGuizmo::ROTATE;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Scale##grip", state.held_attach_gizmo_operation == ImGuizmo::SCALE))
+            state.held_attach_gizmo_operation = ImGuizmo::SCALE;
+        if (ImGui::RadioButton("Local##grip", state.held_attach_gizmo_mode == ImGuizmo::LOCAL))
+            state.held_attach_gizmo_mode = ImGuizmo::LOCAL;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("World##grip", state.held_attach_gizmo_mode == ImGuizmo::WORLD))
+            state.held_attach_gizmo_mode = ImGuizmo::WORLD;
+        ImGui::Checkbox("Snap##grip", &state.held_attach_snap_enabled);
+        if (state.held_attach_snap_enabled) {
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(80.0f);
+            ImGui::DragFloat("m##grip_snap_t", &state.held_attach_translate_snap, 0.001f, 0.001f, 0.5f, "%.3f");
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(80.0f);
+            ImGui::DragFloat("deg##grip_snap_r", &state.held_attach_rotate_snap, 0.5f, 1.0f, 90.0f, "%.0f");
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(80.0f);
+            ImGui::DragFloat("x##grip_snap_s", &state.held_attach_scale_snap, 0.01f, 0.01f, 1.0f, "%.2f");
+        }
+        ImGui::TextWrapped(
+            "Drag the gizmo in Scene or Game view. Local = weapon/hand axes; World = scene axes (scale is always local). The socket freezes for the duration of a drag, so an animating joint cannot pull the handles away. Combat (Attack/Block/Dodge) is paused while the gizmo is enabled — turn it off to test swings. Pause (F6) freezes the pose. Hotkeys: G=Move, R=Rotate, T=Scale, X=Local/World (not 1–2 — those are hotbar).");
+    }
+    ImGui::PopID();
+
+    if (ImGui::Button("Reset to Item Defaults")) {
+        state.held_attach_weld = weld_from_item_hand_attach(def->hand_attach);
+        state.held_attach_dirty = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Zero Weld")) {
+        state.held_attach_weld.offset = {0.0f, 0.0f, 0.0f};
+        state.held_attach_weld.euler_deg = {0.0f, 0.0f, 0.0f};
+        state.held_attach_weld.scale = {1.0f, 1.0f, 1.0f};
+        state.held_attach_dirty = true;
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Snap the mesh origin onto the joint origin, unrotated.");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(def->source_path.empty());
+    if (ImGui::Button("Save handAttach")) {
+        if (state.item_catalog) {
+            if (ItemDef* mutable_def = state.item_catalog->find_mutable(stack.item_id)) {
+                mutable_def->hand_attach.joint = state.held_attach_weld.joint;
+                mutable_def->hand_attach.grip_offset = state.held_attach_weld.offset;
+                mutable_def->hand_attach.grip_euler_deg = state.held_attach_weld.euler_deg;
+                mutable_def->hand_attach.grip_scale = state.held_attach_weld.scale;
+                const auto saved = save_item_hand_attach(state.project_root, *mutable_def);
+                if (saved) {
+                    state.held_attach_dirty = false;
+                    state.status = "Saved handAttach for " + stack.item_id;
+                } else {
+                    state.status = saved.error().message;
+                    Logger::instance().write(saved.error());
+                }
+            }
+        }
+    }
+    ImGui::EndDisabled();
+    if (state.held_attach_dirty) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "unsaved");
+    }
+}
+
 void draw_play_session_inspector(EditorState& state) {
     ImGui::TextDisabled("No entity selected");
     ImGui::TextWrapped(
@@ -7137,7 +7522,9 @@ TransformComponent character_visual_transform(const CharacterController& charact
     using namespace DirectX;
     const auto body = character.debug_body();
     TransformComponent transform;
-    // Blockbench/player.gltf faces −Z; controller walk basis uses yaw 0 → +Z.
+    // Baked player.gltf faces −Z; loco yaw 0 is +Z — rotate π so walk faces the camera look
+    // direction. Omitting this makes the player run facing the camera. Limb handedness after this
+    // yaw is handled by sagittal clip mirroring in cpu_skinning.
     constexpr float k_model_forward_yaw_offset = 3.14159265f;
     const auto facing_q = XMQuaternionRotationRollPitchYaw(0.0f, facing_yaw + k_model_forward_yaw_offset, 0.0f);
     XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(transform.rotation.data()), facing_q);
@@ -7753,9 +8140,31 @@ void commit_active_terrain_stroke(EditorState& state) {
     state.terrain_flatten_target_valid = false;
 }
 
+void sync_hotbar_equip_hud(EditorState& state) {
+    if (!state.ui_canvas_stack || !state.inventory_runtime) return;
+    auto& hud = state.ui_canvas_stack->hud();
+    const int selected = state.inventory_runtime->status().selected_hotbar;
+    for (int i = 0; i < 8; ++i) {
+        const bool on = (i == selected);
+        const std::string n = std::to_string(i + 1);
+        hud.set_bool("hud.hotbar." + n + ".selected", on);
+        if (on) {
+            hud.set_color("hud_hotbar_" + n, 255.0f, 200.0f, 90.0f, 255.0f);
+            hud.set_color("hud_hotbar_" + n + "_key", 255.0f, 235.0f, 160.0f, 255.0f);
+        } else {
+            hud.set_color("hud_hotbar_" + n, 200.0f, 190.0f, 175.0f, 255.0f);
+            hud.set_color("hud_hotbar_" + n + "_key", 241.0f, 238.0f, 232.0f, 255.0f);
+        }
+    }
+}
+
 void process_test_session_ui_input(EditorState& state) {
     if (!state.test_session_active() || !state.ui_canvas_stack || ImGui::GetIO().WantTextInput) return;
-    if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) return;
+    // Hotbar / inventory must work while the Game tab owns focus (combat already uses SDL).
+    // ImGui window focus alone drops keys when the 3D viewport is clicked.
+    const bool imgui_ui_focus = ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow);
+    const bool game_play_focus = state.game_viewport_active() && state.test_session_running();
+    if (!imgui_ui_focus && !game_play_focus) return;
 
     const bool esc =
         ImGui::IsKeyPressed(ImGuiKey_Escape) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight);
@@ -7768,10 +8177,41 @@ void process_test_session_ui_input(EditorState& state) {
     }
 
     if (!state.ui_canvas_stack->has_modal()) {
-        if (ImGui::IsKeyPressed(ImGuiKey_I) && state.ui_canvas_stack->is_registered("inventory")) {
+        const bool* keys = SDL_GetKeyboardState(nullptr);
+        // Prefer ImGui edge for I when available; SDL fallback when Game tab has no ImGui focus.
+        static bool i_was_down = false;
+        const bool i_sdl = keys[SDL_SCANCODE_I] != 0;
+        const bool i_edge = ImGui::IsKeyPressed(ImGuiKey_I) || (game_play_focus && i_sdl && !i_was_down);
+        i_was_down = i_sdl;
+        if (i_edge && state.ui_canvas_stack->is_registered("inventory")) {
             (void)state.ui_canvas_stack->push("inventory");
+            if (state.lua_runtime)
+                (void)state.lua_runtime->call_handler("inventory_refresh_ui", "{}");
             state.status = "Inventory opened";
             return;
+        }
+        if (state.inventory_runtime) {
+            const ImGuiKey hotbar_keys[8] = {ImGuiKey_1, ImGuiKey_2, ImGuiKey_3, ImGuiKey_4, ImGuiKey_5,
+                ImGuiKey_6, ImGuiKey_7, ImGuiKey_8};
+            const ImGuiKey keypad_keys[8] = {ImGuiKey_Keypad1, ImGuiKey_Keypad2, ImGuiKey_Keypad3, ImGuiKey_Keypad4,
+                ImGuiKey_Keypad5, ImGuiKey_Keypad6, ImGuiKey_Keypad7, ImGuiKey_Keypad8};
+            const SDL_Scancode hotbar_scans[8] = {SDL_SCANCODE_1, SDL_SCANCODE_2, SDL_SCANCODE_3, SDL_SCANCODE_4,
+                SDL_SCANCODE_5, SDL_SCANCODE_6, SDL_SCANCODE_7, SDL_SCANCODE_8};
+            static bool hotbar_was_down[8] = {};
+            for (int i = 0; i < 8; ++i) {
+                const bool sdl_down = keys[hotbar_scans[i]] != 0;
+                const bool pressed = ImGui::IsKeyPressed(hotbar_keys[i]) || ImGui::IsKeyPressed(keypad_keys[i]) ||
+                    (game_play_focus && sdl_down && !hotbar_was_down[i]);
+                hotbar_was_down[i] = sdl_down;
+                if (pressed) {
+                    (void)state.inventory_runtime->select_hotbar(i);
+                    sync_hotbar_equip_hud(state);
+                    if (state.lua_runtime)
+                        (void)state.lua_runtime->call_handler("inventory_refresh_ui", "{}");
+                    state.status = "Hotbar " + std::to_string(i + 1) + " equipped";
+                    break;
+                }
+            }
         }
         if (ImGui::IsKeyPressed(ImGuiKey_Y) && state.ui_canvas_stack->is_registered("dialogue")) {
             (void)state.ui_canvas_stack->push("dialogue");
@@ -10498,6 +10938,35 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         if (editor_icon_button("gizmo_scale", ICON_FA_EXPAND_ALT, "Scale [3]"))
             state.gizmo_operation = ImGuizmo::SCALE;
     }
+    if (state.test_session_active() && state.held_attach_gizmo_enabled) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("| Weld");
+        ImGui::SameLine();
+        if (editor_icon_button("grip_gizmo_move", ICON_FA_ARROWS_ALT, "Weld Move [G]"))
+            state.held_attach_gizmo_operation = ImGuizmo::TRANSLATE;
+        ImGui::SameLine();
+        if (editor_icon_button("grip_gizmo_rotate", ICON_FA_SYNC_ALT, "Weld Rotate [R]"))
+            state.held_attach_gizmo_operation = ImGuizmo::ROTATE;
+        ImGui::SameLine();
+        if (editor_icon_button("grip_gizmo_scale", ICON_FA_EXPAND_ALT, "Weld Scale [T]"))
+            state.held_attach_gizmo_operation = ImGuizmo::SCALE;
+        ImGui::SameLine();
+        if (editor_icon_button("grip_gizmo_space",
+                state.held_attach_gizmo_mode == ImGuizmo::WORLD ? ICON_FA_GLOBE : ICON_FA_CUBE,
+                state.held_attach_gizmo_mode == ImGuizmo::WORLD ? "Weld World [X]" : "Weld Local [X]")) {
+            state.held_attach_gizmo_mode =
+                state.held_attach_gizmo_mode == ImGuizmo::WORLD ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
+        }
+        if (state.viewport_focused && !camera_capture && !ImGui::GetIO().WantTextInput) {
+            if (ImGui::IsKeyPressed(ImGuiKey_G)) state.held_attach_gizmo_operation = ImGuizmo::TRANSLATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_R)) state.held_attach_gizmo_operation = ImGuizmo::ROTATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_T)) state.held_attach_gizmo_operation = ImGuizmo::SCALE;
+            if (ImGui::IsKeyPressed(ImGuiKey_X)) {
+                state.held_attach_gizmo_mode =
+                    state.held_attach_gizmo_mode == ImGuizmo::WORLD ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
+            }
+        }
+    }
     if (edit_mode && sculpt_tab) {
         draw_sculpt_toolbar(state, streamed_terrain, streamed_foliage, streamed_water, collision, terrain_material,
             camera_position);
@@ -10607,6 +11076,10 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             }
             const ViewportRect game_rect{image_min.x, image_min.y, image_max.x, image_max.y};
             state.world_ui_billboards.draw(draw_list, view_projection, game_rect);
+            if (state.held_attach_gizmo_enabled && state.play_camera_matrices_valid) {
+                (void)draw_held_attach_gizmo(state, state.play_camera_view, state.play_camera_projection, image_min,
+                    frame.width, frame.height);
+            }
         } else if (game_tab) {
             state.game_viewport_min.reset();
             state.game_viewport_max.reset();
@@ -10620,11 +11093,18 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             else if (!state.viewport_hovered)
                 state.hovered.reset();
 
+            bool held_grip_gizmo_active = false;
+            if (state.test_session_active() && state.held_attach_gizmo_enabled) {
+                held_grip_gizmo_active =
+                    draw_held_attach_gizmo(state, view, projection, image_min, frame.width, frame.height);
+            }
+
             ImGuizmo::SetOrthographic(false);
             ImGuizmo::SetDrawlist();
             ImGuizmo::SetRect(image_min.x, image_min.y, frame.width, frame.height);
             bool particle_gizmo_active = false;
-            if (edit_mode && state.selected && state.particle_gizmo_index && state.scene.placement(*state.selected)) {
+            if (!held_grip_gizmo_active && edit_mode && state.selected && state.particle_gizmo_index &&
+                state.scene.placement(*state.selected)) {
                 const auto placement = state.scene.placement(*state.selected);
                 const auto prefab_key =
                     resolve_prefab_catalog_path(state.prefab_catalog, placement->prefab_asset);
@@ -10675,7 +11155,8 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                     state.particle_gizmo_was_using = false;
                 }
             }
-            if (edit_mode && state.selected && state.scene.placement(*state.selected) && !particle_gizmo_active) {
+            if (!held_grip_gizmo_active && edit_mode && state.selected && state.scene.placement(*state.selected) &&
+                !particle_gizmo_active) {
                 if (!state.gizmo_entity || *state.gizmo_entity != *state.selected) {
                     const auto transform = state.scene.transform(*state.selected).value();
                     using namespace DirectX;
@@ -10695,17 +11176,13 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 }
                 const bool using_now = ImGuizmo::IsUsing();
                 if (using_now) {
-                    float position[3];
-                    float rotation[3];
-                    float scale[3];
-                    ImGuizmo::DecomposeMatrixToComponents(state.gizmo_matrix.data(), position, rotation, scale);
+                    // Straight quaternion decompose: ImGuizmo's Euler output uses a different axis order than
+                    // the engine's rebuild, so a two-axis rotate drag used to snap somewhere else on release.
+                    const auto manipulated = transform_from_gizmo_matrix(state.gizmo_matrix);
                     auto preview = state.scene.transform(*state.selected).value();
-                    std::copy(position, position + 3, preview.position.begin());
-                    std::copy(scale, scale + 3, preview.scale.begin());
-                    using namespace DirectX;
-                    const auto q = XMQuaternionRotationRollPitchYaw(XMConvertToRadians(rotation[0]),
-                        XMConvertToRadians(rotation[1]), XMConvertToRadians(rotation[2]));
-                    XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(preview.rotation.data()), q);
+                    preview.position = manipulated.position;
+                    preview.rotation = manipulated.rotation;
+                    preview.scale = manipulated.scale;
                     state.gizmo_preview = preview;
                     state.status = "Gizmo preview (release to commit)";
                 }
@@ -11098,6 +11575,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     ImGui::SetNextWindowPos({origin.x + left + center, origin.y}, ImGuiCond_Always);
     ImGui::SetNextWindowSize({right, extent.y}, ImGuiCond_Always);
     ImGui::Begin("Inspector", nullptr, locked);
+    if (state.test_session_active()) draw_held_weapon_attach_inspector(state);
     if (state.inspector_asset_path) {
         const auto normalized = normalize_asset_path(*state.inspector_asset_path);
         if (ImGui::Button("Back")) state.inspector_asset_path.reset();
@@ -11836,6 +12314,78 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         draw_build_coordination_tab(state);
         ImGui::EndTabItem();
     }
+    if (ImGui::BeginTabItem("Assets")) {
+        if (state.asset_bake_targets.empty()) {
+            state.asset_bake_targets = list_asset_bake_targets();
+            if (state.asset_bake_selected >= static_cast<int>(state.asset_bake_targets.size()))
+                state.asset_bake_selected = 0;
+        }
+        ImGui::TextWrapped(
+            "Named Blockbench bake (TICKET-0245). Fail-closed verify for clips, atlas, scale, joints.");
+        if (ImGui::Button("Refresh catalog##AssetBakeRefresh")) {
+            state.asset_bake_targets = list_asset_bake_targets();
+            state.asset_bake_status =
+                "Catalog refreshed (" + std::to_string(state.asset_bake_targets.size()) + " targets)";
+        }
+        if (state.asset_bake_targets.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.2f, 1.0f), "No targets in tools/asset_bake_catalog.json");
+        } else {
+            if (state.asset_bake_selected < 0 ||
+                state.asset_bake_selected >= static_cast<int>(state.asset_bake_targets.size()))
+                state.asset_bake_selected = 0;
+            const auto& selected = state.asset_bake_targets[static_cast<std::size_t>(state.asset_bake_selected)];
+            if (ImGui::BeginCombo("Target##AssetBakeTarget", selected.id.c_str())) {
+                for (int i = 0; i < static_cast<int>(state.asset_bake_targets.size()); ++i) {
+                    const bool is_sel = i == state.asset_bake_selected;
+                    const auto& t = state.asset_bake_targets[static_cast<std::size_t>(i)];
+                    const std::string label = t.id + " (" + t.kind + ")";
+                    if (ImGui::Selectable(label.c_str(), is_sel)) state.asset_bake_selected = i;
+                    if (is_sel) ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::TextDisabled("Default source: %s", selected.default_source.c_str());
+            ImGui::Checkbox("Use catalog default source", &state.asset_bake_use_default_source);
+            ImGui::BeginDisabled(state.asset_bake_use_default_source);
+            ImGui::InputText("Source override##AssetBakeSource", state.asset_bake_source_buffer,
+                sizeof(state.asset_bake_source_buffer));
+            ImGui::EndDisabled();
+            if (ImGui::Button("Bake##AssetBakeRun") && !state.project_root.empty()) {
+                state.asset_bake_status = "Baking " + selected.id + "...";
+                state.asset_bake_failures.clear();
+                const std::string source = state.asset_bake_use_default_source
+                    ? std::string{}
+                    : std::string(state.asset_bake_source_buffer);
+                const auto result = run_asset_bake(state.project_root, selected.id, source);
+                state.asset_bake_last_ok = result.ok;
+                state.asset_bake_status = result.summary;
+                state.asset_bake_report_json = result.raw_json;
+                state.asset_bake_failures = result.diagnostics;
+                if (result.ok) {
+                    for (const auto& mesh : result.mesh_reloads) state.pending_mesh_reloads.insert(mesh);
+                    if (!result.mesh_reloads.empty()) state.prefab_meshes_dirty = true;
+                }
+            }
+            ImGui::SameLine();
+            if (state.asset_bake_last_ok)
+                ImGui::TextColored(ImVec4(0.3f, 0.85f, 0.35f, 1.0f), "%s", state.asset_bake_status.c_str());
+            else
+                ImGui::TextWrapped("%s", state.asset_bake_status.c_str());
+            if (!state.asset_bake_failures.empty()) {
+                ImGui::Separator();
+                ImGui::Text("Verify failures");
+                for (const auto& err : state.asset_bake_failures) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.2f, 1.0f), "[%s] %s", err.code.c_str(),
+                        err.message.c_str());
+                    if (!err.remediation.empty()) ImGui::TextDisabled("  -> %s", err.remediation.c_str());
+                }
+            }
+            if (!state.asset_bake_report_json.empty() && ImGui::CollapsingHeader("Last bake JSON")) {
+                ImGui::TextUnformatted(state.asset_bake_report_json.c_str());
+            }
+        }
+        ImGui::EndTabItem();
+    }
     ImGui::EndTabBar();
     ImGui::End();
     draw_new_material_asset_popup(state);
@@ -12083,6 +12633,18 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 "StandingRuntime bind failed: " + bound.error().message);
         }
         editor->flag_runtime = std::make_unique<FlagRuntime>();
+        editor->item_catalog = std::make_unique<ItemCatalogAsset>();
+        if (const auto catalog_loaded = load_project_item_catalog(options.project_root); catalog_loaded) {
+            *editor->item_catalog = std::move(catalog_loaded.value());
+        } else {
+            Logger::instance().write(Severity::Warning, "inventory",
+                "Item catalog not loaded: " + catalog_loaded.error().message);
+        }
+        editor->inventory_runtime = std::make_unique<InventoryRuntime>();
+        if (const auto inv_bound = editor->inventory_runtime->bind(editor->item_catalog.get()); !inv_bound) {
+            Logger::instance().write(Severity::Warning, "inventory",
+                "InventoryRuntime bind failed: " + inv_bound.error().message);
+        }
         editor->coop_local = options.coop_local;
         editor->game_session.bind_quest_runtime(editor->quest_runtime.get());
         editor->game_session.bind_standing_runtime(editor->standing_runtime.get());
@@ -12151,9 +12713,11 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         editor->lua_runtime->set_quest_runtime(editor->quest_runtime.get());
         editor->lua_runtime->set_standing_runtime(editor->standing_runtime.get());
         editor->lua_runtime->set_flag_runtime(editor->flag_runtime.get());
+        editor->lua_runtime->set_inventory_runtime(editor->inventory_runtime.get());
         editor->lua_runtime->set_event_timeline_runtime(&editor->event_timeline_runtime);
         editor->lua_runtime->set_dialogue_runtime(&editor->dialogue_runtime);
         editor->lua_runtime->set_game_session(&editor->game_session);
+        editor->ui_canvas_stack->set_inventory_runtime(editor->inventory_runtime.get());
         editor->ui_canvas_stack->hud().set_text("quest.objectiveText", "");
         editor->audio_engine = std::make_unique<AudioEngine>();
         editor->audio_engine->set_project_root(options.project_root);
@@ -13241,23 +13805,36 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     editor->animator_runtime.reset();
                     editor->animator_runtime.set_project_root(editor->project_root);
                     editor->animator_runtime.set_clip_library(&editor->animation_clip_library);
+                    // Attach a unique AnimatorRuntime instance for every scene entity with an animator
+                    // component (authored or inherited from the prefab — e.g. npc_test).
+                    for (const auto& entity_id : editor->scene.entity_ids()) {
+                        const auto placement = editor->scene.placement(entity_id);
+                        if (!placement) continue;
+                        const auto resolved =
+                            resolve_prefab_catalog_path(editor->prefab_catalog, placement->prefab_asset);
+                        if (const auto found = editor->prefab_catalog.find(resolved);
+                            found != editor->prefab_catalog.end()) {
+                            (void)editor->scene.ensure_authored_components_seeded(entity_id, found->second);
+                            (void)editor->scene.propagate_prefab_components(resolved, found->second);
+                        }
+                        const auto authored = editor->scene.authored_components(entity_id);
+                        if (!authored) continue;
+                        for (const auto& entry : authored->entries) {
+                            if (entry.type != AuthoredComponentType::Animator) continue;
+                            if (entry.animator.controller.empty()) continue;
+                            auto attached = editor->animator_runtime.attach(entity_id.str(), entry.animator.controller,
+                                entry.animator.default_state);
+                            if (!attached) {
+                                Logger::instance().write(attached.error());
+                                append_editor_console(*editor,
+                                    "Animator attach failed (" + entity_id.str() + "): " + attached.error().message,
+                                    true);
+                            }
+                            break;
+                        }
+                    }
                     if (spawn_resolution.placement_entity) {
                         editor->test_animator_entity_id = spawn_resolution.placement_entity->str();
-                        if (const auto authored =
-                                editor->scene.authored_components(*spawn_resolution.placement_entity)) {
-                            for (const auto& entry : authored->entries) {
-                                if (entry.type != AuthoredComponentType::Animator) continue;
-                                if (entry.animator.controller.empty()) continue;
-                                auto attached = editor->animator_runtime.attach(editor->test_animator_entity_id,
-                                    entry.animator.controller, entry.animator.default_state);
-                                if (!attached) {
-                                    Logger::instance().write(attached.error());
-                                    append_editor_console(*editor,
-                                        "Animator attach failed: " + attached.error().message, true);
-                                }
-                                break;
-                            }
-                        }
                         const auto placement = editor->scene.placement(*spawn_resolution.placement_entity);
                         if (placement) {
                             const PrefabAsset* visual = find_prefab(editor->prefab_catalog, placement->prefab_asset);
@@ -13282,7 +13859,28 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                         editor->lua_runtime->set_animator_runtime(&editor->animator_runtime);
                         editor->lua_runtime->set_event_timeline_runtime(&editor->event_timeline_runtime);
                         editor->lua_runtime->set_dialogue_runtime(&editor->dialogue_runtime);
+                        editor->lua_runtime->set_inventory_runtime(editor->inventory_runtime.get());
                     }
+                    if (editor->inventory_runtime) {
+                        editor->inventory_runtime->reset();
+                        (void)editor->inventory_runtime->bind(editor->item_catalog.get());
+                        (void)editor->inventory_runtime->set_hotbar(0, "ashfell_arming_sword", 1);
+                        (void)editor->inventory_runtime->grant("field_bandage", 2);
+                        (void)editor->inventory_runtime->select_hotbar(0);
+                        sync_hotbar_equip_hud(*editor);
+                        if (editor->lua_runtime)
+                            (void)editor->lua_runtime->call_handler("inventory_refresh_ui", "{}");
+                    }
+                    editor->test_anim_was_grounded = true;
+                    editor->test_anim_lmb_was_down = false;
+                    editor->test_anim_shift_was_down = false;
+                    editor->test_anim_dead = false;
+                    editor->test_anim_pending_jump = false;
+                    editor->test_anim_last_health = 100.0;
+                    editor->dodge_remaining = 0.0f;
+                    editor->dodge_dir_x = 0.0f;
+                    editor->dodge_dir_z = 1.0f;
+                    editor->dodge_resource_regen_delay = 0.0f;
                 }
             } else if (command == EditorState::TestSessionCommand::Pause &&
                        editor->test_session == EditorState::TestSessionState::Running) {
@@ -13326,6 +13924,14 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 editor->animator_runtime.reset();
                 editor->test_animator_entity_id.clear();
                 editor->test_skinned_mesh_asset.clear();
+                editor->test_held_weapon_mesh.clear();
+                editor->test_held_weapon_hand_global.reset();
+                editor->test_held_hand_world.reset();
+                editor->test_skin_joint_names.clear();
+                editor->held_attach_gizmo_enabled = false;
+                editor->held_attach_gizmo_was_using = false;
+                editor->held_attach_drag_socket.reset();
+                editor->play_camera_matrices_valid = false;
                 editor->status = "Test session ended";
                 clear_editor_manipulation(*editor);
             }
@@ -13430,6 +14036,11 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     wish.x = (keys[SDL_SCANCODE_D] ? 1.0f : 0.0f) - (keys[SDL_SCANCODE_A] ? 1.0f : 0.0f);
                     wish.z = (keys[SDL_SCANCODE_W] ? 1.0f : 0.0f) - (keys[SDL_SCANCODE_S] ? 1.0f : 0.0f);
                 }
+                constexpr float k_dodge_speed = 3.5f / 0.25f; // ~3.5m over 0.25s
+                const bool dodging = editor && editor->dodge_remaining > 0.0f;
+                if (dodging) {
+                    wish = {}; // suppress WASD while scripted dash owns horizontal motion
+                }
                 // Local co-op: F7 swaps possessed avatar (WASD + look + jump). No auto-steal on move.
                 const bool coop_possess =
                     editor && editor->coop_local && guest_character && editor->test_session_active();
@@ -13462,9 +14073,20 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 // CharacterVirtual host path (no Rigidbody locomotion).
                 if (move_allowed && debug_character && !player_locomotion && !focus_guest) {
                     (void)take_mcp_wish(0);
-                    if (space_pressed || mcp_jump) (void)debug_character->jump();
+                    if (space_pressed || mcp_jump) {
+                        const auto jumped = debug_character->jump();
+                        if (jumped && jumped.value() && editor) editor->test_anim_pending_jump = true;
+                    }
                     const auto position_before = debug_character->position();
-                    (void)debug_character->move(wish, orbit_camera->yaw(), frame_delta_seconds);
+                    if (dodging) {
+                        const LocalPosition dash_delta{editor->dodge_dir_x * k_dodge_speed * frame_delta_seconds, 0.0f,
+                            editor->dodge_dir_z * k_dodge_speed * frame_delta_seconds};
+                        (void)debug_character->move_root_motion(dash_delta, frame_delta_seconds);
+                        editor->dodge_remaining =
+                            std::max(0.0f, editor->dodge_remaining - frame_delta_seconds);
+                    } else {
+                        (void)debug_character->move(wish, orbit_camera->yaw(), frame_delta_seconds);
+                    }
                     if (editor) record_movement_debug(*editor, *debug_character, wish, frame_delta_seconds, position_before);
                 }
                 if (move_allowed && guest_character && focus_guest) {
@@ -13898,6 +14520,9 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     LocalPosition wish{};
                     wish.x = (loco_keys[SDL_SCANCODE_D] ? 1.0f : 0.0f) - (loco_keys[SDL_SCANCODE_A] ? 1.0f : 0.0f);
                     wish.z = (loco_keys[SDL_SCANCODE_W] ? 1.0f : 0.0f) - (loco_keys[SDL_SCANCODE_S] ? 1.0f : 0.0f);
+                    constexpr float k_dodge_speed = 3.5f / 0.25f;
+                    const bool dodging = editor->dodge_remaining > 0.0f;
+                    if (dodging) wish = {};
                     const bool possess_guest =
                         editor->coop_local && guest_character && editor->coop_focus_slot == 1;
                     if (editor->mcp_forced_wish_frames > 0) {
@@ -13911,11 +14536,20 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     if (!possess_guest) {
                         const bool space_down = loco_keys[SDL_SCANCODE_SPACE];
                         if ((space_down && !space_key_was_down) || editor->mcp_forced_jump) {
-                            (void)player_locomotion->jump();
+                            const auto jumped = player_locomotion->jump();
+                            if (jumped && jumped.value()) editor->test_anim_pending_jump = true;
                             editor->mcp_forced_jump = false;
                         }
                         const float yaw = orbit_camera ? orbit_camera->yaw() : camera.yaw();
                         (void)player_locomotion->move(wish, yaw, frame_delta_seconds);
+                        if (dodging) {
+                            auto velocity = player_locomotion->linear_velocity();
+                            velocity[0] = editor->dodge_dir_x * k_dodge_speed;
+                            velocity[2] = editor->dodge_dir_z * k_dodge_speed;
+                            (void)debug_world->set_linear_velocity(player_locomotion->body(), velocity);
+                            editor->dodge_remaining =
+                                std::max(0.0f, editor->dodge_remaining - frame_delta_seconds);
+                        }
                     }
                 }
             }
@@ -13980,7 +14614,17 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     const auto id = editor->lua_runtime->blackboard_get("interact.id");
                     if (prompt && prompt->type == ScriptBlackboardType::Bool && prompt->bool_value && id &&
                         id->type == ScriptBlackboardType::String && !id->string_value.empty()) {
-                        editor->lua_runtime->dispatch_interaction_use(id->string_value);
+                        const std::string& interact_id = id->string_value;
+                        editor->lua_runtime->dispatch_interaction_use(interact_id);
+                        if (!editor->test_animator_entity_id.empty()) {
+                            const bool pickup = interact_id.find("loot") != std::string::npos ||
+                                interact_id.find("chest") != std::string::npos ||
+                                interact_id.find("pouch") != std::string::npos ||
+                                interact_id.find("bag") != std::string::npos ||
+                                interact_id.find("supply") != std::string::npos;
+                            (void)editor->animator_runtime.set_trigger(editor->test_animator_entity_id,
+                                pickup ? "interactPickup" : "interact");
+                        }
                     }
                 }
                 interact_e_was_down = e_down;
@@ -13995,6 +14639,13 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         if (options.editor) {
             if (editor->active_viewport_tab == EditorState::ViewportTab::WorldForge)
                 renderer.ensure_world_forge_placeholder_textures(editor->world_forge_editor);
+            if (orbit_camera && editor->test_session_active()) {
+                editor->play_camera_view = orbit_camera->view_matrix();
+                editor->play_camera_projection = orbit_camera->projection_matrix();
+                editor->play_camera_matrices_valid = true;
+            } else {
+                editor->play_camera_matrices_valid = false;
+            }
             draw_editor(*editor, debug_world.get(), camera_look_active, renderer.scene_viewport_texture(),
                 renderer.game_viewport_texture(), camera.view_matrix(), camera.projection_matrix(),
                 camera.view_projection(), camera.position(), streamed_terrain ? &*streamed_terrain : nullptr,
@@ -14126,40 +14777,273 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 }
             }
         }
-        if (editor && editor->test_session_running() && !editor->test_animator_entity_id.empty()
-            && editor->game_session.simulation_allowed()) {
-            float speed_param = 0.0f;
-            if (player_locomotion) {
-                const auto vel = player_locomotion->linear_velocity();
-                const float horizontal = std::sqrt(vel[0] * vel[0] + vel[2] * vel[2]);
-                const float max_speed = std::max(0.01f, editor->character_asset.max_speed);
-                speed_param = std::clamp(horizontal / max_speed, 0.0f, 1.0f);
-            }
-            (void)editor->animator_runtime.set_float(editor->test_animator_entity_id, "speed", speed_param);
-            editor->animator_runtime.tick(frame_delta_seconds);
-            if (editor->lua_runtime) {
-                for (const auto& fired : editor->animator_runtime.take_fired_events())
-                    editor->lua_runtime->dispatch_animation_event(fired);
-            }
-            const auto skin_started = std::chrono::steady_clock::now();
-            if (!editor->test_skinned_mesh_asset.empty()) {
-                const ImportedMesh* skinned = nullptr;
-                for (const auto& entry : imported_meshes) {
-                    if (normalize_asset_path(entry.first) == editor->test_skinned_mesh_asset) {
-                        skinned = &entry.second;
-                        break;
-                    }
+        // The skinning pass runs whenever a test session is active, including while paused. Skipping it on
+        // pause cleared the bone palette, which dropped the body to bind pose while its welds kept the last
+        // animated joint — exactly the pose authors reach for when tuning a grip.
+        if (editor && editor->test_session_active() && !editor->animator_runtime.attached_entity_ids().empty()) {
+            auto& anim = editor->animator_runtime;
+            const std::string& anim_id = editor->test_animator_entity_id;
+            const bool simulating = editor->test_session_running() && editor->game_session.simulation_allowed();
+
+            if (simulating && !anim_id.empty()) {
+                float speed_param = 0.0f;
+                bool grounded = true;
+                if (player_locomotion) {
+                    const auto vel = player_locomotion->linear_velocity();
+                    const float horizontal = std::sqrt(vel[0] * vel[0] + vel[2] * vel[2]);
+                    const float max_speed = std::max(0.01f, editor->character_asset.max_speed);
+                    speed_param = std::clamp(horizontal / max_speed, 0.0f, 1.0f);
+                    grounded = player_locomotion->on_ground();
+                } else if (debug_character) {
+                    const auto vel = debug_character->linear_velocity();
+                    const float horizontal = std::sqrt(vel[0] * vel[0] + vel[2] * vel[2]);
+                    const float max_speed = std::max(0.01f, editor->character_asset.max_speed);
+                    speed_param = std::clamp(horizontal / max_speed, 0.0f, 1.0f);
+                    grounded = debug_character->on_ground();
                 }
-                if (skinned && skinned->has_skinning() && !skinned->skins.empty()
-                    && skinned->influences.size() == skinned->vertices.size()
-                    && skinned->skins[0].joint_node_indices.size() <= k_max_bones) {
-                    auto status = editor->animator_runtime.status(editor->test_animator_entity_id);
-                    if (status) {
-                        auto locals = sample_skinned_local_poses(skinned->skins[0],
-                            editor->animation_clip_library, editor->project_root, status.value().active_clips);
-                        if (locals) {
-                            auto matrices = build_skin_matrices(skinned->skins[0], locals.value());
-                            if (matrices) renderer.set_pending_skin_matrices(matrices.value());
+                (void)anim.set_float(anim_id, "speed", speed_param);
+                (void)anim.set_bool(anim_id, "grounded", grounded);
+                if (editor->test_anim_pending_jump) {
+                    (void)anim.set_trigger(anim_id, "jump");
+                    editor->test_anim_pending_jump = false;
+                }
+                editor->test_anim_was_grounded = grounded;
+
+                const bool game_tab = editor->game_viewport_active();
+                const bool control_locked = editor->event_timeline_runtime.control_locked();
+                const bool ui_modal = editor->ui_canvas_stack && editor->ui_canvas_stack->has_modal();
+                // Grip authoring owns LMB (and combat keys) so gizmo clicks don't fire Attack.
+                const bool grip_authoring = editor->held_attach_gizmo_enabled;
+                const bool input_ok =
+                    game_tab && !control_locked && !ui_modal && !editor->test_anim_dead && !grip_authoring;
+
+                auto active_one_handed_melee = [&]() -> bool {
+                    if (!editor->inventory_runtime) return false;
+                    const auto stack = editor->inventory_runtime->active_hotbar_item();
+                    if (stack.empty()) return false;
+                    const ItemDef* def = editor->inventory_runtime->find_def(stack.item_id);
+                    if (!def) return false;
+                    bool one_handed = false;
+                    bool melee = false;
+                    for (const auto& tag : def->tags) {
+                        if (tag == "one_handed") one_handed = true;
+                        if (tag == "melee") melee = true;
+                    }
+                    return one_handed && melee;
+                };
+
+                if (input_ok) {
+                    const bool* keys = SDL_GetKeyboardState(nullptr);
+                    const bool lmb_down = (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK) != 0;
+                    const bool q_down = keys[SDL_SCANCODE_Q] != 0;
+                    const bool shift_down =
+                        keys[SDL_SCANCODE_LSHIFT] != 0 || keys[SDL_SCANCODE_RSHIFT] != 0;
+                    const bool has_melee = active_one_handed_melee();
+
+                    if (lmb_down && !editor->test_anim_lmb_was_down && has_melee && grounded)
+                        (void)anim.set_trigger(anim_id, "attack");
+                    (void)anim.set_bool(anim_id, "block", q_down && has_melee && grounded);
+
+                    if (shift_down && !editor->test_anim_shift_was_down && grounded &&
+                        editor->dodge_remaining <= 0.0f) {
+                        constexpr double k_dodge_cost = 20.0;
+                        constexpr float k_dodge_duration = 0.25f;
+                        constexpr float k_dodge_regen_delay = 0.4f;
+                        bool can_dodge = true;
+                        if (editor->ui_canvas_stack) {
+                            auto& hud = editor->ui_canvas_stack->hud();
+                            const double cur = hud.get_number("player.resource").value_or(0.0);
+                            const double max = hud.get_number("player.resourceMax").value_or(100.0);
+                            if (cur + 1.0e-6 < k_dodge_cost) {
+                                can_dodge = false;
+                            } else {
+                                hud.set_resource(cur - k_dodge_cost, max);
+                                editor->dodge_resource_regen_delay = k_dodge_regen_delay;
+                            }
+                        }
+                        if (can_dodge) {
+                            float wish_x =
+                                (keys[SDL_SCANCODE_D] ? 1.0f : 0.0f) - (keys[SDL_SCANCODE_A] ? 1.0f : 0.0f);
+                            float wish_z =
+                                (keys[SDL_SCANCODE_W] ? 1.0f : 0.0f) - (keys[SDL_SCANCODE_S] ? 1.0f : 0.0f);
+                            // Animator trigger from local WASD (clip facing).
+                            if (wish_z < -0.5f)
+                                (void)anim.set_trigger(anim_id, "dodgeBack");
+                            else if (wish_x < -0.5f)
+                                (void)anim.set_trigger(anim_id, "dodgeLeft");
+                            else if (wish_x > 0.5f)
+                                (void)anim.set_trigger(anim_id, "dodgeRight");
+                            else
+                                (void)anim.set_trigger(anim_id, "dodge");
+
+                            // Dash along camera-relative wish; idle defaults to facing forward.
+                            if (wish_x * wish_x + wish_z * wish_z < 0.01f) {
+                                wish_x = 0.0f;
+                                wish_z = 1.0f;
+                            }
+                            const float yaw = orbit_camera ? orbit_camera->yaw() : camera.yaw();
+                            const float forward_x = std::sin(yaw);
+                            const float forward_z = std::cos(yaw);
+                            const float right_x = std::cos(yaw);
+                            const float right_z = -std::sin(yaw);
+                            float world_x = right_x * wish_x + forward_x * wish_z;
+                            float world_z = right_z * wish_x + forward_z * wish_z;
+                            const float world_len = std::sqrt(world_x * world_x + world_z * world_z);
+                            if (world_len > 1.0e-4f) {
+                                world_x /= world_len;
+                                world_z /= world_len;
+                            } else {
+                                world_x = forward_x;
+                                world_z = forward_z;
+                            }
+                            editor->dodge_dir_x = world_x;
+                            editor->dodge_dir_z = world_z;
+                            editor->dodge_remaining = k_dodge_duration;
+
+                            WorldPosition feet{};
+                            if (player_locomotion) feet = player_locomotion->feet_position();
+                            else if (debug_character) feet = debug_character->position();
+                            const std::array<float, 3> burst_pos{static_cast<float>(feet.x),
+                                static_cast<float>(feet.y) + 0.15f, static_cast<float>(feet.z)};
+                            const std::array<float, 3> emit_dir{-world_x, 0.2f, -world_z};
+                            (void)editor->particle_system.spawn_burst("assets/vfx/dodge_dust.particle.json",
+                                burst_pos, 16, emit_dir);
+                        }
+                    }
+
+                    editor->test_anim_lmb_was_down = lmb_down;
+                    editor->test_anim_shift_was_down = shift_down;
+                } else {
+                    (void)anim.set_bool(anim_id, "block", false);
+                    editor->test_anim_lmb_was_down = false;
+                    editor->test_anim_shift_was_down = false;
+                }
+
+                if (editor->ui_canvas_stack) {
+                    // Dodge resource regen (stamina/magic secondary bar) after spend delay.
+                    if (editor->dodge_remaining <= 0.0f) {
+                        if (editor->dodge_resource_regen_delay > 0.0f) {
+                            editor->dodge_resource_regen_delay =
+                                std::max(0.0f, editor->dodge_resource_regen_delay - frame_delta_seconds);
+                        } else {
+                            auto& hud = editor->ui_canvas_stack->hud();
+                            const double cur = hud.get_number("player.resource").value_or(100.0);
+                            const double max = hud.get_number("player.resourceMax").value_or(100.0);
+                            if (cur + 1.0e-6 < max) {
+                                constexpr double k_regen_per_sec = 25.0;
+                                hud.set_resource(
+                                    std::min(max, cur + k_regen_per_sec * static_cast<double>(frame_delta_seconds)),
+                                    max);
+                            }
+                        }
+                    }
+
+                    const double health =
+                        editor->ui_canvas_stack->hud().get_number("player.health").value_or(100.0);
+                    if (!editor->test_anim_dead && health <= 0.0 && editor->test_anim_last_health > 0.0) {
+                        (void)anim.set_trigger(anim_id, "die");
+                        editor->test_anim_dead = true;
+                    } else if (editor->test_anim_dead && health > 0.0) {
+                        (void)anim.set_trigger(anim_id, "revive");
+                        editor->test_anim_dead = false;
+                    } else if (!editor->test_anim_dead && health + 0.01 < editor->test_anim_last_health) {
+                        (void)anim.set_trigger(anim_id, "hit");
+                    }
+                    editor->test_anim_last_health = health;
+                }
+            }
+
+            if (simulating) {
+                anim.tick(frame_delta_seconds);
+                if (editor->lua_runtime) {
+                    for (const auto& fired : anim.take_fired_events())
+                        editor->lua_runtime->dispatch_animation_event(fired);
+                }
+            }
+
+            const auto skin_started = std::chrono::steady_clock::now();
+            renderer.begin_bone_slot_frame();
+            editor->test_held_weapon_mesh.clear();
+            editor->test_held_weapon_hand_global.reset();
+            editor->test_held_hand_world.reset();
+            editor->test_skinned_visual_local = TransformComponent{};
+            // The skinned mesh usually lives on a prefab part whose local transform carries the character
+            // scale; welds need that link or they hang off an unscaled skeleton.
+            auto resolve_skinned_mesh = [&](const std::string& entity_id_str,
+                                            TransformComponent* out_visual_local) -> const ImportedMesh* {
+                for (const auto& id : editor->scene.entity_ids()) {
+                    if (id.str() != entity_id_str) continue;
+                    const auto placement = editor->scene.placement(id);
+                    if (!placement) return nullptr;
+                    const PrefabAsset* prefab = find_prefab(editor->prefab_catalog, placement->prefab_asset);
+                    if (!prefab) return nullptr;
+                    std::string mesh_key;
+                    TransformComponent visual_local;
+                    if (!prefab->is_compositional() && !prefab->mesh.empty()) {
+                        mesh_key = normalize_asset_path(prefab->mesh);
+                    } else {
+                        for (const auto& part : prefab->parts) {
+                            if (part.mesh.asset && !part.mesh.asset->empty()) {
+                                mesh_key = normalize_asset_path(*part.mesh.asset);
+                                visual_local = part.transform;
+                                break;
+                            }
+                        }
+                    }
+                    if (mesh_key.empty()) return nullptr;
+                    for (const auto& entry : imported_meshes) {
+                        if (normalize_asset_path(entry.first) != mesh_key) continue;
+                        if (out_visual_local) *out_visual_local = visual_local;
+                        return &entry.second;
+                    }
+                    return nullptr;
+                }
+                return nullptr;
+            };
+            for (const auto& entity_id_str : anim.attached_entity_ids()) {
+                TransformComponent visual_local;
+                const ImportedMesh* skinned = resolve_skinned_mesh(entity_id_str, &visual_local);
+                if (!skinned || !skinned->has_skinning() || skinned->skins.empty()
+                    || skinned->influences.size() != skinned->vertices.size()
+                    || skinned->skins[0].joint_node_indices.size() > k_max_bones)
+                    continue;
+                auto status = anim.status(entity_id_str);
+                if (!status) continue;
+                auto locals = sample_skinned_local_poses(skinned->skins[0], editor->animation_clip_library,
+                    editor->project_root, status.value().active_clips);
+                if (!locals) continue;
+                auto matrices = build_skin_matrices(skinned->skins[0], locals.value());
+                if (matrices) (void)renderer.upload_entity_bone_slot(entity_id_str, matrices.value());
+
+                // Active hotbar worldMesh → weld to the authored joint.
+                // RH Blockbench in LH runtime: joint named LeftHand is the on-screen right hand
+                // (see findings.md handedness note).
+                if (entity_id_str == editor->test_animator_entity_id && editor->inventory_runtime) {
+                    editor->test_skin_joint_names = skinned->skins[0].joint_names;
+                    const auto stack = editor->inventory_runtime->active_hotbar_item();
+                    if (!stack.empty()) {
+                        if (const ItemDef* def = editor->inventory_runtime->find_def(stack.item_id)) {
+                            if (!def->world_mesh.empty()) {
+                                // Reseed live authoring from the item before reading the joint, so a freshly
+                                // selected weapon uses its own authored weld rather than the last one's.
+                                if (editor->held_attach_item_id != stack.item_id) {
+                                    editor->held_attach_item_id = stack.item_id;
+                                    editor->held_attach_weld = weld_from_item_hand_attach(def->hand_attach);
+                                    editor->held_attach_dirty = false;
+                                }
+                                auto globals = build_joint_global_matrices(skinned->skins[0], locals.value());
+                                auto hand_idx =
+                                    find_skin_joint_index(skinned->skins[0], editor->held_attach_weld.joint);
+                                if (!hand_idx)
+                                    hand_idx = find_skin_joint_index(skinned->skins[0], "RightHand");
+                                if (!hand_idx)
+                                    hand_idx = find_skin_joint_index(skinned->skins[0], "LeftHand");
+                                if (globals && hand_idx && *hand_idx < globals.value().size()) {
+                                    editor->test_held_weapon_mesh = normalize_asset_path(def->world_mesh);
+                                    editor->test_held_weapon_hand_global = globals.value()[*hand_idx];
+                                    editor->test_skinned_visual_local = visual_local;
+                                }
+                            }
                         }
                     }
                 }
@@ -14167,6 +15051,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             frame_cpu_skin_ms = std::chrono::duration<double, std::milli>(
                 std::chrono::steady_clock::now() - skin_started)
                                    .count();
+        } else if (editor) {
+            renderer.begin_bone_slot_frame();
         }
         if (editor && editor->test_session_running() && editor->game_session.simulation_allowed()) {
             editor->event_timeline_runtime.tick(frame_delta_seconds);
@@ -14181,7 +15067,29 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             editor ? make_material_lookup(&editor->material_cache) : PrefabAsset::MaterialLookup{};
         const std::vector<RenderInstance>* static_placed = nullptr;
         if (editor && editor->prefab_meshes_dirty) {
+            // Snapshot reload keys before ensure clears them — clip library must refresh too.
+            // Otherwise mesh bind poses update while Idle/Walk/Run stay on the pre-bake cache → T-pose.
+            const std::set<std::string> clip_reload_keys = editor->pending_mesh_reloads;
             ensure_prefab_primitive_meshes(*editor, imported_meshes);
+            for (const auto& key : clip_reload_keys) {
+                const auto extension = std::filesystem::path(key).extension().string();
+                if (extension != ".gltf" && extension != ".glb") continue;
+                const auto absolute = editor->project_root / key;
+                if (!std::filesystem::exists(absolute)) continue;
+                auto reloaded = editor->animation_clip_library.reload(absolute);
+                if (!reloaded) {
+                    Logger::instance().write(reloaded.error());
+                    append_editor_console(*editor,
+                        "Animation clip reload failed after mesh bake: " + reloaded.error().message, true);
+                } else {
+                    append_editor_console(*editor, "Animation clips reloaded: " + key, false);
+                }
+            }
+            // Also pick up any other previously loaded clip sources whose write time changed.
+            if (auto n = editor->animation_clip_library.reload_changed(); n && n.value() > 0) {
+                append_editor_console(*editor,
+                    "AnimationClipLibrary reload_changed: " + std::to_string(n.value()), false);
+            }
             for (const auto& foliage_mesh : build_foliage_layer_meshes(editor->foliage_layers)) {
                 const auto normalized = normalize_asset_path(foliage_mesh.first);
                 bool exists = false;
@@ -14243,7 +15151,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     const auto& draw_transform = previewing_selected ? *editor->gizmo_preview : *transform;
                     if (const auto* prefab = find_prefab(editor->prefab_catalog, placement->prefab_asset)) {
                         expand_prefab_render_instances(*prefab, draw_transform, editor->static_render_instances,
-                            editor_material_lookup, &editor->mesh_bounds);
+                            editor_material_lookup, &editor->mesh_bounds, id.str());
                     }
                     static_light_placements.emplace_back(normalize_asset_path(placement->prefab_asset), draw_transform);
                 }
@@ -14266,7 +15174,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                         const auto placement = editor->scene.placement(id);
                         const auto transform = editor->scene.transform(id);
                         if (!placement || !transform) continue;
-                        input->placements.emplace_back(placement->prefab_asset, *transform);
+                        input->placements.emplace_back(placement->prefab_asset, *transform, id.str());
                     }
                     // Cleared before launch so an edit landing mid-job re-dirties and queues a follow-up pass.
                     editor->static_render_cache_dirty = false;
@@ -14296,9 +15204,36 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             if (placement && transform) {
                 if (const auto* prefab = find_prefab(editor->prefab_catalog, placement->prefab_asset)) {
                     expand_prefab_render_instances(*prefab, *transform, placed_objects, editor_material_lookup,
-                        &editor->mesh_bounds);
+                        &editor->mesh_bounds, editor->test_player_spawn_entity->str());
                 }
                 light_placements.emplace_back(normalize_asset_path(placement->prefab_asset), *transform);
+
+                // Held hotbar weapon: unskinned mesh welded to the animated joint each frame. The chain must
+                // include the prefab part transform the skinned body is drawn with, or the weapon hangs off
+                // an unscaled skeleton instead of the visible hand.
+                if (!editor->test_held_weapon_mesh.empty() && editor->test_held_weapon_hand_global) {
+                    BoneSocketChain chain;
+                    chain.owner_world = *transform;
+                    chain.visual_local = editor->test_skinned_visual_local;
+                    chain.joint_model = *editor->test_held_weapon_hand_global;
+                    const TransformComponent hand_world = bone_socket_world(chain);
+                    editor->test_held_hand_world = hand_world;
+
+                    const TransformComponent weapon_world =
+                        weld_world_transform(hand_world, editor->held_attach_weld);
+
+                    RenderInstance weapon;
+                    weapon.transform = weapon_world;
+                    weapon.mesh_asset = editor->test_held_weapon_mesh;
+                    weapon.pbr = PbrSurfaceParams::dielectric_default();
+                    weapon.mesh_key_hash =
+                        static_cast<std::uint64_t>(std::hash<std::string>{}(weapon.mesh_asset));
+                    if (const auto found = editor->mesh_bounds.find(weapon.mesh_asset);
+                        found != editor->mesh_bounds.end()) {
+                        weapon.bounds = transform_mesh_bounds(found->second, weapon_world);
+                    }
+                    placed_objects.push_back(std::move(weapon));
+                }
             }
         }
         if (editor && editor->drop_preview && editor->drop_preview_prefab) {

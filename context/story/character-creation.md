@@ -44,8 +44,10 @@ Morality thresholds, subclass milestones, and allegiance still unlock later arch
 
 - Define appearance customization fields (body, face, voice, etc.).
 - Define whether pronouns are selectable and how dialogue addresses the protagonist.
-- Confirm or rename **House Ashfell** with Dom (draft owner lock 2026-07-24).
+- Confirm House Ashfell faces (D-P1-21b); ~~rename~~ **confirmed** 2026-07-29.
 - Define Outrider Lodge and Runecaster Guild faces, ranks, and first quests.
 - Define combat **systems** and party/build **comps** per lane (interview backlog).
 - Define whether each archetype uses distinct opening/tutorial combat lessons or a shared tutorial with archetype-specific loadouts.
 - Reconcile the Wild God revival opening with the drafted-to-Calrenoth premise across all archetypes.
+- **Archetype quest unlocks** ([DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux)): home-org lines optional for main story, needed for full lane power; per-quest gear and/or ability (act-scaled); separate Faction tab for polity standing.
+- **Power progression:** no traditional XP/level — gear + chapter bosses + archetype/story unlocks ([gearing-system.md](../features/gearing-system.md#power-progression-dec-0051)).

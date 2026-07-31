@@ -44,6 +44,7 @@ This directory is durable memory for humans and AI agents. Source code remains a
 - `roadmap.md` — milestones and exit criteria
 - `testing/strategy.md` — layered verification and regression policy
 - `testing/findings.md` — material defects, causes, fixes, and remaining risks
+- `testing/recurring-asset-failures.md` — path-forward playbook when the same asset-pipeline failure class repeats
 - `testing/coverage.md` — implemented, tested, partial, and untested areas
 
 Use stable links and concise entries. Update the relevant index in the same change as the code or asset. Mark obsolete information as superseded rather than silently deleting rationale.

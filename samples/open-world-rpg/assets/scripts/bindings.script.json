@@ -20,6 +20,16 @@
       "id": "event_sandbox",
       "handler": "on_event_sandbox",
       "script": "assets/scripts/event_zone_sandbox_interaction.lua"
+    },
+    {
+      "id": "open_loot_bag",
+      "handler": "on_open_loot_bag",
+      "script": "assets/scripts/loot_container_interaction.lua"
+    },
+    {
+      "id": "open_supply_chest",
+      "handler": "on_open_supply_chest",
+      "script": "assets/scripts/loot_container_interaction.lua"
     }
   ],
   "combatHits": [],

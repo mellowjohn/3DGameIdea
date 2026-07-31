@@ -1,0 +1,19 @@
+---
+description: Always maximize/fullscreen the target window before article or desktop screen capture.
+alwaysApply: true
+---
+
+# Fullscreen Before Screen Capture
+
+When using `windows-computer-use` (or any desktop capture) for recordings, screenshots, blog stills, or article footage:
+
+1. **Always fullscreen / maximize the subject first.** Do not capture a floating, restored, or half-size window.
+2. Order: find window → `window` `focus` → **maximize with Win32 `ShowWindow(SW_MAXIMIZE)`** (not `win+up`, which opens Snap Assist on Windows 11) → wait ~0.5s for layout → then `screenshot` / `record` / `play`.
+3. Prefer **borderless or maximized windowed** that fills the monitor. If exclusive fullscreen yields black/identical frames, drop to maximized borderless and re-capture.
+4. Prefer `window:<title>` targets after maximize (not a tiny region). Use `desktop` / `display:N` only when the whole monitor is intentionally the subject.
+5. Never skip maximize because the window “looks big enough.”
+
+```text
+❌ BAD: record window:AI RPG Engine Editor while it is a small floating window
+✅ GOOD: focus → maximize/fullscreen → record the same window
+```

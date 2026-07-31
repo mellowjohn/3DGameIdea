@@ -121,6 +121,13 @@ void AnimatorRuntime::reset() noexcept {
     recent_errors_.clear();
 }
 
+std::vector<std::string> AnimatorRuntime::attached_entity_ids() const {
+    std::vector<std::string> ids;
+    ids.reserve(instances_.size());
+    for (const auto& [entity_id, _] : instances_) ids.push_back(entity_id);
+    return ids;
+}
+
 Result<void> AnimatorRuntime::resolve_clip(const AnimatorClipRef& ref, const std::string& entity_id,
     const AnimationClip** out_clip) {
     if (!clip_library_)

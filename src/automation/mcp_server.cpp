@@ -6,6 +6,7 @@
 #include "engine/automation/live_automation_control.h"
 #include "engine/automation/world_forge_commands.h"
 #include "engine/automation/project_git_commands.h"
+#include "engine/automation/asset_bake_commands.h"
 #include "engine/automation/build_coordination.h"
 #include "engine/core/result.h"
 #include "engine/assets/prefab_asset.h"
@@ -250,6 +251,47 @@ const char* k_tools_list_json =
         }
     },
     {
+        "name": "engine_editor_session",
+        "description": "Drive the editor play-test session without clicking toolbar icons. kind=status|start|end|pause|resume|set_overlays. Optional overlay bools: showEventZones, showCollisionDebug, showWorldForgeMapMarkers. Prefer end before Scene camera framing for blog/article stills. Requires live editor MCP.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "kind": { "type": "string" },
+                "action": { "type": "string" },
+                "showEventZones": { "type": "boolean" },
+                "showCollisionDebug": { "type": "boolean" },
+                "showWorldForgeMapMarkers": { "type": "boolean" }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "engine_editor_camera",
+        "description": "Control the Scene (edit) DebugCamera for framing stills without desktop RMB fly. action=status|set_pose|look_at|focus_entity|select_entity|deselect. focus_entity/look_at take entityId or unique name (+ distance/height default 8/3, yawOffsetDegrees to orbit, select=false clears gizmos). set_pose takes x/y/z and yawDegrees/pitchDegrees. Switches to Scene tab. Requires live editor MCP.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": { "type": "string" },
+                "kind": { "type": "string" },
+                "entityId": { "type": "string" },
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "z": { "type": "number" },
+                "yaw": { "type": "number" },
+                "pitch": { "type": "number" },
+                "yawDegrees": { "type": "number" },
+                "pitchDegrees": { "type": "number" },
+                "yawOffsetDegrees": { "type": "number" },
+                "distance": { "type": "number" },
+                "height": { "type": "number" },
+                "select": { "type": "boolean" }
+            },
+            "required": []
+        }
+    },
+    {
         "name": "engine_editor_ui_query",
         "description": "List registered editor UI hotspots (widget id → client rect/center) from the last drawn frame. Filters: id (exact), idPrefix, contains. Use with engine_editor_input targetId. Requires live bridge; prefer over CV for clicking named controls.",
         "inputSchema": {
@@ -371,7 +413,7 @@ const char* k_tools_list_json =
     },
     {
         "name": "engine_asset_apply",
-        "description": "Create or update a prefab or material asset, validate it, and refresh the editor asset browser. Use action refresh_catalog to rescan without writing.",
+        "description": "Create or update a prefab, material, or particle (*.particle.json) asset, validate it, and refresh the editor asset browser / particle registry. Use action refresh_catalog to rescan without writing.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -381,6 +423,19 @@ const char* k_tools_list_json =
                 "json": { "type": "object" },
                 "source": { "type": "string" },
                 "refreshCatalog": { "type": "boolean" }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "engine_asset_bake",
+        "description": "Named Blockbench asset bake (TICKET-0245): run tools/asset_bake.py for a catalog target (player or props), fail-closed verify gates, optional mesh hot-reload when the editor is live. Actions: list|bake.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": { "type": "string" },
+                "target": { "type": "string" },
+                "source": { "type": "string" }
             },
             "required": []
         }
@@ -477,6 +532,23 @@ const char* k_tools_list_json =
                 "objectiveId": { "type": "string" },
                 "forkId": { "type": "string" },
                 "outcomeFlag": { "type": "string" }
+            },
+            "required": ["kind"]
+        }
+    },
+    {
+        "name": "engine_inventory_call",
+        "description": "Drive session InventoryRuntime (TICKET-0237 / DEC-0050). kind=status|grant|set_hotbar|set_equip|select_hotbar|select|equip_selected|unequip_selected|move. grant/set_* need itemId; set_hotbar/select_hotbar need slot 0..7; set_equip needs equipSlot (head|chest|legs|trinket0..3); move needs fromRegion/toRegion (+ fromIndex/toIndex/fromEquipSlot/toEquipSlot). Requires live editor MCP. Allowed during play test.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "kind": { "type": "string" },
+                "itemId": { "type": "string" },
+                "count": { "type": "integer" },
+                "slot": { "type": "integer" },
+                "equipSlot": { "type": "string" },
+                "region": { "type": "string" },
+                "index": { "type": "integer" }
             },
             "required": ["kind"]
         }
@@ -733,6 +805,24 @@ nlohmann::json handle_tools_call(const std::filesystem::path& project_root, cons
     if (tool_name == "engine_editor_input") {
         return bridge_to_tool_result(forward_to_editor(project_root, "editor_input", arguments));
     }
+    if (tool_name == "engine_editor_session") {
+        EditorBridgeClient client(project_root);
+        if (!client.is_editor_running()) {
+            return {{"isError", true},
+                {"content", nlohmann::json::array({tool_text_content(
+                    "engine_editor_session requires a running editor with MCP connection enabled")})}};
+        }
+        return bridge_to_tool_result(forward_to_editor(project_root, "editor_session", arguments));
+    }
+    if (tool_name == "engine_editor_camera") {
+        EditorBridgeClient client(project_root);
+        if (!client.is_editor_running()) {
+            return {{"isError", true},
+                {"content", nlohmann::json::array({tool_text_content(
+                    "engine_editor_camera requires a running editor with MCP connection enabled")})}};
+        }
+        return bridge_to_tool_result(forward_to_editor(project_root, "editor_camera", arguments));
+    }
     if (tool_name == "engine_editor_ui_query") {
         return bridge_to_tool_result(forward_to_editor(project_root, "editor_ui_query", arguments));
     }
@@ -757,6 +847,24 @@ nlohmann::json handle_tools_call(const std::filesystem::path& project_root, cons
         return bridge_to_tool_result(forward_asset_operation(project_root, "prefab_apply", arguments));
     if (tool_name == "engine_asset_apply")
         return bridge_to_tool_result(forward_asset_operation(project_root, "asset_apply", arguments));
+    if (tool_name == "engine_asset_bake") {
+        // Bake always runs offline (Python can take >1 min). Live editor only queues mesh reload.
+        auto baked = apply_asset_bake_operation(project_root, arguments);
+        if (baked.exit_code == ExitCode::Success && !baked.changed_object_ids.empty()) {
+            EditorBridgeClient client(project_root);
+            if (client.is_editor_running()) {
+                nlohmann::json reload = {{"action", "reload"}, {"meshes", baked.changed_object_ids}};
+                const auto notified = forward_to_editor(project_root, "asset_bake", reload);
+                if (notified.exit_code == ExitCode::Success) {
+                    baked.metadata["meshReloadQueued"] = "true";
+                } else {
+                    baked.metadata["meshReloadQueued"] = "false";
+                    baked.metadata["meshReloadNote"] = notified.summary;
+                }
+            }
+        }
+        return bridge_to_tool_result(baked);
+    }
     if (tool_name == "engine_lua_apply") {
         EditorBridgeClient client(project_root);
         if (!client.is_editor_running()) {
@@ -867,6 +975,15 @@ nlohmann::json handle_tools_call(const std::filesystem::path& project_root, cons
                     "engine_quest_call requires a running editor with MCP connection enabled")})}};
         }
         return bridge_to_tool_result(forward_to_editor(project_root, "quest_call", arguments));
+    }
+    if (tool_name == "engine_inventory_call") {
+        EditorBridgeClient client(project_root);
+        if (!client.is_editor_running()) {
+            return {{"isError", true},
+                {"content", nlohmann::json::array({tool_text_content(
+                    "engine_inventory_call requires a running editor with MCP connection enabled")})}};
+        }
+        return bridge_to_tool_result(forward_to_editor(project_root, "inventory_call", arguments));
     }
     if (tool_name == "engine_flag_call") {
         EditorBridgeClient client(project_root);

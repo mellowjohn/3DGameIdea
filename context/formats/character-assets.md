@@ -24,4 +24,4 @@ Changes apply on the next test session start.
 
 ## NPC test stand-in
 
-`assets/characters/npc_test.character.json` + `assets/prefabs/NPC/npc_test.prefab.json` reuse the Player_V2 `player.gltf` mesh (finger/thumb joints included) for temporary NPC placement. The NPC prefab omits `characterAsset` so it does not register as a player spawn. Editor sync only reverse-matches the play-session character’s `visualPrefab` (not every `.character.json`), so NPC stand-ins stay non-spawn.
+`assets/characters/npc_test.character.json` + `assets/prefabs/NPC/npc_test.prefab.json` reuse the Player_V2 `player.gltf` mesh (finger/thumb joints included) for temporary NPC placement. The NPC prefab omits `characterAsset` so it does not register as a player spawn, and includes the same `player.animator.json` controller (default Idle). Play-test attaches a **separate animator instance per entity**, so NPC Idle does not share the player’s locomotion pose. Editor sync only reverse-matches the play-session character’s `visualPrefab` (not every `.character.json`), so NPC stand-ins stay non-spawn.

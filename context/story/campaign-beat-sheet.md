@@ -20,7 +20,7 @@ Story “acts” are **narrative arcs**, not separate loaded chapters. Progress 
 
 | Act | Arc | Gate style | Status |
 | --- | --- | --- | --- |
-| Act 0 — **Landfall** | Prologue → Calrenoth siege tutorial → Creotar vision | Soft-gated tutorial corridor in open world; optional instance for Realm of Darkness | **draft** (Twine-backed); geography confirmed western peninsula tip ([official-world-map.md](official-world-map.md#draft-faction-theaters-2026-07-20)) |
+| Act 0 — **Landfall** | Prologue → Calrenoth siege tutorial → Creotar vision | Soft-gated tutorial corridor in open world; optional instance for Realm of Darkness | **draft** (Twine-backed); title **final** (D-P0-15); geography confirmed western peninsula tip ([official-world-map.md](official-world-map.md#draft-faction-theaters-2026-07-20)) |
 | Act 1 | Retreat aftermath → **Ledgeport** hub → dual-path intro (Thalassar ↔ Cristallo) + succession (A1-05) | Soft gates open into 4×4 km world | **draft** |
 | Act 2 | Faction pull (Cristallo / Arrotrebae) + mid-war stakes | Soft gates + optional dungeon instances | **draft** / mid beats **open** (faction gaps) |
 | Act 3 | Approach Luceran / Shroud crisis | Soft gates; possible set-piece instance for climax approach | **draft** |
@@ -40,7 +40,7 @@ Status: **draft** — Dom + owner sessions. Do not invent settlement names; **Th
 
 ## Act 0 — Landfall (Fall of Calrenoth)
 
-**Title:** **Landfall** (Dom + owner, 2026-07-20) — tutorial establishing the Chaotic Imperium, Luceran the Hollow, and the Kingdom of Tessera as a force of its own.
+**Title:** **Landfall** — **final** marketing name (Dom + owner, 2026-07-20; confirmed D-P0-15, 2026-07-29) — tutorial establishing the Chaotic Imperium, Luceran the Hollow, and the Kingdom of Tessera as a force of its own.
 
 **Premise (draft):** Player is deployed into the Imperium siege of **Calrenoth** (aligns with [ashfell-blade.md](ashfell-blade.md) / King Asher’s war levy; same draft premise for Outrider and Runecaster). Alternate Wild God revival opening remains **open** chronology — not used as Act 0 spine here.
 
@@ -90,7 +90,7 @@ Status: **draft** — Dom + owner sessions. Do not invent settlement names; **Th
 
 - **Status:** draft (Twine)
 - Choice pressure: save Larrell vs flee as Imperium overruns the rear.
-- **Cast continuity (draft lock 2026-07-22, D-P0-12):** **Grenge / Larrell / Damius** **survive by default** (“for the most part”) and may reappear in Act 1 after evacuating **over the wall**. Optional: **one** held **hostage** — which person is **open** (author picks for best payoff). Prefer consequential flags over silent disappearances.
+- **Cast continuity (draft lock 2026-07-22, D-P0-12; hostage lock 2026-07-29, D-P0-12b):** **Grenge / Larrell / Damius** **survive by default** (“for the most part”) and may reappear in Act 1 after evacuating **over the wall**. Optional hostage = **Sergeant Larrell** if the player does **not** save her at this beat (consequential flag + later payoff). Prefer consequential flags over silent disappearances.
 - Black fog; dread; pale dark rider (Luceran the Hollow); player collapses.
 - **Gate note:** Prefer soft-gated siege space **in the open world**; short set-piece instance only if density needs it — one contiguous Calrenoth experience with minimal loads ([DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances)).
 
@@ -98,19 +98,21 @@ Status: **draft** — Dom + owner sessions. Do not invent settlement names; **Th
 
 - **Status:** draft (Twine); Creotar identity **resolved** (2026-07-20)
 - Vision space: darkness; light-being **Creotar** (**Creo** short form) warns that Luceran the Hollow / Nefarium Shroud must be opposed.
-- Creotar self-describes as god/gifter of **knowledge and creation**; claims a **crystal** (stolen from him after world’s creation) can tear/destroy the Shroud; urges freeing Luceran from the Shroud to free Tessera.
+- Creotar self-describes as god/gifter of **knowledge and creation**; claims a crystal — **Claritas** (D-P2-02b) — can tear/destroy the Shroud; urges freeing Luceran from the Shroud to free Tessera.
 - Alternate branch stresses Shroud as a **prison** for Luceran and that Imperium chaos followed Shroud falling into wrong hands — conflicts with Frangitur’s “rip Tessera apart” prologue (dramatic irony; see [prologue-and-opening.md](prologue-and-opening.md)).
 - Twine names **Grul’thaz the Black Howl** (Shadowpaw) as prior Shroud bearer — **draft lock 2026-07-22:** **The Black Howl** warband held the Shroud in the first war before Luceran usurped it.
 - Asher is Luceran’s **fragile half-brother** on the throne — **established** (D-P0-13, 2026-07-22).
-- Twine gaps: crystal-location dialogue passages are empty stubs; “Tutorial Completion” only says continue to next level.
-- **Continuity:** Creotar = Creo; Frangitur = fallen/perverted form of the same being ([frangitur-the-great-evil.md](frangitur-the-great-evil.md)). Whether the vision’s “destroy the Shroud” guidance is honest or ironic remains **open**.
+- Twine gaps: crystal-location dialogue passages were empty stubs — fill with **Claritas** (staff-borne by Cristallo’s leader); “Tutorial Completion” only says continue to next level.
+- **Continuity:** Creotar = Creo; Frangitur = fallen/perverted form of the same being ([frangitur-the-great-evil.md](frangitur-the-great-evil.md)). Vision “destroy the Shroud” guidance is **partially true** (D-P2-14, 2026-07-29): stop Luceran / misuse is real; “free Creotar by breaking the Shroud” is Frangitur/Luceran manipulation — Shroud **contains Frangitur** and **binds** Imperium chaos; breaking it **releases Frangitur**.
 - **Gate note:** Strong candidate for a rare **vision instance** (or seamless overlay) — not a full world reload loop.
 
 ### Beat A0-09 — Tutorial completion → Act 1 handoff
 
-- **Status:** draft — **camp handoff locked** (Dom D-P0-10, 2026-07-22)
+- **Status:** draft — **camp handoff locked** (Dom D-P0-10, 2026-07-22; beats D-P1-19, 2026-07-29)
 - Vision ends; player is placed **outside Calrenoth events** and wakes at a **Dragon Age–style campsite** (companion-relationship + camp-storage tutorial; **rest for HP**; **not** survival feeding).
 - Camp is **travel-only** — no combat escape ([DEC-0033](../decisions/index.md#dec-0033-anywhere-player-camp-as-editable-instance-dao-style)). Player **travels to camp**, then **travels to map destinations** (including **Ledgeport**) from camp.
+- **Tutorial guide:** **Arkand** walks storage chest, rest, and travel in lore-friendly lines. Companions with pending story / profile beats show a **talk flag**; player chooses who to speak to (no forced first companion beyond Arkand’s tutorial).
+- **No** non-companion camp NPC in v1 (keep camp light). Optional later camp-attack beat deferred.
 - Replaces the named **O’hlundian evergreens wake** as the Act 0→1 geography anchor (D-P0-05); evergreens may remain as **biome flavor** on the retreat path only.
 - **Calrenoth on the map:** remains as a **ruined, impacted** seamless location the player can revisit (destroyed/attacked state), not a wiped instance.
 
@@ -120,9 +122,9 @@ Status: **draft** — Dom + owner sessions. Do not invent settlement names; **Th
 
 ### Beat A1-01 — Survivor camp / retreat
 
-- **Status:** draft ([DEC-0033](../decisions/index.md#dec-0033-anywhere-player-camp-as-editable-instance-dao-style)); **camp tutorial begins post–Act 0** (D-P0-10, 2026-07-22)
-- After campsite tutorial, survivor path toward **Ledgeport**; rejoin Arkand (and possibly Larrell / Grenge remnants depending on A0-07). Establish immediate survival goal and Creotar’s warning as personal quest seed.
-- **Camp loop:** teach pitch/setup, talk to camp NPCs/companions, relationship beats, optional storage; **rest for HP**; leave camp to travel. After unlock, player may camp from (nearly) anywhere on the overland map via the same persistent camp instance (DAO-style) — **not** a combat escape hatch.
+- **Status:** draft ([DEC-0033](../decisions/index.md#dec-0033-anywhere-player-camp-as-editable-instance-dao-style)); **camp tutorial begins post–Act 0** (D-P0-10 / D-P1-19, 2026-07-29)
+- After campsite tutorial (**Arkand**-guided storage / rest / travel; companion talk flags), survivor path toward **Ledgeport**; rejoin Arkand (and possibly Larrell if saved / not hostage, or Grenge remnants). Establish immediate survival goal and Creotar’s warning as personal quest seed.
+- **Camp loop:** talk to companions (story + relationship beats), optional storage; **rest for HP**; leave camp to travel. No non-companion camp NPC in v1. After unlock, player may camp from (nearly) anywhere on the overland map via the same persistent camp instance (DAO-style) — **not** a combat escape hatch.
 - Player then finds the road toward **Ledgeport** on foot from camp travel.
 - **Geography (draft):** Act 1 focus = **Ledgeport**; named evergreen wake deprecated as competing geography.
 
@@ -162,9 +164,10 @@ Mid-campaign beats stay **draft** where faction gaps from [TICKET-0021](../plann
 
 ### Beat A2-01 — Cristallo contact
 
-- **Status:** draft — theology/politics **partial lock** (2026-07-22)
+- **Status:** draft — theology/politics **partial lock** (2026-07-22); crystal **Claritas** (2026-07-29)
 - Player engages Cristallo-aligned houses; morality and reputation begin to matter.
-- **Draft spine:** Old/New Testament faith split; church/state bipartisan conflict; **White Lotus** guardians of the Creator-origin crystal (cleanses Nefarium); Luceran-puppet overzealous sub-faction; Act 2 duty to wield relic against Shroud effects after navigating politics.
+- **Draft spine:** Old/New Testament faith split; church/state bipartisan conflict; **White Lotus** guardians of **Claritas** (Creator crystal on the **leader’s staff**; cleanses Nefarium); Luceran-puppet overzealous sub-faction; Act 2 duty to wield relic against Shroud effects after navigating politics.
+- **Draft (2026-07-29):** Act 1 path choice (Arrotrebae vs Cristallo focus) can leave the neglected theater more open to **Imperium corruption** by Act 2 — soft consequence, not a hard lock.
 
 ### Beat A2-02 — Arrotrebae / tribal contact
 
@@ -178,9 +181,9 @@ Mid-campaign beats stay **draft** where faction gaps from [TICKET-0021](../plann
 
 ### Beat A2-04 — Crystal / Shroud lead advances
 
-- **Status:** draft — location **open**; behavior **partial lock**
-- Pursue Creotar’s crystal (or competing interpretations of “destroy the Shroud”) — dramatic irony: player may think they free **Creotar** while Luceran seeks to free **Frangitur** ([prologue-and-opening.md](prologue-and-opening.md)).
-- Cristallo crystal **cleanses Nefarium** on contact (inverse of Shroud); held by **White Lotus** order — name and map location still open.
+- **Status:** draft — **Claritas** named (D-P2-02b); court map pin still open with D-P2-08
+- Pursue Creotar’s crystal **Claritas** (or competing interpretations of “destroy the Shroud”) — dramatic irony: player may think they free **Creotar** while Luceran seeks to free **Frangitur** ([prologue-and-opening.md](prologue-and-opening.md)).
+- **Claritas** **cleanses Nefarium** on contact (inverse of Shroud); set in a staff borne by **Cristallo’s leader**; **White Lotus** order guards the relic / path.
 
 ---
 
@@ -212,8 +215,9 @@ Mid-campaign beats stay **draft** where faction gaps from [TICKET-0021](../plann
 
 ### Beat A4-02 — Ending branches
 
-- **Status:** **open**
+- **Status:** **open** — soft sketch 2026-07-29 (D-P2-13)
 - Oppose evil, exploit it, or become greater evil; Cristallo/Arrotrebae preserved, reformed, or dismantled.
+- **Shroud endgame (draft):** after Frangitur falls, Chaotic Imperium has **no masters** → choose to **destroy** the chaos for good **or** forge/wield a Shroud to **control** it (control path = corruption / become evil; Luceran’s first-war burden is the cautionary model). **Claritas** is a candidate tool on the destroy path.
 
 ---
 
@@ -223,7 +227,7 @@ Mid-campaign beats stay **draft** where faction gaps from [TICKET-0021](../plann
 | --- | --- | --- |
 | Arkand | Companion; King’s Guard knight | draft (established companion concept) |
 | Commander Grenge | Calrenoth commander; default Act 1 reappearance | draft (survive-by-default D-P0-12) |
-| Sergeant Larrell | Rear drawbridge NCO; default Act 1 reappearance | draft (survive-by-default D-P0-12) |
+| Sergeant Larrell | Rear drawbridge NCO; optional **hostage** if not saved (D-P0-12b); else default Act 1 reappearance | draft (survive-by-default D-P0-12; hostage lock 2026-07-29) |
 | Damius | Scout blamed for Rinos; default Act 1 reappearance | draft (survive-by-default D-P0-12) |
 | King Asher | Current King of Tessera; Luceran’s half-brother | **established** kinship (D-P0-13); brittle support still draft |
 | Creotar | Vision guide; knowledge god (Creo = short form; Frangitur = fallen form) | draft; identity locked 2026-07-20 |
@@ -233,16 +237,18 @@ Mid-campaign beats stay **draft** where faction gaps from [TICKET-0021](../plann
 
 ## Open questions (beat sheet)
 
-- Exact Calrenoth / **Ledgeport** / neighbor world coords — theaters in [official-world-map.md](official-world-map.md#draft-faction-theaters-2026-07-20).
+**Act 0 leftovers** (post–2026-07-29 session): world coords (**D-P2-08**, level design); House Ashfell / Lodge / Guild **faces** (**D-P1-21b** / **D-P1-22**). Landed locks in [`../design/dom-answered-questions.md`](../design/dom-answered-questions.md): Larrell hostage, Arkand camp tutorial, Creotar guidance **partially true**, **Claritas**, Underflow coerced ally, House Ashfell name, **Landfall** final title.
+
+- Exact Calrenoth / **Ledgeport** / neighbor world coords — theaters in [official-world-map.md](official-world-map.md#draft-faction-theaters-2026-07-20); Dom **D-P2-08** (deferred to level design).
 - ~~Exact placement of O’hlundian evergreens wake vs Ledgeport~~ — evergreen wake deprecated; **DA campsite post–Act 0** locked (D-P0-10, 2026-07-22).
 - ~~Whether Calrenoth stays permanently ruined on the seamless map after Act 0~~ — **resolved** DEC-0032.
-- ~~Creotar identity vs Creo/Frangitur~~ — **resolved** 2026-07-20; whether “destroy the Shroud” is honest guidance or Frangitur manipulation still **open** (Act 3 free-“Creotar” irony reinforced 2026-07-22).
-- Crystal **name/location** (Twine stubs empty); **White Lotus** guardians + cleanse behavior locked 2026-07-22.
-- ~~Wild God revival chronology vs Calrenoth Act 0~~ — Calrenoth / **Landfall** is the default spine.
-- Exact Vanessa introduction beat.
-- A1-05 quest id / standing numbers; **Sea of Whispers** reveal timing (lieutenant **Pneumyra** + epithet **She Who Sings the Undertow** locked; boss body fight locked; masks + **Anál Muir** locked) — [factions.md](factions.md#the-sea-of-whispers).
+- ~~Creotar identity vs Creo/Frangitur~~ — **resolved** 2026-07-20; ~~“destroy the Shroud” honesty~~ — **partially true** (D-P2-14, 2026-07-29).
+- ~~Crystal **name**~~ — **Claritas** (D-P2-02b); court map pin still open with D-P2-08; **White Lotus** guardians + cleanse behavior locked.
+- ~~Wild God revival chronology vs Calrenoth Act 0~~ — Calrenoth / **Landfall** is the default spine; title **final** (D-P0-15).
+- Exact Vanessa introduction beat — Dom **D-P1-14** (Act 1 block).
+- A1-05 quest id / standing numbers; **Sea of Whispers** reveal timing (lieutenant **Pneumyra** + epithet **She Who Sings the Undertow** locked; boss body fight locked; masks + **Anál Muir** locked) — [factions.md](factions.md#the-sea-of-whispers); Dom **D-P1-15** / **D-P1-16**.
 - ~~**Ledgeport** ferry wiring to Cristallo~~ — **yes** to **Porto Lucente** (`porto_lucente`) U-bay (2026-07-22); world coords still open (D-P2-08).
-- Morality thresholds and ending matrix (Act 4).
+- Morality thresholds and ending matrix (Act 4) — soft Shroud destroy-vs-control sketch 2026-07-29; harden under D-P2-13.
 - Twine source covers **Act 0 only**; Acts 1–4 are planning beats, not yet authored in Twine.
 
 Also tracked in [`context/interviews/open-questions.md`](../interviews/open-questions.md).

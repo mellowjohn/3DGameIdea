@@ -1,0 +1,318 @@
+{
+  "version": 1,
+  "targets": [
+    {
+      "id": "player",
+      "kind": "skinned",
+      "baker": "player_v2",
+      "defaultSource": "tools/art/player/GoodPlayerModel.gltf",
+      "defaultAtlas": "tools/art/player/GoodPlayerModel.png",
+      "outputs": {
+        "mesh": "assets/models/player.gltf",
+        "atlas": "assets/models/player.png",
+        "report": "assets/models/player.bake.json"
+      },
+      "animator": "assets/animators/player.animator.json",
+      "rig": "assets/characters/player.rig.json",
+      "generatorContains": "bake_player_v2_gltf",
+      "verify": {
+        "requiredClips": ["Idle", "Walk", "Run", "Fall"],
+        "targetHeight": 2.75,
+        "heightTolerance": 0.08,
+        "feetEpsilon": 0.05,
+        "atlasMin": 32,
+        "atlasMax": 4096,
+        "checkCanvasYellow": true,
+        "checkNeon": true,
+        "checkSoftBlue": true,
+        "checkSkin": true,
+        "checkWindingHands": true,
+        "minLocoChannels": 30,
+        "checkUvTransparent": false,
+        "minOpaqueUniqueColors": 0
+      }
+    },
+    {
+      "id": "crate",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/crate/Crate.gltf",
+      "outputs": { "mesh": "assets/models/crate.gltf", "atlas": "assets/models/crate.png" },
+      "generatorContains": "crate bake",
+      "verify": {
+        "targetHeight": 1.0,
+        "heightTolerance": 0.12,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": true
+      }
+    },
+    {
+      "id": "bush",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/bush/Bush.gltf",
+      "outputs": { "mesh": "assets/models/bush.gltf", "atlas": "assets/models/bush.png" },
+      "generatorContains": "bush bake",
+      "verify": {
+        "targetHeight": 1.25,
+        "heightTolerance": 0.15,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": true,
+        "minOpaqueUniqueColors": 12,
+        "foliage": true
+      }
+    },
+    {
+      "id": "bush_tall",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/tall-bush/Tall_Bush.gltf",
+      "outputs": { "mesh": "assets/models/bush_tall.gltf", "atlas": "assets/models/bush_tall.png" },
+      "generatorContains": "tall bush bake",
+      "verify": {
+        "targetHeight": 1.9,
+        "heightTolerance": 0.2,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": true,
+        "minOpaqueUniqueColors": 12,
+        "foliage": true
+      }
+    },
+    {
+      "id": "campfire",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/campfire/Campfire_New.gltf",
+      "outputs": { "mesh": "assets/models/campfire.gltf", "atlas": "assets/models/campfire.png" },
+      "generatorContains": "campfire bake",
+      "verify": {
+        "scaleMode": "max_xz",
+        "targetSpan": 1.3,
+        "spanTolerance": 0.2,
+        "targetHeight": 0.44,
+        "heightTolerance": 0.2,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": true
+      }
+    },
+    {
+      "id": "barrel",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/barrel/Barrel.gltf",
+      "outputs": { "mesh": "assets/models/barrel.gltf", "atlas": "assets/models/barrel.png" },
+      "generatorContains": "barrel bake",
+      "verify": {
+        "targetHeight": 1.0,
+        "heightTolerance": 0.12,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": true
+      }
+    },
+    {
+      "id": "lantern",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/lantern/Lantern.gltf",
+      "outputs": { "mesh": "assets/models/lantern.gltf", "atlas": "assets/models/lantern.png" },
+      "generatorContains": "lantern bake",
+      "verify": {
+        "targetHeight": 0.55,
+        "heightTolerance": 0.1,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": true
+      }
+    },
+    {
+      "id": "wall_torch",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/wall-torch/Wall_Torch.gltf",
+      "outputs": { "mesh": "assets/models/wall_torch.gltf", "atlas": "assets/models/wall_torch.png" },
+      "generatorContains": "wall torch bake",
+      "verify": {
+        "targetHeight": 0.7,
+        "heightTolerance": 0.12,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": true
+      }
+    },
+    {
+      "id": "ashfell_arming_sword",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/ashfell-arming-sword/Ashfell_Arming_Sword.gltf",
+      "outputs": {
+        "mesh": "assets/models/ashfell_arming_sword.gltf",
+        "atlas": "assets/models/ashfell_arming_sword.png"
+      },
+      "generatorContains": "ashfell arming sword bake",
+      "verify": {
+        "targetHeight": 1.05,
+        "heightTolerance": 0.15,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "outrider_shortbow",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/outrider-shortbow/Outrider_Shortbow.gltf",
+      "outputs": {
+        "mesh": "assets/models/outrider_shortbow.gltf",
+        "atlas": "assets/models/outrider_shortbow.png"
+      },
+      "generatorContains": "outrider shortbow bake",
+      "verify": {
+        "targetHeight": 1.05,
+        "heightTolerance": 0.15,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "outrider_arrow",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/outrider-arrow/Outrider_Arrow.gltf",
+      "outputs": {
+        "mesh": "assets/models/outrider_arrow.gltf",
+        "atlas": "assets/models/outrider_arrow.png"
+      },
+      "generatorContains": "outrider arrow bake",
+      "verify": {
+        "scaleMode": "max_extent",
+        "targetSpan": 0.75,
+        "spanTolerance": 0.12,
+        "targetHeight": 0.75,
+        "heightTolerance": 0.2,
+        "feetEpsilon": 0.08,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "guild_rune_focus",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/guild-rune-focus/Guild_Rune_Focus.gltf",
+      "outputs": {
+        "mesh": "assets/models/guild_rune_focus.gltf",
+        "atlas": "assets/models/guild_rune_focus.png"
+      },
+      "generatorContains": "guild rune focus bake",
+      "verify": {
+        "targetHeight": 0.55,
+        "heightTolerance": 0.1,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "loot_bag",
+      "kind": "static",
+      "baker": "tier1",
+      "defaultSource": "tools/art/loot-bag/Loot_Bag.gltf",
+      "outputs": { "mesh": "assets/models/loot_bag.gltf", "atlas": "assets/models/loot_bag.png" },
+      "generatorContains": "loot bag bake",
+      "verify": {
+        "targetHeight": 0.45,
+        "heightTolerance": 0.1,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "tree",
+      "kind": "static",
+      "baker": "script",
+      "script": "tools/bake_tree_bbmodel.py",
+      "defaultSource": "tools/art/tree/Tree.bbmodel",
+      "outputs": { "mesh": "assets/models/tree.gltf", "atlas": "assets/models/tree.png" },
+      "generatorContains": "",
+      "verify": {
+        "targetHeight": 3.0,
+        "heightTolerance": 0.25,
+        "feetEpsilon": 0.08,
+        "atlasMin": 16,
+        "atlasMax": 4096,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "stones",
+      "kind": "static",
+      "baker": "script",
+      "script": "tools/bake_stones_gltf.py",
+      "defaultSource": "tools/art/stones/Stones.gltf",
+      "outputs": { "mesh": "assets/models/stones.gltf", "atlas": "assets/models/stones.png" },
+      "generatorContains": "",
+      "verify": {
+        "targetHeight": 0.45,
+        "heightTolerance": 0.1,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "stump",
+      "kind": "static",
+      "baker": "script",
+      "script": "tools/bake_stump_gltf.py",
+      "defaultSource": "tools/art/stump/Stump.gltf",
+      "outputs": { "mesh": "assets/models/stump.gltf", "atlas": "assets/models/stump.png" },
+      "generatorContains": "",
+      "verify": {
+        "targetHeight": 0.55,
+        "heightTolerance": 0.1,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "dead_log",
+      "kind": "static",
+      "baker": "script",
+      "script": "tools/bake_dead_log_gltf.py",
+      "defaultSource": "tools/art/dead-log/DeadLog.gltf",
+      "outputs": { "mesh": "assets/models/dead_log.gltf", "atlas": "assets/models/dead_log.png" },
+      "generatorContains": "",
+      "verify": {
+        "targetHeight": 0.45,
+        "heightTolerance": 0.1,
+        "feetEpsilon": 0.05,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Record Article Capture"
+  short_description: "Windows screen record/stills for blog posts"
+  default_prompt: "Use $record-article-capture to record or screenshot the editor/game for this article."

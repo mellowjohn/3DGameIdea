@@ -467,10 +467,10 @@
         {
           "id": "coding_inventory_thin_act0",
           "title": "Thin inventory grant + equip (Act 0)",
-          "status": "todo",
+          "status": "wip",
           "priority": "p1",
           "workstream": "coding",
-          "notes": "Prerequisite for playable Landfall loot. EPIC-0018 / TICKET-0237.",
+          "notes": "InventoryRuntime + item catalog + pen inventory UI in progress (TICKET-0237).",
           "description": "Session inventory that can grant, hold, and equip a small set of items (starter weapon + finds). Soft lane multipliers optional in this row if cheap; hard class locks forbidden (DEC-0048). Full catalog/craft deferred.",
           "dependsOn": [
             "coding_character_creation"
@@ -711,10 +711,10 @@
         {
           "id": "gameplay_act0_loot_slice",
           "title": "Act 0 Landfall lootables (small slice)",
-          "status": "todo",
+          "status": "wip",
           "priority": "p1",
           "workstream": "gameplay",
-          "notes": "Not a full item pool — ~4–8 defs. DEC-0048 / TICKET-0237.",
+          "notes": "Loot containers grant into InventoryRuntime; starter hotbar on play-test. TICKET-0237.",
           "description": "Players obtain some items during Landfall: starter kit weapon, 1–2 approach finds, low-rate footsoldier commons, one story-grant reward, optional single obscure nook rare. Place pickups/grants on the siege → camp path. Does not block boot→camp goal until inventory thin path exists.",
           "dependsOn": [
             "coding_inventory_thin_act0",
@@ -978,6 +978,9 @@
           "workstream": "ui_ux",
           "notes": "A0-02 — readable options + preview.",
           "description": "Creation flow presentation: archetype cards, hair/skin/outfit pickers, difficulty, confirm. Preview must read on the Player_V2 body. Coding owns persist/slots; this row tracks layout, copy, and feel.",
+          "imagePaths": [
+            "context/art/concepts/act0-a0-02-character-creation.png"
+          ],
           "dependsOn": [
             "coding_character_creation",
             "art_hair_styles",
@@ -1012,6 +1015,10 @@
           "workstream": "ui_ux",
           "notes": "Cold start path clarity.",
           "description": "First-run flow from engine boot through prologue watch into character creation without dead ends or editor chrome leaking into play. Skip/continue affordances must be obvious.",
+          "imagePaths": [
+            "context/art/concepts/act0-main-menu.png",
+            "context/art/concepts/act0-a0-02-character-creation.png"
+          ],
           "dependsOn": [
             "cine_prologue_throne",
             "ui_character_creation_screen"

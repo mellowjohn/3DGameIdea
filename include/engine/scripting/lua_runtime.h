@@ -22,6 +22,7 @@ class WorldUiBillboardRuntime;
 class QuestRuntime;
 class StandingRuntime;
 class FlagRuntime;
+class InventoryRuntime;
 class AnimatorRuntime;
 class EventTimelineRuntime;
 class DialogueRuntime;
@@ -77,6 +78,7 @@ public:
     void set_quest_runtime(QuestRuntime* quest) noexcept;
     void set_standing_runtime(StandingRuntime* standing) noexcept;
     void set_flag_runtime(FlagRuntime* flags) noexcept;
+    void set_inventory_runtime(InventoryRuntime* inventory) noexcept;
     void set_animator_runtime(AnimatorRuntime* animator) noexcept;
     void set_event_timeline_runtime(EventTimelineRuntime* timeline) noexcept;
     void set_dialogue_runtime(DialogueRuntime* dialogue) noexcept;

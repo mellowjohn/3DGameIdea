@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "stylized_flame_column",
+  "texture": "assets/vfx/fire_flipbook_4x4.png",
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [1.0, 1.0, 0.95] },
+      { "t": 0.2, "color": [1.0, 0.8, 0.25] },
+      { "t": 0.55, "color": [0.95, 0.4, 0.08] },
+      { "t": 1.0, "color": [0.35, 0.06, 0.02] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.45 },
+      { "t": 0.2, "value": 0.75 },
+      { "t": 0.6, "value": 1.05 },
+      { "t": 1.0, "value": 0.4 }
+    ]
+  },
+  "aspectRatio": 0.55,
+  "rotation": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.0 },
+      { "t": 1.0, "value": 8.0 }
+    ]
+  },
+  "rotationStartRandom": false,
+  "crossedBillboards": true,
+  "minScreenSize": 24,
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.3 },
+      { "t": 0.1, "value": 0.05 },
+      { "t": 0.5, "value": 0.18 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.85, "max": 1.5 },
+  "speed": { "min": 0.8, "max": 1.8 },
+  "rate": 56,
+  "spreadAngle": [8, 16],
+  "shape": "cylinder",
+  "shapeStyle": "volume",
+  "shapeSize": [0.14, 0.35, 0.14],
+  "orientation": "FacingCameraWorldUp",
+  "lightEmission": 1.0,
+  "blend": "softLight",
+  "acceleration": [0.0, 3.2, 0.0],
+  "drag": 0.22,
+  "maxParticles": 140,
+  "enabled": true,
+  "emissionDirection": [0.0, 1.0, 0.0],
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "Loop",
+  "flipbookFramerate": 20,
+  "flipbookStartRandom": true
+}

@@ -13,7 +13,7 @@ The art style and comedy should reinforce one another. Dark player choices may p
 
 Supernatural power is **deliberately limited**. Ordinary people and rank-and-file faction members are not wizards. Meaningful magical capability is **rare** and usually comes from:
 
-- **Major artifacts** — chief among them the **Nefarium Shroud** (primary story contention) and a separate Creator-origin crystal/relic associated with Cristallo / Creotar that **cleanses Nefarium corruption** on contact (inverse of the Shroud) but is intentionally weaker than it. Guarded by the Cristallo **White Lotus** order (draft lock 2026-07-22).
+- **Major artifacts** — chief among them the **Nefarium Shroud** (primary story contention; prison for Frangitur + Imperium binding) and a separate Creator-origin crystal **Claritas** associated with Cristallo / Creotar that **cleanses Nefarium corruption** on contact (inverse of the Shroud) but is intentionally weaker than it. Guarded by the Cristallo **White Lotus** order; staff-borne by Cristallo’s leader (draft lock 2026-07-29).
 - **Minor relics** — tribal / regional attunements (e.g. Thalassar **Anál Muir** under a Muirthalia water-deity rite) that grant distinct but lesser abilities to a rite-passed leader, not to an entire culture as a racial kit. Minor relics stay ≪ **Nefarium Shroud**.
 
 Do not treat faction flavor (pirates, druids, knights) as blanket magic classes. Attunement rules and whether proposed coastal abilities (water-walking, enhanced breath) are literal or abstracted remain **open** — see [factions.md](factions.md#design-session-2026-07-20-coastal-arrotrebae--relics--act-1-draft).

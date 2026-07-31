@@ -1,0 +1,94 @@
+{
+  "components": [
+    {
+      "data": {
+        "halfExtent": [
+          0.5,
+          0.5,
+          0.51
+        ],
+        "layer": "staticWorld",
+        "shape": "box",
+        "transform": {
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "trigger": false
+      },
+      "id": "collision-0",
+      "type": "collider"
+    },
+    {
+      "data": {
+        "id": "collision-interact",
+        "interaction": "open_supply_chest",
+        "layer": "trigger",
+        "radius": 1.35,
+        "shape": "sphere",
+        "transform": {
+          "position": [
+            0,
+            0.55,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "trigger": true
+      },
+      "id": "collision-interact",
+      "type": "collider"
+    }
+  ],
+  "entities": [
+    {
+      "mesh": {
+        "asset": "assets/models/crate.gltf"
+      },
+      "name": "SupplyChest",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

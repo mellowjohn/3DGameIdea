@@ -1,4 +1,5 @@
 #include "engine/automation/command.h"
+#include "engine/automation/asset_bake_commands.h"
 #include "engine/automation/build_coordination.h"
 #include "engine/automation/project_git_commands.h"
 #include "engine/animation/animation_preview.h"
@@ -229,7 +230,7 @@ Result<CommandRequest> parse_command_line(int argc, char** argv) {
 CommandResponse execute_command(const CommandRequest& request) {
     if (request.name == "help") return {ExitCode::Success, command_help(), {}, {}};
     const std::vector<std::string> known{"build-assets", "validate", "inspect", "run", "test", "benchmark", "capture",
-        "editor", "mcp", "project-git", "build-coordination", "animation-preview", "visual-regression"};
+        "editor", "mcp", "project-git", "build-coordination", "animation-preview", "visual-regression", "asset-bake"};
     if (std::find(known.begin(), known.end(), request.name) == known.end()) {
         auto error = command_error("CLI-UNKNOWN-COMMAND", "Unknown command: " + request.name,
                                    "Run engine help for supported commands.", request.correlation_id);
@@ -265,6 +266,28 @@ CommandResponse execute_command(const CommandRequest& request) {
         response.diagnostics = bridge.diagnostics;
         response.metadata = bridge.metadata;
         response.changed_object_ids = bridge.changed_object_ids;
+        return response;
+    }
+    if (request.name == "asset-bake") {
+        nlohmann::json params = nlohmann::json::object();
+        if (argument_value(request, "--list", "false") == "true" ||
+            std::find(request.arguments.begin(), request.arguments.end(), "--list") != request.arguments.end()) {
+            params["action"] = "list";
+        } else {
+            params["action"] = "bake";
+            const auto target = argument_value(request, "--target");
+            if (!target.empty()) params["target"] = target;
+            const auto source = argument_value(request, "--source");
+            if (!source.empty()) params["source"] = source;
+        }
+        const auto bridge = apply_asset_bake_operation(request.project, params);
+        CommandResponse response;
+        response.exit_code = bridge.exit_code;
+        response.summary = bridge.summary;
+        response.diagnostics = bridge.diagnostics;
+        response.metadata = bridge.metadata;
+        response.changed_object_ids = bridge.changed_object_ids;
+        if (bridge.metadata.count("reportJson")) response.artifacts.push_back(bridge.metadata.at("reportJson"));
         return response;
     }
     if (request.name == "build-coordination") {
@@ -344,6 +367,8 @@ CommandResponse execute_command(const CommandRequest& request) {
         if (path.size() >= std::char_traits<char>::length(suffix) && path.compare(path.size() - std::char_traits<char>::length(suffix), std::char_traits<char>::length(suffix), suffix) == 0) {
             auto material = MaterialAsset::load(request.project / path);
             if (!material) asset_errors.push_back(material.error());
+            else if (const auto maps = material.value().validate_texture_maps(request.project); !maps)
+                asset_errors.push_back(maps.error());
         }
         constexpr const char* particle_suffix = ".particle.json";
         if (path.size() >= std::char_traits<char>::length(particle_suffix) &&
@@ -351,6 +376,8 @@ CommandResponse execute_command(const CommandRequest& request) {
                 std::char_traits<char>::length(particle_suffix), particle_suffix) == 0) {
             auto particle = ParticleEmitterAsset::load(request.project / path);
             if (!particle) asset_errors.push_back(particle.error());
+            else if (const auto texture = particle.value().validate_texture(request.project); !texture)
+                asset_errors.push_back(texture.error());
         }
         const auto extension=std::filesystem::path(path).extension().string();if(extension==".gltf"||extension==".glb"){auto mesh=import_project_mesh(request.project/path);if(!mesh&&mesh.error().code!="MESH-ANIMATION-ONLY")asset_errors.push_back(mesh.error());}
     }
@@ -818,7 +845,7 @@ CommandResponse execute_command(const CommandRequest& request) {
 }
 
 std::string command_help() {
-    return "AI RPG Engine 0.2.0\nCommands: build-assets, validate, inspect, run, test, benchmark, capture, editor, mcp, project-git, build-coordination, animation-preview, visual-regression\n"
+    return "AI RPG Engine 0.2.0\nCommands: build-assets, validate, inspect, run, test, benchmark, capture, editor, mcp, project-git, build-coordination, animation-preview, visual-regression, asset-bake\n"
            "Options: --project <path> [--world <path>] --json --dry-run --debug-world --coop-local --log-file <path> --frames <n> --width <px> --height <px> --console\n"
            "  --world overrides project.engine.json defaultWorld (relative to project or absolute)\n"
            "Capture/editor: --output <file.ppm|.png> [--viewport scene|sculpt|game|ui|world-forge] [--look-dx N] [--look-dy N]\n"
@@ -829,6 +856,8 @@ std::string command_help() {
            "Test: engine test --project <path> --suite <core|world|...|animator|audio|m5-exit|visual_regression|project_validation> [--dry-run] [--json]\n"
            "  m5-exit runs animator+character+interaction+combat+scripting (M5 exit gate, TICKET-0110)\n"
            "Animation preview: engine animation-preview --project <path> [--controller <path>] [--frames 60] [--speed 0.5] [--no-trigger] [--json]\n"
+           "Asset bake (TICKET-0245): engine asset-bake --project <path> --target <id> [--source <path>] [--json]\n"
+           "  engine asset-bake --project <path> --list [--json]  (named targets only; fail-closed verify gates)\n"
            "project-git: engine project-git --project <path> --action status|fetch|pull|commit|push [--message <text>] [--json]\n"
            "build-coordination (TICKET-0228): engine build-coordination --project <path> --action status|acquire|wait|release|heartbeat|clear-stale\n"
            "  [--agent <id>] [--ticket TICKET-####] [--summary <text>] [--token <token>] [--lease-seconds N] [--timeout-seconds N] [--force] [--json]\n"

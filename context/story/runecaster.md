@@ -36,5 +36,5 @@ Shares the drafted-to-Calrenoth premise with Ashfell Blade and Outrider. Guild m
 
 - Guild ranks, faces, first quests, and what a starter rune/sigil loadout is.
 - Mechanical split for Rune vs Sigil (systems/comps pass).
-- Starter kit turnaround still needed ([character-direction.md](../art/character-direction.md)).
+- Starter kit first-pass turnaround landed: `context/art/reference/starting-player-runecaster-turnaround.png` ([character-direction.md](../art/character-direction.md)).
 - How Runecaster Guild relates to minor relics / temporary boons without owning the Creator crystal plot.

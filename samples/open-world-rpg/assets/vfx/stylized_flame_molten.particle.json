@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "id": "stylized_flame_molten",
+  "texture": "assets/vfx/fire_flipbook_4x4.png",
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [1.0, 0.98, 0.9] },
+      { "t": 0.18, "color": [1.0, 0.72, 0.18] },
+      { "t": 0.5, "color": [1.0, 0.32, 0.05] },
+      { "t": 0.82, "color": [0.55, 0.08, 0.02] },
+      { "t": 1.0, "color": [0.15, 0.02, 0.01] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.7 },
+      { "t": 0.2, "value": 1.25 },
+      { "t": 0.55, "value": 1.45 },
+      { "t": 0.85, "value": 0.85 },
+      { "t": 1.0, "value": 0.35 }
+    ]
+  },
+  "aspectRatio": 0.72,
+  "rotation": {
+    "keypoints": [
+      { "t": 0.0, "value": -8.0 },
+      { "t": 1.0, "value": 22.0 }
+    ]
+  },
+  "rotationStartRandom": true,
+  "crossedBillboards": true,
+  "minScreenSize": 32,
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.25 },
+      { "t": 0.12, "value": 0.02 },
+      { "t": 0.45, "value": 0.1 },
+      { "t": 0.8, "value": 0.45 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.5, "max": 1.05 },
+  "speed": { "min": 0.35, "max": 1.1 },
+  "rate": 72,
+  "spreadAngle": [22, 40],
+  "shape": "disc",
+  "shapeStyle": "volume",
+  "shapeSize": [0.28, 0.1, 0.28],
+  "orientation": "FacingCameraWorldUp",
+  "lightEmission": 1.0,
+  "blend": "softLight",
+  "acceleration": [0.0, 2.4, 0.0],
+  "drag": 0.42,
+  "maxParticles": 180,
+  "enabled": true,
+  "emissionDirection": [0.0, 1.0, 0.0],
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "Loop",
+  "flipbookFramerate": 22,
+  "flipbookStartRandom": true
+}

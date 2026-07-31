@@ -7567,6 +7567,36 @@
       ]
     },
     {
+      "id": "4a2030dd-a219-4854-b413-fa3fb4c5c027",
+      "name": "prop_outrider_shortbow",
+      "transform": {
+        "position": [
+          22.776599884033203,
+          4.000999927520752,
+          17.799999237060547
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/outrider_shortbow.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
       "id": "4ac038ad-220c-4dba-af27-add8ec564e73",
       "name": "forest_tree_944",
       "transform": {
@@ -11374,6 +11404,36 @@
       ]
     },
     {
+      "id": "70266502-8575-48aa-92f8-259b5fd1870c",
+      "name": "prop_guild_rune_focus",
+      "transform": {
+        "position": [
+          21.676599502563477,
+          4.000999927520752,
+          17.200000762939453
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/guild_rune_focus.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
       "id": "70444a45-c517-44bb-b177-0ce51cf76abe",
       "name": "forest_bush_0",
       "transform": {
@@ -14554,6 +14614,36 @@
       ]
     },
     {
+      "id": "8d954532-5940-45ee-8c46-cef0204047af",
+      "name": "prop_ashfell_arming_sword",
+      "transform": {
+        "position": [
+          22.07659912109375,
+          4.367710590362549,
+          18.399999618530273
+        ],
+        "rotation": [
+          0.0,
+          -0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/ashfell_arming_sword.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
       "id": "8e7755c3-3b48-46fc-b65e-b7980164aecb",
       "name": "forest_bush_2165",
       "transform": {
@@ -15631,6 +15721,135 @@
           "type": "collider"
         }
       ]
+    },
+    {
+      "id": "9ab1e5c3-02f6-4206-842e-97465d781bb9",
+      "name": "prop_supply_chest",
+      "transform": {
+        "position": [
+          16.025033950805664,
+          4.000999927520752,
+          19.200000762939453
+        ],
+        "rotation": [
+          0.0,
+          -0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/supply_chest.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "open_supply_chest",
+            "layer": "trigger",
+            "radius": 1.350000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "9bc38762-06ce-40b3-9bbb-91bf8bd0d7ef",
+      "name": "prop_outrider_arrow",
+      "transform": {
+        "position": [
+          23.276599884033203,
+          4.000999927520752,
+          18.799999237060547
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/outrider_arrow.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
     },
     {
       "id": "9bcb242d-1618-4fa0-9f6f-60930f56f6b6",
@@ -19384,6 +19603,105 @@
       ]
     },
     {
+      "id": "be17a704-e7ca-4df1-a549-a6b6bea27208",
+      "name": "prop_loot_bag_a",
+      "transform": {
+        "position": [
+          19.07659912109375,
+          4.000999927520752,
+          16.399999618530273
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/loot_bag.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.2199999988079071,
+              0.2199999988079071
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "open_loot_bag",
+            "layer": "trigger",
+            "radius": 1.100000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.30000001192092896,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "bf76d81a-d5bc-41a4-88ff-30227e438d09",
       "name": "forest_tree_4",
       "transform": {
@@ -20494,7 +20812,7 @@
       "components": [
         {
           "data": {
-            "controller": "assets/animators/example.animator.json"
+            "controller": "assets/animators/player.animator.json"
           },
           "id": "animator-0",
           "overridden": true,
@@ -23160,20 +23478,20 @@
       "name": "stump",
       "transform": {
         "position": [
-          22.200000762939453,
+          22.71066665649414,
           3.9998223781585693,
-          18.200000762939453
+          17.64728546142578
         ],
         "rotation": [
           0.0,
-          0.4000000059604645,
+          0.4008668065071106,
           0.0,
-          0.9200000166893005
+          0.9161363244056702
         ],
         "scale": [
+          1.0020458698272705,
           1.0,
-          1.0,
-          1.0
+          1.0020458698272705
         ]
       },
       "parent": null,
@@ -24006,6 +24324,105 @@
             "trigger": true
           },
           "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "e845e784-0c5f-423e-95a3-68778ca8c55f",
+      "name": "prop_loot_bag_b",
+      "transform": {
+        "position": [
+          23.676599502563477,
+          4.000999927520752,
+          16.200000762939453
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/loot_bag.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.2199999988079071,
+              0.2199999988079071
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "open_loot_bag",
+            "layer": "trigger",
+            "radius": 1.100000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.30000001192092896,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
           "overridden": false,
           "source": "prefab",
           "type": "collider"

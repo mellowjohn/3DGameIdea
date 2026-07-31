@@ -42,7 +42,7 @@ Placement motion bodies are owned by the placement partition cell and unload wit
 
 - Stair stepping is weaker than CharacterVirtual `ExtendedUpdate` (deferred polish).
 - No coyote time / double jump yet.
-- Visual in-place root stripping for skinned meshes is not yet applied (capsule sync only). Playtest runs **GPU LBS skinning** for the spawn player mesh (CPU pose/matrices → bone CB → lit/shadow VS) so looping Idle (and other active clips) deform the visual.
+- Visual in-place root stripping for skinned meshes is not yet applied (capsule sync only). Playtest runs **GPU LBS skinning** per animator entity (CPU pose/matrices → bone CB uploaded per draw group): player locomotion from WASD, NPCs with their own Idle (or other) states from their animator instances.
 - No nav-grid snap yet.
 - Character-vs-character collision is not registered.
 - Navigation grid queries are not yet used for pathing or snap-to-walkable.

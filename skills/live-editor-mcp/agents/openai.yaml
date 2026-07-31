@@ -1,0 +1,4 @@
+interface:
+  display_name: "Live Editor MCP"
+  short_description: "Scene/terrain apply + rebuild lease loop"
+  default_prompt: "Use $live-editor-mcp to make this live editor change safely (plan → apply → verify)."

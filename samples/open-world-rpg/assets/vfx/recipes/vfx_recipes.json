@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "id": "vfx_recipes",
+  "description": "Agent-facing VFX recipe catalog (TICKET-0241/0243). Clone emitters via engine_asset_apply kind=particle; place stylized_flame.prefab.json for the hero look.",
+  "recipes": [
+    {
+      "id": "torch",
+      "title": "Wall torch layers",
+      "summary": "Compact upright flame stack for sconces: disc core + molten flame + embers + smoke.",
+      "emitters": [
+        "assets/vfx/wall_torch_core.particle.json",
+        "assets/vfx/wall_torch_molten.particle.json",
+        "assets/vfx/wall_torch_embers.particle.json",
+        "assets/vfx/wall_torch_smoke.particle.json"
+      ],
+      "prefab": "assets/prefabs/Scene Assets/wall_torch.prefab.json",
+      "notes": "Torch-scale molten look; mesh uses flame_core_emissive."
+    },
+    {
+      "id": "campfire_layer",
+      "title": "Campfire layer stack",
+      "summary": "Stylized molten hearth: core + molten flame + sparks + smoke.",
+      "emitters": [
+        "assets/vfx/campfire_core.particle.json",
+        "assets/vfx/stylized_flame_molten.particle.json",
+        "assets/vfx/hit_spark.particle.json",
+        "assets/vfx/campfire_smoke.particle.json"
+      ],
+      "prefab": "assets/prefabs/Scene Assets/campfire.prefab.json",
+      "material": "assets/materials/flame_core_emissive.material.json",
+      "notes": "Same stack as stylized_flame hero; bloom softens the core."
+    },
+    {
+      "id": "hit_spark",
+      "title": "Hit spark burst",
+      "summary": "Short bright sparks for weapon hits / impacts.",
+      "emitters": ["assets/vfx/hit_spark.particle.json"],
+      "notes": "Low lifetime, high spread, softLight; attach as brief rate pulse."
+    },
+    {
+      "id": "dodge_dust",
+      "title": "Dodge dust streak",
+      "summary": "Short dusty motion streak at the feet when the player dodges.",
+      "emitters": ["assets/vfx/dodge_dust.particle.json"],
+      "notes": "Spawn via ParticleSystem::spawn_burst opposite the dash direction; not a prefab attachment."
+    },
+    {
+      "id": "corrupt_aura",
+      "title": "Corrupt aura",
+      "summary": "Slow violet-green haze for cursed props or blight zones.",
+      "emitters": ["assets/vfx/corrupt_aura.particle.json"],
+      "notes": "Low lightEmission; pair with emissive_magic materials if needed."
+    },
+    {
+      "id": "stylized_flame_molten",
+      "title": "Stylized flame — molten (trio)",
+      "summary": "Blobby crossed-billboard flame + sparks + smoke. Hero prefab: assets/prefabs/Scene Assets/stylized_flame.prefab.json",
+      "prefab": "assets/prefabs/Scene Assets/stylized_flame.prefab.json",
+      "emitters": [
+        "assets/vfx/campfire_core.particle.json",
+        "assets/vfx/stylized_flame_molten.particle.json",
+        "assets/vfx/hit_spark.particle.json",
+        "assets/vfx/campfire_smoke.particle.json"
+      ],
+      "material": "assets/materials/flame_core_emissive.material.json",
+      "notes": "Matches particle-trio molten look; bloom (0242) softens the core. Mesh uses emissive_magic pulse as blob stand-in until displace master."
+    },
+    {
+      "id": "stylized_flame_wispy",
+      "title": "Stylized flame — wispy ribbon",
+      "summary": "Narrow, high-spread ribbons for wind-blown fire.",
+      "emitters": [
+        "assets/vfx/stylized_flame_wispy.particle.json",
+        "assets/vfx/campfire_smoke.particle.json",
+        "assets/vfx/hit_spark.particle.json"
+      ],
+      "notes": "Swap molten emitter on stylized_flame prefab for this look."
+    },
+    {
+      "id": "stylized_flame_column",
+      "title": "Stylized flame — diffuse column",
+      "summary": "Tall tight cylinder emission for pillar fire.",
+      "emitters": [
+        "assets/vfx/stylized_flame_column.particle.json",
+        "assets/vfx/campfire_smoke.particle.json",
+        "assets/vfx/campfire_embers.particle.json"
+      ],
+      "notes": "Low spreadAngle + cylinder shapeSize.y for height."
+    }
+  ]
+}

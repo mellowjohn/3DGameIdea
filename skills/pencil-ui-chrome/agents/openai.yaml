@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pencil UI Chrome"
+  short_description: "Act 0 Pencil mocks + menu asset mattes"
+  default_prompt: "Use $pencil-ui-chrome to update the Act 0 menu Pencil mock and chrome assets."

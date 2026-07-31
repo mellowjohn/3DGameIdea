@@ -74,13 +74,26 @@ Optional standing fields ([DEC-0029](../decisions/index.md#dec-0029-continuous-f
 - `standingRequirements[]` — gate with `factionId` plus `minScore` and/or `minRankId`
 - `standingRewards[]` — `{ factionId, delta }` for callers to apply via `StandingRuntime::adjust` / Lua / MCP
 
-**v1 hook:** QuestRuntime complete does **not** auto-apply `standingRewards`. Scripts or MCP must call `standing_adjust` (or a later QuestRuntime follow-up). Documented intentional gap until wired.
+**v1 hook (amended [DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux)):** QuestRuntime **complete** should apply authored `standingRewards` (was previously scripts/MCP-only). Until the runtime follow-up lands, document any temporary script calls; do not invent parallel standing paths.
 
 ## Enums
 
 | Field | Values |
 | --- | --- |
-| `kind` | `main` \| `side` \| `faction` |
+| `kind` | `main` \| `side` \| `faction` \| `archetype` (**proposed** — see note below) |
+
+### Player journal kinds ([DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux))
+
+Journal filters **Main · Side · Faction · Archetype** (+ Completed) are **locked**. Faction = Cristallo / Arrotrebae / Kingdom of Tessera (and other polities) standing threads in one tab. Archetype = lane home-org lines. A quest may **blend** (primary `kind` + optional `factionId` / lane tags) when story-fit.
+
+| Kind | Player meaning |
+| --- | --- |
+| `main` | Campaign spine (cannot abandon) |
+| `side` | Optional local-color / catalog sides (abandon + re-accept OK) |
+| `faction` | Standing threads with major polities |
+| `archetype` | Lane home-org lines; optional for story clear; needed for full lane power |
+
+Schema today still validates `main` \| `side` \| `faction` only. Widen with `archetype` when lane-org seeds land. HUD tracks up to **3** quests; world markers **`?`** available / **`!`** turn-in. Quests may parent EventTimeline ids.
 | `canonStatus` | `established` \| `draft` \| `proposal` \| `open` |
 
 ## Validation

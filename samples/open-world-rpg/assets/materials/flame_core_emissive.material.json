@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "shader": "emissive_magic",
+  "baseColor": [0.08, 0.04, 0.02, 1.0],
+  "roughness": 0.85,
+  "metallic": 0.0,
+  "opacityMode": "opaque",
+  "opacityCutoff": 0.5,
+  "emissive": [1.4, 0.55, 0.12],
+  "emissivePulseHz": 1.6,
+  "emissivePulseMin": 0.45,
+  "albedoMap": "",
+  "emissiveMap": "assets/vfx/fire_flipbook_4x4.png",
+  "doubleSided": false,
+  "physics": {
+    "friction": 0.8,
+    "restitution": 0.05,
+    "density": 800.0,
+    "surface": "default"
+  }
+}

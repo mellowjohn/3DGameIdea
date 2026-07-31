@@ -1,0 +1,34 @@
+---
+description: Author Blockbench meshes with MCP modeling tools, not Python-only regenerators
+alwaysApply: true
+---
+
+# Blockbench: Model With MCP Tools
+
+When authoring or refining meshes in Blockbench (characters, props, weapons, Player_V3, kits), **model in the live Blockbench session via MCP tools**. Do not replace that workflow with a Python `.bbmodel` regenerator as the primary approach.
+
+## Prefer (MCP-first)
+
+- `place_cube` / `place_mesh` / `create_cylinder` for blockout volumes
+- `add_group` for hierarchy
+- `extrude_mesh`, `subdivide_mesh`, `knife_tool` for loop cuts / topology
+- `select_mesh_elements` + `move_mesh_vertices` to match concept orthos
+- `set_camera_angle` + `capture_screenshot` to compare front/side against reference
+- `risky_eval` only for small helpers (batch select, save), not whole-character generation
+
+## Allowed secondary
+
+- Procedural scripts under `tools/art/` may **record** approved shapes after MCP modeling, or seed a rough blockout once — then refine in MCP.
+- Do not wipe MCP polish by regenerating the full character from a script unless the owner asks.
+
+## Rules
+
+1. Shape work must happen against the open Blockbench project with MCP mesh tools.
+2. Match concept **front then side** orthos by moving vertices; add loop cuts when more control verts are needed.
+3. Save the live project to the repo `.bbmodel` path when a pass lands.
+4. Follow `skills/blockbench-mesh-authoring/SKILL.md` for proportions / primary→tertiary form.
+
+```text
+❌ BAD: Rewrite build_player_v3_*.py and reload as the only modeling pass
+✅ GOOD: Extrude / subdivide / move verts in Blockbench MCP; screenshot vs concept; save bbmodel
+```

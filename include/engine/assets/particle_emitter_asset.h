@@ -105,8 +105,12 @@ struct ParticleEmitterAsset {
     [[nodiscard]] static Result<ParticleEmitterAsset> load(const std::filesystem::path& path);
     [[nodiscard]] static Result<ParticleEmitterAsset> parse(const std::string& text,
         const std::string& source_name = "particle.json");
+    /// Fail-closed when `texture` is non-empty: project-relative `.png` must exist.
+    [[nodiscard]] Result<void> validate_texture(const std::filesystem::path& project_root) const;
     [[nodiscard]] Result<void> save_atomic(const std::filesystem::path& path) const;
     [[nodiscard]] std::string to_json() const;
 };
+
+[[nodiscard]] bool is_valid_particle_texture_path(const std::string& relative) noexcept;
 
 } // namespace engine

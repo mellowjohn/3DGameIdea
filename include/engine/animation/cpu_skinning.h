@@ -7,6 +7,7 @@
 
 #include <array>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -26,9 +27,17 @@ struct JointLocalPose {
     const ImportedSkin& skin, const AnimationClipLibrary& library,
     const std::filesystem::path& project_root, const std::vector<AnimatorClipWeight>& clips);
 
+/** Compose local poses into column-major joint global matrices (model space, one per joint). */
+[[nodiscard]] Result<std::vector<std::array<float, 16>>> build_joint_global_matrices(
+    const ImportedSkin& skin, const std::vector<JointLocalPose>& locals);
+
 /** Compose local poses with IBM into column-major skin matrices (one per joint). */
 [[nodiscard]] Result<std::vector<std::array<float, 16>>> build_skin_matrices(
     const ImportedSkin& skin, const std::vector<JointLocalPose>& locals);
+
+/** Index of `joint_name` in `skin.joint_names`, or nullopt if missing. */
+[[nodiscard]] std::optional<std::size_t> find_skin_joint_index(const ImportedSkin& skin,
+    const std::string& joint_name);
 
 /**
  * CPU linear-blend skinning of bind-pose mesh positions into `out_positions` (xyz triples).

@@ -45,7 +45,7 @@ Versioned JSON emitters (`*.particle.json`) for the CPU particle MVP (TICKET-012
 | --- | --- | --- |
 | `schemaVersion` | int | `1` |
 | `id` | string | Stable id (often slug of display name) |
-| `texture` | string | Optional PNG path; empty = built-in soft disc. Non-empty samples texture RGB×alpha (wind streak, fire flipbook). |
+| `texture` | string | Optional PNG path; empty = built-in soft disc. Non-empty samples texture RGB×alpha (wind streak, fire flipbook). Must be project-relative `.png` (no `..`); missing files fail closed at validate/MCP (`PARTICLE-TEXTURE-MISSING`). |
 | `flipbookLayout` | `None` \| `Grid2x2` \| `Grid4x4` \| `Grid8x8` | Atlas grid (Roblox). Non-`None` requires `texture`. |
 | `flipbookMode` | `OneShot` \| `Loop` \| `PingPong` \| `Random` | Frame playback; `Random` holds one random cell. |
 | `flipbookFramerate` | number | Frames/sec (capped at 120). |
@@ -81,6 +81,10 @@ Versioned JSON emitters (`*.particle.json`) for the CPU particle MVP (TICKET-012
   "enabled": true
 }
 ```
+
+## MCP authoring
+
+`engine_asset_apply` with `kind: "particle"` (or path ending `.particle.json`) parses, validates texture, writes atomically, and hot-registers into the live particle system. Recipe index: `assets/vfx/recipes/vfx_recipes.json`.
 
 ## Runtime
 

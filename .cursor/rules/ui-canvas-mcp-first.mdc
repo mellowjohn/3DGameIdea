@@ -1,0 +1,53 @@
+---
+description: Prefer live MCP for UI canvas edits; never use Python to generate or inspect canvases as the primary path
+alwaysApply: true
+---
+
+# UI Canvas: MCP First (Not Python)
+
+When editing playable UI canvases (`*.uicanvas.json` — inventory, HUD, dialogue, menus, pause, etc.), use **MCP** or the editor **UI** tab. Do **not** use Python scripts to generate, rewrite, dump, or “inspect then regenerate” canvases.
+
+## Prefer
+
+- `engine_ui_canvas_mutate` — `add` / `remove` / `move` / `resize` / `style` (disk write + hot-reload, including play test)
+- `engine_hud_apply` — full rewrite of one canvas when a large layout pass is needed
+- `engine_ui_stack` + screenshot to verify
+- Editor **UI** viewport tab + Save (human path)
+
+## Banned habits
+
+- Running `tools/generate_*canvas*.py` (or siblings) while MCP/editor is available
+- Writing a one-off Python dump/summary of widget offsets instead of mutate/screenshot
+- Regenerating a whole canvas from a script to “fix” layout or match a `.pen`
+- Asking the owner to close the editor so a Python generator can own the file
+
+## Allowed (rare)
+
+- Offline: hand-edit or `engine_hud_apply` with authored JSON when MCP is **unavailable**
+- A checked-in seed script may exist for provenance only — **do not run it** as the edit path; MCP owns live polish
+
+## Rules
+
+1. Live session → MCP mutate or hud_apply. No Python generator step first.
+2. Pencil `.pen` is the visual reference; apply changes to the live `*.uicanvas.json` via MCP.
+3. Runtime behavior (drag-drop, binds, Lua) stays C++/Lua; MCP owns **layout assets**.
+4. After layout MCP writes, verify with stack push + screenshot.
+
+## Examples
+
+```text
+❌ BAD: python tools/generate_inventory_canvas.py to fix squished labels
+✅ GOOD: engine_hud_apply / engine_ui_canvas_mutate on assets/ui/inventory.uicanvas.json
+
+❌ BAD: python -c "…dump widget offsets…" then rewrite the canvas in a script
+✅ GOOD: screenshot + mutate move/resize/style; or one hud_apply with the fixed JSON
+
+❌ BAD: Wipe MCP polish by regenerating player.uicanvas.json from a tool
+✅ GOOD: Mutate the live HUD canvas
+```
+
+## Related
+
+- Skill: `skills/live-editor-mcp/SKILL.md`
+- Feature: `context/features/ui-canvas.md`
+- Format: `context/formats/ui-canvas-assets.md`

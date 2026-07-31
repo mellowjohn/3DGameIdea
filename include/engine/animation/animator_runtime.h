@@ -65,6 +65,7 @@ public:
         const std::string& default_state_override = {});
     void detach(const std::string& entity_id);
     void reset() noexcept;
+    [[nodiscard]] std::vector<std::string> attached_entity_ids() const;
 
     [[nodiscard]] Result<void> set_float(const std::string& entity_id, const std::string& name, float value);
     [[nodiscard]] Result<void> set_bool(const std::string& entity_id, const std::string& name, bool value);
