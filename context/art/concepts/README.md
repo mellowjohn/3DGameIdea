@@ -2,61 +2,159 @@
 
 Draft visual targets for production. Not runtime assets.
 
-## Act 0 — Landfall (level design)
+**Interactive board:** open the Cursor canvas `level-design-concepts.canvas.tsx` beside chat (catalog + filters + previews).
 
-Style target: Unturned-inspired flat-shaded low-poly ([visual-direction.md](../visual-direction.md), [theme-palette.md](../theme-palette.md)). Beats: [campaign-beat-sheet.md](../../story/campaign-beat-sheet.md). Prop kit: [blockbench-asset-list.md](../blockbench-asset-list.md) Tier 2.
+**Private web gallery:** password-gated collaborator browser for concepts, UI, fonts, cartography, kits, and runtime glTF models lives under [`gallery/`](../../../gallery/) (Vercel deploy; see that README).
 
-| File | Beat | Level-design notes |
+**Production pipeline:**
+
+1. **LD perspectives** — elevated 3⁄4 layout views (path, chokes, modular massing).
+2. **Scene sets** — player-readable compositions / mood.
+3. **Modular kits** — Blockbench piece sheets → bake/import.
+
+Style: [visual-direction.md](../visual-direction.md), [theme-palette.md](../theme-palette.md). Beats: [campaign-beat-sheet.md](../../story/campaign-beat-sheet.md). Prop backlog: [blockbench-asset-list.md](../blockbench-asset-list.md).
+
+---
+
+## Act 0 — Landfall
+
+### LD perspectives
+
+| File | Beat | Notes |
 | --- | --- | --- |
-| `act0-main-menu.png` | Menu | Siege establishing shot of burning Calrenoth; quieter left-center for main-menu panel overlay; Imperium banners + approach clutter |
-| `wrathful-conquest-title-logo.png` | Menu | Game title logo (transparent PNG). Opaque pre-punch backup: `wrathful-conquest-title-logo.opaque.png`. Used on main-menu mock in [`../../design/act0-menu-creation-ui.pen`](../../design/act0-menu-creation-ui.pen). |
-| `act0-a0-02-character-creation.png` | A0-02 | Courtyard backdrop for appearance pedestal mock; Blade / Outrider / Runecaster standees remain in shot; UI overlays in [`../../design/act0-menu-creation-ui.pen`](../../design/act0-menu-creation-ui.pen) |
-| `act0-class-cathedral-glass-wall.png` | A0-02 class | Cathedral wall / empty stained-glass frames — class-select backdrop (extended black, thin border) |
-| `act0-difficulty-glass-landscape.png` | A0-02 difficulty | Stained-glass Tessera landscape mural — difficulty-select backdrop |
-| `act0-prologue-01-throne-pullback.png` | A0-01 | Prologue cinematic still 1 — Luceran throne pullback |
-| `act0-prologue-02-whisper-glass.png` | A0-01 | Prologue still 2 — earlier regen pass (superseded) |
-| `act0-prologue-02-whisper-luceran.png` | A0-01 | Prologue cinematic still 2 — Frangitur whisper; Luceran alone (regen, no second figure) |
-| `act0-prologue-03-address-flame.png` | A0-01 | Prologue cinematic still 3 — address adventurers / flame |
-| `act0-a0-03-approach-arkand.png` | A0-03 | Landlocked forest approach; Calrenoth silhouette + siege fire; wheelbarrow / road clutter staging for Arkand rescue |
-| `act0-a0-04-gate-under-fire.png` | A0-04 | Combat corridor to gate; barricades, catapults, Imperium banners; warm torch landmarks on gate |
-| `act0-a0-05-grenge-courtyard.png` | A0-05 | Enclosed briefing courtyard; command table, crates, torches; green-shroud Grenge read |
-| `act0-a0-06-drawbridge-defense.png` | A0-06 | Rear hold point; moat-scale drawbridge + chain spool kit; signal pyre; land spur beyond (not a sea bridge) |
-| `act0-a0-07-luceran-shadow.png` | A0-07 | Black void fog overrun; pale rider Luceran; collapse beat — soft-gated siege climax mood |
-| `act0-a0-08-creotar-vision.png` | A0-08 | Rare vision instance (Realm of Darkness); Creotar light-being vs player; not seamless overland |
-| `act0-a0-09-survivor-camp.png` | A0-09 | Post-Act 0 DAO-style camp tutorial; warm fire landmark; travel-only safe hub |
+| `act0-ld-overview-perspective.png` | A0-03→A0-06 | Full corridor overview |
+| `act0-ld-a0-03-approach-perspective.png` | A0-03 | Road + wheelbarrow staging |
+| `act0-ld-a0-04-gate-perspective.png` | A0-04 | Combat corridor + gate |
+| `act0-ld-a0-05-courtyard-perspective.png` | A0-05 | Command courtyard |
+| `act0-ld-a0-06-drawbridge-perspective.png` | A0-06 | Moat drawbridge + land spur |
+| `act0-ld-a0-07-luceran-perspective.png` | A0-07 | Soft-gated climax massing |
+| `act0-ld-a0-08-creotar-perspective.png` | A0-08 | Vision instance staging |
+| `act0-ld-a0-09-camp-perspective.png` | A0-09 | Travel-only camp layout |
 
-## Faction / character sheets
+### Scene sets
+
+| File | Beat |
+| --- | --- |
+| `act0-sceneset-a0-03-approach.png` | A0-03 |
+| `act0-sceneset-a0-04-gate.png` | A0-04 |
+| `act0-sceneset-a0-05-courtyard.png` | A0-05 |
+| `act0-sceneset-a0-06-drawbridge.png` | A0-06 |
+| `act0-sceneset-a0-07-luceran.png` | A0-07 |
+| `act0-sceneset-a0-08-creotar.png` | A0-08 |
+| `act0-sceneset-a0-09-camp.png` | A0-09 |
+
+### Legacy beat / menu stills
+
+| File | Role |
+| --- | --- |
+| `act0-main-menu.png` | Menu siege establishing |
+| `wrathful-conquest-title-logo.png` | Title logo |
+| `act0-a0-02-character-creation.png` | Creation courtyard |
+| `act0-class-cathedral-glass-wall.png` | Class select backdrop |
+| `act0-difficulty-glass-landscape.png` | Difficulty backdrop |
+| `act0-prologue-01-throne-pullback.png` | Prologue 1 |
+| `act0-prologue-02-whisper-luceran.png` | Prologue 2 |
+| `act0-prologue-03-address-flame.png` | Prologue 3 |
+| `act0-a0-03-approach-arkand.png` … `act0-a0-09-survivor-camp.png` | Prior beat mood shots |
+
+---
+
+## Act 1 — Ledgeport hub
+
+| File | Layer | Notes |
+| --- | --- | --- |
+| `act1-ld-overview-ledgeport.png` | LD | Free-town overview: entry, market, tavern, docks, ferry |
+| `act1-ld-market-perspective.png` | LD | Market street spine |
+| `act1-ld-dock-ferry-perspective.png` | LD | Dock + ferry toward Cristallo U-bay |
+| `act1-sceneset-market.png` | Scene | Market composition |
+| `act1-sceneset-dock-ferry.png` | Scene | Ferry dock composition |
+
+---
+
+## Act 2 — Faction theaters (draft)
+
+| File | Layer | Notes |
+| --- | --- | --- |
+| `act2-ld-cristallo-theater.png` | LD | Central island + U-bay / Claritas seat massing |
+| `act2-ld-thalassar-coast.png` | LD | Thalassar coastal dual-path |
+| `act2-sceneset-cristallo-harbor.png` | Scene | Porto Lucente harbor mood |
+
+---
+
+## Act 3 — Usurper approach (draft)
+
+| File | Layer | Notes |
+| --- | --- | --- |
+| `act3-ld-luceran-approach.png` | LD | Soft-gated throne approach + corruption massing |
+| `act3-sceneset-luceran-approach.png` | Scene | Approach corridor composition |
+
+Act 4 endings remain open in the beat sheet — no level kits until locks firm up.
+
+---
+
+## Modular kit sheets (`context/art/`)
+
+| File | Tier | Use |
+| --- | --- | --- |
+| `tier1-bush-variants-concept.png` | 1 | Foliage (shipped) |
+| `tier1-campfire-concept.png` | 1 | Campfire (shipped) |
+| `tier1-crate-barrel-concept.png` | 1 | Crate / barrel (shipped) |
+| `tier1-torch-lantern-concept.png` | 1 | Torch / lantern (shipped) |
+| `tier1-dead-log-stump-concept.png` | 1 | Log / stump (shipped) |
+| `tier2-castle-wall-kit-concept.png` | 2 | Fortress modular shell |
+| `tier2-drawbridge-kit-concept.png` | 2 | Drawbridge + spool |
+| `tier2-siege-props-kit-concept.png` | 2 | Approach / combat props |
+| `tier2-command-clutter-kit-concept.png` | 2 | Courtyard clutter |
+| `tier4-camp-kit-concept.png` | 4 | Player camp |
+| `tier5-ledgeport-hub-kit-concept.png` | 5 | Dock / market / house modules |
+| `tier6-supernatural-kit-concept.png` | 6 | Shroud / crystal / throne / blight |
+
+---
+
+## Faction / characters / items
 
 | File | Notes |
 | --- | --- |
-| `chaotic-imperium-soldiers-concept.png` | Imperium footsoldier motifs (starburst, spiked halo, void fog) — denser than final low-poly bake; use for faction identity, not mesh density |
+| `chaotic-imperium-soldiers-concept.png` | Imperium identity poster (not bake density) |
+| `../reference/starting-player-*-turnaround.png` | Starter kit turnarounds |
+| `starter-ashfell-arming-sword.png` / shortbow / rune-focus | Starter weapons |
+| `act0-field-bandage.png` / scrap pouch / vein pendant | Act 0 item concepts |
 
-Starting archetype **kit turnarounds** (clothing over shared base body) live under [`../reference/`](../reference/) — see [character-direction.md](../character-direction.md):
+### Act 0 humanoids (production)
 
-| File | Kit |
-| --- | --- |
-| `../reference/starting-player-ashfell-blade-turnaround.png` | Ashfell Blade |
-| `../reference/starting-player-outrider-turnaround.png` | Outrider |
-| `../reference/starting-player-runecaster-turnaround.png` | Runecaster |
+**Body lock:** kits over **GoodPlayerModel**. Latest regen keeps that mannequin but restores **fuller plate kits + knight helm family** (closed/open/crest/star variants) for Tessera / Imperium / Arkand / Grenge / Larrell / Luceran. Starters stay cloth kits; modular sheet catalogs helm attaches.
 
-## Starter weapons & Act 0 items
+**Heraldry lock:** plate / soldier / warband kits use shipped cartography emblems (`assets/ui/cartography/heraldry-*.png`, World Forge `emblemPath`) — simplified stamps on chest, shield, banner, helm — not freehand logos. Full rules: [character-direction.md](../character-direction.md#heraldry-on-characters-and-armor-production-lock).
 
-Draft prop targets for archetype defaults + thin Landfall loot ([gearing-system.md](../../features/gearing-system.md), `art_starter_weapons`). Soft affinity + inventory UX: DEC-0048 / DEC-0050. Ids from display titles.
+Canvas filter: **Characters**.
 
-| File | Item | Id | Lane / source |
-| --- | --- | --- | --- |
-| `starter-ashfell-arming-sword.png` | Ashfell Arming Sword | `ashfell_arming_sword` | Starter — Ashfell Blade |
-| `starter-outrider-shortbow.png` | Outrider Shortbow | `outrider_shortbow` | Starter — Outrider |
-| `starter-runecaster-rune-focus.png` | Guild Rune Focus (inscribed token) | `guild_rune_focus` | Starter — Runecaster |
-| `act0-field-bandage.png` | Field Bandage | `field_bandage` | Act 0 common / drop |
-| `act0-soldiers-scrap-pouch.png` | Soldier's Scrap Pouch | `soldiers_scrap_pouch` | Act 0 approach find |
-| `act0-obscure-vein-pendant.png` | Vein-Iron Pendant | `vein_iron_pendant` | Act 0 obscure rare (**ships**, DEC-0050) |
+| File | Role | Beat |
+| --- | --- | --- |
+| `act0-char-player-archetypes.png` | Ashfell / Outrider / Runecaster lineup — Ashfell needs warrior mail/plate read (TICKET-0255) | A0-02 |
+| `act0-char-modular-body-slots.png` | Shared base + attach slots | Production |
+| `act0-char-arkand.png` | Companion knight | A0-03+ |
+| `act0-char-grenge.png` | Commander + green shroud | A0-05 |
+| `act0-char-damius.png` | Scout — **revise** leather + cloak + heraldry (2026-08-03; TICKET-0255) | A0-05 |
+| `act0-char-larrell.png` | Sergeant (optional hostage) | A0-06/07 |
+| `act0-char-tessera-soldier.png` | Generic Tessera kit | A0-04–06 |
+| `act0-char-imperium-footsoldier.png` | Imperium footsoldier (A0 mid) — dark iron + oxblood jagged star | A0-04 |
+| `act0-char-imperium-skirmisher.png` | Imperium skirmisher (A0 weak) | A0-04 |
+| `act0-char-imperium-vanguard.png` | Imperium siege vanguard (A0 heavy) | A0-04–06 |
+| `act1-char-imperium-units.png` | Man-at-arms + shade scout | A1 |
+| `act2-char-imperium-units.png` | Blackguard + voidbound | A2 |
+| `act3-char-imperium-units.png` | Hollow elite (+ Luceran apex compare) | A3 |
+| `chaotic-imperium-power-ladder.png` | Full weak→strong Imperium ladder overview | A0–A3 |
+| `act0-char-underflow-orc.png` | Underflow warband — add clan banner / water emblem / corruption variants (TICKET-0255) | Vicinity |
+| `act0-char-luceran.png` | Luceran the Hollow — dark iron / Nefarium crimson / void aura (not cream pale kit) | A0-07 |
+| `act0-char-creotar.png` | Creotar vision being — production = tesseract mirage pulse (D-P2-18 / TICKET-0256) | A0-08 |
 
-Additional Act 0 defs (ids in [gearing-system.md](../../features/gearing-system.md); concept art optional): `siege_tonic`, `crude_arrow`, `arkands_favor`, `muddied_keep_ring`, `imperium_footsoldier_badge`.
+Imperium palette family locks in [character-direction.md § Chaotic Imperium unit ladder](../character-direction.md#chaotic-imperium-unit-ladder-a0a3).
 
 ## Usage
 
-- Prefer these for **layout, kit list, lighting landmarks, and mood** when blocking Calrenoth (and for main-menu / creation UI backdrop framing).
-- Mesh density should follow oak / Tier 1 prop sheets more closely than the Imperium character sheet.
-- Geography locks: western peninsula tip, landlocked player entrance, moat-scale drawbridge to another land spur ([official-world-map.md](../../story/official-world-map.md)).
-- Interactive boards (workspace `canvases/`): `act0-landfall-scenes.canvas.tsx` (menu → creation → beat flow), `starter-weapons-items.canvas.tsx` (weapon/item concepts).
+1. Block terrain from **LD** sheets.
+2. Dress props to **scene sets**.
+3. Author **kits** (armor/cloth/hair/weapons) in Blockbench against **GoodPlayerModel**, not alternate bodies.
+4. Bake kits / reimport GoodPlayerModel via **Import Model…** into `samples/open-world-rpg`.
+
+Geography locks: western peninsular Calrenoth, landlocked entrance, moat-scale drawbridge to land spur, Act 1 hub **Ledgeport**, ferry to **Porto Lucente**.

@@ -1,0 +1,13 @@
+# Keep deploys small: media and thumbs are regenerated during `npm run build`.
+node_modules
+dist
+.vercel
+.data
+public/media
+public/catalog.json
+public/branding
+public/favicon.png
+*.tsbuildinfo
+.env
+.env.*
+!.env.example

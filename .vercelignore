@@ -1,0 +1,47 @@
+# Deploy monorepo root; project Root Directory = gallery. Keep upload lean.
+**/.git
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.DS_Store
+
+# Build artifacts / dumps
+build
+**/build
+out
+crash-bundles
+**/*.pdb
+**/*.exe
+**/*.lib
+**/*.obj
+**/*.ilk
+**/*.dll
+
+# Other apps (not needed for gallery bake)
+blog
+tools
+src
+include
+tests
+docs
+# Keep samples/open-world-rpg/assets/models for Art Atlas glTF sync.
+samples/open-world-rpg/assets/materials
+samples/open-world-rpg/assets/world
+samples/open-world-rpg/assets/audio
+samples/open-world-rpg/scripts
+samples/open-world-rpg/world
+third_party
+.engine
+
+# Gallery local/generated (rebuilt on Vercel)
+gallery/node_modules
+gallery/dist
+gallery/.data
+gallery/.vercel
+gallery/public/media
+gallery/public/catalog.json
+gallery/public/branding
+gallery/public/favicon.png
+
+# Huge map tile pyramids not in gallery catalog
+context/art/cartography/world-map-tiles

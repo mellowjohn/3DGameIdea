@@ -14,3 +14,8 @@ crash-bundles/
 /blog/.env.local
 /blog/.env.*.local
 /tools/windows-computer-use/.venv/
+
+.vercel
+.env*
+!.env.example
+!**/.env.example
