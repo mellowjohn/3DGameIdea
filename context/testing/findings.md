@@ -4,6 +4,76 @@ Record material defects or constraints that can prevent recurrence. Newest entri
 
 **Recurring asset classes** (missing player clips, muddy foliage atlases, corrupted Tier-1 props): follow and extend [`recurring-asset-failures.md`](recurring-asset-failures.md). When the same failure class hits again, fix the asset, then update that playbook — do not leave the next agent to rediscover the path.
 
+## 2026-08-04 — Viewport gizmos draw but never drag (weld/bone/placement)
+
+- Reproduction: Animation (or Scene) → Enable Weld Gizmo on outrider_shortbow → axes appear at the mesh; click-drag does nothing. Grip Offset float fields still move the bow.
+- Impact: HandAttach authoring via gizmo unusable; bone gizmo and entity gizmos share the same failure class.
+- Cause: `ImGuizmo::CanActivate` refuses a `MouseClicked` while any ImGui item is hovered/active. The viewport covered the RT with `InvisibleButton("##viewport_area")`, so every LMB made that button active and Manipulate never entered `IsUsing`. Separate earlier issue: Animation dropped panel aspect tracking (window aspect vs panel `SetRect`).
+- Resolution: (1) `Dummy` instead of full-rect `InvisibleButton` — Viewports windows are `NoMove` so the button is not needed to stop window drag. (2) Animation tracks `scene_viewport_min/max` like Scene. (3) `ImGuizmo::BeginFrame`; studio hand-socket seeding for weld.
+- Verification: rebuild `engine`; Animation → outrider_shortbow → Enable Weld → drag G/R/T axes; Scene placement gizmo still moves selections.
+- Remaining risk: if a future viewport window drops `NoMove`, content-area window drag can return — gate that with title-bar-only move or a non-activating hover probe.
+
+## 2026-08-04 — Inventory slot drag never moved items
+
+- Reproduction: F5 play-test, open inventory (`I`), press-drag a bag or hotbar item onto another slot. Ghost never appears; item stays put. Click-select on slots also feels dead.
+- Impact: Act 0 loot slice unusable for bag↔hotbar equip besides Lua/MCP set_hotbar; desktop QA reports “drag broken.”
+- Cause: `UiCanvasStack::handle_modal_input` starts inventory drag on `mouse_down` and completes on `mouse_held`/`mouse_released`, but `process_test_session_ui_input` only set `mouse_clicked` + one-shot `mouse_pos` when the Game viewport was hovered. `mouse_down`/`mouse_held`/`mouse_released` stayed false, so the drag path never started.
+- Resolution: feed continuous press flags from ImGui (`IsMouseClicked` → down, `IsMouseDown` → held, `IsMouseReleased` → released) and always update `mouse_pos`. Hold/release still apply if the cursor leaves the viewport mid-drag. Suite regression on sample inventory canvas: bag.0 → hotbar.0 emit `drag_from_bind` / `drag_to_bind`.
+- Verification: `engine_suite_tests --suite hud`; play-test inventory drag bag↔hotbar.
+- Remaining risk: drops onto non-slot chrome still no-op by design; `inventory.bagEquip.*` stubs remain no-moves.
+
+## 2026-08-02 — `LNK1168` on `engine.exe` with no editor open (respawned MCP server)
+
+- Reproduction: close the editor, then `MSBuild /t:engine` → `LINK : fatal error LNK1168: cannot open build/windows-msvc-debug/dev-next/engine.exe for writing`, even though no editor window exists.
+- Impact: repeated link failures and wasted rebuild cycles; easy to misread as an antivirus hold and start guessing.
+- Cause: the project MCP server is `engine.exe mcp --project ...`, it has no window, and the IDE respawns it on the next MCP call. So after killing the editor there is still a windowless `engine.exe` holding the image, and killing it once is not enough because a later MCP tool call brings a new one back.
+- Resolution: before MSBuild, check `Get-Process engine` (do not filter on `MainWindowTitle`) and stop every match. If the lock persists, `Rename-Item` the locked `engine.exe` aside — the linker then does a full link into a fresh file, and the stale image can be deleted once its holder exits.
+- Verification: reproduced twice during TICKET-0247; both times a windowless `engine.exe` was present and the rebuild succeeded immediately after the rename or the kill.
+- Remaining risk: after killing the MCP server the IDE's MCP client reports "Not connected" until it reconnects, so finish MCP-driven verification before the rebuild, or fall back to the equivalent `engine` CLI commands (for example `engine build-coordination --action release`).
+
+## 2026-08-02 — Stale `%TEMP%/ai-rpg-engine-test` fails three foundation checks
+
+- Reproduction: run `engine_tests.exe` twice in a row. The second run reports `FAIL` for "Project validation exposes structured asset and entity metrics", "Missing asset dependency is detected", and "Asset database rebuild is incremental".
+- Impact: looks like a regression from whatever you just changed; the three failures are unrelated to the working tree.
+- Cause: `tests/foundation_tests.cpp` builds its sandbox at `temp_directory_path()/"ai-rpg-engine-test"` without clearing it first, and the pre-existing crash after "Asset database rebuild is incremental" (see the 2026-07-28 `regression_all` entry) means the `remove_all` at the end of `main` never runs. The leftover `assets/missing.txt` and `out/assets/registry.json` then break the empty-project and missing-dependency assertions.
+- Resolution: delete `%TEMP%/ai-rpg-engine-test` before running `engine_tests.exe`. Also note the suite split: `engine_tests.exe` is the foundation suite and ignores `--suite`; the per-suite tests live in `engine_suite_tests.exe --suite <name>`.
+- Remaining risk: the underlying crash and the missing sandbox reset are still open; a proper fix is `remove_all` at the *start* of `main`.
+
+## 2026-08-02 — Play camera "overpowered" the Scene view (single-camera frame globals)
+
+- Reproduction: F5 play-test, switch to the Scene tab, fly the free-cam. The camera moves but the world reads as the play view — empty ground away from the player, particles facing the wrong way, and a stretched image at fixed play resolutions.
+- Impact: Scene was not usable for inspection during play even after the free-cam was unlocked.
+- Cause: only the camera *pose* was duplicated (`DebugCamera` vs `OrbitCamera`). Everything else derived from "the camera" was one frame-global picked by the active tab: streaming foci, stream view bias, particle update camera, audio listener, and the projection aspect. Both viewport targets were window-sized, so a fixed play resolution letterboxed a window image instead of rendering at that size.
+- Resolution: `RenderView` (camera, matrices, target pixel size, aspect, stream focus) is built per frame and is the single source for streaming, view bias, particles, world passes, and target sizing. Streaming unions visible view foci with the play avatars. The renderer separates the offscreen chain size (`render_width_`/`render_height_`, `set_render_resolution`) from the window/backbuffer, so Game renders at the authored play resolution. Only the visible view is drawn per frame.
+- Verification: Rebuild `engine`; play-test → Scene free-cam loads world under the lens; Game at 1920×1080 is a real target; captures still read the game RT.
+- Remaining risk: changing play resolution or switching tabs recreates the offscreen chain (one `wait_for_gpu` stall). Panel-splitter drags do not, because Scene renders at window size.
+
+## 2026-08-02 — Game tab drew editor overlays; Scene stream stuck on player
+
+- Reproduction: F5 play-test with maximized/1080p Game view; selection shows yellow AABB / event zones over the Game image. Scene tab while play runs: freecam far from the player sees empty land / little foliage because stream foci only followed the orbit pivot.
+- Impact: Game view polluted with edit chrome; Scene during play felt wireframe-empty.
+- Cause: Selection/collider/event-zone ImGui overlays ran for any 3D viewport (including Game). Terrain/foliage/water stream used player foci only during `test_session_active`.
+- Resolution: Gate viewport overlays to Scene/Sculpt. While play runs and Scene/Sculpt is selected, stream freecam as an additional focus (first, so foliage follows Scene). Water + view-bias follow freecam on those tabs. Game billboards use the play orbit VP.
+- Verification: Rebuild `engine`; F5 → Game without selection boxes; Scene freecam away from the player loads terrain/foliage.
+
+## 2026-08-02 — Scene during play looked broken (box player + frozen free-cam)
+
+- Reproduction: F5, switch to Scene while testing. Free-cam felt wrong (stretched); player often read as a solid unit cube, not the skinned mesh; gizmo/select/place disabled so world could not be examined while play ran.
+- Impact: Live inspection during play-test was unusable.
+- Cause: (1) `draw_physics_body` drew the unit box into the Scene RT whenever a test session was active. (2) Free-cam `set_perspective` only ran when no orbit camera existed, so play left Scene on a stale projection matrix. (3) `edit_mode = !test_session_active` blocked all Scene tools. (4) Maximized play chrome stayed collapsed on Scene, hiding Inspector.
+- Resolution: never draw the editor unit body box; always update free-cam aspect from Scene viewport rect; allow Scene edit tools + shortcuts during play; collapse max chrome only while Game is active; keep Sculpt/UI/World Forge gated.
+- Verification: rebuild `engine`; F5 → Scene → skinned player, free-cam (RMB), select/gizmo; inspector panels visible when not maximized Game.
+- Remaining risk: editing the live player spawn transform fights visual-follow each frame — inspect/edit other props or settings instead.
+
+## 2026-08-02 — Scene view janky after play-test; no fixed-res play surface
+
+- Reproduction: F5 Game play-test, walk/push dynamic props; End Test (Shift+F5); return to Scene. Spawn may restore but other Rigidbody placements stay where physics left them; editor often remains on the Game tab with a grey “Start a test session” plate; relative-mouse / orbit leftovers make free-cam feel broken; Game tab only fits the panel so UI cannot be checked at 1080p fullscreen.
+- Impact: Scene editing after play was unreliable (moved objects, wrong tab/camera presentation); HUD layouts could not be reviewed at design resolution.
+- Cause: restore only snapped player spawn + edit camera; Game tab was not left; only the panel-sized viewport existed for play.
+- Resolution: snapshot every entity transform at Start and restore on End (bump collision revision); End forces Scene tab + layout restore, clears look/fullscreen; Play display modes Embedded / Maximized / Fullscreen with letterboxed resolution presets (Fit, 720p–1080p, HUD design, Custom).
+- Verification: rebuild `engine`; Start Maximized 1080p → play → End → Scene free-cam, gizmos, and pre-play placement poses.
+- Remaining risk: Fullscreen uses the host editor window (not a second OS process); fixed-res letterboxes the Game RT rather than allocating a dedicated 1080p swap target.
+
 ## 2026-07-31 — Held weapon drifted off the hand; grip gizmo snapped back on release
 
 - Reproduction: Play-test with the Ashfell sword on hotbar 0. The sword floated at roughly double character scale near the hip instead of in the hand, and it kept the hand's animated pose only loosely. In Inspector → Held Weapon Attach, dragging the rotate gizmo moved the weapon, but the weapon jumped to a different orientation the moment the mouse released. Pausing with F6 dropped the character to bind pose while the weapon stayed at the last animated hand position.

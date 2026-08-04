@@ -71,7 +71,7 @@ Joint-name checks are **optional** (empty joint list skips). Use them when a ski
 
 - Runtime IK solve (FABRIK / Two-bone / etc.) — owner path is metadata now, full IK later
 - GPU skinning / pose playback
-- Editor Animation tools panel (TICKET-0135)
+- Editor Animation Studio (EPIC-0019 / TICKET-0248+; TICKET-0135 superseded)
 - Auto-generating roles from glTF node names
 
 ## Related

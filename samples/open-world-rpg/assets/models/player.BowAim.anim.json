@@ -1,0 +1,322 @@
+{
+  "schemaVersion": 1,
+  "kind": "animationClipOverride",
+  "clipSource": "assets/models/player.gltf",
+  "clipName": "BowAim",
+  "durationSeconds": 0.4,
+  "channels": [
+    {
+      "targetNodeName": "RightUpperArm",
+      "path": "rotation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0,
+        0.4
+      ],
+      "values": [
+        -0.107788,
+        0.625056,
+        0.075793,
+        0.769378,
+        -0.107788,
+        0.625056,
+        0.075793,
+        0.769378
+      ]
+    },
+    {
+      "targetNodeName": "RightLowerArm",
+      "path": "rotation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0,
+        0.4
+      ],
+      "values": [
+        0.201666,
+        0.366599,
+        0.026724,
+        0.907867,
+        0.201666,
+        0.366599,
+        0.026724,
+        0.907867
+      ]
+    },
+    {
+      "targetNodeName": "RightHand",
+      "path": "rotation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0,
+        0.4
+      ],
+      "values": [
+        0.611898,
+        -0.11516,
+        -0.001192,
+        0.782508,
+        0.611898,
+        -0.11516,
+        -0.001192,
+        0.782508
+      ]
+    },
+    {
+      "targetNodeName": "LeftUpperArm",
+      "path": "rotation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0,
+        0.4
+      ],
+      "values": [
+        -0.731837,
+        -0.614481,
+        -0.231262,
+        0.182608,
+        -0.731837,
+        -0.614481,
+        -0.231262,
+        0.182608
+      ]
+    },
+    {
+      "targetNodeName": "LeftLowerArm",
+      "path": "rotation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0,
+        0.4
+      ],
+      "values": [
+        -0.749199,
+        0.500482,
+        -0.30257,
+        0.310918,
+        -0.749199,
+        0.500482,
+        -0.30257,
+        0.310918
+      ]
+    },
+    {
+      "targetNodeName": "LeftHand",
+      "path": "rotation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0,
+        0.4
+      ],
+      "values": [
+        0.080088,
+        0.295252,
+        0.17796,
+        0.935277,
+        0.080088,
+        0.295252,
+        0.17796,
+        0.935277
+      ]
+    },
+    {
+      "targetNodeName": "RightUpperArm",
+      "path": "translation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0
+      ],
+      "values": [
+        0.381076,
+        0.137558,
+        0.004683
+      ]
+    },
+    {
+      "targetNodeName": "LeftUpperArm",
+      "path": "translation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0
+      ],
+      "values": [
+        -0.381076,
+        0.137558,
+        0.004683
+      ]
+    },
+    {
+      "targetNodeName": "Spine",
+      "path": "rotation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0,
+        0.4
+      ],
+      "values": [
+        0.03219,
+        -0.10336,
+        0.023254,
+        0.993851,
+        0.03219,
+        -0.10336,
+        0.023254,
+        0.993851
+      ]
+    },
+    {
+      "targetNodeName": "Chest",
+      "path": "rotation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0,
+        0.4
+      ],
+      "values": [
+        0.009921,
+        -0.06892,
+        0.020436,
+        0.997364,
+        0.009921,
+        -0.06892,
+        0.020436,
+        0.997364
+      ]
+    },
+    {
+      "targetNodeName": "Neck",
+      "path": "rotation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0,
+        0.4
+      ],
+      "values": [
+        0.008715,
+        0.052334,
+        0.000457,
+        0.998592,
+        0.008715,
+        0.052334,
+        0.000457,
+        0.998592
+      ]
+    },
+    {
+      "targetNodeName": "Head",
+      "path": "rotation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0,
+        0.4
+      ],
+      "values": [
+        0.034866,
+        0.043619,
+        0.0,
+        0.99844,
+        0.034866,
+        0.043619,
+        -0.0,
+        0.99844
+      ]
+    },
+    {
+      "targetNodeName": "Chest",
+      "path": "translation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0
+      ],
+      "values": [
+        0.0,
+        0.511699,
+        0.01
+      ]
+    },
+    {
+      "targetNodeName": "Head",
+      "path": "translation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0
+      ],
+      "values": [
+        0.0,
+        0.175607,
+        -0.042146
+      ]
+    },
+    {
+      "targetNodeName": "Hips",
+      "path": "rotation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0,
+        0.4
+      ],
+      "values": [
+        0.0,
+        -0.032848,
+        0.0,
+        0.99946,
+        0.0,
+        -0.032848,
+        0.0,
+        0.99946
+      ]
+    },
+    {
+      "targetNodeName": "Hips",
+      "path": "translation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0
+      ],
+      "values": [
+        0.0,
+        1.123883,
+        0.044533
+      ]
+    },
+    {
+      "targetNodeName": "RightLowerArm",
+      "path": "translation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0
+      ],
+      "values": [
+        0.518587,
+        0.02351,
+        -0.073184
+      ]
+    },
+    {
+      "targetNodeName": "Spine",
+      "path": "translation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0
+      ],
+      "values": [
+        -0.010782,
+        0.280071,
+        0.05897
+      ]
+    },
+    {
+      "targetNodeName": "LeftLowerArm",
+      "path": "translation",
+      "interpolation": "LINEAR",
+      "times": [
+        0.0
+      ],
+      "values": [
+        -0.45077,
+        0.133307,
+        0.065678
+      ]
+    }
+  ]
+}

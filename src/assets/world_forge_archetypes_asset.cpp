@@ -154,6 +154,7 @@ Result<WorldForgeArchetypesAsset> WorldForgeArchetypesAsset::parse(const std::st
             entity.summary = node.value("summary", std::string{});
             entity.draft_advancement = node.value("draftAdvancement", std::string{});
             entity.starter_kit_prefab_id = node.value("starterKitPrefabId", std::string{});
+            entity.starter_weapon_item_id = node.value("starterWeaponItemId", std::string{});
             entity.story_ref = node.value("storyRef", std::string{});
             entity.tags = read_string_array(node.value("tags", nlohmann::json::array()));
             if (node.contains("unlock") && node["unlock"].is_object()) {
@@ -212,6 +213,7 @@ std::string WorldForgeArchetypesAsset::to_json() const {
         node["summary"] = entity.summary;
         node["draftAdvancement"] = entity.draft_advancement;
         node["starterKitPrefabId"] = entity.starter_kit_prefab_id;
+        if (!entity.starter_weapon_item_id.empty()) node["starterWeaponItemId"] = entity.starter_weapon_item_id;
         node["storyRef"] = entity.story_ref;
         node["tags"] = write_string_array(entity.tags);
         if (entity.unlock && unlock_has_content(*entity.unlock)) {

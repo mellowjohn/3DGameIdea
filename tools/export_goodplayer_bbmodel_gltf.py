@@ -351,6 +351,7 @@ def export(bb_path: Path, png_path: Path | None, out_paths: list[Path]) -> None:
                         float(dp.get("z") or 0),
                     )
                 )
+            rest_t = nodes[bone_node_index[bname]].get("translation") or [0.0, 0.0, 0.0]
             for ch, keys in by_ch.items():
                 keys = sorted(keys, key=lambda t: t[0])
                 times = [k[0] for k in keys]
@@ -359,8 +360,13 @@ def export(bb_path: Path, png_path: Path | None, out_paths: list[Path]) -> None:
                     out_type, comps = "VEC4", 4
                     path = "rotation"
                 else:
+                    # Blockbench position keys are offsets from the bone rest pose, not absolute.
                     outs = [
-                        [k[1] * BB_TO_GLTF, k[2] * BB_TO_GLTF, k[3] * BB_TO_GLTF]
+                        [
+                            rest_t[0] + k[1] * BB_TO_GLTF,
+                            rest_t[1] + k[2] * BB_TO_GLTF,
+                            rest_t[2] + k[3] * BB_TO_GLTF,
+                        ]
                         for k in keys
                     ]
                     out_type, comps = "VEC3", 3
@@ -459,14 +465,387 @@ def export(bb_path: Path, png_path: Path | None, out_paths: list[Path]) -> None:
     print(f"pos y[{min(ys):.3f},{max(ys):.3f}] h={max(ys)-min(ys):.3f}")
 
 
+def _read_blob(g: dict) -> bytearray:
+    uri = g["buffers"][0].get("uri", "")
+    if uri.startswith("data:"):
+        marker = "base64,"
+        idx = uri.find(marker)
+        if idx < 0:
+            raise ValueError("unsupported data URI buffer")
+        return bytearray(base64.b64decode(uri[idx + len(marker) :]))
+    raise ValueError("expected embedded data URI buffer in glTF")
+
+
+def _write_blob(g: dict, raw: bytes) -> None:
+    g["buffers"] = [
+        {
+            "byteLength": len(raw),
+            "uri": "data:application/octet-stream;base64,"
+            + base64.b64encode(raw).decode("ascii"),
+        }
+    ]
+
+
+def _clip_duration(gltf: dict, anim: dict) -> float:
+    max_t = 0.0
+    accessors = gltf.get("accessors") or []
+    for sampler in anim.get("samplers") or []:
+        inp = sampler.get("input")
+        if inp is None or inp >= len(accessors):
+            continue
+        mx = accessors[inp].get("max") or [0.0]
+        if mx:
+            max_t = max(max_t, float(mx[0]))
+    return max_t
+
+
+def _append_animation_from_donor(
+    dest: dict,
+    dest_raw: bytearray,
+    dest_by_name: dict[str, int],
+    donor: dict,
+    donor_raw: bytes,
+    donor_nodes: list,
+    anim: dict,
+) -> dict | None:
+    """Copy one donor animation onto dest buffers, remapped by bone name."""
+    name = anim.get("name")
+    if not name:
+        return None
+    new_anim: dict = {"name": name, "samplers": [], "channels": []}
+    sampler_remap: dict[int, int] = {}
+    for old_si, sampler in enumerate(anim.get("samplers") or []):
+        new_sampler = {"interpolation": sampler.get("interpolation", "LINEAR")}
+        for key in ("input", "output"):
+            old_acc = donor["accessors"][sampler[key]]
+            old_bv = donor["bufferViews"][old_acc["bufferView"]]
+            start = old_bv.get("byteOffset", 0)
+            chunk = bytes(donor_raw[start : start + old_bv["byteLength"]])
+            pad = (4 - (len(dest_raw) % 4)) % 4
+            dest_raw.extend(b"\x00" * pad)
+            off = len(dest_raw)
+            dest_raw.extend(chunk)
+            view_idx = len(dest.setdefault("bufferViews", []))
+            view = {"buffer": 0, "byteOffset": off, "byteLength": len(chunk)}
+            if "byteStride" in old_bv:
+                view["byteStride"] = old_bv["byteStride"]
+            dest["bufferViews"].append(view)
+            acc = {
+                "bufferView": view_idx,
+                "componentType": old_acc["componentType"],
+                "count": old_acc["count"],
+                "type": old_acc["type"],
+            }
+            if "byteOffset" in old_acc:
+                acc["byteOffset"] = old_acc["byteOffset"]
+            if "min" in old_acc:
+                acc["min"] = list(old_acc["min"])
+            if "max" in old_acc:
+                acc["max"] = list(old_acc["max"])
+            acc_idx = len(dest.setdefault("accessors", []))
+            dest["accessors"].append(acc)
+            new_sampler[key] = acc_idx
+        sampler_remap[old_si] = len(new_anim["samplers"])
+        new_anim["samplers"].append(new_sampler)
+
+    skipped = 0
+    for ch in anim.get("channels") or []:
+        src_node = ch.get("target", {}).get("node")
+        if src_node is None or src_node >= len(donor_nodes):
+            skipped += 1
+            continue
+        src_name = donor_nodes[src_node].get("name")
+        if not src_name or src_name not in dest_by_name:
+            skipped += 1
+            continue
+        new_anim["channels"].append(
+            {
+                "sampler": sampler_remap[ch["sampler"]],
+                "target": {"node": dest_by_name[src_name], "path": ch["target"]["path"]},
+            }
+        )
+    if not new_anim["channels"]:
+        return None
+    if skipped:
+        print(f"  {name}: remapped channels, skipped {skipped} unmatched bones")
+    return new_anim
+
+
+def merge_animations_from_donor(
+    dest_path: Path,
+    donor_path: Path,
+    *,
+    only_longer: bool = True,
+    duration_epsilon: float = 0.05,
+) -> list[str]:
+    """Merge donor animations into dest glTF, keeping mesh/UVs/images.
+
+    When ``only_longer`` is True (default), keep Blockbench-native clips and only
+    replace a clip when the donor is meaningfully longer (truncated native exports)
+    or the dest is missing that clip. Full replacement of every clip with
+    bbmodel-derived euler→quat data drifts Run/Walk poses.
+    """
+    dest = json.loads(dest_path.read_text(encoding="utf-8"))
+    donor = json.loads(donor_path.read_text(encoding="utf-8"))
+    dest_by_name = {n.get("name"): i for i, n in enumerate(dest.get("nodes") or []) if n.get("name")}
+    donor_nodes = donor.get("nodes") or []
+    donor_raw = bytes(_read_blob(donor))
+    dest_raw = _read_blob(dest)
+
+    kept = {a.get("name"): a for a in (dest.get("animations") or []) if a.get("name")}
+    replaced: list[str] = []
+    added: list[str] = []
+
+    for anim in donor.get("animations") or []:
+        name = anim.get("name")
+        if not name:
+            continue
+        donor_dur = _clip_duration(donor, anim)
+        existing = kept.get(name)
+        if existing is not None and only_longer:
+            dest_dur = _clip_duration(dest, existing)
+            if donor_dur <= dest_dur + duration_epsilon:
+                continue
+        new_anim = _append_animation_from_donor(
+            dest, dest_raw, dest_by_name, donor, donor_raw, donor_nodes, anim
+        )
+        if new_anim is None:
+            continue
+        kept[name] = new_anim
+        if existing is None:
+            added.append(name)
+        else:
+            replaced.append(name)
+            print(f"  replaced {name}: native {dest_dur:.3f}s -> bbmodel {donor_dur:.3f}s")
+
+    if not kept:
+        raise RuntimeError(f"no animations available after merge from {donor_path} onto {dest_path}")
+
+    # Preserve a stable authoring order: donor order first, then any dest-only leftovers.
+    ordered: list[dict] = []
+    seen: set[str] = set()
+    for anim in donor.get("animations") or []:
+        name = anim.get("name")
+        if name and name in kept and name not in seen:
+            ordered.append(kept[name])
+            seen.add(name)
+    for name, anim in kept.items():
+        if name not in seen:
+            ordered.append(anim)
+            seen.add(name)
+
+    dest["animations"] = ordered
+    extras = dest.setdefault("extras", {})
+    extras["animationsSyncedFrom"] = str(donor_path)
+    extras["animationsReplaced"] = replaced
+    extras["animationsAdded"] = added
+    _write_blob(dest, bytes(dest_raw))
+    dest_path.write_text(json.dumps(dest, separators=(",", ":")), encoding="utf-8")
+    names = [a["name"] for a in ordered]
+    print(
+        f"Synced clips into {dest_path.name} (mesh/UVs preserved): "
+        f"kept={len(names) - len(replaced) - len(added)} replaced={replaced or '[]'} added={added or '[]'}"
+    )
+    return names
+
+
+def _append_f32_blob(raw: bytearray, values, comps: int) -> tuple[int, int]:
+    """Append tightly packed float values; returns (byte_offset, byte_length)."""
+    pad = (4 - (len(raw) % 4)) % 4
+    raw.extend(b"\x00" * pad)
+    off = len(raw)
+    for v in values:
+        if comps == 1:
+            raw.extend(struct.pack("<f", float(v)))
+        else:
+            raw.extend(struct.pack("<" + "f" * comps, *[float(x) for x in v]))
+    return off, len(raw) - off
+
+
+def sync_animations_from_bbmodel(dest_gltf: Path, bb_path: Path, png_path: Path | None = None) -> list[str]:
+    """Replace dest glTF animations with clips from the Blockbench project.
+
+    Keeps mesh/UVs/skins. Position keys are applied as rest_translation + offset/16 so
+    Hips stay at ~y=1 (absolute keys would sink the character into the ground). Every
+    clip present in the bbmodel replaces the dest clip of the same name so Run updates
+    even when its duration is unchanged.
+    """
+    del png_path  # mesh/atlas stay on dest; only animation channels are rewritten.
+    dest = json.loads(dest_gltf.read_text(encoding="utf-8"))
+    bb = json.loads(bb_path.read_text(encoding="utf-8"))
+    dest_by_name = {n.get("name"): i for i, n in enumerate(dest.get("nodes") or []) if n.get("name")}
+    rest_t = {
+        name: list((dest["nodes"][idx].get("translation") or [0.0, 0.0, 0.0]))
+        for name, idx in dest_by_name.items()
+    }
+    raw = _read_blob(dest)
+    kept = {a.get("name"): a for a in (dest.get("animations") or []) if a.get("name")}
+    replaced: list[str] = []
+    added: list[str] = []
+    ordered_names: list[str] = []
+
+    for anim in bb.get("animations") or []:
+        name = anim.get("name")
+        if not name:
+            continue
+        new_anim: dict = {"name": name, "samplers": [], "channels": []}
+        for an in (anim.get("animators") or {}).values():
+            bname = an.get("name")
+            if not bname or bname not in dest_by_name:
+                continue
+            by_ch: dict[str, list] = {}
+            for kf in an.get("keyframes") or []:
+                ch = kf.get("channel")
+                if ch not in ("rotation", "position"):
+                    continue
+                dp = (kf.get("data_points") or [{}])[0]
+                by_ch.setdefault(ch, []).append(
+                    (
+                        float(kf.get("time") or 0),
+                        float(dp.get("x") or 0),
+                        float(dp.get("y") or 0),
+                        float(dp.get("z") or 0),
+                    )
+                )
+            bone_rest = rest_t.get(bname) or [0.0, 0.0, 0.0]
+            for ch, keys in by_ch.items():
+                keys = sorted(keys, key=lambda t: t[0])
+                if not keys:
+                    continue
+                times = [k[0] for k in keys]
+                if ch == "rotation":
+                    outs = [euler_deg_to_quat(k[1], k[2], k[3]) for k in keys]
+                    comps, path, typ = 4, "rotation", "VEC4"
+                else:
+                    outs = [
+                        [
+                            bone_rest[0] + k[1] * BB_TO_GLTF,
+                            bone_rest[1] + k[2] * BB_TO_GLTF,
+                            bone_rest[2] + k[3] * BB_TO_GLTF,
+                        ]
+                        for k in keys
+                    ]
+                    comps, path, typ = 3, "translation", "VEC3"
+                t_off, t_len = _append_f32_blob(raw, times, 1)
+                o_off, o_len = _append_f32_blob(raw, outs, comps)
+                t_view = len(dest.setdefault("bufferViews", []))
+                dest["bufferViews"].append(
+                    {"buffer": 0, "byteOffset": t_off, "byteLength": t_len}
+                )
+                o_view = len(dest["bufferViews"])
+                dest["bufferViews"].append(
+                    {
+                        "buffer": 0,
+                        "byteOffset": o_off,
+                        "byteLength": o_len,
+                        "byteStride": 4 * comps,
+                    }
+                )
+                t_acc = len(dest.setdefault("accessors", []))
+                dest["accessors"].append(
+                    {
+                        "bufferView": t_view,
+                        "componentType": 5126,
+                        "count": len(times),
+                        "type": "SCALAR",
+                        "min": [min(times)],
+                        "max": [max(times)],
+                    }
+                )
+                o_acc = len(dest["accessors"])
+                dest["accessors"].append(
+                    {
+                        "bufferView": o_view,
+                        "componentType": 5126,
+                        "count": len(outs),
+                        "type": typ,
+                    }
+                )
+                si = len(new_anim["samplers"])
+                new_anim["samplers"].append(
+                    {"input": t_acc, "output": o_acc, "interpolation": "LINEAR"}
+                )
+                new_anim["channels"].append(
+                    {
+                        "sampler": si,
+                        "target": {"node": dest_by_name[bname], "path": path},
+                    }
+                )
+        if not new_anim["channels"]:
+            continue
+        if name in kept:
+            replaced.append(name)
+        else:
+            added.append(name)
+        kept[name] = new_anim
+        ordered_names.append(name)
+
+    if not replaced and not added:
+        raise RuntimeError(f"no animations could be synced from {bb_path} onto {dest_gltf}")
+
+    ordered: list[dict] = []
+    seen: set[str] = set()
+    for name in ordered_names:
+        if name in kept and name not in seen:
+            ordered.append(kept[name])
+            seen.add(name)
+    for name, anim in kept.items():
+        if name not in seen:
+            ordered.append(anim)
+            seen.add(name)
+
+    dest["animations"] = ordered
+    extras = dest.setdefault("extras", {})
+    extras["animationsSyncedFrom"] = str(bb_path)
+    extras["animationsReplaced"] = replaced
+    extras["animationsAdded"] = added
+    _write_blob(dest, bytes(raw))
+    dest_gltf.write_text(json.dumps(dest, separators=(",", ":")), encoding="utf-8")
+    print(
+        f"Synced clips into {dest_gltf.name} (mesh/UVs preserved, rest-relative positions): "
+        f"replaced={replaced} added={added or '[]'}"
+    )
+    return [a["name"] for a in ordered]
+
+
 def main() -> None:
-    bb = first_existing(SRC_BB_CANDIDATES)
-    if bb is None:
-        raise SystemExit(f"missing bbmodel; tried {SRC_BB_CANDIDATES}")
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--source",
+        type=Path,
+        default=None,
+        help="Blockbench .bbmodel (default: first existing GoodPlayerModel candidate)",
+    )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        action="append",
+        default=None,
+        help="Output .gltf path (repeatable). Default: art + Documents Models paths.",
+    )
+    parser.add_argument(
+        "--sync-animations-into",
+        type=Path,
+        default=None,
+        help="Keep this glTF's mesh/UVs; replace only its animations from the bbmodel.",
+    )
+    args = parser.parse_args()
+    bb = args.source.resolve() if args.source else first_existing(SRC_BB_CANDIDATES)
+    if bb is None or not bb.exists():
+        raise SystemExit(f"missing bbmodel; tried {args.source or SRC_BB_CANDIDATES}")
     png = first_existing(SRC_PNG_CANDIDATES)
     print("Source", bb)
     print("Atlas", png)
-    export(bb, png, OUT_PATHS)
+    if args.sync_animations_into is not None:
+        dest = args.sync_animations_into.resolve()
+        if not dest.exists():
+            raise SystemExit(f"missing dest glTF for animation sync: {dest}")
+        sync_animations_from_bbmodel(dest, bb, png)
+        return
+    outs = [p.resolve() for p in args.out] if args.out else OUT_PATHS
+    export(bb, png, outs)
 
 
 if __name__ == "__main__":

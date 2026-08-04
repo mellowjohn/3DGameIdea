@@ -11,3 +11,4 @@ public/favicon.png
 public/favicon.svg
 .data
 *.tsbuildinfo
+.env*

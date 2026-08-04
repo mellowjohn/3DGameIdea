@@ -538,17 +538,20 @@ const char* k_tools_list_json =
     },
     {
         "name": "engine_inventory_call",
-        "description": "Drive session InventoryRuntime (TICKET-0237 / DEC-0050). kind=status|grant|set_hotbar|set_equip|select_hotbar|select|equip_selected|unequip_selected|move. grant/set_* need itemId; set_hotbar/select_hotbar need slot 0..7; set_equip needs equipSlot (head|chest|legs|trinket0..3); move needs fromRegion/toRegion (+ fromIndex/toIndex/fromEquipSlot/toEquipSlot). Requires live editor MCP. Allowed during play test.",
+        "description": "Drive session InventoryRuntime (TICKET-0237 / DEC-0050). kind=status|grant|set_hotbar|set_equip|select_hotbar|select|equip_selected|unequip_selected|move|set_starter_archetype|apply_starter. grant/set_* need itemId; set_hotbar/select_hotbar need slot 0..7; set_equip needs equipSlot (head|chest|legs|trinket0..3); move needs fromRegion/toRegion (+ fromIndex/toIndex/fromEquipSlot/toEquipSlot). set_starter_archetype needs archetypeId (ashfell_blade|outrider|runecaster; apply defaults true in play-test). apply_starter swaps hotbar0 to that archetype weapon. status includes starterArchetypeId/starterWeaponItemId. Requires live editor MCP. Allowed during play test.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "kind": { "type": "string" },
                 "itemId": { "type": "string" },
+                "archetypeId": { "type": "string" },
                 "count": { "type": "integer" },
                 "slot": { "type": "integer" },
                 "equipSlot": { "type": "string" },
                 "region": { "type": "string" },
-                "index": { "type": "integer" }
+                "index": { "type": "integer" },
+                "apply": { "type": "boolean" },
+                "grantBandages": { "type": "boolean" }
             },
             "required": ["kind"]
         }
@@ -597,6 +600,62 @@ const char* k_tools_list_json =
             "required": ["kind"]
         }
     },
+    {
+        "name": "engine_animation_call",
+        "description": "Drive Animation Studio + weld authoring agentically (EPIC-0019). kind=status|open|set_subject|set_controller|set_state|play|pause|stop|step|seek|set_joint|list_joints|set_skeleton|set_bone_gizmo|create_clip|create_state|edit_clip|set_duration|upsert_key|upsert_keys|delete_key|copy_keys|paste_keys|save_override|sync_gltf|replace_from_source|list_events|add_event|update_event|remove_event|save_events|set_held|get_weld|set_weld|set_weld_gizmo|save_weld. set_duration/set_clip_duration: duration>0 seconds on open edit clip (trims keys after new end); copy_keys: tracks=true for full T/R/S curve; paste_keys lands at scrub (optional time). Requires live editor MCP.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "kind": { "type": "string" },
+                "subject": { "type": "string" },
+                "controller": { "type": "string" },
+                "state": { "type": "string" },
+                "time": { "type": "number" },
+                "play": { "type": "boolean" },
+                "dt": { "type": "number" },
+                "joint": { "type": "string" },
+                "source": { "type": "string" },
+                "jointSource": { "type": "string" },
+                "op": { "type": "string" },
+                "mode": { "type": "string" },
+                "enabled": { "type": "boolean" },
+                "visible": { "type": "boolean" },
+                "labels": { "type": "boolean" },
+                "clipSource": { "type": "string" },
+                "clipName": { "type": "string" },
+                "cloneFrom": { "type": "string" },
+                "duration": { "type": "number" },
+                "loop": { "type": "boolean" },
+                "layer": { "type": "string" },
+                "path": { "type": "string" },
+                "values": { "type": "array", "items": { "type": "number" } },
+                "keyIndex": { "type": "integer" },
+                "index": { "type": "integer" },
+                "name": { "type": "string" },
+                "payload": { "type": "string" },
+                "particle": { "type": "string" },
+                "itemId": { "type": "string" },
+                "offset": { "type": "array", "items": { "type": "number" } },
+                "eulerDeg": { "type": "array", "items": { "type": "number" } },
+                "scale": { "type": "array", "items": { "type": "number" } },
+                "joints": { "type": "array", "items": { "type": "string" } },
+                "save": { "type": "boolean" },
+                "enableGizmo": { "type": "boolean" },
+                "keys": {
+                    "type": "array",
+                    "items": { "type": "object" },
+                    "description": "Batch keyframes for upsert_keys: [{joint,path,time,values|eulerDeg},...]"
+                },
+                "tracks": {
+                    "type": "boolean",
+                    "description": "copy_keys: true = all T/R/S keys for joint; false = TRS slice at selected key/scrub"
+                }
+            },
+            "required": ["kind"]
+        }
+    },
+)"
+    R"(
     {
         "name": "engine_standing_call",
         "description": "Drive session StandingRuntime for agent testing (DEC-0029). kind=get|set|adjust|rank|meets|lock_in|list. Pass factionId (except list/lock_in); set needs score; adjust needs delta; meets needs minScore and/or minRankId. Requires live editor MCP. Allowed during play test.",
@@ -1011,6 +1070,15 @@ nlohmann::json handle_tools_call(const std::filesystem::path& project_root, cons
                     "engine_coop_call requires a running editor with MCP connection enabled")})}};
         }
         return bridge_to_tool_result(forward_to_editor(project_root, "coop_call", arguments));
+    }
+    if (tool_name == "engine_animation_call") {
+        EditorBridgeClient client(project_root);
+        if (!client.is_editor_running()) {
+            return {{"isError", true},
+                {"content", nlohmann::json::array({tool_text_content(
+                    "engine_animation_call requires a running editor with MCP connection enabled")})}};
+        }
+        return bridge_to_tool_result(forward_to_editor(project_root, "animation_call", arguments));
     }
     if (tool_name == "engine_standing_call") {
         EditorBridgeClient client(project_root);

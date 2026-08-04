@@ -95,7 +95,7 @@ Shipped thin Act 0 inventory: item catalog load, session `InventoryRuntime` (bag
 ### Leftover risk
 
 - Session inventory not yet serialized into RPG save (`inventory: {}` stub remains)
-- Archetype-specific starter weapons still default Ashfell on play-test (not yet wired to creation archetype)
+- Archetype-specific starter weapons: play-test uses `set_starter_archetype` / default `ashfell_blade` (character-creation UI still deferred)
 - Desktop visual QA of pen modal vs mock not automated
 - Sort button cycles label only (does not reorder bag yet)
 

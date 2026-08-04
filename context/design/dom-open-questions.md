@@ -2,7 +2,7 @@
 
 Status: active questionnaire for Dom (world designer)  
 Audience: Dom + owner review sessions  
-Last refreshed: 2026-07-29 (Act 0 Landfall session answered; leftovers remain)
+Last refreshed: 2026-08-03 (LD + character concepts review; camp DEC reopen + art leftovers)
 
 This is the **design tab** of story questions Dom should still answer. Engine/product opens stay in [`../interviews/open-questions.md`](../interviews/open-questions.md). Full faction essays stay in [`../story/factions.md`](../story/factions.md). Finished locks: [`dom-answered-questions.md`](dom-answered-questions.md). Beat sheet / side quests: [`../story/campaign-beat-sheet.md`](../story/campaign-beat-sheet.md), [`../story/side-quest-catalog.md`](../story/side-quest-catalog.md).
 
@@ -17,6 +17,8 @@ This is the **design tab** of story questions Dom should still answer. Engine/pr
 | **P2** | Important lore / mid-campaign; can wait until Act 2+ authoring |
 
 **Session note (2026-07-29 evening):** Dom + owner recording *Act Zero Decisions and Faction Interactions* answered most **P0 — Act 0 Landfall** rows — see [`dom-answered-questions.md`](dom-answered-questions.md). Leftovers below: world coords (level design), lane-org **faces**, and Act 1 coastal. *Quest UI + progression* then *Archetype Quests and Power Progression* → **[DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux)** (no XP, journal tabs, track ≤3, `?`/`!`, standing on complete). Act 0 boss presence still open.
+
+**Session note (2026-08-03):** *Level Design + Character Concepts* — art/camp lean locks moved to answered archive (D-P1-20/24/25, D-P2-18–21). New opens: **D-P1-23** (camp model vs DEC-0033), **D-P2-16** (Act 3 red ice vs Nefarium black), **D-P2-17** (Creotar VFX params). Work items: TICKET-0254–0256. Provenance: [`recording_ld_character_concepts_2026-08-03.md`](recording_ld_character_concepts_2026-08-03.md).
 
 ---
 
@@ -44,6 +46,7 @@ Most Landfall questionnaire rows moved to the answered archive (2026-07-29). Bea
 | D-P1-16 | When does the player learn **Sea of Whispers is false** / **Pneumyra** is Luceran’s lieutenant (vs public **She Who Sings the Undertow**)? | Dialogue reveal beats; shrine copy; boss framing | Names + boss body locked; **reveal timing** open. Anál Muir channeling Sea of Whispers directly still open | |
 | D-P1-17 | Name **1–2 White Lotus first-contact NPCs** (or “roles only until Act 2”) for the Cristallo dual-path intro | Act 1 Part 2 / early Act 2 dialogue; crystal path | White Lotus = elected guardians of **Claritas** (crystal on leader’s staff — D-P2-02b). Court / staff bearer title still open with D-P2-01b | |
 | D-P1-18 | Lock or rewrite **side-quest draft NPC names** for Act 1 authoring: Pellin, Mara of Rinos, Brannoc, Lady Vesperine, Kerra, Jask, Holm family | Dialogue + relationship seeds; avoid shipping placeholders | Catalog SQ-01–11; placeholders flagged draft. Prefer Greek–Irish for Arrotrebae faces; kingdom faces freer | |
+| D-P1-23 | Formal **player camp model**: keep DEC-0033 instance-primary, or amend toward **Palworld-style placeable open-world base** (companions idle at camp; optional craft/forage/mine later)? | Product architecture; opens sandbox scope; conflicts with current DEC-0033 wording | **2026-08-03 draft lean:** Dom + John prefer placeable open-world camp/base (linear campaign + sandbox). Tutorial/storage/rest from D-P0-10 / D-P1-19 still apply until amended. Decision ticket **TICKET-0254**. Do not implement full base-building until DEC lands | |
 
 ---
 
@@ -62,6 +65,8 @@ Most Landfall questionnaire rows moved to the answered archive (2026-07-29). Bea
 | D-P2-12 | Companion **loyalty break points**, romance vs intimate-bond support, death outside hardcore | [`companions.md`](../story/companions.md); Act 3 A3-02. Co-op: shared morality + party ≤4 (2P + 2 companions). Do not invent break thresholds | |
 | D-P2-13 | Act 4 **ending matrix** sketch: oppose / exploit / become evil × Cristallo–Arrotrebae preserved / reformed / dismantled | Soft draft 2026-07-29: after Frangitur falls, Imperium has **no masters** → **destroy** chaos for good **or** forge/wield a new Shroud to **control** it (control path = corruption / become evil). Needs D-P2-06 numbers | |
 | D-P2-15 | Optional **tribe obligation** for non-Ashfell lanes (Outrider / Runecaster) | House Ashfell **confirmed** 2026-07-29; faces → D-P1-21b | |
+| D-P2-16 | Act 3 **red ice** citadel palette vs **Nefarium pure black** — same mineral, corruption tint, or distinct red crystal resource? | Luceran approach art; throne / crystal massing | Dom wants red-ice experience; Nefarium mineral locked pure black (D-P2-21). Do not invent a second major relic. → TICKET-0256 notes | |
+| D-P2-17 | Creotar vision **VFX parameters**: how readable is the body, pulse-on-speech intensity, opacity range | A0-08 cinematic / instance polish | Presentation lean locked (D-P2-18); numeric/art pass open → TICKET-0256 | |
 
 ---
 
@@ -75,9 +80,12 @@ Work Dom + writers should queue **after** (or interleaved with) the naming quest
 | --- | --- | --- |
 | **P0** | `mq_act0_calrenoth` | Seeded; Twine dialogue attached — fill empty objective `dialogueId`s; camp handoff stage after vision |
 | **P0** | Act 0 polish — Creotar / **Claritas** stubs | Twine “crystal location” → name **Claritas**; guidance = **partially true** (D-P2-14); staff-bearer location for Cristallo path |
-| **P0** | Act 0 → camp handoff lines | **Arkand**-guided tutorial (storage / rest / travel); companion talk flags; **Larrell** hostage if not saved (D-P0-12b / D-P1-19) |
+| **P0** | Act 0 → camp handoff lines | **Arkand**-guided tutorial (storage / rest / travel); companion talk flags; **Larrell** hostage if not saved (D-P0-12b / D-P1-19). Camp *placement model* may change after D-P1-23 |
 | **P0** | Calrenoth ruined revisit state notes | Seamless post–Act 0; SQ-03 ledger spawn; optional Lodge/Guild/Ashfell **glimpses** during siege |
 | **P0** | Map anchors: **Porto Lucente** + dock | Once D-P2-08 coords lock (level design) |
+| **P1** | Calrenoth **interior** town/keep expand | 2026-08-03: inside should read town/city + castle keep beyond siege corridor concepts |
+| **P1** | Kit concept revisions (Damius / Ashfell / Underflow) | TICKET-0255 — leather scout; warrior starter; clan orc variants |
+| **P2** | Creotar vision + Act 3 red-ice LD notes | TICKET-0256 after D-P2-16 / D-P2-17 where needed |
 
 ### Persons to add (relationship graph)
 

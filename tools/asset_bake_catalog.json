@@ -172,21 +172,23 @@
     },
     {
       "id": "outrider_shortbow",
-      "kind": "static",
+      "kind": "skinned",
       "baker": "tier1",
       "defaultSource": "tools/art/outrider-shortbow/Outrider_Shortbow.gltf",
       "outputs": {
         "mesh": "assets/models/outrider_shortbow.gltf",
         "atlas": "assets/models/outrider_shortbow.png"
       },
-      "generatorContains": "outrider shortbow bake",
+      "generatorContains": "outrider shortbow skinned bake",
       "verify": {
         "targetHeight": 1.05,
         "heightTolerance": 0.15,
         "feetEpsilon": 0.05,
         "atlasMin": 16,
         "atlasMax": 2048,
-        "checkUvTransparent": false
+        "checkUvTransparent": false,
+        "checkSkin": true,
+        "requiredClips": ["bow_draw"]
       }
     },
     {

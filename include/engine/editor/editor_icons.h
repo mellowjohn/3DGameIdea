@@ -1,6 +1,8 @@
 #pragma once
 
 // Font Awesome 6 Free solid glyphs merged into the Dear ImGui default font.
+#define ICON_FA_CHECK "\xef\x80\x8c"
+#define ICON_FA_XMARK "\xef\x80\x8d"
 #define ICON_FA_PLAY "\xef\x81\x8b"
 #define ICON_FA_PAUSE "\xef\x81\x8c"
 #define ICON_FA_STOP "\xef\x81\x8d"
@@ -18,3 +20,5 @@
 #define ICON_FA_DESKTOP "\xef\x84\x88"
 #define ICON_FA_GLOBE "\xef\x82\xac"
 #define ICON_FA_BOOK "\xef\x80\xad"
+#define ICON_FA_FILM "\xef\x80\x88"
+#define ICON_FA_FORWARD "\xef\x81\x8e"

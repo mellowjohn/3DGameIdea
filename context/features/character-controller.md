@@ -8,7 +8,9 @@
 
 - Sample capsule: **0.35 m** radius, **0.85 m** cylindrical half-height; collider local Y offset = `radius + halfHeight` so the entity transform is at the feet.
 - `RigidbodyLocomotion::move(wish, yaw, dt)` sets target horizontal velocity on the body (accel/friction from `CharacterControllerConfig`); idle ground friction zeroes horizontal slide.
-- Gravity comes from the dynamic body (`useGravity`); jump sets upward linear velocity when grounded (feet overlap).
+- Gravity comes from the dynamic body (`useGravity`); jump sets upward linear velocity when grounded (feet overlap / sticky under-foot).
+- Sample open-world player `maxSpeed` is **5.5 m/s** (jog-run; previously 8 m/s which felt like permanent sprint).
+- **Ground stick / coyote:** dual sole-sphere overlaps + short down-sweep (~0.28 m stick). Overlap/sticky hits are **physics-supported** (friction, kill crest lift, soft Y snap). **~0.12 s coyote** only keeps animator `grounded` + jump for micro-leaves (no Fall flash on hills) — it does **not** zero fall velocity so real edge drops still drop. Intentional launch (`vy ≥ max(2.5, 0.8×jumpVelocity)`) clears coyote immediately. New locomotion instances start airborne (air clock above coyote) until first true contact.
 - Facing / feet visuals: entity write-back from the motion body, then yaw from horizontal velocity (+π model offset for `player.gltf`).
 - Physics integration is **variable-dt** (frame clamp ≤ 0.25 s). `CollisionWorld::step` substeps toward ~1/60 s and dynamic bodies use Jolt **LinearCast** CCD so hitch-sized steps do not tunnel through floors (see `context/testing/findings.md`).
 
@@ -41,7 +43,7 @@ Placement motion bodies are owned by the placement partition cell and unload wit
 ## Limitations
 
 - Stair stepping is weaker than CharacterVirtual `ExtendedUpdate` (deferred polish).
-- No coyote time / double jump yet.
+- Coyote time is anim/jump only (~0.12 s); no double jump yet.
 - Visual in-place root stripping for skinned meshes is not yet applied (capsule sync only). Playtest runs **GPU LBS skinning** per animator entity (CPU pose/matrices → bone CB uploaded per draw group): player locomotion from WASD, NPCs with their own Idle (or other) states from their animator instances.
 - No nav-grid snap yet.
 - Character-vs-character collision is not registered.

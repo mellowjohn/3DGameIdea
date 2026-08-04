@@ -10,8 +10,8 @@
         ],
         "gripOffset": [
           0.0,
-          -0.009999999776482582,
-          0.0
+          -0.05999999865889549,
+          0.20000000298023224
         ],
         "gripScale": [
           1.0000004768371582,
@@ -32,6 +32,25 @@
     },
     {
       "displayName": "Outrider Shortbow",
+      "handAttach": {
+        "gripEulerDeg": [
+          -4.8189377784729,
+          88.26234436035156,
+          100.64341735839844
+        ],
+        "gripOffset": [
+          -0.12529489398002625,
+          0.034397900104522705,
+          -0.6801880598068237
+        ],
+        "gripScale": [
+          1.2999999523162842,
+          1.3749995231628418,
+          1.100000023841858
+        ],
+        "joint": "LeftHand",
+        "drawClip": "bow_draw"
+      },
       "icon": "assets/ui/icons/items/outrider_shortbow.png",
       "id": "outrider_shortbow",
       "kind": "weapon",
@@ -44,6 +63,24 @@
     },
     {
       "displayName": "Guild Rune Focus",
+      "handAttach": {
+        "gripEulerDeg": [
+          -85.0,
+          28.0,
+          -30.0
+        ],
+        "gripOffset": [
+          0.0,
+          -0.04,
+          0.14
+        ],
+        "gripScale": [
+          1.0,
+          1.05,
+          1.0
+        ],
+        "joint": "LeftHand"
+      },
       "icon": "assets/ui/icons/items/guild_rune_focus.png",
       "id": "guild_rune_focus",
       "kind": "weapon",

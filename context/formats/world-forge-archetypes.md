@@ -27,6 +27,7 @@ Sample: `samples/open-world-rpg/assets/world-forge/archetypes.worldforge.json`.
       "summary": "...",
       "draftAdvancement": "Fighter or Brawler lean inside House Ashfell; later advanced by morality and allegiance",
       "starterKitPrefabId": "assets/prefabs/Player/player.prefab.json",
+      "starterWeaponItemId": "ashfell_arming_sword",
       "storyRef": "context/story/ashfell-blade.md",
       "tags": ["starting", "melee", "house_ashfell", "fighter", "brawler"],
       "unlock": {
@@ -40,6 +41,8 @@ Sample: `samples/open-world-rpg/assets/world-forge/archetypes.worldforge.json`.
 ```
 
 `unlock` is optional. Omit it for starting archetypes with no unlock requirements. When present, `moralityThreshold` is optional; `factionId` may be empty; `tags` may be empty.
+
+`starterWeaponItemId` is optional. When set, play-test / `inventory_call set_starter_archetype` grants that item catalog id to hotbar 0. When empty, the engine falls back to the built-in Act 0 map (`ashfell_blade` → `ashfell_arming_sword`, `outrider` → `outrider_shortbow`, `runecaster` → `guild_rune_focus`).
 
 Home org and sub-themes are authored in `role` / `summary` / `draftAdvancement` / `tags` until a dedicated schema field exists.
 
@@ -64,9 +67,9 @@ Project `validate` loads the default path when present and soft-checks unlock fa
 
 | id | kind | Home org | Notes |
 | --- | --- | --- | --- |
-| `ashfell_blade` | starting | House Ashfell | Melee; Fighter/Brawler; starter kit points at player prefab |
-| `outrider` | starting | Outrider Lodge | Ranged; Ranger/Forager/Nomad; kit TBD |
-| `runecaster` | starting | Runecaster Guild | Rune/Sigil caster; kit TBD |
+| `ashfell_blade` | starting | House Ashfell | Melee; Fighter/Brawler; starter kit + `ashfell_arming_sword` |
+| `outrider` | starting | Outrider Lodge | Ranged; Ranger/Forager/Nomad; starter kit + `outrider_shortbow` |
+| `runecaster` | starting | Runecaster Guild | Rune/Sigil caster; starter kit + `guild_rune_focus` |
 
 No advanced archetypes seeded — deferred until after the demo per story context.
 

@@ -14,7 +14,7 @@
         "assets/vfx/wall_torch_smoke.particle.json"
       ],
       "prefab": "assets/prefabs/Scene Assets/wall_torch.prefab.json",
-      "notes": "Torch-scale molten look; mesh uses flame_core_emissive."
+      "notes": "Torch-scale molten look; keep glTF mesh materials (no whole-prop flame_core_emissive)."
     },
     {
       "id": "campfire_layer",
@@ -27,8 +27,7 @@
         "assets/vfx/campfire_smoke.particle.json"
       ],
       "prefab": "assets/prefabs/Scene Assets/campfire.prefab.json",
-      "material": "assets/materials/flame_core_emissive.material.json",
-      "notes": "Same stack as stylized_flame hero; bloom softens the core."
+      "notes": "Same stack as stylized_flame hero; do not paint flame_core_emissive on the whole mesh."
     },
     {
       "id": "hit_spark",
@@ -43,6 +42,27 @@
       "summary": "Short dusty motion streak at the feet when the player dodges.",
       "emitters": ["assets/vfx/dodge_dust.particle.json"],
       "notes": "Spawn via ParticleSystem::spawn_burst opposite the dash direction; not a prefab attachment."
+    },
+    {
+      "id": "footstep_dust",
+      "title": "Footstep dust puff",
+      "summary": "Subtle ground dust puff on walk/run strides and landings.",
+      "emitters": ["assets/vfx/footstep_dust.particle.json"],
+      "notes": "Spawn via ParticleSystem::spawn_burst at feet from footstep animation events / stride counter; not a prefab attachment."
+    },
+    {
+      "id": "arrow_trail",
+      "title": "Bow arrow flight trail",
+      "summary": "Faint cool-white wind-rush streaks (motion air, not magic sparks) along flying play-test arrows.",
+      "emitters": ["assets/vfx/arrow_trail.particle.json"],
+      "notes": "Spawn via ParticleSystem::spawn_burst each few tenths of a meter while projectile flies; emissionDirection opposite flight; not a prefab attachment."
+    },
+    {
+      "id": "arrow_impact",
+      "title": "Bow arrow impact burst",
+      "summary": "Short gold/cyan sparks when a play-test arrow hits geometry, terrain, or expires.",
+      "emitters": ["assets/vfx/arrow_impact.particle.json"],
+      "notes": "Spawn via ParticleSystem::spawn_burst on impact (optional footstep_dust companion puff); not a prefab attachment."
     },
     {
       "id": "corrupt_aura",
@@ -62,8 +82,7 @@
         "assets/vfx/hit_spark.particle.json",
         "assets/vfx/campfire_smoke.particle.json"
       ],
-      "material": "assets/materials/flame_core_emissive.material.json",
-      "notes": "Matches particle-trio molten look; bloom (0242) softens the core. Mesh uses emissive_magic pulse as blob stand-in until displace master."
+      "notes": "Matches particle-trio molten look; bright core is flipbook particles + point light (not whole-mesh emissive)."
     },
     {
       "id": "stylized_flame_wispy",

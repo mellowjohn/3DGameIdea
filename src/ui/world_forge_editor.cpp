@@ -7934,6 +7934,16 @@ void draw_archetypes_pane(WorldForgeEditorSession& session, const std::filesyste
         if (draw_id_combo("Starter kit prefab", entity->starter_kit_prefab_id,
                 collect_prefab_relative_paths(project_root)))
             session.dirty = true;
+        {
+            static const std::vector<std::string> k_starter_weapons = {
+                "ashfell_arming_sword",
+                "outrider_shortbow",
+                "guild_rune_focus",
+            };
+            if (draw_id_combo("Starter weapon item", entity->starter_weapon_item_id, k_starter_weapons, true,
+                    "(default from lane)"))
+                session.dirty = true;
+        }
         if (draw_input_text("Story reference", entity->story_ref, 320)) session.dirty = true;
         if (draw_csv_field("Tags", entity->tags)) session.dirty = true;
 

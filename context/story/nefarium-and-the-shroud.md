@@ -5,7 +5,7 @@
 
 ## Nefarium Appearance
 
-Draft visual direction describes Nefarium as a jagged, fractured, void-black mineral veined by crimson or sickly green energy. It appears unnaturally cold and absorbs surrounding light instead of reflecting it. An internal pulse resembles a slow heartbeat and intensifies around conflict or suffering.
+Draft visual direction describes Nefarium as a jagged, fractured, **pure void-black** mineral (Dom lock 2026-08-03 — the mineral itself is black for contrast). It may be veined or edged by crimson or sickly green **energy**, but the stone is not a red crystal mass. It appears unnaturally cold and absorbs surrounding light instead of reflecting it. An internal pulse resembles a slow heartbeat and intensifies around conflict or suffering. Act 3 concept red ice / red crystal massing is cool art but is **not automatically Nefarium** until D-P2-16 locks whether that is a distinct resource or a corruption tint.
 
 ## Corrupting Effects
 

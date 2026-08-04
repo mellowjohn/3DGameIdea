@@ -397,6 +397,7 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
   6. Quiet overland (including dangerous regions when **not** in an active fight) may still allow camp unless a later tag blocks it; the hard rule is “no combat escape hatch.”
 - Rationale: Gives a persistent social/management space without chapter loads; matches companion-heavy party (player + up to three) and discovery-driven overland travel. Camp is prep/rest, not a panic button.
 - Consequences: Document in [`open-world-navigation.md`](../features/open-world-navigation.md) and beat sheet A1-01. Future tickets: camp instance asset, enter/exit commands, persistence, evergreen tutorial beat, combat-state / combat-zone checks before pitch. Do not invent full RPG inventory/crafting scope here.
+- Related reopen (2026-08-03): Dom + owner draft lean toward **Palworld-style placeable open-world camp/base** (companions at camp; optional craft later). **Not yet an amend** — track as Dom **D-P1-23** + **TICKET-0254**; provenance [`../design/recording_ld_character_concepts_2026-08-03.md`](../design/recording_ld_character_concepts_2026-08-03.md). Keep this DEC until a superseding decision lands.
 - Supersedes: none
 
 ### DEC-0034: Tessera is the world’s primary land
@@ -694,4 +695,34 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Rationale: Removes cheese-leveling while keeping Terraria gear fantasy; separates lane power (archetype lines) from campaign spine; keeps journal filters transparent; binds standing to completion for predictable authoring.
 - Consequences: Update gearing + character-creation + quest format + `quest-ui.pen` + open-questions. Schema: widen `kind` with `archetype` when lane-org seeds land; wire `standingRewards` on complete (QuestRuntime follow-up). Journal/map markers remain TICKET-0062. Act 0 boss presence still open.
 - Supersedes: none (amends quest standing-apply gap noted in [`../formats/world-forge-quests.md`](../formats/world-forge-quests.md))
+
+### DEC-0052: Dual-edit animation clips (engine override + sync to glTF)
+
+- Status: accepted
+- Date: 2026-08-03
+- Context: Owner asked for an Animation Studio viewport (EPIC-0019) that can edit clip keyframes in-engine. Clips today import from glTF ([`../formats/animation-clip-assets.md`](../formats/animation-clip-assets.md)); Blockbench remains the art source. Owner chose a **dual** save model so the engine always knows authored changes and the glTF source stays good when syncing.
+- Decision:
+  1. **Engine override is the live authoring layer.** In-engine keyframe edits persist to a project-local engine-owned clip override asset (target shape: `*.anim.json` or equivalent under `assets/`; exact schema lands with TICKET-0253). Runtime sampling prefers the override when present for a `(clipSource, clipName)` pair.
+  2. **Sync to source updates the glTF.** An explicit **Sync to source** (or equivalent Save-both) action writes the override channels back into the referenced `.gltf` / `.glb` `animations[]` so the art source matches what the engine plays. Fail-closed on unsupported paths (e.g. CUBICSPLINE) with stable error codes.
+  3. **Import still starts from glTF.** Fresh import / bake without an override uses glTF channels. Re-import that would clobber an existing override must surface a clear conflict choice (keep override / replace from source) — silent overwrite is rejected.
+  4. **Scope of dual-edit:** bone TRS keyframes for LINEAR/STEP clips. Controller `timelineEvents`, gear, and handAttach remain their existing asset homes (animator JSON / item catalog); they are not folded into `*.anim.json`.
+- Rationale: Keeps Blockbench/glTF as a healthy source while giving the engine a durable, text-friendly override for studio polish and agent tooling.
+- Consequences: TICKET-0253 implements format + library merge + Sync UI; update [`../formats/animation-clip-assets.md`](../formats/animation-clip-assets.md) when schema ships; Animation Studio feature note owns the UX contract ([`../features/animation-studio.md`](../features/animation-studio.md)).
+- Supersedes: none (fills the deferred “compiled intermediate `.anim.json`” note in the clip format doc)
+
+### DEC-0053: Native game module hot-reload (C ABI)
+
+- Status: accepted
+- Date: 2026-08-04
+- Context: C++ changes to `engine_core` still require kill → rebuild → restart. Owner asked for faster native iteration without abandoning [DEC-0023](#dec-0023-live-lua-host-api-agent-iteration-path) Lua/content hot reload. The editor is a single static `engine_core` linked into `engine.exe` with no existing plugin seam ([`components.md`](../architecture/components.md) already excludes arbitrary C++ component plugins).
+- Decision:
+  1. **Live Lua + assets remain the primary iteration path** for gameplay expressible in script/project data (DEC-0023). Native hot-reload is a complementary side channel.
+  2. **Host keeps platform and runtime ownership:** D3D12, ImGui, Jolt, EnTT, `LuaRuntime`, editor/MCP, `GameSession`, and first-class RPG runtimes stay in `engine_core` / the process. The game DLL must not create a second device, ImGui context, physics world, or Lua state.
+  3. **C ABI only across the boundary** (`game_module_abi.h` v1): host provides log + blackboard set/get; module exports `abi_version` / `name` / `init` / `tick` / `shutdown`. No STL, EnTT, Jolt, or C++ classes in the ABI.
+  4. **Windows load pattern:** copy `game_module.dll` to a generation path before `LoadLibrary` so MSBuild can overwrite the canonical DLL while a previous generation stays mapped until unload/reload.
+  5. **MVP omits DLL-registered `lua_CFunction`s** (static Lua / dual-heap risk). After reload the host may call optional Lua `on_game_module_reloaded` with name/ABI/generation.
+  6. **Out of scope:** marketplace/C++ component plugins, hot-reloading `engine_core` itself, moving quest/inventory/renderer into the DLL.
+- Rationale: Unlocks native C++ tune/verify loops for code that must stay C++ without a full process restart, while preserving the existing content workflow and a fail-closed ABI check.
+- Consequences: Implement under EPIC-0020 / TICKET-0257. Document workflow in content-vs-engine and [`../features/game-module-hot-reload.md`](../features/game-module-hot-reload.md). `engine_core` changes still require the kill → rebuild → restart loop.
+- Supersedes: none (complements DEC-0023; does not replace it)
 

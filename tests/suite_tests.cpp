@@ -27,9 +27,12 @@
 #include "engine/physics/character_controller.h"
 #include "engine/physics/rigidbody_locomotion.h"
 #include "engine/scripting/lua_runtime.h"
+#include "engine/game/game_module_host.h"
+#include "engine/game/game_module_abi.h"
 #include "engine/assets/hud_asset.h"
 #include "engine/assets/item_catalog_asset.h"
 #include "engine/inventory/inventory_runtime.h"
+#include "engine/inventory/starter_loadout.h"
 #include "engine/assets/ui_canvas_asset.h"
 #include "engine/assets/ui_canvas_mutate.h"
 #include "engine/assets/world_forge_archetypes_asset.h"
@@ -62,6 +65,7 @@
 #include "engine/automation/project_git_commands.h"
 #include "engine/automation/build_coordination.h"
 #include "engine/automation/planning_backlog.h"
+#include "engine/automation/asset_import.h"
 #include "engine/ui/ui_canvas_stack.h"
 #include "engine/ui/hud_runtime.h"
 #include "engine/ui/ui_texture_cache.h"
@@ -2531,6 +2535,36 @@ int main(int argc,char**argv){
             const auto block_end=loco.feet_position();
             r.check(block_end.z<block_start.z+1.2,"0198 static crate blocks rigidbody locomotion");
             r.check(block_end.z>block_start.z-0.05,"0198 block walk does not fling backward");
+
+            // Sticky + coyote: foot just above a surface reports grounded (hill micro-gap) without locking fall forever.
+            {
+                engine::CollisionWorld stick_world;
+                auto stick_floor=stick_world.add_box({0,-1,0},{20,1,20},engine::CollisionLayer::StaticWorld,false);
+                r.check(stick_floor.has_value(),"sticky ground floor");
+                auto settings=engine::CollisionBodySettings::make_dynamic();
+                settings.mass=70.0f;
+                settings.freeze_rotation=true;
+                settings.use_gravity=false;
+                const float radius=0.35f;
+                const float half=0.85f;
+                // Capsule feet sit ~0.18 m above the box top (y=0) so only sticky down-sweep can see ground.
+                const float feet_clearance=0.18f;
+                const float center_y=half+radius+feet_clearance;
+                auto stick_cap=stick_world.add_capsule({0.0,center_y,0.0},radius,half,engine::CollisionLayer::Dynamic,settings);
+                r.check(stick_cap.has_value(),"sticky ground capsule");
+                engine::CharacterControllerConfig stick_cfg;
+                stick_cfg.step_height=0.35f;
+                engine::RigidbodyLocomotion stick_loco(stick_world,stick_cap.value(),stick_cfg,radius,half);
+                r.check(stick_loco.on_ground(),"sticky under-foot probe reports grounded");
+                // Coyote after hard teleport into free air: brief grounded for anim, then released.
+                (void)stick_world.set_transform(stick_cap.value(),{0.0,center_y+4.0,0.0});
+                r.check(stick_loco.on_ground(),"coyote still grounded on first leave query");
+                for(int i=0;i<12;++i){
+                    r.check(stick_loco.move({0,0,0},0.0f,1.0f/60.0f).has_value(),"coyote advance step");
+                    r.check(stick_world.step(1.0f/60.0f).has_value(),"coyote physics step");
+                }
+                r.check(!stick_loco.on_ground(),"coyote expires after ~0.2s free air");
+            }
         }
     }else if(suite=="camera"){
         engine::DebugCamera camera;r.check(!camera.set_perspective(0,1,0.1f,100),"invalid perspective rejected");r.check(camera.set_perspective(1.0f,16.0f/9.0f,0.1f,2000).has_value(),"perspective accepted");
@@ -2610,15 +2644,19 @@ int main(int argc,char**argv){
         r.check(orbit.yaw()!=0.0f,"orbit look input changes yaw");
         r.check(orbit.update({0,0,0},clear_world,1.0f/60.0f).has_value(),"orbit update after look succeeds");
         const auto aim=orbit.forward();
-        const auto eye=orbit.position();
-        const float to_pivot_x=-eye[0];
-        const float to_pivot_y=1.6f-eye[1];
-        const float to_pivot_z=-eye[2];
-        const float aim_len=std::sqrt(to_pivot_x*to_pivot_x+to_pivot_y*to_pivot_y+to_pivot_z*to_pivot_z);
-        r.check(aim_len>0.001f,"orbit eye offset from pivot");
-        const float dot=(aim[0]*to_pivot_x+aim[1]*to_pivot_y+aim[2]*to_pivot_z)/aim_len;
-        r.check(dot>0.999f,"orbit forward aims at pivot center after yaw");
-        // RPG over-the-shoulder: eye shifts right while still aiming at the character.
+        {
+            // Modern OTS: forward is pure yaw/pitch, not eye→pivot (shoulder must not skew aim).
+            const float yaw=orbit.yaw();
+            const float pitch=orbit.pitch();
+            const float cp=std::cos(pitch);
+            const float sp=std::sin(pitch);
+            const float ex=std::sin(yaw)*cp;
+            const float ey=-sp;
+            const float ez=std::cos(yaw)*cp;
+            r.check(std::abs(aim[0]-ex)<1e-5f&&std::abs(aim[1]-ey)<1e-5f&&std::abs(aim[2]-ez)<1e-5f,
+                "orbit forward is pure look orientation after yaw");
+        }
+        // OTS: eye shifts right; orientation forward is unchanged (framing only).
         engine::CollisionWorld open_world;
         (void)open_world.add_box({0,-1,0},{10,1,10},engine::CollisionLayer::StaticWorld,false);
         engine::OrbitCameraConfig shoulder_cfg=orbit_config;
@@ -2628,11 +2666,17 @@ int main(int argc,char**argv){
         r.check(shoulder_cam.update({0,0,0},open_world).has_value(),"shoulder orbit update");
         r.check(std::abs(shoulder_cam.position()[0]-0.5f)<0.05f,"shoulder offset shifts eye to camera-right");
         const auto shoulder_aim=shoulder_cam.forward();
-        const auto shoulder_eye=shoulder_cam.position();
-        const float sx=-shoulder_eye[0],sy=1.6f-shoulder_eye[1],sz=-shoulder_eye[2];
-        const float sl=std::sqrt(sx*sx+sy*sy+sz*sz);
-        r.check(sl>0.001f&&(shoulder_aim[0]*sx+shoulder_aim[1]*sy+shoulder_aim[2]*sz)/sl>0.999f,
-            "shoulder camera still aims at pivot");
+        r.check(std::abs(shoulder_aim[0])<1e-5f&&std::abs(shoulder_aim[1])<1e-5f&&std::abs(shoulder_aim[2]-1.0f)<1e-5f,
+            "shoulder camera keeps pure orientation look (not pivot)");
+        {
+            // Pivot is camera-left of screen center under right shoulder; view does not LookAt head.
+            const auto seye=shoulder_cam.position();
+            const float to_px=-seye[0],to_py=1.6f-seye[1],to_pz=-seye[2];
+            const float pl=std::sqrt(to_px*to_px+to_py*to_py+to_pz*to_pz);
+            r.check(pl>0.001f,"shoulder eye offset from pivot");
+            const float pivot_dot=(shoulder_aim[0]*to_px+shoulder_aim[1]*to_py+shoulder_aim[2]*to_pz)/pl;
+            r.check(pivot_dot<0.999f,"shoulder view axis is not eye-to-pivot");
+        }
         shoulder_cam.set_orientation(0.0f,2.0f);
         r.check(shoulder_cam.pitch()<=shoulder_cfg.max_pitch+0.001f,"pitch clamps to maxPitch");
         shoulder_cam.set_orientation(0.0f,-2.0f);
@@ -3124,6 +3168,43 @@ int main(int argc,char**argv){
             r.check(pause_focus_stack.modal_focus_widget_id()&&
                 *pause_focus_stack.modal_focus_widget_id()=="pause_resume",
                 "modal mouse click moves focus to hit widget");
+            // Inventory slot drag needs mouse_down→held→released (not mouse_clicked alone).
+            {
+                engine::UiCanvasStack inv_stack;
+                r.check(inv_stack.register_canvas("inventory",
+                    project/"assets"/"ui"/"inventory.uicanvas.json").has_value(),
+                    "inventory canvas loads for drag test");
+                r.check(inv_stack.push("inventory").has_value(),"inventory modal push for drag test");
+                const float vp_w=1920.0f, vp_h=1080.0f;
+                // Center-anchored bag.0 / hotbar.0 from sample inventory.uicanvas.json.
+                const float bag_cx=vp_w*0.5f-164.0f, bag_cy=vp_h*0.5f-230.0f;
+                const float hot_cx=vp_w*0.5f-244.0f, hot_cy=vp_h*0.5f+388.0f;
+                engine::UiCanvasInputEvent press{};
+                press.viewport_min={0.0f,0.0f};
+                press.viewport_max={vp_w,vp_h};
+                press.mouse_pos={bag_cx,bag_cy};
+                press.mouse_down=true;
+                const auto press_result=inv_stack.handle_modal_input(press,nullptr);
+                r.check(press_result.handled,"inventory press on bag slot handles");
+                engine::UiCanvasInputEvent drag{};
+                drag.viewport_min={0.0f,0.0f};
+                drag.viewport_max={vp_w,vp_h};
+                drag.mouse_pos={(bag_cx+hot_cx)*0.5f,(bag_cy+hot_cy)*0.5f};
+                drag.mouse_held=true;
+                (void)inv_stack.handle_modal_input(drag,nullptr);
+                engine::UiCanvasInputEvent release{};
+                release.viewport_min={0.0f,0.0f};
+                release.viewport_max={vp_w,vp_h};
+                release.mouse_pos={hot_cx,hot_cy};
+                release.mouse_released=true;
+                const auto drop_result=inv_stack.handle_modal_input(release,nullptr);
+                r.check(drop_result.handled,"inventory drag release handles");
+                r.check(drop_result.drag_from_bind&&*drop_result.drag_from_bind=="inventory.select.bag.0",
+                    "inventory drag from bag.0");
+                r.check(drop_result.drag_to_bind&&*drop_result.drag_to_bind=="inventory.select.hotbar.0",
+                    "inventory drag to hotbar.0");
+                (void)inv_stack.pop();
+            }
             engine::UiCanvasInputEvent cancel{};
             cancel.viewport_min={0.0f,0.0f};
             cancel.viewport_max={1920.0f,1080.0f};
@@ -3166,8 +3247,32 @@ int main(int argc,char**argv){
         const auto catalog=engine::load_project_item_catalog(project);
         r.check(catalog.has_value(),"project item catalog loads");
         r.check(catalog&&catalog.value().find("ashfell_arming_sword"),"catalog has ashfell_arming_sword");
+        r.check(catalog&&catalog.value().find("outrider_shortbow"),"catalog has outrider_shortbow");
+        r.check(catalog&&catalog.value().find("guild_rune_focus"),"catalog has guild_rune_focus");
         r.check(catalog&&catalog.value().find("vein_iron_pendant"),"catalog has vein_iron_pendant");
         r.check(catalog&&catalog.value().find("field_bandage"),"catalog has field_bandage");
+        {
+            const engine::ItemDef* bow=catalog.value().find("outrider_shortbow");
+            const engine::ItemDef* focus=catalog.value().find("guild_rune_focus");
+            r.check(bow&&!bow->hand_attach.joint.empty(),"shortbow has handAttach joint");
+            r.check(bow&&bow->hand_attach.draw_clip=="bow_draw","shortbow has handAttach.drawClip bow_draw");
+            r.check(focus&&!focus->hand_attach.joint.empty(),"rune focus has handAttach joint");
+            r.check(engine::normalize_starter_archetype_id("outrider")=="outrider","normalize outrider");
+            r.check(engine::normalize_starter_archetype_id("archer")=="outrider","alias archer→outrider");
+            r.check(engine::normalize_starter_archetype_id("magic")=="runecaster","alias magic→runecaster");
+            r.check(engine::default_starter_weapon_item_id("outrider")=="outrider_shortbow","outrider default bow");
+            r.check(engine::default_starter_weapon_item_id("runecaster")=="guild_rune_focus","runecaster default focus");
+            r.check(engine::default_starter_weapon_item_id("ashfell_blade")=="ashfell_arming_sword","ashfell default sword");
+            const auto archetypes_path=engine::default_world_forge_archetypes_path(project);
+            const auto archetypes=engine::WorldForgeArchetypesAsset::load(archetypes_path);
+            r.check(archetypes.has_value(),"archetypes load for starter weapons");
+            if(archetypes){
+                r.check(engine::resolve_starter_weapon_item_id("outrider",&archetypes.value())=="outrider_shortbow",
+                    "resolve outrider weapon from catalog field");
+                r.check(engine::resolve_starter_weapon_item_id("runecaster",&archetypes.value())=="guild_rune_focus",
+                    "resolve runecaster weapon from catalog field");
+            }
+        }
         engine::InventoryRuntime inv;
         r.check(inv.bind(&catalog.value()).has_value(),"inventory binds catalog");
         r.check(inv.grant("field_bandage",3).has_value(),"grant bandage stacks");
@@ -3184,7 +3289,15 @@ int main(int argc,char**argv){
             bool one_handed=false,melee=false;
             for(const auto& tag:sword->tags){if(tag=="one_handed")one_handed=true;if(tag=="melee")melee=true;}
             r.check(one_handed&&melee,"sword tagged one_handed+melee");
+            r.check(!sword->hand_attach.joint.empty(),"sword has handAttach joint");
         }
+        // Per-archetype starter weapons can land on hotbar0 (play-test command path).
+        r.check(inv.set_hotbar(0,"outrider_shortbow",1).has_value(),"set hotbar bow starter");
+        r.check(inv.active_hotbar_item().item_id=="outrider_shortbow","active hotbar is shortbow");
+        r.check(inv.set_hotbar(0,"guild_rune_focus",1).has_value(),"set hotbar focus starter");
+        r.check(inv.active_hotbar_item().item_id=="guild_rune_focus","active hotbar is focus");
+        r.check(inv.set_hotbar(0,"ashfell_arming_sword",1).has_value(),"restore sword hotbar");
+        r.check(inv.active_hotbar_item().item_id=="ashfell_arming_sword","active hotbar restored to sword");
         r.check(inv.select_hotbar(1).has_value(),"select empty hotbar 1");
         r.check(inv.active_hotbar_item().empty(),"empty hotbar clears active weapon");
         r.check(inv.select_hotbar(0).has_value(),"reselect sword hotbar");
@@ -3222,6 +3335,89 @@ int main(int argc,char**argv){
         r.check(inv.status().equipped.trinkets[0].empty(),"trinket0 empty after move");
     }else if(suite=="automation"){
         const auto project=std::filesystem::path(ENGINE_REPOSITORY_ROOT)/"samples"/"open-world-rpg";
+        const auto repo=std::filesystem::path(ENGINE_REPOSITORY_ROOT);
+        {
+            // Asset import (editor Assets tab): a picked file must resolve to the right bake target.
+            const auto player=engine::plan_asset_import(project,repo/"tools/art/player/GoodPlayerModel.gltf");
+            r.check(player.supported&&player.existing_target,"import plan updates registered player target");
+            r.check(player.target_id=="player","import plan matches player by registered source");
+            const auto player_bb=engine::plan_asset_import(project,
+                repo/"tools/art/player/GoodPlayerModel_rigged.bbmodel");
+            r.check(player_bb.supported&&player_bb.existing_target&&player_bb.target_id=="player",
+                "import plan matches player Blockbench project to the player target");
+            r.check(!player_bb.clip_names.empty(),"import plan lists clips from the player bbmodel");
+            const bool has_run=std::find(player_bb.clip_names.begin(),player_bb.clip_names.end(),"Run")!=
+                player_bb.clip_names.end();
+            const bool has_attack=std::find(player_bb.clip_names.begin(),player_bb.clip_names.end(),"Attack")!=
+                player_bb.clip_names.end();
+            r.check(has_run&&has_attack,"import plan sees Run and Attack on the player bbmodel");
+            const auto player_rebake=engine::plan_target_rebake(project,"player");
+            r.check(player_rebake.supported&&player_rebake.target_id=="player",
+                "player rebake plan resolves the registered target");
+            r.check(player_rebake.source.extension()==".bbmodel"||!player_rebake.clip_names.empty(),
+                "player rebake prefers Blockbench clips when the bbmodel is present");
+            r.check(player.match==engine::AssetImportMatch::DefaultSource,"import plan reports source match");
+            r.check(player.has_skin&&player.kind=="skinned","import plan detects player skin");
+            r.check(player.clip_names.size()>=4,"import plan lists player animation clips");
+            r.check(player.mesh_output=="assets/models/player.gltf","import plan keeps player mesh output");
+            r.check(player.existing_prefab&&!player.prefab_path.empty(),"import plan finds player prefab");
+
+            const auto crate=engine::plan_asset_import(project,project/"assets/models/crate.gltf");
+            r.check(crate.supported&&crate.existing_target&&crate.target_id=="crate",
+                "import plan re-imports a baked output as its target");
+            r.check(crate.match==engine::AssetImportMatch::MeshOutput,"import plan reports baked-output match");
+            r.check(!crate.has_skin&&crate.kind=="static","import plan treats crate as static");
+
+            const auto missing=engine::plan_asset_import(project,project/"assets/models/not_here.gltf");
+            r.check(!missing.supported&&!missing.diagnostics.empty()&&
+                missing.diagnostics.front().code=="ASSET-IMPORT-SOURCE-MISSING",
+                "import plan rejects a missing source");
+            const auto wrong_kind=engine::plan_asset_import(project,repo/"README.md");
+            r.check(!wrong_kind.supported&&!wrong_kind.diagnostics.empty()&&
+                wrong_kind.diagnostics.front().code=="ASSET-IMPORT-UNSUPPORTED",
+                "import plan rejects a non-model file");
+
+            const auto sandbox=std::filesystem::temp_directory_path()/"engine-asset-import-test";
+            std::error_code sandbox_error;
+            std::filesystem::create_directories(sandbox,sandbox_error);
+            const auto fresh=sandbox/"My Cool Prop.gltf";
+            std::filesystem::copy_file(project/"assets/models/crate.gltf",fresh,
+                std::filesystem::copy_options::overwrite_existing,sandbox_error);
+            if(!sandbox_error){
+                const auto fresh_plan=engine::plan_asset_import(project,fresh);
+                r.check(fresh_plan.supported&&!fresh_plan.existing_target,
+                    "import plan registers an unknown model as a new target");
+                r.check(fresh_plan.target_id=="my_cool_prop","import plan slugifies the id from the file name");
+                r.check(fresh_plan.mesh_output=="assets/models/my_cool_prop.gltf",
+                    "import plan derives the mesh output from the id");
+                r.check(fresh_plan.prefab_path=="assets/prefabs/Imported/my_cool_prop.prefab.json",
+                    "import plan proposes a placeable prefab path");
+                r.check(!fresh_plan.existing_prefab,"import plan marks the new prefab as not yet authored");
+                r.check(fresh_plan.target_height>0.0f,"import plan defaults a world height for new assets");
+                const auto renamed=engine::plan_asset_import(project,fresh,"crate");
+                r.check(renamed.target_id!="crate","import plan keeps a requested id unique against the catalog");
+                // "Replace..." pins the target, so a renamed export still updates the same asset.
+                const auto replace=engine::plan_asset_replace(project,"crate",fresh);
+                r.check(replace.supported&&replace.existing_target&&replace.target_id=="crate",
+                    "replace plan pins a renamed source onto the chosen target");
+                r.check(replace.mesh_output=="assets/models/crate.gltf",
+                    "replace plan keeps the target's baked outputs");
+                const auto replace_unknown=engine::plan_asset_replace(project,"not_a_target",fresh);
+                r.check(!replace_unknown.supported,"replace plan rejects an unknown target id");
+            }
+            std::filesystem::remove_all(sandbox,sandbox_error);
+
+            const auto rebake=engine::plan_target_rebake(project,"crate");
+            r.check(rebake.supported&&rebake.existing_target&&
+                rebake.match==engine::AssetImportMatch::MeshOutput,
+                "target rebake plan bakes from the catalog source");
+            const auto unknown_rebake=engine::plan_target_rebake(project,"definitely_not_a_target");
+            r.check(!unknown_rebake.supported,"target rebake plan rejects an unknown target id");
+            r.check(!engine::find_prefab_for_mesh(project,"assets/models/crate.gltf").empty(),
+                "prefab lookup finds the prefab that references a mesh");
+            r.check(engine::find_prefab_for_mesh(project,"assets/models/nope.gltf").empty(),
+                "prefab lookup returns empty for an unreferenced mesh");
+        }
         const auto plan=engine::classify_scene_plan("place a tree in the scene","worlds/vertical-slice.world.json");
         r.check(plan.target_kind=="scene_data","scene plan classifies world placement");
         {
@@ -4178,6 +4374,40 @@ end
         }
         r.check(second_hits==2,"timeline events re-fire after loop wrap");
 
+        // Animation Studio solo tick: exitTime transitions must not steal the preview state.
+        {
+            const auto solo_ctrl=root/"assets/animators/hero_solo_preview.animator.json";
+            std::ofstream(solo_ctrl)<<R"({
+"schemaVersion":1,"kind":"animatorController","id":"hero_solo",
+"parameters":[],
+"layers":[{
+  "name":"base","defaultState":"attack","blendMode":"override",
+  "states":[
+    {"name":"idle","motion":{"type":"clip","clipSource":"assets/models/hero_clips.gltf","clip":"Idle","loop":true}},
+    {"name":"attack","motion":{"type":"clip","clipSource":"assets/models/hero_clips.gltf","clip":"Attack","loop":false}}
+  ],
+  "transitions":[
+    {"from":"attack","to":"idle","duration":0.05,"hasExitTime":true,"exitTime":0.5}
+  ]
+}]
+})";
+            engine::AnimatorRuntime solo_rt; solo_rt.set_project_root(root); solo_rt.set_clip_library(&clips);
+            const std::string solo_entity="solo-preview-entity";
+            r.check(solo_rt.attach(solo_entity,"assets/animators/hero_solo_preview.animator.json").has_value(),
+                "solo preview controller attaches");
+            r.check(solo_rt.crossfade(solo_entity,"attack",0.0f).has_value(),"solo pin attack");
+            for(int i=0;i<30;++i) solo_rt.tick(0.05f,false); // 1.5s > exitTime on 1.0s Attack
+            auto solo_state=solo_rt.current_state(solo_entity);
+            r.check(solo_state&&solo_state.value()=="attack","solo tick keeps attack (no exitTime transition)");
+            engine::AnimatorRuntime graph_rt; graph_rt.set_project_root(root); graph_rt.set_clip_library(&clips);
+            r.check(graph_rt.attach(solo_entity,"assets/animators/hero_solo_preview.animator.json").has_value(),
+                "graph preview controller attaches");
+            r.check(graph_rt.crossfade(solo_entity,"attack",0.0f).has_value(),"graph pin attack");
+            for(int i=0;i<30;++i) graph_rt.tick(0.05f,true);
+            auto graph_state=graph_rt.current_state(solo_entity);
+            r.check(graph_state&&graph_state.value()=="idle","default tick still honors exitTime to idle");
+        }
+
         engine::LuaRuntime event_lua; event_lua.set_animator_runtime(&event_rt);
         const auto event_script=root/"anim_events.lua";
         std::ofstream(event_script)<<R"(
@@ -4213,6 +4443,66 @@ end
         r.check(count_entry&&count_entry->type==engine::ScriptBlackboardType::Number&&count_entry->number_value>=1.0,
             "on_animation_event updates blackboard");
         r.check(name_entry&&name_entry->string_value=="footstep","on_animation_event receives event name");
+
+        // TICKET-0253 / DEC-0052: *.anim.json override wins + Sync to .gltf round-trip
+        {
+            const auto ov_gltf=root/"assets/models/override_clip.gltf";
+            std::ofstream(ov_gltf)<<R"({
+"asset":{"version":"2.0"},
+"nodes":[{"name":"Hip"}],
+"animations":[{"name":"Idle","samplers":[{"input":0,"output":1,"interpolation":"LINEAR"}],"channels":[{"sampler":0,"target":{"node":0,"path":"translation"}}]}],
+"accessors":[
+{"bufferView":0,"componentType":5126,"count":2,"type":"SCALAR","max":[1.0],"min":[0.0]},
+{"bufferView":1,"componentType":5126,"count":2,"type":"VEC3"}
+],
+"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":8},{"buffer":0,"byteOffset":8,"byteLength":24}],
+"buffers":[{"byteLength":32,"uri":"data:application/octet-stream;base64,AAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAPwAAAAA="}]
+})";
+            auto base=engine::import_gltf_animation_clips(ov_gltf);
+            r.check(base&&!base.value().clips.empty(),"0253 base clip imports");
+            auto mid_base=engine::sample_translation_channel(base.value().clips[0].channels[0],0.5f);
+            r.check(mid_base&&std::abs(mid_base.value()[1]-0.5f)<1e-4f,"0253 base mid sample Y=0.5");
+
+            engine::AnimationClipOverrideAsset ov;
+            ov.clip_source="assets/models/override_clip.gltf";
+            ov.clip_name="Idle";
+            ov.duration_seconds=1.0f;
+            engine::AnimationClipChannel ch;
+            ch.target_node_name="Hip";
+            ch.target_node_index=0;
+            ch.path=engine::AnimationChannelPath::Translation;
+            ch.interpolation=engine::AnimationInterpolationMode::Linear;
+            ch.times={0.0f,1.0f};
+            ch.values={0.0f,0.0f,0.0f, 0.0f,2.0f,0.0f}; // end Y=2
+            ov.channels.push_back(ch);
+            const auto ov_path=engine::animation_clip_override_path(ov_gltf,"Idle");
+            r.check(ov.save_atomic(ov_path).has_value(),"0253 override saves");
+            r.check(std::filesystem::exists(ov_path),"0253 sidecar exists");
+
+            engine::AnimationClipLibrary ov_lib;
+            auto loaded=ov_lib.load(ov_gltf);
+            r.check(loaded&&!loaded.value()->clips.empty(),"0253 library loads with override");
+            auto mid_ov=engine::sample_translation_channel(loaded.value()->clips[0].channels[0],0.5f);
+            r.check(mid_ov&&std::abs(mid_ov.value()[1]-1.0f)<1e-4f,"0253 override wins sampling (Y=1 at t=0.5)");
+
+            auto synced=engine::sync_animation_clip_override_to_gltf(ov_gltf,ov);
+            r.check(synced.has_value(),"0253 sync to gltf succeeds");
+            if(!synced){
+                // Keep the failure message visible in suite output without aborting on .value().
+                r.check(false,("0253 sync error: "+synced.error().code+" "+synced.error().message).c_str());
+            }else{
+                std::filesystem::remove(ov_path);
+                auto after_sync=engine::import_gltf_animation_clips(ov_gltf);
+                r.check(after_sync&&!after_sync.value().clips.empty(),"0253 reimport after sync");
+                if(after_sync&&!after_sync.value().clips.empty()&&!after_sync.value().clips[0].channels.empty()){
+                    auto mid_sync=engine::sample_translation_channel(after_sync.value().clips[0].channels[0],0.5f);
+                    r.check(mid_sync&&std::abs(mid_sync.value()[1]-1.0f)<1e-3f,"0253 sync round-trip preserves override pose");
+                }
+            }
+
+            auto glb_fail=engine::sync_animation_clip_override_to_gltf(root/"assets/models/missing.glb",ov);
+            r.check(!glb_fail&&glb_fail.error().code=="ANIM-OV-SYNC-GLB","0253 glb sync rejected");
+        }
 
         engine::AnimationPreviewRequest preview_req;
         preview_req.project_root=root;
@@ -4290,6 +4580,79 @@ end
                 r.check(welded_def&&welded_def->hand_attach.grip_scale[0]==0.5f,"gripScale round trips from item JSON");
                 const auto* plain=catalog.value().find("unwelded_blade");
                 r.check(plain&&plain->hand_attach.grip_scale[0]==1.0f,"missing gripScale defaults to 1");
+            }
+        }
+
+        // Held weapon skins must sample without sagittal RH/LH remapping (bow_draw limb keys).
+        {
+            const auto bow_anim=root/"assets/models/weapon_draw.gltf";
+            // Keyframe rotates LimbU1 only at t=1; no Right/Left player joints.
+            std::ofstream(bow_anim)<<R"({
+"asset":{"version":"2.0"},
+"nodes":[{"name":"Grip"},{"name":"LimbU1","translation":[0,0.1,0]}],
+"animations":[{"name":"bow_draw","samplers":[{"input":0,"output":1,"interpolation":"LINEAR"}],
+ "channels":[{"sampler":0,"target":{"node":1,"path":"rotation"}}]}],
+"accessors":[
+{"bufferView":0,"componentType":5126,"count":2,"type":"SCALAR","max":[1.0],"min":[0.0]},
+{"bufferView":1,"componentType":5126,"count":2,"type":"VEC4"}
+],
+"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":8},{"buffer":0,"byteOffset":8,"byteLength":32}],
+"buffers":[{"byteLength":40,"uri":"data:application/octet-stream;base64,AAAAAAAAgD8AAAAAAAAAAAAAAD/Xs10/AAAAAAAAAAAAAAA/17NdPw=="}]
+})";
+            engine::AnimationClipLibrary weapon_clips;
+            r.check(weapon_clips.load(bow_anim).has_value(),"weapon draw clip loads");
+            engine::ImportedSkin weapon_skin;
+            weapon_skin.joint_node_indices={0,1};
+            weapon_skin.joint_names={"Grip","LimbU1"};
+            engine::ImportedJointRestLocal grip_rest;grip_rest.translation={0,0,0};
+            engine::ImportedJointRestLocal limb_rest;limb_rest.translation={0,0.1f,0};limb_rest.parent_joint=0;
+            weapon_skin.joint_rest_locals={grip_rest,limb_rest};
+            weapon_skin.inverse_bind_matrices.assign(2,{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1});
+            engine::AnimatorClipWeight draw_w;
+            draw_w.clip_source="assets/models/weapon_draw.gltf";draw_w.clip="bow_draw";
+            draw_w.weight=1.0f;draw_w.time_seconds=0.5f;draw_w.loop=false;
+            auto no_mirror=engine::sample_skinned_local_poses(weapon_skin,weapon_clips,root,{draw_w},false);
+            r.check(no_mirror&&no_mirror.value().size()==2,"held weapon sample without sagittal");
+            if(no_mirror&&no_mirror.value().size()==2){
+                const auto& limb=no_mirror.value()[1];
+                // Identity (rest) at t=0 key is first of buffer pair; mid-draw uses second key (~30° about Z).
+                r.check(std::abs(limb.rotation[2]-0.5f)<1e-3f||std::abs(limb.rotation[2]+0.5f)<1e-3f
+                    ||std::abs(limb.rotation[3]-0.8660254f)<1e-2f,
+                    "bow_draw rotation applied without sagittal flip destroying the key");
+                auto mats=engine::build_skin_matrices(weapon_skin,no_mirror.value());
+                r.check(mats&&mats.value().size()==2,"held weapon skin matrices build");
+            }
+        }
+
+        // Sample-project skinned shortbow rebake preserves joints + bow_draw (import-only smoke).
+        {
+            const auto project=std::filesystem::path(ENGINE_REPOSITORY_ROOT)/"samples"/"open-world-rpg";
+            const auto bow_mesh=project/"assets/models/outrider_shortbow.gltf";
+            if(std::filesystem::exists(bow_mesh)){
+                auto mesh=engine::import_gltf_mesh(bow_mesh);
+                r.check(mesh&&mesh.value().has_skinning()&&!mesh.value().skins.empty(),
+                    "outrider_shortbow runtime mesh is skinned");
+                if(mesh&&!mesh.value().skins.empty()){
+                    r.check(mesh.value().skins[0].joint_names.size()>=5,"shortbow skin has limb joints");
+                    engine::AnimationClipLibrary bow_lib;
+                    auto loaded=bow_lib.load(bow_mesh);
+                    r.check(loaded&&!loaded.value()->clips.empty(),"shortbow clips load from mesh glTF");
+                    bool has_draw=false;
+                    for(const auto& c:loaded.value()->clips) if(c.name=="bow_draw") has_draw=true;
+                    r.check(has_draw,"shortbow glTF exports bow_draw");
+                    if(has_draw&&mesh.value().influences.size()==mesh.value().vertices.size()){
+                        engine::AnimatorClipWeight w;
+                        w.clip_source="assets/models/outrider_shortbow.gltf";
+                        w.clip="bow_draw";w.weight=1.0f;w.time_seconds=0.25f;w.loop=false;
+                        auto poses=engine::sample_skinned_local_poses(mesh.value().skins[0],bow_lib,project,{w},false);
+                        r.check(poses.has_value(),"sample bow_draw on shortbow skin (no sagittal)");
+                        if(poses){
+                            auto mats=engine::build_skin_matrices(mesh.value().skins[0],poses.value());
+                            r.check(mats&&mats.value().size()==mesh.value().skins[0].joint_names.size(),
+                                "shortbow held skin matrices size matches joints");
+                        }
+                    }
+                }
             }
         }
 
@@ -4411,6 +4774,13 @@ end
             r.check(dodge_dust.value().validate_texture(project).has_value(), "dodge_dust texture exists");
             r.check(dodge_dust.value().orientation == ParticleOrientation::VelocityParallel,
                 "dodge_dust uses VelocityParallel streaks");
+        }
+        const auto footstep_dust = ParticleEmitterAsset::load(project / "assets/vfx/footstep_dust.particle.json");
+        r.check(footstep_dust.has_value(), "footstep_dust recipe sample loads");
+        if (footstep_dust) {
+            r.check(footstep_dust.value().id == "footstep_dust", "footstep_dust particle id");
+            r.check(footstep_dust.value().validate_texture(project).has_value(), "footstep_dust texture exists");
+            r.check(footstep_dust.value().rate <= 0.0f + 1e-6f, "footstep_dust is burst-only (rate 0)");
         }
         const auto aura = ParticleEmitterAsset::load(project / "assets/vfx/corrupt_aura.particle.json");
         r.check(aura.has_value(), "corrupt_aura recipe sample loads");
@@ -4884,6 +5254,66 @@ end
         r.check(coop_session.state()==engine::GameSessionState::Playing,"coop with guest reaches playing");
 
         std::filesystem::remove_all(root);
+    }else if(suite=="game_module"){
+#if defined(_WIN32)
+        const std::filesystem::path module_path =
+#ifdef ENGINE_GAME_MODULE_DLL_PATH
+            ENGINE_GAME_MODULE_DLL_PATH;
+#else
+            engine::GameModuleHost::default_module_path();
+#endif
+        const std::filesystem::path mismatch_path =
+#ifdef ENGINE_GAME_MODULE_ABI_MISMATCH_DLL_PATH
+            ENGINE_GAME_MODULE_ABI_MISMATCH_DLL_PATH;
+#else
+            module_path.parent_path() / "game_module_abi_mismatch.dll";
+#endif
+        r.check(std::filesystem::exists(module_path), "sample game_module.dll is built next to dev-next");
+        engine::GameModuleHost host;
+        auto loaded = host.load(module_path);
+        r.check(loaded.has_value(), "load sample game_module");
+        if (!loaded) {
+            std::cerr << "game_module load: " << loaded.error().message << '\n';
+        } else {
+            r.check(host.loaded(), "host reports loaded");
+            r.check(host.generation() == 1u, "first load is generation 1");
+            r.check(host.abi_version() == ENGINE_GAME_MODULE_ABI_VERSION, "ABI matches host");
+            r.check(!host.module_name().empty(), "module name exported");
+            host.tick(1.0f / 60.0f);
+            host.tick(1.0f / 60.0f);
+            r.check(host.tick_count() == 2u, "host counts ticks");
+            const auto ticks = host.mirror_number("game.module_ticks");
+            r.check(ticks && *ticks >= 2.0, "module wrote game.module_ticks via blackboard");
+            const auto build_id = host.mirror_number("game.module_build_id");
+            r.check(build_id && *build_id >= 1.0, "module wrote game.module_build_id");
+            const auto name_before = host.module_name();
+            auto reloaded = host.reload();
+            r.check(reloaded.has_value(), "reload succeeds");
+            r.check(host.generation() == 2u, "reload bumps generation");
+            r.check(host.module_name() == name_before, "reload preserves sample name without rebuild");
+            host.tick(0.016f);
+            r.check(host.mirror_number("game.module_ticks") && *host.mirror_number("game.module_ticks") >= 1.0,
+                "ticks resume after reload");
+            host.unload();
+            r.check(!host.loaded(), "unload clears handle");
+        }
+        if (std::filesystem::exists(mismatch_path)) {
+            engine::GameModuleHost mismatch_host;
+            auto bad = mismatch_host.load(mismatch_path);
+            r.check(!bad.has_value(), "ABI mismatch is rejected");
+            r.check(bad.error().code == "GAME-MODULE-ABI", "ABI mismatch uses GAME-MODULE-ABI");
+            r.check(!mismatch_host.loaded(), "failed load leaves host unloaded");
+        } else {
+            r.check(false, "game_module_abi_mismatch.dll is built for tests");
+        }
+        {
+            engine::GameModuleHost missing;
+            auto miss = missing.load(module_path.parent_path() / "does_not_exist_game_module.dll");
+            r.check(!miss.has_value() && miss.error().code == "GAME-MODULE-MISSING", "missing DLL fails closed");
+        }
+#else
+        r.check(true, "game_module suite skipped on non-Windows");
+#endif
     }else{std::cerr<<"unknown suite\n";return 2;}
     std::cout<<"{\"suite\":\""<<r.suite<<"\",\"assertions\":"<<r.assertions<<",\"passed\":"<<(r.assertions-r.failures)<<",\"failed\":"<<r.failures<<"}\n";
     return r.failures?1:0;

@@ -46,6 +46,7 @@ Versioned `*.animator.json` assets describe C++-owned animation graphs: paramete
 - Fired once per state cycle when playback crosses `time` (loop-aware; mask resets on state change / loop wrap).
 - Empty `layer` matches any layer that owns `state`.
 - Invalid `state` / missing `layer` / negative `time` / empty `name` fail closed at validate (`ANIM-CTRL-EVENT-*`).
+- **Authoring (TICKET-0252):** Animation Studio Diagnostics edits this array and Save writes the controller. Preview: `name == "footstep"` → `assets/vfx/footstep_dust.particle.json`; optional `payload.particle` (or `payload.effect`) path to any `*.particle.json` for other event names.
 
 ### Rejected (structured)
 

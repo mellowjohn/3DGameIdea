@@ -9,7 +9,7 @@
     "atlas": "C:\\Users\\johnr\\Documents\\3DGameIdea\\samples\\open-world-rpg\\assets\\models\\player.png",
     "report": "C:\\Users\\johnr\\Documents\\3DGameIdea\\samples\\open-world-rpg\\assets\\models\\player.bake.json"
   },
-  "elapsedSec": 93.716,
+  "elapsedSec": 88.641,
   "bake": {
     "source": "C:\\Users\\johnr\\Documents\\3DGameIdea\\tools\\art\\player\\GoodPlayerModel.gltf",
     "atlasSource": "C:\\Users\\johnr\\Documents\\3DGameIdea\\tools\\art\\player\\GoodPlayerModel.png",
@@ -55,7 +55,49 @@
       "Revive"
     ],
     "scale": 1.1238825244101882,
-    "targetHeight": 2.75
+    "targetHeight": 2.75,
+    "authoringSource": "C:\\Users\\johnr\\Documents\\GoodPlayerModel.bbmodel",
+    "refreshedFromBbmodel": true,
+    "animationSyncOnly": true,
+    "exportedClips": [
+      "Idle",
+      "Run",
+      "Fall",
+      "Walk",
+      "Jump",
+      "Land",
+      "Attack",
+      "HitReact",
+      "Dodge",
+      "DodgeBack",
+      "DodgeRight",
+      "DodgeLeft",
+      "Death",
+      "Interact",
+      "InteractPickup",
+      "Block",
+      "Revive"
+    ],
+    "animationsReplaced": [
+      "Idle",
+      "Run",
+      "Fall",
+      "Walk",
+      "Jump",
+      "Land",
+      "Attack",
+      "HitReact",
+      "Dodge",
+      "DodgeBack",
+      "DodgeRight",
+      "DodgeLeft",
+      "Death",
+      "Interact",
+      "InteractPickup",
+      "Block",
+      "Revive"
+    ],
+    "animationsAdded": []
   },
   "verify": [
     {

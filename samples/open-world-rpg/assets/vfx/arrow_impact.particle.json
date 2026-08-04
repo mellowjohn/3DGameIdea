@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "arrow_impact",
+  "texture": "assets/vfx/ember_flipbook_4x4.png",
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [1.0, 0.98, 0.88] },
+      { "t": 0.2, "color": [0.95, 0.82, 0.42] },
+      { "t": 0.55, "color": [0.55, 0.72, 0.85] },
+      { "t": 1.0, "color": [0.22, 0.28, 0.35] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.07 },
+      { "t": 0.12, "value": 0.13 },
+      { "t": 1.0, "value": 0.02 }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.05 },
+      { "t": 0.45, "value": 0.22 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.12, "max": 0.36 },
+  "speed": { "min": 2.2, "max": 7.5 },
+  "rate": 0,
+  "spreadAngle": [55, 95],
+  "shape": "sphere",
+  "shapeStyle": "volume",
+  "shapeSize": [0.06, 0.06, 0.06],
+  "orientation": "FacingCamera",
+  "lightEmission": 0.9,
+  "blend": "softLight",
+  "acceleration": [0.0, -5.5, 0.0],
+  "drag": 0.4,
+  "maxParticles": 48,
+  "enabled": true,
+  "emissionDirection": [0.0, 1.0, 0.0],
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "OneShot",
+  "flipbookFramerate": 26,
+  "flipbookStartRandom": true
+}

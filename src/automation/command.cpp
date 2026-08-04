@@ -1,5 +1,6 @@
 #include "engine/automation/command.h"
 #include "engine/automation/asset_bake_commands.h"
+#include "engine/automation/asset_import.h"
 #include "engine/automation/build_coordination.h"
 #include "engine/automation/project_git_commands.h"
 #include "engine/animation/animation_preview.h"
@@ -76,8 +77,8 @@ const std::vector<std::string>& ctest_suite_names() {
     static const std::vector<std::string> names{
         "core", "world", "world_influence", "assets", "world_forge", "streaming", "terrain", "foliage",
         "water", "collision", "navigation", "character", "interaction", "combat", "camera", "diagnostics",
-        "scripting", "automation", "hud", "animator", "audio", "particles", "game_session", "party", "rpg_save",
-        "project_validation"};
+        "scripting", "automation", "hud", "animator", "audio", "particles", "game_module", "game_session", "party",
+        "rpg_save", "project_validation"};
     return names;
 }
 
@@ -230,7 +231,8 @@ Result<CommandRequest> parse_command_line(int argc, char** argv) {
 CommandResponse execute_command(const CommandRequest& request) {
     if (request.name == "help") return {ExitCode::Success, command_help(), {}, {}};
     const std::vector<std::string> known{"build-assets", "validate", "inspect", "run", "test", "benchmark", "capture",
-        "editor", "mcp", "project-git", "build-coordination", "animation-preview", "visual-regression", "asset-bake"};
+        "editor", "mcp", "project-git", "build-coordination", "animation-preview", "visual-regression", "asset-bake",
+        "asset-import"};
     if (std::find(known.begin(), known.end(), request.name) == known.end()) {
         auto error = command_error("CLI-UNKNOWN-COMMAND", "Unknown command: " + request.name,
                                    "Run engine help for supported commands.", request.correlation_id);
@@ -288,6 +290,50 @@ CommandResponse execute_command(const CommandRequest& request) {
         response.metadata = bridge.metadata;
         response.changed_object_ids = bridge.changed_object_ids;
         if (bridge.metadata.count("reportJson")) response.artifacts.push_back(bridge.metadata.at("reportJson"));
+        return response;
+    }
+    if (request.name == "asset-import") {
+        CommandResponse response;
+        const auto file = argument_value(request, "--file", argument_value(request, "--source"));
+        if (file.empty()) {
+            response.exit_code = ExitCode::InvalidArguments;
+            response.summary = "--file is required";
+            response.diagnostics.push_back(asset_bake_error("ASSET-IMPORT-SOURCE-MISSING",
+                "--file <path to .gltf/.glb> is required", "Pass the model file to import."));
+            return response;
+        }
+        // --target pins the import onto a registered asset (the editor's "Replace..." on a browser row).
+        const auto pinned = argument_value(request, "--target");
+        const auto plan = pinned.empty() ? plan_asset_import(request.project, std::filesystem::path(file),
+                                               argument_value(request, "--id"))
+                                         : plan_asset_replace(request.project, pinned,
+                                               std::filesystem::path(file));
+        response.metadata["targetId"] = plan.target_id;
+        response.metadata["kind"] = plan.kind;
+        response.metadata["existingTarget"] = plan.existing_target ? "true" : "false";
+        response.metadata["match"] = to_string(plan.match);
+        response.metadata["meshOutput"] = plan.mesh_output;
+        response.metadata["clipCount"] = std::to_string(plan.clip_names.size());
+        response.metadata["prefabPath"] = plan.prefab_path;
+        response.metadata["existingPrefab"] = plan.existing_prefab ? "true" : "false";
+        const bool plan_only =
+            std::find(request.arguments.begin(), request.arguments.end(), "--plan") != request.arguments.end();
+        if (!plan.supported || plan_only) {
+            response.exit_code = plan.supported ? ExitCode::Success : ExitCode::ValidationFailed;
+            response.summary = plan.supported
+                ? (plan.existing_target ? "would update " + plan.target_id : "would import " + plan.target_id)
+                : "cannot import " + file;
+            response.diagnostics = plan.diagnostics;
+            return response;
+        }
+        const auto outcome = run_asset_import(request.project, plan);
+        response.exit_code = outcome.ok ? ExitCode::Success : ExitCode::ValidationFailed;
+        response.summary = outcome.summary;
+        response.diagnostics = outcome.diagnostics;
+        response.metadata["prefabPath"] = outcome.prefab_path;
+        response.metadata["registeredTarget"] = outcome.registered_target ? "true" : "false";
+        response.metadata["reportJson"] = outcome.report_json;
+        for (const auto& mesh : outcome.mesh_reloads) response.changed_object_ids.push_back(mesh);
         return response;
     }
     if (request.name == "build-coordination") {
@@ -845,7 +891,7 @@ CommandResponse execute_command(const CommandRequest& request) {
 }
 
 std::string command_help() {
-    return "AI RPG Engine 0.2.0\nCommands: build-assets, validate, inspect, run, test, benchmark, capture, editor, mcp, project-git, build-coordination, animation-preview, visual-regression, asset-bake\n"
+    return "AI RPG Engine 0.2.0\nCommands: build-assets, validate, inspect, run, test, benchmark, capture, editor, mcp, project-git, build-coordination, animation-preview, visual-regression, asset-bake, asset-import\n"
            "Options: --project <path> [--world <path>] --json --dry-run --debug-world --coop-local --log-file <path> --frames <n> --width <px> --height <px> --console\n"
            "  --world overrides project.engine.json defaultWorld (relative to project or absolute)\n"
            "Capture/editor: --output <file.ppm|.png> [--viewport scene|sculpt|game|ui|world-forge] [--look-dx N] [--look-dy N]\n"
@@ -858,6 +904,9 @@ std::string command_help() {
            "Animation preview: engine animation-preview --project <path> [--controller <path>] [--frames 60] [--speed 0.5] [--no-trigger] [--json]\n"
            "Asset bake (TICKET-0245): engine asset-bake --project <path> --target <id> [--source <path>] [--json]\n"
            "  engine asset-bake --project <path> --list [--json]  (named targets only; fail-closed verify gates)\n"
+           "Asset import: engine asset-import --project <path> --file <model.gltf|.glb> [--id <slug>] [--target <id>] [--plan] [--json]\n"
+           "  Updates a registered target when the file matches one, otherwise registers it and writes a prefab\n"
+           "  --target <id> pins the import onto that registered asset (editor Assets -> Replace...)\n"
            "project-git: engine project-git --project <path> --action status|fetch|pull|commit|push [--message <text>] [--json]\n"
            "build-coordination (TICKET-0228): engine build-coordination --project <path> --action status|acquire|wait|release|heartbeat|clear-stale\n"
            "  [--agent <id>] [--ticket TICKET-####] [--summary <text>] [--token <token>] [--lease-seconds N] [--timeout-seconds N] [--force] [--json]\n"

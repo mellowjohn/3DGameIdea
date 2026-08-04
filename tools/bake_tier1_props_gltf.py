@@ -125,9 +125,13 @@ PROPS = [
         "png": MODELS / "outrider_shortbow.png",
         # Tip-to-tip shortbow ≈ 1.05 m when upright (Outrider starter).
         "target_height": 1.05,
-        # String prim only — opt-in; does not change other Tier-1 props.
+        # Keep skins + bow_draw (static collapse would drop the draw armature).
+        "preserve_skin": True,
+        # Prop pipeline backs culling; Blockbench export is majority-inward + paper-thin string.
+        "fix_winding": True,
         "double_sided_thin": True,
-        "generator": "AI RPG Engine outrider shortbow bake from Outrider_Shortbow.gltf v5-string-doubleside-optin",
+        "clean_backdrop": True,
+        "generator": "AI RPG Engine outrider shortbow skinned bake from Outrider_Shortbow.gltf v7-winding-doubleside",
         "scene_name": "OutriderShortbow",
         "mesh_name": "OutriderShortbow",
         "mat_name": "OutriderShortbowAtlas",
@@ -327,6 +331,33 @@ def bake_prop(prop: dict) -> None:
     target_height: float = prop["target_height"]
     scale_mode = prop.get("scale_mode", "height")
     target_span = float(prop.get("target_span", target_height))
+
+    # Opt-in: preserve skins / JOINTS_0 / WEIGHTS_0 / animations (e.g. bow_draw).
+    # The static collapse path below flattens world verts and drops the armature.
+    if prop.get("preserve_skin"):
+        from bake_generic_gltf import bake_skinned
+
+        meta = bake_skinned(
+            source=src,
+            mesh_out=dst,
+            atlas_out=png_dst,
+            generator=prop.get(
+                "generator", f"AI RPG Engine {prop.get('name', 'prop')} skinned bake"
+            ),
+            target_height=float(target_height) if target_height else None,
+            fix_winding=bool(prop.get("fix_winding", False)),
+            double_sided_thin=bool(prop.get("double_sided_thin", False)),
+            clean_backdrop=bool(prop.get("clean_backdrop", False)),
+        )
+        print(f"=== {prop.get('name', 'prop')} (preserve_skin) ===")
+        print(
+            f"skinned bake joints={meta.get('joints')} clips={meta.get('bakedClips')} "
+            f"scale={meta.get('scale')} normalized={meta.get('normalized')} "
+            f"flipped={meta.get('flippedPrims')} doubledThin={meta.get('doubledThinPrims')}"
+        )
+        print(f"wrote {dst}")
+        print(f"wrote {png_dst}")
+        return
 
     g = json.loads(src.read_text(encoding="utf-8"))
     tex = load_atlas(g, src)

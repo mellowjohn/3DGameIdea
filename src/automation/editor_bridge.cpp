@@ -382,7 +382,12 @@ EditorBridgeClient::EditorBridgeClient(std::filesystem::path project_root) : pro
 
 bool EditorBridgeClient::is_editor_running() const {
 #ifdef _WIN32
-    return WaitNamedPipeW(to_wide(editor_bridge_pipe_name(project_root_)).c_str(), 50) != FALSE;
+    // Retry briefly — single-instance bridge workers drop concurrent probes while handling a request.
+    for (int attempt = 0; attempt < 8; ++attempt) {
+        if (WaitNamedPipeW(to_wide(editor_bridge_pipe_name(project_root_)).c_str(), 100) != FALSE) return true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+    }
+    return false;
 #else
     return false;
 #endif

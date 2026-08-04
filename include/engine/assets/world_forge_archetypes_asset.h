@@ -27,6 +27,8 @@ struct WorldForgeArchetypeEntity {
     std::string summary;
     std::string draft_advancement;
     std::string starter_kit_prefab_id;
+    /// Act 0 starter weapon item id (item catalog). Empty uses built-in lane map.
+    std::string starter_weapon_item_id;
     std::string story_ref;
     std::vector<std::string> tags;
     std::optional<WorldForgeArchetypeUnlock> unlock;

@@ -315,20 +315,24 @@ def verify_bake(
     else:
         results.append(gate("ASSET-BAKE-GENERATOR", True, f"generator={gen!r}"))
 
-    # Height / feet / span
+    # Height / feet / span. Imports whose sources store baked node matrices cannot be rescaled or
+    # feet-normalized without decomposing them, so those targets opt out via checkFeet/checkHeight.
     feet_eps = float(v.get("feetEpsilon", 0.05))
     min_y = float(aabb["min"][1])
-    results.append(
-        gate(
-            "ASSET-BAKE-FEET",
-            abs(min_y) <= feet_eps,
-            f"minY={min_y:.4f} eps={feet_eps}",
-            "Feet normalize failed; check bake scale path.",
+    if v.get("checkFeet", True):
+        results.append(
+            gate(
+                "ASSET-BAKE-FEET",
+                abs(min_y) <= feet_eps,
+                f"minY={min_y:.4f} eps={feet_eps}",
+                "Feet normalize failed; check bake scale path.",
+            )
         )
-    )
 
     scale_mode = v.get("scaleMode", "height")
-    if scale_mode == "max_xz":
+    if not v.get("checkHeight", True):
+        results.append(gate("ASSET-BAKE-HEIGHT", True, f"height={float(aabb['height']):.4f} (gate disabled)"))
+    elif scale_mode == "max_xz":
         target_span = float(v.get("targetSpan", v.get("targetHeight", 1.0)))
         tol = float(v.get("spanTolerance", v.get("heightTolerance", 0.15)))
         span = float(aabb["span_xz"])

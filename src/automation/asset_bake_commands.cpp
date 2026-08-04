@@ -19,6 +19,18 @@
 #endif
 
 namespace engine {
+
+EngineError asset_bake_error(const std::string& code, const std::string& message,
+    const std::string& remediation) {
+    EngineError error;
+    error.code = code;
+    error.message = message;
+    error.remediation = remediation;
+    error.category = ErrorCategory::AssetImport;
+    error.severity = Severity::Error;
+    return error;
+}
+
 namespace {
 
 #if defined(_WIN32)
@@ -182,16 +194,6 @@ std::string find_python() {
     return {};
 }
 
-EngineError bake_error(const std::string& code, const std::string& message, const std::string& remediation = {}) {
-    EngineError error;
-    error.code = code;
-    error.message = message;
-    error.remediation = remediation;
-    error.category = ErrorCategory::AssetImport;
-    error.severity = Severity::Error;
-    return error;
-}
-
 nlohmann::json extract_json_object(const std::string& text) {
     const auto start = text.find('{');
     const auto end = text.rfind('}');
@@ -210,7 +212,7 @@ AssetBakeResult parse_bake_stdout(const ProcessResult& proc) {
     if (payload.is_null() || payload.empty()) {
         result.ok = false;
         result.summary = "asset bake produced no JSON";
-        result.diagnostics.push_back(bake_error("ASSET-BAKE-TOOLING",
+        result.diagnostics.push_back(asset_bake_error("ASSET-BAKE-TOOLING",
             proc.stderr_text.empty() ? proc.stdout_text : proc.stderr_text,
             "Ensure Python + Pillow are on PATH and tools/asset_bake.py runs."));
         return result;
@@ -226,12 +228,12 @@ AssetBakeResult parse_bake_stdout(const ProcessResult& proc) {
         for (const auto& gate : payload["verify"]) {
             if (!gate.is_object()) continue;
             if (gate.value("ok", true)) continue;
-            result.diagnostics.push_back(bake_error(gate.value("code", "ASSET-BAKE-TOOLING"),
+            result.diagnostics.push_back(asset_bake_error(gate.value("code", "ASSET-BAKE-TOOLING"),
                 gate.value("detail", "verify failed"), gate.value("remediation", "")));
         }
     }
     if (!result.ok && result.diagnostics.empty()) {
-        result.diagnostics.push_back(bake_error("ASSET-BAKE-TOOLING",
+        result.diagnostics.push_back(asset_bake_error("ASSET-BAKE-TOOLING",
             proc.stderr_text.empty() ? result.summary : proc.stderr_text));
     }
     return result;
@@ -277,9 +279,25 @@ std::vector<AssetBakeTargetInfo> list_asset_bake_targets() {
         info.id = t.value("id", "");
         info.kind = t.value("kind", "");
         info.default_source = t.value("defaultSource", "");
+        info.baker = t.value("baker", "");
+        if (t.contains("outputs") && t["outputs"].is_object()) {
+            info.mesh_output = t["outputs"].value("mesh", "");
+            info.atlas_output = t["outputs"].value("atlas", "");
+        }
         if (!info.id.empty()) out.push_back(std::move(info));
     }
     return out;
+}
+
+AssetBakeToolResult run_asset_bake_tool(const std::filesystem::path& project_root,
+    const std::vector<std::string>& args) {
+    const auto proc = invoke_asset_bake(project_root, args);
+    AssetBakeToolResult result;
+    result.exit_code = proc.exit_code;
+    result.raw_stdout = proc.stdout_text;
+    result.raw_stderr = proc.stderr_text;
+    result.payload = extract_json_object(proc.stdout_text);
+    return result;
 }
 
 AssetBakeResult run_asset_bake(const std::filesystem::path& project_root, const std::string& target,
@@ -315,7 +333,8 @@ EditorBridgeResponse apply_asset_bake_operation(const std::filesystem::path& pro
         response.exit_code = ExitCode::InvalidArguments;
         response.summary = "target required";
         response.diagnostics.push_back(
-            bake_error("ASSET-BAKE-SOURCE-MISSING", "target is required", "Pass target id from --list / catalog."));
+            asset_bake_error("ASSET-BAKE-SOURCE-MISSING", "target is required",
+                "Pass target id from --list / catalog."));
         return response;
     }
     const std::string source = params.value("source", "");

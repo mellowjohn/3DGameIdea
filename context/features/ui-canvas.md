@@ -28,7 +28,7 @@ Format docs: [`../formats/ui-canvas-assets.md`](../formats/ui-canvas-assets.md).
 - Pause **Main Menu** → `main_menu` (session stays paused); Settings pushes `settings`; Resume returns to play
 - Debug (play test, no modal): **I** opens inventory, **Y** opens dialogue
 - `assets/scripts/ui_handlers.lua` dispatches menu / settings / inventory / dialogue binds
-- **Inventory drag-drop (2026-07-30):** press+drag between `inventory.select.*` slot buttons past an 8px threshold; release on another slot calls `inventory.drag_drop` → `engine.inventory_move`. Click (no drag) still selects. Ghost outline follows the cursor while dragging.
+- **Inventory drag-drop (2026-07-30):** press+drag between `inventory.select.*` slot buttons past an 8px threshold; release on another slot calls `inventory.drag_drop` → `engine.inventory_move`. Click (no drag) still selects. Ghost outline follows the cursor while dragging. Play-test must feed `mouse_down` / `mouse_held` / `mouse_released` (not click-only) into `handle_modal_input`.
 - **Inventory layout cleanup (2026-07-30):** `inventory.uicanvas.json` aligned to `context/design/inventory-ui.pen` (equip / bag / detail columns, square Bag I–III stubs, footer-contained hotbar, gold section titles). Empty slot hit-targets no longer paint bind ids as labels (`HudRuntime::widget_display_label`).
 - **Hover tooltips (2026-07-30):** `UiCanvasStack` draws an iron/gold chip near the cursor for authored `tooltip` and for filled/empty `inventory.select.*` slots (item display name + kind × count).
 - **Authoring:** prefer live MCP (`engine_ui_canvas_mutate` / `engine_hud_apply`) over Python canvas generators — `.cursor/rules/ui-canvas-mcp-first.mdc`

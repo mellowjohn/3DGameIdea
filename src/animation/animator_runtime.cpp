@@ -338,9 +338,9 @@ std::vector<AnimatorClipWeight> AnimatorRuntime::sample_motion(Instance& instanc
 }
 
 void AnimatorRuntime::advance_layer(Instance& instance, LayerRuntime& layer, const AnimatorLayerDef& layer_def,
-    float dt) {
+    float dt, bool allow_transitions) {
     const std::string previous_state = layer.current_state;
-    evaluate_transitions(instance, layer, layer_def);
+    if (allow_transitions) evaluate_transitions(instance, layer, layer_def);
     if (layer.in_transition) {
         layer.transition_elapsed += dt;
         layer.state_time += dt;
@@ -551,16 +551,47 @@ AnimatorInstanceStatus AnimatorRuntime::build_status(const Instance& instance) c
     return status;
 }
 
-void AnimatorRuntime::tick(float dt_seconds) {
+void AnimatorRuntime::tick(float dt_seconds, bool allow_transitions) {
     if (!(dt_seconds >= 0.0f)) return;
     for (auto& [entity_id, instance] : instances_) {
         (void)entity_id;
         if (!instance.bound) continue;
         accumulate_root_motion(instance, dt_seconds);
         for (std::size_t i = 0; i < instance.layers.size() && i < instance.controller.layers.size(); ++i)
-            advance_layer(instance, instance.layers[i], instance.controller.layers[i], dt_seconds);
+            advance_layer(instance, instance.layers[i], instance.controller.layers[i], dt_seconds,
+                allow_transitions);
         evaluate_timeline_events(instance, dt_seconds);
     }
+}
+
+Result<void> AnimatorRuntime::seek(const std::string& entity_id, float state_time_seconds,
+    const std::string& layer_name) {
+    auto* instance = find_instance(entity_id);
+    if (!instance)
+        return Result<void>::failure(animator_error("ANIM-INSTANCE-MISSING", "No animator on entity", entity_id));
+    if (!(state_time_seconds >= 0.0f) || !std::isfinite(state_time_seconds))
+        return Result<void>::failure(animator_error("ANIM-SEEK-TIME", "state time must be finite and >= 0", entity_id));
+
+    auto seek_layer = [&](LayerRuntime& layer) {
+        std::fill(layer.events_fired_mask.begin(), layer.events_fired_mask.end(), std::uint8_t{0});
+        layer.state_time = state_time_seconds;
+        layer.in_transition = false;
+        layer.next_state.clear();
+        layer.transition_duration = 0.0f;
+        layer.transition_elapsed = 0.0f;
+    };
+
+    if (layer_name.empty()) {
+        for (auto& layer : instance->layers) seek_layer(layer);
+        return Result<void>::success();
+    }
+    for (auto& layer : instance->layers) {
+        if (layer.name == layer_name) {
+            seek_layer(layer);
+            return Result<void>::success();
+        }
+    }
+    return Result<void>::failure(animator_error("ANIM-SEEK-LAYER", "layer not found: " + layer_name, entity_id));
 }
 
 std::vector<AnimatorFiredEvent> AnimatorRuntime::take_fired_events() {

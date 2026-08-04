@@ -34,6 +34,7 @@ Tools:
 - `engine_flag_call` — drive session `FlagRuntime` (`kind`: `set` | `clear` | `has` | `list`; `flagId` except list). Same path as Lua `engine.flag_*` ([DEC-0046](../decisions/index.md#dec-0046-session-story-flag-runtime)). Requires live editor MCP; allowed during play test.
 - `engine_coop_call` — local co-op play-test automation (`kind`: `status` | `start_local` | `end` | `pause` | `resume` | `possess` | `move` | `jump` | `disconnect_guest` | `reconnect_guest`). Possess host/guest, inject camera-relative wish for N frames, simulate guest drop/rejoin. Requires live editor MCP; Game tab auto-selected for move/jump ([`co-op-sessions.md`](co-op-sessions.md)).
 - `engine_standing_call` — drive session `StandingRuntime` (`kind`: `get` | `set` | `adjust` | `rank` | `meets` | `lock_in` | `list`; `factionId`; `score` / `delta` / `minScore` / `minRankId` as needed). Same path as Lua `engine.standing_*` ([DEC-0029](../decisions/index.md#dec-0029-continuous-faction-standing-with-hostility-transfer)). Requires live editor MCP; allowed during play test.
+- `engine_animation_call` — Animation Studio + weld authoring (`kind`: `status` | `open` | `set_subject` | `set_controller` | `set_state` | `play`/`pause`/`stop`/`step`/`seek` | `set_joint` | `set_bone_gizmo` | **`create_clip`** | **`create_state`** | `edit_clip` | `upsert_key` | `delete_key` | `save_override` | `sync_gltf` | `replace_from_source` | timeline event CRUD | `set_held` | `get_weld`/`set_weld`/`save_weld`). Solo preview (no exitTime graph jumps). Requires live editor MCP ([`animation-studio.md`](animation-studio.md)).
 - `engine_hud_apply` — write UI canvas (`*.uicanvas.json`) or legacy HUD (`*.hud.json`) and hot reload during play test ([DEC-0025](../decisions/index.md#dec-0025-responsive-ui-canvas-stack-editor--mcp))
 - `engine_world_forge_apply` — read/validate/write World Forge assets (`factions` / `relationships` / `map` `*.worldforge.json`); works offline; not Scene/Sculpt ([TICKET-0014](../planning/tickets/TICKET-0014.md))
 - `engine_ui_stack` — canvas stack `register` / `push` / `pop` / `show` / `hide` / `clear` / `status` (play-test safe; equals Lua `engine.ui_*`)
@@ -56,7 +57,7 @@ Direct `.world.json` writes while the editor is open are rejected by design. Use
 
 `engine_scene_apply` accepts `action: "batch"` with an `ops` array of single-op payloads (`place`, `move`, `remove`, `rename`). All operations run in one bridge round-trip and one undo step. Failed mid-batch applies roll back earlier ops in that batch. Optional `label` names the undo entry; `save: true` persists after a successful batch. Maximum 100 ops per request.
 
-`engine_scene_plan`, `engine_project_validate`, `engine_project_git`, and `engine_build_coordination` work without the bridge. `engine_world_forge_apply` also works offline (file + schema validate). Live scene, prefab, Lua, and HUD apply require the editor plus enabled MCP connection. `engine_lua_apply`, `engine_hud_apply`, `engine_lua_call`, `engine_quest_call`, `engine_flag_call`, `engine_dialogue_call`, `engine_standing_call`, `engine_coop_call`, `engine_editor_session`, and `engine_editor_camera` are allowed during play test (scene edits remain blocked) so agents can iterate scripts, fire handlers, test quest/dialogue/flag/standing progression, drive local co-op, end/frame Scene stills, and control overlays without walking into volumes.
+`engine_scene_plan`, `engine_project_validate`, `engine_project_git`, and `engine_build_coordination` work without the bridge. `engine_world_forge_apply` also works offline (file + schema validate). Live scene, prefab, Lua, and HUD apply require the editor plus enabled MCP connection. `engine_lua_apply`, `engine_hud_apply`, `engine_lua_call`, `engine_quest_call`, `engine_flag_call`, `engine_dialogue_call`, `engine_standing_call`, `engine_coop_call`, `engine_animation_call`, `engine_editor_session`, and `engine_editor_camera` are allowed during play test; **scene placement edits are also allowed live** so Scene free-cam inspection and mid-play tweaks work (terrain/water apply remain blocked while play is active).
 
 Dialogue sandbox pad + MCP scenarios: [`../testing/dialogue-sandbox-mcp.md`](../testing/dialogue-sandbox-mcp.md) (`engine editor … --world worlds/sandbox.world.json`, or **File → Open World → sandbox** in a running editor).
 
@@ -97,7 +98,7 @@ Screenshots remain for visual QA; do not put a CV stack in the engine.
 - Bridge requests/responses use schema version 1 and reuse stable exit codes and diagnostics.
 - `editor_status` metadata includes `liveAutomationEnabled`.
 - Scene edits map to existing commands in `include/engine/automation/scene_commands.h`.
-- Play-test sessions block scene mutation until ended.
+- Play-test sessions allow Scene free-cam inspect/edit (gizmos, place); terrain/water still blocked until ended.
 
 ## Verification
 

@@ -6,8 +6,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <system_error>
 
 namespace engine {
 namespace {
@@ -106,6 +108,7 @@ Result<ItemCatalogAsset> ItemCatalogAsset::parse(const std::string& text, const 
                 for (float& axis : def.hand_attach.grip_scale) {
                     if (!(std::fabs(axis) > 1e-4f)) axis = 1.0f;
                 }
+                def.hand_attach.draw_clip = ha.value("drawClip", std::string{});
             }
             asset.entities.push_back(std::move(def));
         }
@@ -161,18 +164,23 @@ Result<void> save_item_hand_attach(const std::filesystem::path& project_root, co
             "Item has no source_path for handAttach save",
             "Reload the item catalog from assets/items/*.json."));
     }
-    const auto absolute = project_root / def.source_path;
-    std::ifstream input(absolute);
-    if (!input) {
-        return Result<void>::failure(catalog_error("ITEM-SAVE-IO",
-            "Failed to open item catalog for write: " + def.source_path, "Check the path exists."));
-    }
+    const auto absolute = (project_root / def.source_path).lexically_normal();
     nlohmann::json json;
-    try {
-        input >> json;
-    } catch (const std::exception& ex) {
-        return Result<void>::failure(catalog_error("ITEM-SAVE-PARSE",
-            std::string("Failed to parse catalog before save: ") + ex.what(), "Fix JSON syntax."));
+    {
+        // Close the read handle before opening for trunc write — Windows often fails ofstream::trunc while
+        // an ifstream on the same path remains open (ITEM-SAVE-WRITE with "permissions" noise).
+        std::ifstream input(absolute, std::ios::binary);
+        if (!input) {
+            return Result<void>::failure(catalog_error("ITEM-SAVE-IO",
+                "Failed to open item catalog for write: " + absolute.generic_string(),
+                "Check the path exists and project root is absolute."));
+        }
+        try {
+            input >> json;
+        } catch (const std::exception& ex) {
+            return Result<void>::failure(catalog_error("ITEM-SAVE-PARSE",
+                std::string("Failed to parse catalog before save: ") + ex.what(), "Fix JSON syntax."));
+        }
     }
     if (!json.contains("entities") || !json["entities"].is_array()) {
         return Result<void>::failure(
@@ -189,6 +197,12 @@ Result<void> save_item_hand_attach(const std::filesystem::path& project_root, co
             def.hand_attach.grip_euler_deg[2]};
         ha["gripScale"] = {def.hand_attach.grip_scale[0], def.hand_attach.grip_scale[1],
             def.hand_attach.grip_scale[2]};
+        if (!def.hand_attach.draw_clip.empty()) ha["drawClip"] = def.hand_attach.draw_clip;
+        else if (node.contains("handAttach") && node["handAttach"].is_object()
+            && node["handAttach"].contains("drawClip") && node["handAttach"]["drawClip"].is_string()) {
+            // Preserve authored drawClip when grips are saved without reloading the optional field into live state.
+            ha["drawClip"] = node["handAttach"]["drawClip"].get<std::string>();
+        }
         node["handAttach"] = std::move(ha);
         found = true;
         break;
@@ -197,12 +211,35 @@ Result<void> save_item_hand_attach(const std::filesystem::path& project_root, co
         return Result<void>::failure(catalog_error("ITEM-SAVE-MISSING",
             "Item id not found in " + def.source_path, "Confirm the item lives in that catalog file."));
     }
-    std::ofstream output(absolute, std::ios::trunc | std::ios::binary);
-    if (!output) {
-        return Result<void>::failure(catalog_error("ITEM-SAVE-WRITE",
-            "Failed to write item catalog: " + def.source_path, "Check file permissions."));
+
+    const auto temp = absolute.string() + ".tmp";
+    {
+        std::ofstream output(temp, std::ios::trunc | std::ios::binary);
+        if (!output) {
+            return Result<void>::failure(catalog_error("ITEM-SAVE-WRITE",
+                "Failed to write item catalog temp: " + temp, "Check directory write permissions."));
+        }
+        output << json.dump(2) << '\n';
+        if (!output) {
+            return Result<void>::failure(catalog_error("ITEM-SAVE-WRITE",
+                "Failed while writing item catalog temp: " + temp, "Check free disk space."));
+        }
     }
-    output << json.dump(2) << '\n';
+    std::error_code ec;
+    std::filesystem::rename(temp, absolute, ec);
+    if (ec) {
+        // Windows rename-over-existing may need remove first on some filesystems.
+        std::error_code remove_ec;
+        std::filesystem::remove(absolute, remove_ec);
+        std::filesystem::rename(temp, absolute, ec);
+    }
+    if (ec) {
+        std::error_code cleanup;
+        std::filesystem::remove(temp, cleanup);
+        return Result<void>::failure(catalog_error("ITEM-SAVE-WRITE",
+            "Failed to replace item catalog: " + absolute.generic_string() + " (" + ec.message() + ")",
+            "Close other editors using the file and retry."));
+    }
     return Result<void>::success();
 }
 

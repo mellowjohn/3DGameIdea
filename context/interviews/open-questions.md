@@ -120,10 +120,13 @@ Still open (implementation detail, not product fork):
 
 ## Player camp (DEC-0033)
 
-**Resolved:** anywhere overland camp → persistent editable camp instance; evergreen story tutorial; **hard deny** when pitching would escape/negate an active combat situation/zone (DEC-0033). See [`open-world-navigation.md`](../features/open-world-navigation.md).
+**Resolved (current DEC):** anywhere overland camp → persistent editable camp instance; evergreen story tutorial; **hard deny** when pitching would escape/negate an active combat situation/zone (DEC-0033). See [`open-world-navigation.md`](../features/open-world-navigation.md).
+
+**2026-08-03 draft lean (not yet a DEC amend):** Dom + John prefer a **Palworld-style placeable open-world camp/base** (companions idle at camp; optional craft/forage/mine later) while keeping a linear campaign + sandbox side content. Formal reopen: Dom **D-P1-23** + **TICKET-0254**. Do not implement full base-building until that decision lands. Provenance: [`../design/recording_ld_character_concepts_2026-08-03.md`](../design/recording_ld_character_concepts_2026-08-03.md).
 
 Still open:
 
+- **D-P1-23 / TICKET-0254:** instance-primary (DEC-0033) vs placeable open-world base (Palworld lean)?
 - Outside active combat: may the player pitch in **hostile frontiers**, interiors, or story-locked beats?
 - How much camp customization ships in v1 (furniture props vs full base-building)?
 - Camp rest → time-of-day / ambush rules?

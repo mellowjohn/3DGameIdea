@@ -20,6 +20,9 @@ struct ItemHandAttach {
     std::array<float, 3> grip_euler_deg{0.0f, 0.0f, 0.0f};
     /// Extra scale on top of the character scale the joint chain already carries.
     std::array<float, 3> grip_scale{1.0f, 1.0f, 1.0f};
+    /// Optional draw/pose clip on the held worldMesh (e.g. `bow_draw`). Empty falls back to
+    /// sampling `bow_draw` when present on a skinned weapon mesh.
+    std::string draw_clip;
 };
 
 struct ItemDef {

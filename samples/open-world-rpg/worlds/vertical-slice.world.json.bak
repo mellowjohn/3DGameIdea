@@ -2,73 +2,6 @@
   "schemaVersion": 1,
   "entities": [
     {
-      "id": "0090638e-91e8-4e05-8060-f29acc582766",
-      "name": "Dead Log",
-      "transform": {
-        "position": [
-          -20.107999801635742,
-          -1.9279999732971191,
-          28.14299964904785
-        ],
-        "rotation": [
-          0.0,
-          0.8822259902954102,
-          0.0,
-          0.47082701325416565
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ]
-      },
-      "parent": null,
-      "placement": {
-        "prefab": "assets/prefabs/scene assets/dead_log.prefab.json",
-        "cell": [
-          -1,
-          0
-        ]
-      },
-      "components": [
-        {
-          "data": {
-            "halfExtent": [
-              0.2199999988079071,
-              0.20000000298023224,
-              0.5799999833106995
-            ],
-            "id": "collision-0",
-            "layer": "staticWorld",
-            "shape": "box",
-            "transform": {
-              "position": [
-                0.0,
-                0.20000000298023224,
-                0.0
-              ],
-              "rotation": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-              ],
-              "scale": [
-                1.0,
-                1.0,
-                1.0
-              ]
-            },
-            "trigger": false
-          },
-          "id": "collision-0",
-          "overridden": false,
-          "source": "prefab",
-          "type": "collider"
-        }
-      ]
-    },
-    {
       "id": "02b172e4-734c-444f-aff7-25693570139b",
       "name": "Forest Tree 5,-4",
       "transform": {
@@ -5614,15 +5547,46 @@
       "components": [
         {
           "data": {
-            "id": "collision-0",
-            "interaction": "use_campfire",
-            "layer": "trigger",
-            "radius": 0.8500000238418579,
+            "id": "collision-solid",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
             "shape": "sphere",
             "transform": {
               "position": [
                 0.0,
-                0.550000011920929,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-solid",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "use_campfire",
+            "layer": "trigger",
+            "radius": 1.0,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.4000000059604645,
                 0.0
               ],
               "rotation": [
@@ -5639,7 +5603,7 @@
             },
             "trigger": true
           },
-          "id": "collision-0",
+          "id": "collision-interact",
           "overridden": false,
           "source": "prefab",
           "type": "collider"
@@ -6612,15 +6576,61 @@
       "components": [
         {
           "data": {
-            "id": "collision-0",
-            "interaction": "use_campfire",
-            "layer": "trigger",
-            "radius": 0.8500000238418579,
+            "clip": "assets/audio/campfire_crackle.wav",
+            "loop": true,
+            "maxDistance": 40.0,
+            "minDistance": 0.5,
+            "playOnStart": true,
+            "spatial": true,
+            "volume": 1.0
+          },
+          "id": "audio-1",
+          "overridden": true,
+          "source": "instance",
+          "type": "audioSource"
+        },
+        {
+          "data": {
+            "id": "collision-solid",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
             "shape": "sphere",
             "transform": {
               "position": [
                 0.0,
-                0.550000011920929,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-solid",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "use_campfire",
+            "layer": "trigger",
+            "radius": 1.0,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.4000000059604645,
                 0.0
               ],
               "rotation": [
@@ -6637,25 +6647,10 @@
             },
             "trigger": true
           },
-          "id": "collision-0",
+          "id": "collision-interact",
           "overridden": false,
           "source": "prefab",
           "type": "collider"
-        },
-        {
-          "data": {
-            "clip": "assets/audio/campfire_crackle.wav",
-            "loop": true,
-            "maxDistance": 40.0,
-            "minDistance": 0.5,
-            "playOnStart": true,
-            "spatial": true,
-            "volume": 1.0
-          },
-          "id": "audio-1",
-          "overridden": true,
-          "source": "instance",
-          "type": "audioSource"
         }
       ]
     },
@@ -7690,20 +7685,6 @@
           "overridden": true,
           "source": "prefab",
           "type": "collider"
-        },
-        {
-          "data": {
-            "angularDamping": 0.20000000298023224,
-            "freezeRotation": false,
-            "linearDamping": 0.15000000596046448,
-            "mass": 8.0,
-            "motionType": "dynamic",
-            "useGravity": true
-          },
-          "id": "rigidbody-0",
-          "overridden": false,
-          "source": "prefab",
-          "type": "rigidbody"
         }
       ]
     },

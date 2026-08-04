@@ -83,6 +83,8 @@ One emblem per faction **sphere** (draft-safe; do not invent place names on shie
 
 Faction asset fields `emblemPath` / `mapColor` / `mapTypefaceId` resolve these at edit time ([world-forge-factions.md](../formats/world-forge-factions.md)).
 
+**Character / armor reuse:** the same PNGs and `emblemPath` bindings are the **single source of truth** for armored kits, shields, tabards, and banners (simplified stamp on body UV — full rules in [character-direction.md § Heraldry on characters and armor](character-direction.md#heraldry-on-characters-and-armor-production-lock)). Do not author a second parallel emblem set for meshes.
+
 **Theater callouts:** Cartography may show soft heraldry chips for draft theaters (west Tessera, central Cristallo, south Imperium) without hard political border strokes — see [official-world-map.md](../story/official-world-map.md#draft-faction-theaters-2026-07-20).
 
 **Coastal Arrotrebae / Ledgeport (draft 2026-07-20):** soft coastal-presence callouts near **Ledgeport** may use **The Thalassar** chip (`heraldry-thalassar.png`) when the callout is that clan; otherwise the Arrotrebae umbrella emblem. Mark Ledgeport with a dock/settlement icon and **no** faction heraldry ownership chip (neutral = neither Arrotrebae nor Cristallo). Ferry geometry toward Cristallo uses existing ferry stroke language.

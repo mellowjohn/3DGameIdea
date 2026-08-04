@@ -1,0 +1,79 @@
+---
+description: Prefer Animation Studio MCP for clip/weld edits; no disk-only Python rewrites of *.anim.json when live
+alwaysApply: true
+---
+
+# Animation Studio: MCP First (Not Disk-Only Scripts)
+
+When authoring or polishing **Animation Studio** content (player/NPC clips, `*.anim.json` overrides, animator timeline events, held gear, handAttach welds), use **`engine_animation_call`** against a live `engine.exe mcp` / editor session. Do **not** rewrite overrides via Python (or raw file write alone) as the primary edit path — the clip library does **not** hot-reload sidecars like Studio Save Override does.
+
+## Prefer
+
+| Goal | MCP `engine_animation_call` kind (and friends) |
+| --- | --- |
+| Open subject | `open` / `set_subject` / `set_controller` |
+| Preview state | `set_state` → `seek` / `play` / `pause` / `step` |
+| Keyframes | `edit_clip` → `upsert_key` **or batch `upsert_keys`** / `delete_key` → **`save_override`** (disk + library reload). Pass `joint` on each key (overrides Studio selection). Rotation accepts `values` quat xyzw **or** `eulerDeg` local XYZ. |
+| New clip / state | `create_clip` (+ optional `create_state`) |
+| Timeline events | `list_events` / `add_event` / `update_event` / `remove_event` / `save_events` |
+| Held mesh weld | `set_held` / `set_weld` / `set_weld_gizmo` / `save_weld` |
+| Verify pose | `seek` + `engine_editor_screenshot` (or Animation viewport) |
+
+Skill: `skills/live-editor-mcp/SKILL.md`. Feature notes: `context/features/animation-studio.md`.
+
+## Banned habits
+
+- Running `tools/art/*bow_shoot*.py` (or siblings) to **regenerate** `player.*.anim.json` while MCP/editor is available, then expecting live Studio to update
+- Editing only `samples/**/assets/models/*.anim.json` on disk without MCP `save_override` / library reload
+- Assuming `edit_clip` re-reads a sidecar you just wrote with Python — it may early-out on the **cached** in-memory clip
+- Asking the owner to “just restart” instead of using the live path when the session is up
+- **Working around a broken/incomplete Animation MCP kind** with scripts, raw file writes, one-off tools, or **bridge clients** instead of fixing the engine path (see also global [`.cursor/rules/mcp-no-python-substitutes.mdc`](mcp-no-python-substitutes.mdc))
+
+## If MCP does not work — fix it
+
+When a live animation edit **should** go through `engine_animation_call` (or related editor bridge) but fails, is missing, goes stale, or cannot express the needed op:
+
+1. **Do not paper over it** with Python generators, silent disk rewrites, or “I’ll edit JSON and force a full engine restart forever.”
+2. **Diagnose** in the engine: MCP handlers (`engine_animation_call` / animation command dispatch), Animation Studio session (`edit_clip` cache, library load/reload), clip library (`reload` after override save, sidecar watch if expected), weld/held path, and bridge connectivity.
+3. **Fix the C++/tooling path** so MCP + Studio stay authoritative — e.g. force re-open from disk on `edit_clip`, `reload_clip` / library reload after sidecar mtime, missing kinds, wrong early-outs, save not reloading, weld not applying.
+4. **Rebuild + reset** per `rebuild-after-code-changes.mdc` / `reset-editor-after-edits.mdc` (acquire lease → kill locked `engine.exe` → MSBuild `engine` → relaunch MCP/editor → release).
+5. **Re-verify** the original content edit via MCP (`edit_clip` → keys → `save_override` → `seek` + screenshot).
+6. Update `context/features/animation-studio.md` (and a finding if the defect class is reusable) when behavior changes.
+
+**Not connected** is environment, not a product feature: restart Cursor’s engine MCP and/or relaunch `engine.exe mcp --project samples/open-world-rpg`. If connection repeatedly fails due to a repo bug (handshake, server command, stale process), fix that tooling — still do not make disk scripts the lasting workflow.
+
+## Allowed (rare)
+
+- **MCP temporarily unavailable** after you’ve tried connect/relaunch: offline override edit is OK as a stopgap — state that clearly; once live again, resume via MCP and fix any gap that forced the stopgap.
+- Checked-in **provenance / batch** scripts may document how a clip was first boxed — **do not run them** as the live polish path or as a permanent substitute for a broken MCP op
+
+## Rules
+
+1. Live session → **MCP only** for pose, keys, weld, and events. No “script first, reload later.”
+2. After key edits: **`save_override`** so disk + library stay in sync (viewport already shows in-memory upsers).
+3. Scrub/verify with `seek` (and screenshot when judging silhouette), not git status alone.
+4. **Sagittal authored names:** player clips sample with RH→LH remap — joint **`LeftHand`** weld is visual right; put **bow hold** on clip channels `Right*`, **string draw** on `Left*` (see animation-studio docs).
+5. If MCP shows **Not connected**, reconnect/relaunch; do not fall back to silent disk regenerate while a visual session is what the owner is watching.
+6. **MCP broken or incomplete → fix engine/tools, then resume MCP.** Workarounds are temporary only.
+
+## Examples
+
+```text
+❌ BAD: python tools/art/_build_bow_shoot_arms.py && hope Animation Studio picks it up
+✅ GOOD: edit_clip BowShoot → upsert_key on arms → seek 0.55 / 1.2 / 1.35 → save_override
+
+❌ BAD: Hand-edit player.BowShoot.anim.json only while Studio already has BowShoot open
+✅ GOOD: upsert_key on the live edit buffer, then save_override
+
+❌ BAD: set_state bowShoot on stale library after a disk overwrite from a script
+✅ GOOD: save_override (reload path); if library stays stale, fix reload in engine, rebuild, then save_override again via MCP
+
+❌ BAD: “edit_clip doesn’t re-read disk / no reload_clip — so I’ll always use Python”
+✅ GOOD: Add reload / fix early-out in Animation Studio + MCP; rebuild; polish only through engine_animation_call
+```
+
+## Related
+
+- UI canvases: `.cursor/rules/ui-canvas-mcp-first.mdc` (same “live MCP owns layout” pattern)
+- Scene/world: never write open `.world.json` while the editor owns it (`skills/live-editor-mcp/SKILL.md`)
+- Rebuild/reset: `.cursor/rules/rebuild-after-code-changes.mdc`, `.cursor/rules/reset-editor-after-edits.mdc`

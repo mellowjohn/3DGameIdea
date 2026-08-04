@@ -17,6 +17,7 @@ flowchart TD
     kind -->|scene_data| scene[engine_scene_apply]
     kind -->|terrain_data| terrain[engine_terrain_apply]
     kind -->|engine_code| cpp[Edit src/include and rebuild]
+    kind -->|game_module_cpp| gmod[Edit game_module and rebuild DLL only]
     kind -->|unknown| validate[engine_project_validate then re-plan]
     lua --> reload{Live editor MCP on?}
     reload -->|yes| hot[Immediate Lua reload]
@@ -28,7 +29,8 @@ flowchart TD
     terrain --> terrainBridge{Editor open with MCP?}
     terrainBridge -->|yes| terrainLive[TerrainEdit/Paint history]
     terrainBridge -->|no editor| terrainSample[sample only offline]
-    cpp --> build[Rebuild engine target]
+    cpp --> build[Rebuild engine target then restart process]
+    gmod --> dllReload[Rebuild game_module then Diagnostics reload]
 ```
 
 ## Use C++ engine code when
@@ -38,6 +40,11 @@ flowchart TD
 - Exposing new Lua bindings or handler payload types.
 - Fixing bugs in engine systems or automation command paths.
 - Performance, determinism, or platform integration work.
+
+## Use game_module (native hot-reload) when
+
+- Native C++ logic must iterate quickly **without** restarting the editor, and the work fits the C ABI (log + blackboard; tick hooks) — see [game-module-hot-reload.md](../features/game-module-hot-reload.md) and [DEC-0053](../decisions/index.md#dec-0053-native-game-module-hot-reload-c-abi).
+- Rebuild target `game_module` only; Diagnostics → Game Module → Reload (or auto-reload). Do **not** use this for D3D/ImGui/Jolt/Lua VM or core RPG runtimes — those stay in `engine_core` (full restart).
 
 Movement and character control (including jump) are engine-owned today. Lua does not expose movement APIs in v1.
 
@@ -73,8 +80,9 @@ Classifier: `engine_scene_plan` returns `targetKind=world_forge` for `*.worldfor
 
 - Enable **MCP connection** in Diagnostics before live scene, prefab, terrain, or Lua apply while the editor is running.
 - Do not write open `.world.json` files directly while the editor session owns the scene.
-- Play-test sessions block scene mutation until ended.
+- Play-test sessions allow Scene free-cam inspect/edit (gizmos, place); terrain/water still blocked until ended.
 - `bindings.script.json` changes require editor restart; handler `.lua` files hot reload through the bridge or file monitor.
+- `game_module.dll` reloads through Diagnostics (or auto-reload) without process restart; `engine_core` changes do not.
 
 ## Classifier limitations
 
@@ -84,7 +92,8 @@ Classifier: `engine_scene_plan` returns `targetKind=world_forge` for `*.worldfor
 
 | Change type | Minimum verification |
 | --- | --- |
-| C++ engine | Rebuild `engine`; run affected CTest suites |
+| C++ engine (`engine_core`) | Rebuild `engine`; run affected CTest suites; process restart |
+| game_module DLL | Rebuild `game_module`; Diagnostics reload; `game_module` suite |
 | Lua handler | `scripting` suite; live reload or file monitor |
 | Scene/prefab/asset | `engine_project_validate`; automation suite when bridge logic changes |
 | Movement/physics | `character` suite and manual play-test |

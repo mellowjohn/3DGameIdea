@@ -16,8 +16,7 @@
   "entities": [
     {
       "mesh": {
-        "asset": "assets/models/campfire.gltf",
-        "material": "assets/materials/flame_core_emissive.material.json"
+        "asset": "assets/models/campfire.gltf"
       },
       "name": "StylizedFlameMesh",
       "parent": null,
@@ -29,10 +28,10 @@
     }
   ],
   "light": {
-    "color": [1, 0.55, 0.18],
-    "offset": [0, 0.55, 0],
-    "radius": 38,
-    "strength": 2.6
+    "color": [1, 0.58, 0.22],
+    "offset": [0, 0.45, 0],
+    "radius": 34,
+    "strength": 2.25
   },
   "particles": [
     {

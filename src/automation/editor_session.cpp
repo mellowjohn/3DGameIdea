@@ -18,6 +18,8 @@
 #include "engine/scripting/lua_runtime.h"
 #include "engine/quest/quest_runtime.h"
 #include "engine/inventory/inventory_runtime.h"
+#include "engine/inventory/starter_loadout.h"
+#include "engine/assets/world_forge_archetypes_asset.h"
 #include "engine/standing/standing_runtime.h"
 #include "engine/flag/flag_runtime.h"
 #include "engine/dialogue/dialogue_runtime.h"
@@ -1658,6 +1660,44 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                 };
             };
 
+            auto load_archetypes = [&]() -> std::optional<WorldForgeArchetypesAsset> {
+                const auto path = default_world_forge_archetypes_path(context.project_root);
+                if (!std::filesystem::exists(path)) return std::nullopt;
+                auto loaded = WorldForgeArchetypesAsset::load(path);
+                if (!loaded) return std::nullopt;
+                return loaded.value();
+            };
+            auto resolve_starter_weapon = [&](const std::string& archetype_id) {
+                const auto archetypes = load_archetypes();
+                return resolve_starter_weapon_item_id(archetype_id,
+                    archetypes ? &*archetypes : nullptr);
+            };
+            auto apply_starter_loadout = [&](const std::string& archetype_id, bool grant_bandages)
+                -> EditorBridgeResponse {
+                const auto id = normalize_starter_archetype_id(archetype_id);
+                const auto weapon = resolve_starter_weapon(id);
+                if (const ItemDef* def = context.inventory_runtime->find_def(weapon); !def) {
+                    return make_response(ExitCode::ValidationFailed, "Starter weapon missing from catalog", {},
+                        {session_error("INV-STARTER-WEAPON",
+                            "Resolved starter weapon '" + weapon + "' is not in the item catalog.",
+                            "Add the item def or fix starterWeaponItemId on the archetype.")},
+                        {{"kind", "apply_starter"}, {"archetypeId", id}, {"weaponItemId", weapon}});
+                }
+                const auto hotbar = context.inventory_runtime->set_hotbar(0, weapon, 1);
+                if (!hotbar) {
+                    return make_response(ExitCode::ValidationFailed, hotbar.error().message, {}, {hotbar.error()},
+                        {{"kind", "apply_starter"}, {"archetypeId", id}, {"weaponItemId", weapon}});
+                }
+                if (grant_bandages) {
+                    (void)context.inventory_runtime->grant(kAct0StarterBandageItemId, kAct0StarterBandageCount);
+                }
+                (void)context.inventory_runtime->select_hotbar(0);
+                if (context.refresh_inventory_ui) context.refresh_inventory_ui();
+                return make_response(ExitCode::Success, "Starter loadout applied", {}, {},
+                    {{"kind", "apply_starter"}, {"archetypeId", id}, {"weaponItemId", weapon},
+                        {"bandagesGranted", grant_bandages ? std::to_string(kAct0StarterBandageCount) : "0"}});
+            };
+
             if (kind == "status") {
                 const auto snap = context.inventory_runtime->status();
                 std::string bag_ids;
@@ -1672,12 +1712,58 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
                     if (!hotbar_ids.empty()) hotbar_ids += ',';
                     hotbar_ids += std::to_string(i) + ":" + snap.hotbar[i].item_id;
                 }
+                std::string starter_id = kDefaultPlayTestStarterArchetypeId;
+                if (context.play_test_starter_archetype_id && !context.play_test_starter_archetype_id->empty())
+                    starter_id = *context.play_test_starter_archetype_id;
+                starter_id = normalize_starter_archetype_id(starter_id);
+                const auto starter_weapon = resolve_starter_weapon(starter_id);
                 return make_response(ExitCode::Success, "Inventory status", {}, {},
                     {{"kind", "status"}, {"bag", bag_ids}, {"hotbar", hotbar_ids},
                         {"selectedHotbar", std::to_string(snap.selected_hotbar)},
                         {"gold", std::to_string(snap.gold)},
                         {"selectionRegion", snap.ui_selection.region},
-                        {"selectionIndex", std::to_string(snap.ui_selection.index)}});
+                        {"selectionIndex", std::to_string(snap.ui_selection.index)},
+                        {"starterArchetypeId", starter_id},
+                        {"starterWeaponItemId", starter_weapon}});
+            }
+            if (kind == "set_starter_archetype" || kind == "setstarterarchetype" || kind == "set_archetype" ||
+                kind == "setarchetype") {
+                auto archetype_id = params.value("archetypeId",
+                    params.value("archetype_id",
+                        params.value("archetype", params.value("itemId", std::string{}))));
+                if (archetype_id.empty()) {
+                    return make_response(ExitCode::InvalidArguments, "archetypeId is required", {},
+                        {session_error("INV-STARTER-ID",
+                            "set_starter_archetype requires archetypeId.",
+                            "Example: {\"kind\":\"set_starter_archetype\",\"archetypeId\":\"outrider\"}")});
+                }
+                const auto id = normalize_starter_archetype_id(archetype_id);
+                if (context.play_test_starter_archetype_id) *context.play_test_starter_archetype_id = id;
+                const bool apply = params.value("apply", context.test_session_active);
+                if (apply) {
+                    auto applied = apply_starter_loadout(id, false);
+                    if (applied.exit_code != ExitCode::Success) return applied;
+                    applied.metadata["kind"] = "set_starter_archetype";
+                    applied.metadata["applied"] = "true";
+                    applied.summary = "Play-test starter archetype set and loadout applied";
+                    return applied;
+                }
+                return make_response(ExitCode::Success, "Play-test starter archetype set", {}, {},
+                    {{"kind", "set_starter_archetype"}, {"archetypeId", id},
+                        {"weaponItemId", resolve_starter_weapon(id)}, {"applied", "false"}});
+            }
+            if (kind == "apply_starter" || kind == "applystarter" || kind == "grant_starter" ||
+                kind == "grantstarter") {
+                std::string archetype_id = params.value("archetypeId",
+                    params.value("archetype_id",
+                        params.value("archetype", params.value("itemId", std::string{}))));
+                if (archetype_id.empty() && context.play_test_starter_archetype_id)
+                    archetype_id = *context.play_test_starter_archetype_id;
+                if (archetype_id.empty()) archetype_id = kDefaultPlayTestStarterArchetypeId;
+                const auto id = normalize_starter_archetype_id(archetype_id);
+                if (context.play_test_starter_archetype_id) *context.play_test_starter_archetype_id = id;
+                const bool grant_bandages = params.value("grantBandages", params.value("grant_bandages", false));
+                return apply_starter_loadout(id, grant_bandages);
             }
             if (kind == "grant") {
                 if (item_id.empty()) {
@@ -1787,7 +1873,8 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
             }
             return make_response(ExitCode::InvalidArguments, "Unknown inventory_call kind", {},
                 {session_error("INV-CALL-KIND", "Unsupported kind: " + kind,
-                    "Use status, grant, set_hotbar, set_equip, select_hotbar, select, equip_selected, unequip_selected, move.")});
+                    "Use status, grant, set_hotbar, set_equip, select_hotbar, select, equip_selected, "
+                    "unequip_selected, move, set_starter_archetype, apply_starter.")});
         }
         if (operation == "dialogue_call") {
             if (!context.dialogue_runtime) {
@@ -2081,11 +2168,8 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
             return make_response(ExitCode::Unavailable, "Editor session is unavailable", {}, {session_error(
                 "EDITOR-SESSION-MISSING", "Scene or command history is not available.", "Launch the editor first.")});
         }
-        if (context.test_session_active) {
-            return make_response(ExitCode::Unavailable, "Scene edits are blocked during an active play test", {},
-                {session_error("EDITOR-PLAY-SESSION-ACTIVE", "End the play test before applying scene edits.",
-                    "Send test session end or switch back to Scene tab.")});
-        }
+        // Scene place/move/component edits are allowed while a play test runs so authors can inspect and
+        // adjust the world mid-session (Scene free-cam/gizmos). Terrain and water still gate on play.
         if (operation == "scene_apply") {
             const auto action = params.value("action", std::string{});
             if (action == "undo") {
@@ -2257,7 +2341,7 @@ EditorBridgeResponse execute_editor_operation(EditorSessionContext& context, con
         }
         return make_response(ExitCode::InvalidArguments, "Unknown editor operation", {},
             {session_error("EDITOR-OP-UNKNOWN", "Unsupported operation: " + operation,
-                "Use editor_status/editor_session/editor_camera/scene_plan/.../hud_apply/world_forge_apply/project_git/ui_canvas_mutate/ui_stack/lua_call/quest_call/inventory_call/dialogue_call/standing_call/flag_call/coop_call.")});
+                "Use editor_status/editor_session/editor_camera/scene_plan/.../hud_apply/world_forge_apply/project_git/ui_canvas_mutate/ui_stack/lua_call/quest_call/inventory_call/dialogue_call/standing_call/flag_call/coop_call/animation_call.")});
     } catch (const std::exception& exception) {
         return make_response(ExitCode::InternalError, "Editor operation failed", {},
             {session_error("EDITOR-OP-EXCEPTION", exception.what(), "Check params JSON and retry.")});

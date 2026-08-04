@@ -22,8 +22,8 @@ Kanban (drag Status columns): **[Work Board](https://app.notion.com/p/39ad3efc56
 | Priority | Meaning | Typical work |
 | --- | --- | --- |
 | P0 | Engineering critical path — do first when Ready | **M5 exit** (TICKET-0110); **Act 0 event timeline** (TICKET-0221/0222, owner override 2026-07-24) |
-| P1 | Parallel now — remaining M5 gap | TICKET-0107 miniaudio; WF Events pane (0223) after 0221; headless-verifiable follow-ons |
-| P2 | Ready or next, but not ahead of P0 | Animation tools (0135), decision gates (0041) |
+| P1 | Parallel now — remaining M5 gap | **Animation Studio** TICKET-0248 (owner override 2026-08-03); TICKET-0107 miniaudio; WF Events pane (0223) after 0221 |
+| P2 | Ready or next, but not ahead of P0 | Animation Studio follow-ons (0250+), decision gates (0041) |
 | P3 | Held / later — do not start without owner override | M6–M11 runtime, World Forge/UI polish, water, deferred items |
 
 **Owner QA (2026-07-22):** The large `needs-approval` backlog (~65 tickets) requires **desktop editor/viewport** verification. Owner is not reviewing that queue from mobile — statuses stay as-is; **do not treat approval as blocking new agent work**. Prefer new tickets that close M5 with **automated suites / CLI evidence** so review can happen later in one desktop session.
@@ -94,6 +94,8 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0021 | Faction canon review and gaps | done | P1 | Owner approved 2026-07-15; gaps remain open in [`factions.md`](../story/factions.md); [`tickets/TICKET-0021.md`](tickets/TICKET-0021.md) |
 | TICKET-0022 | Side-quest catalog (regions, hooks, rewards) | done | P1 | Owner approved 2026-07-15; [`../story/side-quest-catalog.md`](../story/side-quest-catalog.md) |
 | TICKET-0023 | Continuity checklist for new story docs | done | P1 | Owner approved 2026-07-15; [`continuity-checklist.md`](../story/continuity-checklist.md) |
+| TICKET-0255 | Apply Dom kit feedback (Damius, Ashfell, Underflow) | proposed | P2 | 2026-08-03 recording; revise concepts + character-direction; [`tickets/TICKET-0255.md`](tickets/TICKET-0255.md) |
+| TICKET-0256 | Creotar vision presentation + Act 3 red-ice LD notes | proposed | P2 | Tesseract mirage + red-ice vs Nefarium-black (D-P2-16/17); [`tickets/TICKET-0256.md`](tickets/TICKET-0256.md) |
 
 ## EPIC-0004: Open-world navigation and map design
 
@@ -107,6 +109,7 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 | TICKET-0030 | Open-world navigation design notes | needs-approval | P1 | [`../features/open-world-navigation.md`](../features/open-world-navigation.md); [`tickets/TICKET-0030.md`](tickets/TICKET-0030.md) |
 | TICKET-0031 | Map design language (biomes, landmarks, density) | needs-approval | P1 | [`../features/map-design-language.md`](../features/map-design-language.md); [`tickets/TICKET-0031.md`](tickets/TICKET-0031.md) |
 | TICKET-0032 | Streaming/LOD/budget acceptance for authored regions | needs-approval | P2 | [`../features/streaming-lod-budgets.md`](../features/streaming-lod-budgets.md); [`tickets/TICKET-0032.md`](tickets/TICKET-0032.md) |
+| TICKET-0254 | Reopen player camp: Palworld placeable base vs DEC-0033 | proposed | P2 | Dom D-P1-23; draft lean placeable open-world camp; [`tickets/TICKET-0254.md`](tickets/TICKET-0254.md); [`../design/recording_ld_character_concepts_2026-08-03.md`](../design/recording_ld_character_concepts_2026-08-03.md) |
 
 ## EPIC-0005: Materials, shaders, and post-process
 
@@ -234,17 +237,18 @@ Agents without an explicit ticket ID: prefer **Agent = cursor-agent**, then lowe
 - Status: proposed
 - Goal: Finish M10 specialized tools beyond the active editor MVP slice.
 - Roadmap home: **M10**.
-- Priority guidance: **Owner override 2026-07-31:** **TICKET-0245 (P0, active)** universal asset bake (editor/MCP/CLI + verify gates). **TICKET-0135 (P2, ready)** animation tools panel after M5 exit owner approval. TICKET-0147–0151 + 0182 in needs-approval (desktop QA). Other children P3 until M10 pull-forward.
+- Priority guidance: **Owner override 2026-08-02:** **TICKET-0247 (P0, needs-approval)** in-editor asset import tool (Assets file picker → bake → green check). **TICKET-0245 (P0, needs-approval)** universal asset bake (editor/MCP/CLI + verify gates) is its foundation. **TICKET-0135 deferred** — superseded by **EPIC-0019 Animation Studio**. TICKET-0147–0151 + 0182 in needs-approval (desktop QA). Other children P3 until M10 pull-forward.
 
 | ID | Title | Status | Priority | Notes |
 | --- | --- | --- | --- | --- |
+| TICKET-0247 | In-editor asset import (pick model → bake → verify) | needs-approval | P0 | Owner request; Asset Browser **Import Model... / Re-import / Replace...**, native file picker, async staged progress + green check in Diagnostics → Assets, in-place update for known models, generic import registers a target + prefab, `engine asset-import` CLI; [`tickets/TICKET-0247.md`](tickets/TICKET-0247.md) |
 | TICKET-0245 | Universal Asset Bake (Editor + MCP + CLI) | needs-approval | P0 | Owner override; named bake + fail-closed verify; GoodPlayerModel ingest; [`tickets/TICKET-0245.md`](tickets/TICKET-0245.md) |
 | TICKET-0182 | Editor Design Docs tab (read-only context MD) | needs-approval | P0 | Owner override; Viewports **Design Docs**; [`tickets/TICKET-0182.md`](tickets/TICKET-0182.md) |
 | TICKET-0131 | Imported mesh thumbnails | proposed | P3 | |
 | TICKET-0132 | Viewport gizmos for prefab part editing | proposed | P3 | |
 | TICKET-0133 | Play-state save/resume | proposed | P3 | Beyond test-session reset |
 | TICKET-0134 | World partition authoring UI | proposed | P3 | |
-| TICKET-0135 | Animation tools panel (Diagnostics-adjacent) | ready | P2 | Diagnostics/Animation tabs; browse controllers/clips/rig; headless preview text; [`tickets/TICKET-0135.md`](tickets/TICKET-0135.md) |
+| TICKET-0135 | Animation tools panel (Diagnostics-adjacent) | deferred | P3 | **Superseded** by EPIC-0019 / TICKET-0248+ (Animation Studio viewport); [`tickets/TICKET-0135.md`](tickets/TICKET-0135.md) |
 | TICKET-0136 | Dialogue graph editor surface | deferred | P3 | **Superseded** by TICKET-0165–0168+ (extends TICKET-0053) |
 | TICKET-0137 | Particle/VFX editor preview | proposed | P3 | Pairs with TICKET-0125 |
 | TICKET-0138 | Profiler panel integration | proposed | P3 | |
@@ -408,11 +412,41 @@ These expand M6 beyond quest authoring tickets 0050–0051. Keep `proposed` / P3
 | TICKET-0236 | Thrator warlord SQ-13 + glad mount reward draft | ready | P3 | Act 1–2 easter egg; Orgrimmar-flavored; [`tickets/TICKET-0236.md`](tickets/TICKET-0236.md) |
 | TICKET-0237 | Act 0 Landfall loot slice (thin inventory + finds) | needs-approval | P2 | Thin InventoryRuntime + pen inventory UI + loot grants; suites hud/inventory green; [`tickets/TICKET-0237.md`](tickets/TICKET-0237.md) |
 | TICKET-0246 | Bone weld toolset for held item attach | needs-approval | P1 | Owner report: gizmo + hand weld broken; `engine::BoneWeld` API, socket chain fix, weld gizmo (move/rotate/scale + snap); [`tickets/TICKET-0246.md`](tickets/TICKET-0246.md) |
+| TICKET-0260 | Bow draw / aim / release + nocked arrow | active | P2 | Hold-to-draw graph, LMB ranged, nock → hold → visual projectile; [`tickets/TICKET-0260.md`](tickets/TICKET-0260.md); [`../features/bow-draw-aim-release.md`](../features/bow-draw-aim-release.md) |
+
+## EPIC-0019: Animation Studio (editor viewport)
+
+- Status: ready
+- Goal: Ship an isolated **Animation** viewport (sandbox void, not the world scene) where authors preview skinned characters, swap gear, author bone/hand attaches, scrub keyframes/timeline events (including particle triggers), and dual-save clip edits to an engine override plus the glTF source.
+- Roadmap home: **M10** (pull-forward under owner ask 2026-08-03); builds on M5 animator + GPU skinning.
+- Priority guidance: **Owner override 2026-08-03:** start with **TICKET-0248** (P1, **ready**) — viewport tab + sandbox stage. Follow-ons 0249–0253 stay ordered; do not skip to keyframe dual-edit before preview/gear/attach land. Supersedes TICKET-0135.
+
+| ID | Title | Status | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| TICKET-0248 | Animation viewport tab + isolated sandbox stage | needs-approval | P1 | New ViewportTab peer of Scene/Game; void + base plate; own camera; no world scene coupling; [`tickets/TICKET-0248.md`](tickets/TICKET-0248.md) |
+| TICKET-0249 | Subject picker + skinned preview + bottom timeline | needs-approval | P1 | Character/NPC dropdown; Play/Pause/Step/scrub; bottom Animation strip; [`tickets/TICKET-0249.md`](tickets/TICKET-0249.md) |
+| TICKET-0250 | Gear / equipment swap in Animation sandbox | needs-approval | P2 | Held `worldMesh` equip on sandbox subject (studio-session); [`tickets/TICKET-0250.md`](tickets/TICKET-0250.md) |
+| TICKET-0251 | Bone / hand-attach authoring in Animation view | needs-approval | P2 | Weld gizmo + Save handAttach in Animation Diagnostics; [`tickets/TICKET-0251.md`](tickets/TICKET-0251.md) |
+| TICKET-0252 | Timeline events + particle triggers in Animation view | needs-approval | P2 | Markers + CRUD + particle preview in Animation Diagnostics; [`tickets/TICKET-0252.md`](tickets/TICKET-0252.md) |
+| TICKET-0253 | Dual-edit clip keyframes (override + sync to glTF) | needs-approval | P2 | Engine `*.anim.json` override + Sync to source glTF ([DEC-0052](../decisions/index.md#dec-0052-dual-edit-animation-clips)); [`tickets/TICKET-0253.md`](tickets/TICKET-0253.md) |
+| TICKET-0258 | Skinned held weapons + bow draw sync | needs-approval | P2 | Preserve shortbow skin/`bow_draw` bake; sync draw sample to BowShoot; [`tickets/TICKET-0258.md`](tickets/TICKET-0258.md) |
+| TICKET-0259 | Armature gizmo + full joint list (subject + held) | active | P2 | Skeleton overlay, viewport pick, hierarchy list; MCP list_joints/set_skeleton; [`tickets/TICKET-0259.md`](tickets/TICKET-0259.md) |
+
+## EPIC-0020: Game module hot-reload
+
+- Status: active
+- Goal: Allow native C++ gameplay iteration via a hot-reloadable Windows `game_module.dll` without restarting the editor, while keeping Lua/content as the primary content loop and `engine_core` as the process owner for D3D/ImGui/Jolt/Lua.
+- Roadmap home: Developer tooling / agent iteration (not a content milestone). Complements DEC-0023; defined by [DEC-0053](../decisions/index.md#dec-0053-native-game-module-hot-reload-c-abi).
+- Priority guidance: **P2** owner-requested iteration tooling. Prefer over speculative engine architecture work when agents are blocked on full-process restarts for small native tweaks.
+
+| ID | Title | Status | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| TICKET-0257 | Game module C ABI + host load/reload + Diagnostics | needs-approval | P2 | Copy-on-load `GameModuleHost`, sample DLL, Diagnostics tab, `game_module` suite 18/18; [`tickets/TICKET-0257.md`](tickets/TICKET-0257.md); [`../features/game-module-hot-reload.md`](../features/game-module-hot-reload.md) |
 
 ## Suggested work order
 
 1. **Owner — when at desktop:** Review PR #8 — run `m5-exit`, `audio`, `animation-preview`; approve **TICKET-0110** then **TICKET-0107**; merge #8.
-2. **Agents — next implementation (after 0110 `done`):** **TICKET-0135** (P2, **ready**) — Animation tools panel; full acceptance in [`tickets/TICKET-0135.md`](tickets/TICKET-0135.md).
+2. **Agents — Animation Studio (owner override 2026-08-03):** **TICKET-0248** (P1, **ready**) — Animation viewport + sandbox; then 0249 → 0250 → 0251 → 0252 → 0253. **TICKET-0135** is deferred/superseded.
 3. **Owner — batch when at desktop:** ~65 other `needs-approval` tickets (World Forge, UI, rigidbody, quest/dialogue, 0191/0182). Drag to `done` or request rework.
 4. **Hold new work until approval backlog thins:** World Forge UI/cartography, UI canvas, water (0200–0204), rigidbody chain extensions, dialogue phase 2+ (0169–0179).
 5. **P3 until M5 exit + owner sign-off:** M6–M11 runtime, mini-map, combat slice, particles, ship gate.

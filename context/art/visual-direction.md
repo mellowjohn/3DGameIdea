@@ -2,9 +2,9 @@
 
 ## Accepted baseline
 
-The game targets an Unturned-inspired blocky stylized look with a dark-fantasy atmosphere. Terrain is smooth low-poly heightfield geometry rather than stepped voxel blocks. Characters, buildings, trees, rocks, weapons, and other props use simple modular forms, readable proportions, and strong silhouettes.
+The game targets an Unturned-inspired blocky stylized look with a dark-fantasy atmosphere (**medieval Unturned** + Valheim sandbox read — Dom + owner affirm 2026-08-03). Terrain is smooth low-poly heightfield geometry rather than stepped voxel blocks. Characters, buildings, trees, rocks, weapons, and other props use simple modular forms, readable proportions, and strong silhouettes. Tessera’s block / tesseract theme is intentional (especially Creotar vision incomplete geometry).
 
-Player-character proportions, starter kits, and turnaround presentation are defined in [Character Art Direction](character-direction.md), anchored by the Ashfell Blade (legacy Squire) concept reference. Prioritized Blockbench props, kits, and set pieces for Act 0 → early Act 1 live in [blockbench-asset-list.md](blockbench-asset-list.md). Act 0 Landfall **scene** level-design concepts (approach → camp handoff) live in [concepts/README.md](concepts/README.md).
+Player-character proportions, starter kits, and turnaround presentation are defined in [Character Art Direction](character-direction.md), anchored by the Ashfell Blade (legacy Squire) concept reference. Armored / faction-tagged characters stamp from shipped **heraldry** assets (same `emblemPath` set as Map Canvas — see character-direction heraldry section + [cartography-design.md](cartography-design.md)). Prioritized Blockbench props, kits, and set pieces for Act 0 → early Act 1 live in [blockbench-asset-list.md](blockbench-asset-list.md). Level-design concepts (LD perspectives, scene sets, modular kits for Acts 0–3) live in [concepts/README.md](concepts/README.md); interactive gallery: Cursor canvas `level-design-concepts.canvas.tsx`.
 
 ## Palette and atmosphere
 
@@ -69,3 +69,5 @@ Typography should reinforce dark fantasy without reducing usability. Ornamental 
 - Degree of texture use versus palette-driven materials.
 - ~~Outrider and Runecaster starting-kit concept references~~ — first-pass turnarounds in [character-direction.md](character-direction.md).
 - Final licensed font files and fallback coverage — **approved 2026-07-15** (TICKET-0144): Cinzel for in-scene game UI; Roboto for engine chrome; JetBrains Mono for diagnostics; ImGui fallback if files missing.
+- Act 3 **red ice** Luceran approach vs Nefarium **pure black** mineral (D-P2-16) — Dom lean red-ice citadel; do not mislabel red crystals as Nefarium until locked.
+- Player camp presentation after D-P1-23 / TICKET-0254 (instance vs placeable open-world base).

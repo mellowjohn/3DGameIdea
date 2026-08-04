@@ -1813,6 +1813,16 @@
           "overridden": true,
           "source": "prefab",
           "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/player.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
         }
       ]
     },
@@ -20784,15 +20794,15 @@
       "name": "player",
       "transform": {
         "position": [
-          22.799999237060547,
-          3.9830775260925293,
-          16.200000762939453
+          20.941564559936523,
+          3.88889217376709,
+          25.994373321533203
         ],
         "rotation": [
-          0.0,
-          -0.5,
-          0.0,
-          0.8659999966621399
+          -0.0,
+          -0.49999457597732544,
+          -0.0,
+          0.8660286068916321
         ],
         "scale": [
           1.0,

@@ -4,7 +4,6 @@
 #include "engine/physics/collision_world.h"
 
 #include <array>
-#include <optional>
 
 namespace engine {
 
@@ -26,6 +25,10 @@ public:
 
     [[nodiscard]] Result<void> move(const LocalPosition& wish_velocity, float yaw_radians, float seconds);
     [[nodiscard]] Result<bool> jump();
+    /**
+     * Animator / jump gated contact: true while feet touch, sticky slope snap, or brief coyote after leave.
+     * Intentional launch velocity clears this immediately.
+     */
     [[nodiscard]] bool on_ground() const;
     [[nodiscard]] WorldPosition feet_position() const;
     [[nodiscard]] WorldPosition body_center() const;
@@ -39,11 +42,27 @@ private:
     float capsule_radius_ = 0.35f;
     float capsule_half_height_ = 0.85f;
     bool jump_requested_ = false;
+    /** Seconds since last physics support; start airborne until a real contact sticks. */
+    mutable float air_time_ = 1.0f;
+    mutable float ground_snap_gap_ = 0.0f;
+    /** Last physics support (overlap or sticky under-foot surface) — not coyote-only. */
+    mutable bool physics_supported_cache_ = false;
+    /** Last anim/jump grounded (physics support or coyote). */
     mutable bool grounded_cache_ = false;
     mutable LocalPosition ground_normal_{0.0f, 1.0f, 0.0f};
 
-    [[nodiscard]] bool refresh_ground_state() const;
+    struct GroundProbe {
+        bool contact = false;
+        float snap_gap = 0.0f;
+    };
+
+    /** Overlap + short down-sweep so hill crest/trough micro-gaps stay supported. */
+    [[nodiscard]] GroundProbe probe_ground_contact() const;
+    /**
+     * Recompute physics + anim grounded caches.
+     * When `dt_seconds` > 0, advances air_time and may soft-snap the body onto sticky ground.
+     */
+    void refresh_ground_state(float dt_seconds = 0.0f) const;
 };
 
 } // namespace engine
-

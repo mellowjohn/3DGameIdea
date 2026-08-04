@@ -114,39 +114,14 @@ Result<const AnimationClip*> find_clip(const AnimationClipLibrary& library,
         "Match animator clip names to glTF animations[].name."));
 }
 
-/// Sagittal counterpart of a joint name (`RightUpperArm` <-> `LeftUpperArm`); unchanged for spine joints.
-std::string sagittal_joint_name(const std::string& name) {
-    struct Pair {
-        const char* from;
-        const char* to;
-    };
-    static constexpr Pair pairs[] = {{"Right", "Left"}, {"Left", "Right"}, {"right", "left"}, {"left", "right"}};
-    for (const auto& pair : pairs) {
-        const std::string from = pair.from;
-        if (name.size() > from.size() && name.compare(0, from.size(), from) == 0)
-            return std::string(pair.to) + name.substr(from.size());
-    }
-    return name;
-}
-
-/// Reflect a local pose through the YZ plane. Valid only while every joint's bind rotation is
-/// identity and its local axes stay world-aligned (true for the Blockbench player rig).
-JointLocalPose reflect_pose_across_x(JointLocalPose pose) {
-    pose.translation[0] = -pose.translation[0];
-    pose.rotation = {pose.rotation[0], -pose.rotation[1], -pose.rotation[2], pose.rotation[3]};
-    return pose;
-}
-
 Result<JointLocalPose> sample_clip_pose_for_joint(const AnimationClip& clip, float time_seconds,
-    const std::string& joint_name, const JointLocalPose& rest) {
+    const std::string& joint_name, const JointLocalPose& rest, bool apply_sagittal_handedness) {
     if (joint_name.empty()) return Result<JointLocalPose>::success(rest);
-    // The player glTF is authored right-handed (front −Z, `Right*` limbs at +X) and imported
-    // verbatim into the left-handed runtime, so the drawn character is the mirror of the Blockbench
-    // model — its visual right limb is the joint named `Left*`. Sample the sagittal counterpart and
-    // reflect the pose so clips read the same in-engine as they do in Blockbench (Attack swings with
-    // the right arm). Seeding from the reflected rest keeps unkeyed channels on their own rest pose.
-    JointLocalPose pose = reflect_pose_across_x(rest);
-    const std::string channel_name = sagittal_joint_name(joint_name);
+    // Player glTF is authored right-handed and imported into LH runtime — sample sagittal
+    // counterparts and reflect. Held-weapon skins skip this so bow_draw limb keys stay as authored.
+    JointLocalPose pose = apply_sagittal_handedness ? reflect_pose_across_x(rest) : rest;
+    const std::string channel_name =
+        apply_sagittal_handedness ? sagittal_joint_name(joint_name) : joint_name;
     for (const auto& channel : clip.channels) {
         // Name-only: node indices are local to each glTF and must not retarget across clip sources
         // (player_clips node 0 is Hip; player.gltf node 0 is Head).
@@ -165,14 +140,35 @@ Result<JointLocalPose> sample_clip_pose_for_joint(const AnimationClip& clip, flo
             pose.scale = sampled.value();
         }
     }
-    return Result<JointLocalPose>::success(reflect_pose_across_x(pose));
+    if (apply_sagittal_handedness) pose = reflect_pose_across_x(pose);
+    return Result<JointLocalPose>::success(pose);
 }
 
 } // namespace
 
+std::string sagittal_joint_name(const std::string& name) {
+    struct Pair {
+        const char* from;
+        const char* to;
+    };
+    static constexpr Pair pairs[] = {{"Right", "Left"}, {"Left", "Right"}, {"right", "left"}, {"left", "right"}};
+    for (const auto& pair : pairs) {
+        const std::string from = pair.from;
+        if (name.size() > from.size() && name.compare(0, from.size(), from) == 0)
+            return std::string(pair.to) + name.substr(from.size());
+    }
+    return name;
+}
+
+JointLocalPose reflect_pose_across_x(JointLocalPose pose) {
+    pose.translation[0] = -pose.translation[0];
+    pose.rotation = {pose.rotation[0], -pose.rotation[1], -pose.rotation[2], pose.rotation[3]};
+    return pose;
+}
+
 Result<std::vector<JointLocalPose>> sample_skinned_local_poses(const ImportedSkin& skin,
     const AnimationClipLibrary& library, const std::filesystem::path& project_root,
-    const std::vector<AnimatorClipWeight>& clips) {
+    const std::vector<AnimatorClipWeight>& clips, bool apply_sagittal_handedness) {
     if (skin.joint_node_indices.empty()) {
         return Result<std::vector<JointLocalPose>>::failure(
             skin_error("SKIN-EMPTY", "Cannot sample poses for an empty skin"));
@@ -205,7 +201,7 @@ Result<std::vector<JointLocalPose>> sample_skinned_local_poses(const ImportedSki
         if (!clip) return Result<std::vector<JointLocalPose>>::failure(clip.error());
         for (std::size_t j = 0; j < joint_count; ++j) {
             auto sampled = sample_clip_pose_for_joint(*clip.value(), active[0].time_seconds,
-                skin.joint_names[j], out[j]);
+                skin.joint_names[j], out[j], apply_sagittal_handedness);
             if (!sampled) return Result<std::vector<JointLocalPose>>::failure(sampled.error());
             out[j] = sampled.value();
         }
@@ -219,7 +215,7 @@ Result<std::vector<JointLocalPose>> sample_skinned_local_poses(const ImportedSki
         per_clip[i].resize(joint_count);
         for (std::size_t j = 0; j < joint_count; ++j) {
             auto sampled = sample_clip_pose_for_joint(*clip.value(), active[i].time_seconds,
-                skin.joint_names[j], rest_pose_for(skin, j));
+                skin.joint_names[j], rest_pose_for(skin, j), apply_sagittal_handedness);
             if (!sampled) return Result<std::vector<JointLocalPose>>::failure(sampled.error());
             per_clip[i][j] = sampled.value();
         }

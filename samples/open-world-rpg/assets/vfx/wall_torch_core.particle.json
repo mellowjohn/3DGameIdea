@@ -1,47 +1,52 @@
 {
   "schemaVersion": 1,
   "id": "wall_torch_core",
+  "texture": "assets/vfx/fire_flipbook_4x4.png",
   "color": {
     "keypoints": [
-      { "t": 0.0, "color": [1.0, 1.0, 0.95] },
-      { "t": 0.35, "color": [1.0, 0.85, 0.35] },
-      { "t": 0.75, "color": [1.0, 0.5, 0.12] },
-      { "t": 1.0, "color": [0.75, 0.18, 0.04] }
+      { "t": 0.0, "color": [1.0, 0.9, 0.7] },
+      { "t": 0.35, "color": [1.0, 0.68, 0.22] },
+      { "t": 0.75, "color": [0.95, 0.35, 0.08] },
+      { "t": 1.0, "color": [0.4, 0.08, 0.02] }
     ]
   },
   "size": {
     "keypoints": [
-      { "t": 0.0, "value": 0.16 },
-      { "t": 0.2, "value": 0.3 },
-      { "t": 0.55, "value": 0.26 },
-      { "t": 1.0, "value": 0.1 }
+      { "t": 0.0, "value": 0.08 },
+      { "t": 0.2, "value": 0.14 },
+      { "t": 0.55, "value": 0.12 },
+      { "t": 1.0, "value": 0.05 }
     ]
   },
-  "aspectRatio": 1.05,
+  "aspectRatio": 0.85,
   "rotationStartRandom": true,
   "crossedBillboards": true,
-  "minScreenSize": 10,
+  "minScreenSize": 0,
   "transparency": {
     "keypoints": [
-      { "t": 0.0, "value": 0.22 },
-      { "t": 0.1, "value": 0.03 },
-      { "t": 0.55, "value": 0.12 },
+      { "t": 0.0, "value": 0.55 },
+      { "t": 0.12, "value": 0.38 },
+      { "t": 0.55, "value": 0.5 },
       { "t": 1.0, "value": 1.0 }
     ]
   },
   "lifetime": { "min": 0.22, "max": 0.48 },
-  "speed": { "min": 0.08, "max": 0.32 },
-  "rate": 48,
-  "spreadAngle": [30, 55],
+  "speed": { "min": 0.05, "max": 0.24 },
+  "rate": 24,
+  "spreadAngle": [28, 50],
   "shape": "disc",
   "shapeStyle": "volume",
-  "shapeSize": [0.045, 0.02, 0.045],
+  "shapeSize": [0.03, 0.015, 0.03],
   "orientation": "FacingCameraWorldUp",
-  "lightEmission": 1.0,
+  "lightEmission": 0.4,
   "blend": "softLight",
-  "acceleration": [0.0, 0.95, 0.0],
+  "acceleration": [0.0, 0.8, 0.0],
   "drag": 0.65,
-  "maxParticles": 64,
+  "maxParticles": 28,
   "enabled": true,
-  "emissionDirection": [0.0, 1.0, 0.0]
+  "emissionDirection": [0.0, 1.0, 0.0],
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "Loop",
+  "flipbookFramerate": 20,
+  "flipbookStartRandom": true
 }

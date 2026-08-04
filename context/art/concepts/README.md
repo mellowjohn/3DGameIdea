@@ -130,11 +130,14 @@ Canvas filter: **Characters**.
 
 | File | Role | Beat |
 | --- | --- | --- |
-| `act0-char-player-archetypes.png` | Ashfell / Outrider / Runecaster lineup — Ashfell needs warrior mail/plate read (TICKET-0255) | A0-02 |
+| `act0-char-player-archetypes.png` | Ashfell / Outrider / Runecaster lineup — lane-org heraldry + Ashfell mail (2026-08-03) | A0-02 |
+| `act0-char-ashfell-blade.png` | Ashfell starter — charcoal mail, pauldrons, greaves, ash-tree house stamp | A0-02 |
+| `act0-char-outrider.png` | Outrider Lodge scout — forest-green cloak, bronze antler/branch badge | A0-02 |
+| `act0-char-runecaster.png` | Runecaster Guild — navy wrap-coat, gold rune seal (not Cristallo) | A0-02 |
 | `act0-char-modular-body-slots.png` | Shared base + attach slots | Production |
 | `act0-char-arkand.png` | Companion knight | A0-03+ |
 | `act0-char-grenge.png` | Commander + green shroud | A0-05 |
-| `act0-char-damius.png` | Scout — **revise** leather + cloak + heraldry (2026-08-03; TICKET-0255) | A0-05 |
+| `act0-char-damius.png` | Tessera scout — leather + cloak + restrained Tessera star (2026-08-03) | A0-05 |
 | `act0-char-larrell.png` | Sergeant (optional hostage) | A0-06/07 |
 | `act0-char-tessera-soldier.png` | Generic Tessera kit | A0-04–06 |
 | `act0-char-imperium-footsoldier.png` | Imperium footsoldier (A0 mid) — dark iron + oxblood jagged star | A0-04 |

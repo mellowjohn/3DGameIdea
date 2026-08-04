@@ -37,6 +37,9 @@ Path: `samples/open-world-rpg/assets/vfx/recipes/vfx_recipes.json`
 | `hit_spark` | `hit_spark.particle.json` |
 | `corrupt_aura` | `corrupt_aura.particle.json` |
 | `dodge_dust` | `dodge_dust.particle.json` (spawn via `ParticleSystem::spawn_burst`) |
+| `footstep_dust` | `footstep_dust.particle.json` (spawn via stride counter / land footstep) |
+| `arrow_trail` | `arrow_trail.particle.json` (play-test arrow wake via `spawn_burst`) |
+| `arrow_impact` | `arrow_impact.particle.json` (play-test arrow impact via `spawn_burst`) |
 | `stylized_flame_molten` | blobby crossed billboards (hero default) |
 | `stylized_flame_wispy` | narrow ribbon / wind-blown |
 | `stylized_flame_column` | tall cylinder column |
@@ -55,12 +58,12 @@ Production: `campfire.prefab.json`, `wall_torch.prefab.json`.
 
 Typical stack (bottom → top intent):
 
-1. Optional mesh core + `flame_core_emissive.material.json` (`emissive_magic` / emissiveMap).
-2. Molten / flame billboards (`lightEmission` ≥ ~0.25 so alpha blend keeps brightness).
+1. Mesh keeps baked glTF albedo — **do not** apply `flame_core_emissive.material.json` to the whole campfire/torch (it floods every face with pulsed emissive yellow).
+2. Small flipbook core + molten / flame billboards (`lightEmission` ~0.5–0.75 for softLight fire; avoid untextured full-opacity discs).
 3. Embers / `hit_spark`.
 4. Smoke (low emission, soft fade).
-5. Warm orange point light on the prefab.
-6. Bloom (TICKET-0242) softens core + sparks — particles draw **before** bloom.
+5. Warm orange point light on the prefab (moderate radius/strength).
+6. Bloom (TICKET-0242) softens sparks — particles draw **before** bloom.
 
 Flipbooks: project-owned under `assets/vfx/` (`gen_fire_flipbook.py` provenance in `context/resources/index.md`). Invalid texture paths fail closed.
 

@@ -35,6 +35,7 @@ add_library(engine_core
     src/automation/world_forge_commands.cpp
     src/automation/project_git_commands.cpp
     src/automation/asset_bake_commands.cpp
+    src/automation/asset_import.cpp
     src/automation/planning_backlog.cpp
     src/automation/build_coordination.cpp
     src/rendering/render_app.cpp
@@ -84,6 +85,7 @@ add_library(engine_core
     src/event/event_timeline_runtime.cpp
     src/quest/quest_runtime.cpp
     src/inventory/inventory_runtime.cpp
+    src/inventory/starter_loadout.cpp
     src/flag/flag_runtime.cpp
     src/standing/standing_runtime.cpp
     src/session/game_session.cpp
@@ -130,9 +132,11 @@ add_library(engine_core
     src/rendering/debug_camera.cpp
     src/rendering/orbit_camera.cpp
     src/rendering/editor_fonts.cpp
+    src/rendering/editor_file_dialog.cpp
     src/ui/game_fonts.cpp
     src/scripting/lua_runtime.cpp
     src/scripting/script_file_monitor.cpp
+    src/game/game_module_host.cpp
 )
 target_include_directories(engine_core PUBLIC include)
 target_include_directories(engine_core PRIVATE ${MINIAUDIO_INCLUDE_DIR})
@@ -142,7 +146,7 @@ target_link_libraries(engine_core PUBLIC SDL3::SDL3 EnTT::EnTT nlohmann_json::nl
 target_include_directories(engine_core PUBLIC ${LUA_INCLUDE_DIR})
 if(MSVC)
     target_compile_options(engine_core PRIVATE /W4 /permissive- /EHsc /utf-8 /FS /bigobj)
-    target_link_libraries(engine_core PRIVATE dbghelp d3d12 dxgi dxguid d3dcompiler shell32 windowscodecs)
+    target_link_libraries(engine_core PRIVATE dbghelp d3d12 dxgi dxguid d3dcompiler shell32 ole32 windowscodecs)
 endif()
 
 add_executable(engine src/app/main.cpp)
@@ -155,6 +159,35 @@ endif()
 set_target_properties(engine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/dev-next")
 
+# Hot-reloadable sample game module (DEC-0053 / TICKET-0257). Lives next to engine.exe.
+add_library(game_module SHARED src/game_module/sample_game_module.cpp)
+target_include_directories(game_module PRIVATE include)
+target_compile_definitions(game_module PRIVATE ENGINE_GAME_MODULE_EXPORTS UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
+if(MSVC)
+    target_compile_options(game_module PRIVATE /W4 /permissive- /EHsc /utf-8)
+endif()
+set_target_properties(game_module PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/dev-next"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/dev-next"
+    RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/dev-next"
+    RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_BINARY_DIR}/dev-next"
+    OUTPUT_NAME "game_module"
+    PREFIX "")
+
+# Test-only mismatched-ABI stub (not shipped next to engine by default).
+add_library(game_module_abi_mismatch SHARED src/game_module/abi_mismatch_stub.cpp)
+target_include_directories(game_module_abi_mismatch PRIVATE include)
+target_compile_definitions(game_module_abi_mismatch PRIVATE ENGINE_GAME_MODULE_EXPORTS UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
+if(MSVC)
+    target_compile_options(game_module_abi_mismatch PRIVATE /W4 /permissive- /EHsc /utf-8)
+endif()
+set_target_properties(game_module_abi_mismatch PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/dev-next"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/dev-next"
+    OUTPUT_NAME "game_module_abi_mismatch"
+    PREFIX "")
+add_dependencies(engine game_module)
+
 if(ENGINE_BUILD_TESTS)
     enable_testing()
     add_executable(engine_tests tests/foundation_tests.cpp)
@@ -162,7 +195,11 @@ if(ENGINE_BUILD_TESTS)
     add_test(NAME regression_all COMMAND engine_tests)
     add_executable(engine_suite_tests tests/suite_tests.cpp)
     target_link_libraries(engine_suite_tests PRIVATE engine_core)
-    foreach(suite IN ITEMS core world world_influence assets world_forge streaming terrain foliage water collision navigation character interaction combat camera diagnostics scripting automation hud inventory animator audio particles)
+    add_dependencies(engine_suite_tests game_module game_module_abi_mismatch)
+    target_compile_definitions(engine_suite_tests PRIVATE
+        "ENGINE_GAME_MODULE_DLL_PATH=R\"(${CMAKE_BINARY_DIR}/dev-next/game_module.dll)\""
+        "ENGINE_GAME_MODULE_ABI_MISMATCH_DLL_PATH=R\"(${CMAKE_BINARY_DIR}/dev-next/game_module_abi_mismatch.dll)\"")
+    foreach(suite IN ITEMS core world world_influence assets world_forge streaming terrain foliage water collision navigation character interaction combat camera diagnostics scripting automation hud inventory animator audio particles game_module)
         add_test(NAME ${suite} COMMAND engine_suite_tests --suite ${suite} --json)
         set_tests_properties(${suite} PROPERTIES LABELS "${suite};unit")
     endforeach()

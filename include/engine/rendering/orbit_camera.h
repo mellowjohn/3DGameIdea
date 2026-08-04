@@ -8,7 +8,11 @@
 
 namespace engine {
 
-/** Third-person RPG orbit (WoW / Dragon Age–style behind-and-above framing). */
+/**
+ * Third-person orbit (play-test Game camera).
+ * Orientation (yaw/pitch) is the world look/aim axis; distance + shoulder only frame the eye
+ * (modern TPS OTS — not classic LookAt-pivot RPG framing).
+ */
 struct OrbitCameraConfig {
     float pivot_height = 1.75f;
     float min_distance = 1.5f;
@@ -16,7 +20,7 @@ struct OrbitCameraConfig {
     float default_distance = 10.5f;
     float collision_probe_radius = 0.25f;
     float collision_padding = 0.2f;
-    /** Lateral offset in meters (positive = camera-right / over right shoulder). */
+    /** Lateral offset in meters (positive = camera-right / over right shoulder). Framing only. */
     float shoulder_offset = 0.45f;
     /** Initial look-down pitch in radians when a session starts. */
     float default_pitch = 0.32f;

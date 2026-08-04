@@ -44,6 +44,8 @@
 #include "engine/automation/live_automation_control.h"
 #include "engine/automation/project_git_commands.h"
 #include "engine/automation/asset_bake_commands.h"
+#include "engine/automation/asset_import.h"
+#include "engine/editor/file_dialog.h"
 #include "engine/automation/build_coordination.h"
 #include "engine/automation/planning_backlog.h"
 #include "engine/automation/terrain_edit_commands.h"
@@ -51,10 +53,13 @@
 #include "engine/scripting/lua_runtime.h"
 #include "engine/audio/audio_engine.h"
 #include "engine/scripting/script_file_monitor.h"
+#include "engine/game/game_module_host.h"
 #include "engine/quest/quest_runtime.h"
 #include "engine/standing/standing_runtime.h"
 #include "engine/flag/flag_runtime.h"
 #include "engine/inventory/inventory_runtime.h"
+#include "engine/inventory/starter_loadout.h"
+#include "engine/assets/world_forge_archetypes_asset.h"
 #include "engine/assets/item_catalog_asset.h"
 #include "engine/session/game_session.h"
 #include "engine/dialogue/dialogue_runtime.h"
@@ -129,6 +134,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <sstream>
 #include <cstdio>
@@ -240,6 +246,28 @@ struct RenderInstance {
     std::uint64_t mesh_key_hash = 0;
     // When set, GPU LBS uses this entity's bone-palette slot (empty → identity slot 0).
     std::string skin_entity_id;
+};
+
+/// One 3D viewport for a frame: which camera looks through it, how big its target is, and what world
+/// streaming focus it contributes. The editor Scene free-cam and the play camera are separate views of
+/// the same world, so anything derived from "the camera" (aspect, culling, streaming, particle facing,
+/// picking) must come from a view rather than a frame-global.
+struct RenderView {
+    enum class Kind : std::uint8_t { Scene, Game };
+    Kind kind = Kind::Scene;
+    /// Drawn this frame and sampled by the UI. Hidden views cost nothing and hold no stream focus.
+    bool visible = false;
+    std::array<float, 16> view{};
+    std::array<float, 16> projection{};
+    std::array<float, 16> view_projection{};
+    std::array<float, 3> camera_position{};
+    std::array<float, 3> camera_forward{0.0f, 0.0f, 1.0f};
+    float camera_yaw = 0.0f;
+    /// Render-target pixels. Game uses the authored play resolution; Scene renders at window size and is
+    /// scaled into its panel, so its projection aspect is the panel's, not the target's.
+    std::uint32_t pixel_width = 1;
+    std::uint32_t pixel_height = 1;
+    float aspect = 16.0f / 9.0f;
 };
 
 std::array<float, 24> pack_object_constants(const std::array<float, 16>& model, const PbrSurfaceParams& pbr,
@@ -845,6 +873,8 @@ public:
         SDL_GetWindowSizeInPixels(window, &width, &height);
         width_ = static_cast<UINT>(width > 0 ? width : 1);
         height_ = static_cast<UINT>(height > 0 ? height : 1);
+        render_width_ = width_;
+        render_height_ = height_;
         auto swap_result = create_swap_chain();
         if (!swap_result) return swap_result;
 
@@ -1090,11 +1120,29 @@ public:
         ao_target_.Reset();
         const HRESULT hr = swap_chain_->ResizeBuffers(frame_count, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
         if (FAILED(hr)) return Result<void>::failure(device_error("GFX-RESIZE", "Could not resize swap-chain buffers", hr));
+        const bool render_tracked_window = render_width_ == width_ && render_height_ == height_;
         width_ = width;
         height_ = height;
+        if (render_tracked_window) {
+            render_width_ = width;
+            render_height_ = height;
+        }
         frame_index_ = swap_chain_->GetCurrentBackBufferIndex();
         backbuffer_was_presented_.fill(false);
         has_presented_backbuffer_ = false;
+        return recreate_targets();
+    }
+
+    /// Resize the offscreen world-render chain (viewport targets, lit/depth/AO) without touching the
+    /// swap chain. Call with the pixel size of the view about to be rendered.
+    Result<void> set_render_resolution(UINT width, UINT height) {
+        width = std::max<UINT>(1, width);
+        height = std::max<UINT>(1, height);
+        if (width == render_width_ && height == render_height_) return Result<void>::success();
+        if (!device_) return Result<void>::success();
+        wait_for_gpu();
+        render_width_ = width;
+        render_height_ = height;
         return recreate_targets();
     }
 
@@ -1253,6 +1301,10 @@ public:
         std::vector<Vertex> vertices;
         if (!debug_world_) append_debug_ground_quad(vertices);
         append_physics_cube(vertices);
+        // Animation Studio base plate (always resident; drawn only when sandbox_stage).
+        sandbox_ground_offset_ = static_cast<UINT>(vertices.size());
+        append_debug_ground_quad(vertices);
+        sandbox_ground_count_ = static_cast<UINT>(vertices.size()) - sandbox_ground_offset_;
         mesh_ranges_.clear();
         append_imported_mesh_vertices(vertices, imported_meshes, mesh_ranges_);
         if (debug_world_) {
@@ -1668,6 +1720,8 @@ public:
         std::array<float, 3> camera_position{};
         WorldPosition body_position{};
         bool draw_physics_body = false;
+        /// Animation Studio: void clear + base plate; skip terrain / foliage / sky / streamed world.
+        bool sandbox_stage = false;
         const WorldInfluenceBus* influence = nullptr;
         float time_seconds = 0.0f;
         PbrSurfaceParams terrain_pbr = PbrSurfaceParams::dielectric_default();
@@ -1962,11 +2016,14 @@ public:
             frame_draw_calls_ = 0;
             frame_instances_drawn_ = 0;
         }
-        draw_shadow_cascades(params, static_placed, dynamic_placed);
+        if (!params.sandbox_stage)
+            draw_shadow_cascades(params, static_placed, dynamic_placed);
         auto barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
             D3D12_RESOURCE_STATE_RENDER_TARGET);
         command_list_->ResourceBarrier(1, &barrier);
-        const float clear[] = {0.32f, 0.48f, 0.68f, 1.0f};
+        const float clear_sandbox[] = {0.06f, 0.07f, 0.09f, 1.0f};
+        const float clear_sky[] = {0.32f, 0.48f, 0.68f, 1.0f};
+        const float* clear = params.sandbox_stage ? clear_sandbox : clear_sky;
         auto dsv = dsv_heap_->GetCPUDescriptorHandleForHeapStart();
         command_list_->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
         command_list_->ClearRenderTargetView(rtv, clear, 0, nullptr);
@@ -1974,8 +2031,9 @@ public:
         // Timestamp after shadows so a failed cascade setup cannot leave an open query around resource barriers.
         if (record_gpu_timestamp && timestamp_heap_ && timestamp_readback_)
             command_list_->EndQuery(timestamp_heap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0);
-        D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(width_), static_cast<float>(height_), 0.0f, 1.0f};
-        D3D12_RECT scissor{0, 0, static_cast<LONG>(width_), static_cast<LONG>(height_)};
+        D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(render_width_), static_cast<float>(render_height_),
+            0.0f, 1.0f};
+        D3D12_RECT scissor{0, 0, static_cast<LONG>(render_width_), static_cast<LONG>(render_height_)};
         command_list_->RSSetViewports(1, &viewport);
         command_list_->RSSetScissorRects(1, &scissor);
         command_list_->SetGraphicsRootSignature(root_signature_.Get());
@@ -2000,8 +2058,8 @@ public:
         frame_constants[26] = csm::k_sun_travel[2];
         frame_constants[27] = 0.42f;
         pack_point_lights(frame_constants, point_lights, params.camera_position);
-        frame_constants[44] = static_cast<float>(width_);
-        frame_constants[45] = static_cast<float>(height_);
+        frame_constants[44] = static_cast<float>(render_width_);
+        frame_constants[45] = static_cast<float>(render_height_);
         bind_frame_constants(frame_constants);
         bind_shadow_constants();
         if (mesh_shadow_srv_gpu_.ptr) command_list_->SetGraphicsRootDescriptorTable(4, mesh_shadow_srv_gpu_);
@@ -2017,31 +2075,42 @@ public:
         };
         command_list_->IASetVertexBuffers(0, 1, &vertex_view_);
         command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        if (debug_world_ && sky_vertex_count_ > 0) {
+        if (!params.sandbox_stage && debug_world_ && sky_vertex_count_ > 0) {
             command_list_->SetPipelineState(sky_pipeline_.Get());
             bind_object(identity, PbrSurfaceParams::dielectric_default(), mesh_white_gpu_, 0.0f);
             command_list_->DrawInstanced(sky_vertex_count_, 1, sky_vertex_offset_, 0);
             command_list_->SetPipelineState(pipeline_.Get());
         }
-        bind_object(identity, params.terrain_pbr, mesh_white_gpu_, 0.0f);
-        if (!terrain_cell_buffers_.empty()) {
-            command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            for (const auto& entry : terrain_cell_buffers_) {
-                if (entry.second.vertex_count == 0) continue;
-                const auto bounds_it = terrain_cell_bounds_.find(entry.first);
-                if (bounds_it != terrain_cell_bounds_.end() && !frustum_intersects_aabb(frustum, bounds_it->second))
-                    continue;
-                command_list_->IASetVertexBuffers(0, 1, &entry.second.view);
-                command_list_->DrawInstanced(entry.second.vertex_count, 1, 0, 0);
+        if (params.sandbox_stage) {
+            if (sandbox_ground_count_ > 0) {
+                PbrSurfaceParams plate = PbrSurfaceParams::dielectric_default();
+                plate.roughness = 0.85f;
+                bind_object(identity, plate, mesh_white_gpu_, 0.0f);
+                command_list_->DrawInstanced(sandbox_ground_count_, 1, sandbox_ground_offset_, 0);
                 ++frame_draw_calls_;
                 ++frame_instances_drawn_;
             }
-        } else if (terrain_vertex_count_ > 0) {
-            command_list_->IASetVertexBuffers(0, 1, &terrain_vertex_view_);
-            command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            command_list_->DrawInstanced(terrain_vertex_count_, 1, 0, 0);
-            ++frame_draw_calls_;
-            ++frame_instances_drawn_;
+        } else {
+            bind_object(identity, params.terrain_pbr, mesh_white_gpu_, 0.0f);
+            if (!terrain_cell_buffers_.empty()) {
+                command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                for (const auto& entry : terrain_cell_buffers_) {
+                    if (entry.second.vertex_count == 0) continue;
+                    const auto bounds_it = terrain_cell_bounds_.find(entry.first);
+                    if (bounds_it != terrain_cell_bounds_.end() && !frustum_intersects_aabb(frustum, bounds_it->second))
+                        continue;
+                    command_list_->IASetVertexBuffers(0, 1, &entry.second.view);
+                    command_list_->DrawInstanced(entry.second.vertex_count, 1, 0, 0);
+                    ++frame_draw_calls_;
+                    ++frame_instances_drawn_;
+                }
+            } else if (terrain_vertex_count_ > 0) {
+                command_list_->IASetVertexBuffers(0, 1, &terrain_vertex_view_);
+                command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                command_list_->DrawInstanced(terrain_vertex_count_, 1, 0, 0);
+                ++frame_draw_calls_;
+                ++frame_instances_drawn_;
+            }
         }
         command_list_->IASetVertexBuffers(0, 1, &vertex_view_);
         command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -2060,7 +2129,8 @@ public:
         // Do not frustum-cull foliage batches here. Cell AABBs (even centered) still false-cull dense bush
         // paint under the Game orbit camera while Scene free-cam looks fine — play-test "forest vanishes".
         // Resident set is already limited by terrain streaming + scatter distance falloff (120–220 m).
-        draw_foliage_instances(frame_constants, params.influence, params.time_seconds, nullptr);
+        if (!params.sandbox_stage)
+            draw_foliage_instances(frame_constants, params.influence, params.time_seconds, nullptr);
         barrier = CD3DX12_RESOURCE_BARRIER_placeholder(color_target, D3D12_RESOURCE_STATE_RENDER_TARGET,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         command_list_->ResourceBarrier(1, &barrier);
@@ -2091,8 +2161,9 @@ public:
 
         auto dsv = dsv_heap_->GetCPUDescriptorHandleForHeapStart();
         command_list_->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
-        D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(width_), static_cast<float>(height_), 0.0f, 1.0f};
-        D3D12_RECT scissor{0, 0, static_cast<LONG>(width_), static_cast<LONG>(height_)};
+        D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(render_width_), static_cast<float>(render_height_),
+            0.0f, 1.0f};
+        D3D12_RECT scissor{0, 0, static_cast<LONG>(render_width_), static_cast<LONG>(render_height_)};
         command_list_->RSSetViewports(1, &viewport);
         command_list_->RSSetScissorRects(1, &scissor);
         ID3D12DescriptorHeap* post_heaps[] = {post_srv_heap_.Get()};
@@ -2109,8 +2180,8 @@ public:
         frame_constants[25] = -0.85f;
         frame_constants[26] = -0.30f;
         frame_constants[27] = 0.42f;
-        frame_constants[44] = static_cast<float>(width_);
-        frame_constants[45] = static_cast<float>(height_);
+        frame_constants[44] = static_cast<float>(render_width_);
+        frame_constants[45] = static_cast<float>(render_height_);
         bind_water_frame_constants(frame_constants);
         std::array<float, 8> water_constants{};
         water_constants[0] = params.time_seconds;
@@ -2181,8 +2252,8 @@ public:
         ssao_constants[36] = k_ssao_bias;
         ssao_constants[37] = k_ssao_intensity;
         // Full-res depth texel size for stable finite-difference normals (not AO half-res).
-        ssao_constants[38] = 1.0f / static_cast<float>(width_);
-        ssao_constants[39] = 1.0f / static_cast<float>(height_);
+        ssao_constants[38] = 1.0f / static_cast<float>(render_width_);
+        ssao_constants[39] = 1.0f / static_cast<float>(render_height_);
         std::memcpy(ssao_cb_mapped_[frame_index_], ssao_constants.data(), sizeof(ssao_constants));
         command_list_->SetGraphicsRootConstantBufferView(0, ssao_cb_[frame_index_]->GetGPUVirtualAddress());
         command_list_->SetGraphicsRootDescriptorTable(1, post_depth_gpu_);
@@ -2203,8 +2274,12 @@ public:
             command_list_->ResourceBarrier(1, &dst_to_rt);
         }
         command_list_->OMSetRenderTargets(1, &destination_rtv, FALSE, nullptr);
-        D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(width_), static_cast<float>(height_), 0.0f, 1.0f};
-        D3D12_RECT scissor{0, 0, static_cast<LONG>(width_), static_cast<LONG>(height_)};
+        // Viewport targets are offscreen-sized; the backbuffer path is the window.
+        const UINT composite_w = destination_returns_to_srv ? render_width_ : width_;
+        const UINT composite_h = destination_returns_to_srv ? render_height_ : height_;
+        D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(composite_w), static_cast<float>(composite_h), 0.0f,
+            1.0f};
+        D3D12_RECT scissor{0, 0, static_cast<LONG>(composite_w), static_cast<LONG>(composite_h)};
         command_list_->RSSetViewports(1, &viewport);
         command_list_->RSSetScissorRects(1, &scissor);
         command_list_->SetGraphicsRootSignature(composite_root_signature_.Get());
@@ -2246,14 +2321,16 @@ public:
         command_list_->ClearRenderTargetView(backbuffer_rtv, clear, 0, nullptr);
         if (editor_initialized_) {
             draw_world_pass(lit_color_.Get(), lit_rtv_, world, static_placed, dynamic_placed, point_lights, true);
-            draw_water_pass(lit_color_.Get(), lit_rtv_, world);
+            if (!world.sandbox_stage) draw_water_pass(lit_color_.Get(), lit_rtv_, world);
             if (primary_is_game) {
                 apply_ssao(game_viewport_target_.Get(), game_viewport_rtv_, /*destination_returns_to_srv=*/true, world);
-                draw_particles_pass(game_viewport_target_.Get(), game_viewport_rtv_, world,
-                    /*color_starts_as_srv=*/true);
+                if (!world.sandbox_stage)
+                    draw_particles_pass(game_viewport_target_.Get(), game_viewport_rtv_, world,
+                        /*color_starts_as_srv=*/true);
             } else {
                 apply_ssao(viewport_target_.Get(), viewport_rtv_, /*destination_returns_to_srv=*/true, world);
-                draw_particles_pass(viewport_target_.Get(), viewport_rtv_, world, /*color_starts_as_srv=*/true);
+                if (!world.sandbox_stage)
+                    draw_particles_pass(viewport_target_.Get(), viewport_rtv_, world, /*color_starts_as_srv=*/true);
             }
             if (game_world) {
                 draw_world_pass(lit_color_.Get(), lit_rtv_, *game_world, static_placed, dynamic_placed, point_lights,
@@ -2835,7 +2912,7 @@ private:
         }
         if(editor_requested_){
             const auto create_viewport_target=[&](ComPtr<ID3D12Resource>& target,D3D12_CPU_DESCRIPTOR_HANDLE rtv,D3D12_GPU_DESCRIPTOR_HANDLE& gpu_srv,UINT srv_index){
-                D3D12_HEAP_PROPERTIES texture_heap{};texture_heap.Type=D3D12_HEAP_TYPE_DEFAULT;D3D12_RESOURCE_DESC texture{};texture.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;texture.Width=width_;texture.Height=height_;texture.DepthOrArraySize=1;texture.MipLevels=1;texture.Format=DXGI_FORMAT_R8G8B8A8_UNORM;texture.SampleDesc.Count=1;texture.Layout=D3D12_TEXTURE_LAYOUT_UNKNOWN;texture.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;D3D12_CLEAR_VALUE color_clear{};color_clear.Format=texture.Format;color_clear.Color[0]=.015f;color_clear.Color[1]=.025f;color_clear.Color[2]=.055f;color_clear.Color[3]=1;
+                D3D12_HEAP_PROPERTIES texture_heap{};texture_heap.Type=D3D12_HEAP_TYPE_DEFAULT;D3D12_RESOURCE_DESC texture{};texture.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;texture.Width=render_width_;texture.Height=render_height_;texture.DepthOrArraySize=1;texture.MipLevels=1;texture.Format=DXGI_FORMAT_R8G8B8A8_UNORM;texture.SampleDesc.Count=1;texture.Layout=D3D12_TEXTURE_LAYOUT_UNKNOWN;texture.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;D3D12_CLEAR_VALUE color_clear{};color_clear.Format=texture.Format;color_clear.Color[0]=.015f;color_clear.Color[1]=.025f;color_clear.Color[2]=.055f;color_clear.Color[3]=1;
                 target.Reset();auto viewport_hr=device_->CreateCommittedResource(&texture_heap,D3D12_HEAP_FLAG_NONE,&texture,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,&color_clear,IID_PPV_ARGS(&target));if(FAILED(viewport_hr))return viewport_hr;
                 device_->CreateRenderTargetView(target.Get(),nullptr,rtv);auto cpu=imgui_heap_->GetCPUDescriptorHandleForHeapStart();cpu.ptr+=static_cast<SIZE_T>(srv_index)*srv_stride_;auto gpu=imgui_heap_->GetGPUDescriptorHandleForHeapStart();gpu.ptr+=static_cast<SIZE_T>(srv_index)*srv_stride_;D3D12_SHADER_RESOURCE_VIEW_DESC srv{};srv.Format=texture.Format;srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;srv.Texture2D.MipLevels=1;device_->CreateShaderResourceView(target.Get(),&srv,cpu);gpu_srv=gpu;return S_OK;
             };
@@ -2846,7 +2923,7 @@ private:
         }
         // Full-res lit-color intermediate: the world pass always draws here so SSAO can sample it before composite.
         D3D12_HEAP_PROPERTIES texture_heap{};texture_heap.Type=D3D12_HEAP_TYPE_DEFAULT;
-        D3D12_RESOURCE_DESC lit_desc{};lit_desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;lit_desc.Width=width_;lit_desc.Height=height_;lit_desc.DepthOrArraySize=1;lit_desc.MipLevels=1;lit_desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;lit_desc.SampleDesc.Count=1;lit_desc.Layout=D3D12_TEXTURE_LAYOUT_UNKNOWN;lit_desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+        D3D12_RESOURCE_DESC lit_desc{};lit_desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;lit_desc.Width=render_width_;lit_desc.Height=render_height_;lit_desc.DepthOrArraySize=1;lit_desc.MipLevels=1;lit_desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;lit_desc.SampleDesc.Count=1;lit_desc.Layout=D3D12_TEXTURE_LAYOUT_UNKNOWN;lit_desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         D3D12_CLEAR_VALUE lit_clear{};lit_clear.Format=lit_desc.Format;lit_clear.Color[0]=0.11f;lit_clear.Color[1]=0.16f;lit_clear.Color[2]=0.24f;lit_clear.Color[3]=1.0f;
         lit_color_.Reset();
         HRESULT lit_hr=device_->CreateCommittedResource(&texture_heap,D3D12_HEAP_FLAG_NONE,&lit_desc,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,&lit_clear,IID_PPV_ARGS(&lit_color_));
@@ -2860,7 +2937,7 @@ private:
             return Result<void>::failure(graphics_error("GFX-WATER-SCENE-TARGET",
                 "Could not create water scene-color copy target", water_scene_hr));
         // Half-res AO target.
-        ao_width_=std::max<UINT>(1,width_/2);ao_height_=std::max<UINT>(1,height_/2);
+        ao_width_=std::max<UINT>(1,render_width_/2);ao_height_=std::max<UINT>(1,render_height_/2);
         D3D12_RESOURCE_DESC ao_desc{};ao_desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;ao_desc.Width=ao_width_;ao_desc.Height=ao_height_;ao_desc.DepthOrArraySize=1;ao_desc.MipLevels=1;ao_desc.Format=DXGI_FORMAT_R8_UNORM;ao_desc.SampleDesc.Count=1;ao_desc.Layout=D3D12_TEXTURE_LAYOUT_UNKNOWN;ao_desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         D3D12_CLEAR_VALUE ao_clear{};ao_clear.Format=ao_desc.Format;ao_clear.Color[0]=1.0f;ao_clear.Color[1]=1.0f;ao_clear.Color[2]=1.0f;ao_clear.Color[3]=1.0f;
         ao_target_.Reset();
@@ -2869,7 +2946,7 @@ private:
         ao_rtv_=handle;device_->CreateRenderTargetView(ao_target_.Get(),nullptr,ao_rtv_);
         // Depth is typeless so it can be bound as a DSV (D32_FLOAT) for the world pass and as an SRV (R32_FLOAT) for SSAO.
         D3D12_HEAP_PROPERTIES heap{};heap.Type=D3D12_HEAP_TYPE_DEFAULT;
-        D3D12_RESOURCE_DESC desc{};desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;desc.Width=width_;desc.Height=height_;desc.DepthOrArraySize=1;desc.MipLevels=1;desc.Format=DXGI_FORMAT_R32_TYPELESS;desc.SampleDesc.Count=1;desc.Layout=D3D12_TEXTURE_LAYOUT_UNKNOWN;desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+        D3D12_RESOURCE_DESC desc{};desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;desc.Width=render_width_;desc.Height=render_height_;desc.DepthOrArraySize=1;desc.MipLevels=1;desc.Format=DXGI_FORMAT_R32_TYPELESS;desc.SampleDesc.Count=1;desc.Layout=D3D12_TEXTURE_LAYOUT_UNKNOWN;desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
         D3D12_CLEAR_VALUE clear{};clear.Format=DXGI_FORMAT_D32_FLOAT;clear.DepthStencil.Depth=1.0f;
         depth_.Reset();auto hr=device_->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&desc,D3D12_RESOURCE_STATE_DEPTH_WRITE,&clear,IID_PPV_ARGS(&depth_));
         if(FAILED(hr))return Result<void>::failure(graphics_error("GFX-DEPTH","Could not create depth target",hr));
@@ -2907,6 +2984,9 @@ private:
         std::vector<Vertex> vertices;
         if (!debug_world) append_debug_ground_quad(vertices);
         append_physics_cube(vertices);
+        sandbox_ground_offset_ = static_cast<UINT>(vertices.size());
+        append_debug_ground_quad(vertices);
+        sandbox_ground_count_ = static_cast<UINT>(vertices.size()) - sandbox_ground_offset_;
         mesh_ranges_.clear();
         append_imported_mesh_vertices(vertices, imported_meshes, mesh_ranges_);
         if (debug_world) {
@@ -3406,17 +3486,23 @@ private:
                 float particle_z = input.position.z;
                 float soft_scale = max(softParticleParams.z, 1.0);
                 float depth_fade = 1.0;
+                // Fade only when the particle center is behind solid depth (intersects logs/terrain).
+                // Keep in-front billboards fully visible so flame flipbooks are not erased into a
+                // soft-glow halo around the prop mesh.
                 if (scene_z < 0.999) {
-                    depth_fade = saturate((scene_z - particle_z) * soft_scale);
+                    float delta = scene_z - particle_z;
+                    depth_fade = (delta >= 0.0) ? 1.0 : saturate(1.0 + delta * soft_scale);
                 }
                 alpha *= depth_fade;
-                float3 rgb = input.color.rgb * texRgb * (0.55 + input.lightEmission * 0.85);
+                // Keep emission from blowing additive softLight into solid yellow orbs.
+                float3 rgb = input.color.rgb * texRgb * (0.35 + input.lightEmission * 0.55);
                 float fogStart = cameraAndFogStart.w;
                 float fogEnd = fogColorAndEnd.w;
                 float dist = length(input.worldPos - cameraAndFogStart.xyz);
                 float fog = saturate((dist - fogStart) / max(fogEnd - fogStart, 1e-3));
                 rgb = lerp(rgb, fogColorAndEnd.xyz, fog * 0.35);
-                return float4(rgb * alpha, alpha);
+                // Non-premultiplied RGB: SoftLight and Alpha PSOs both use SRC_ALPHA blends.
+                return float4(rgb, alpha);
             }
         )";
         ComPtr<ID3DBlob> vs, ps, errors;
@@ -3722,7 +3808,7 @@ private:
 
             const float aspect = std::max(particle.aspect, 0.05f);
             float size = particle.size;
-            if (particle.min_screen_size > 0.0f && height_ > 0) {
+            if (particle.min_screen_size > 0.0f && render_height_ > 0) {
                 const float dx = particle.position[0] - cam[0];
                 const float dy = particle.position[1] - cam[1];
                 const float dz = particle.position[2] - cam[2];
@@ -3730,7 +3816,7 @@ private:
                 // ~60° vertical FOV screen-space floor: readable landmarks at range.
                 constexpr float k_tan_half_fov_y = 0.57735026919f; // tan(30°)
                 const float min_world =
-                    (particle.min_screen_size / static_cast<float>(height_)) * dist * 2.0f * k_tan_half_fov_y;
+                    (particle.min_screen_size / static_cast<float>(render_height_)) * dist * 2.0f * k_tan_half_fov_y;
                 if (min_world > size) size = min_world;
             }
             const float half_along = streak ? size * 0.7f : size * 0.5f;
@@ -3834,8 +3920,9 @@ private:
         command_list_->ResourceBarrier(1, &depth_to_srv);
 
         command_list_->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
-        D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(width_), static_cast<float>(height_), 0.0f, 1.0f};
-        D3D12_RECT scissor{0, 0, static_cast<LONG>(width_), static_cast<LONG>(height_)};
+        D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(render_width_), static_cast<float>(render_height_),
+            0.0f, 1.0f};
+        D3D12_RECT scissor{0, 0, static_cast<LONG>(render_width_), static_cast<LONG>(render_height_)};
         command_list_->RSSetViewports(1, &viewport);
         command_list_->RSSetScissorRects(1, &scissor);
         std::array<float, 48> frame_constants{};
@@ -3848,9 +3935,10 @@ private:
         frame_constants[21] = 0.62f;
         frame_constants[22] = 0.72f;
         frame_constants[23] = 180.0f;
-        frame_constants[24] = static_cast<float>(width_);
-        frame_constants[25] = static_cast<float>(height_);
-        frame_constants[26] = 220.0f; // soft particle depth scale
+        frame_constants[24] = static_cast<float>(render_width_);
+        frame_constants[25] = static_cast<float>(render_height_);
+        // Softer intersection fade: large scales left only a yellow rim around wooden props.
+        frame_constants[26] = 48.0f; // soft particle depth scale
         command_list_->SetGraphicsRootSignature(particle_root_signature_.Get());
         bind_particle_frame_constants(frame_constants);
         if (particle_srv_heap_) {
@@ -5181,6 +5269,9 @@ private:
 
     HWND hwnd_ = nullptr;
     UINT width_ = 1, height_ = 1, frame_index_ = 0, rtv_stride_ = 0, srv_stride_ = 0;
+    // Offscreen world-render size. Tracks the window by default; the Game view sets it to the authored
+    // play resolution so fixed-res play is a real render target instead of a scaled window image.
+    UINT render_width_ = 1, render_height_ = 1;
     UINT64 fence_value_ = 0;
     std::array<UINT64, frame_count> frame_fence_values_{};
     UINT64 timestamp_fence_value_ = 0;
@@ -5268,6 +5359,8 @@ private:
     const std::vector<std::string>* particle_texture_paths_ = nullptr;
     UINT sky_vertex_offset_=0;
     UINT sky_vertex_count_=0;
+    UINT sandbox_ground_offset_=0;
+    UINT sandbox_ground_count_=0;
     std::map<std::string,std::pair<UINT,UINT>> mesh_ranges_;
     // Per-mesh base-color textures (TICKET-0191). Slot 0 is a 1x1 white fallback; the rest are aligned with
     // imported mesh order. Meshes without a texture stay absent from mesh_albedo_gpu_ and draw with vertex color.
@@ -5459,7 +5552,22 @@ void draw_placement_bounds_overlay(ImDrawList* draw_list, const PlacementScreenB
 struct EditorState {
     enum class TestSessionState : std::uint8_t { Inactive, Running, Paused };
     enum class TestSessionCommand : std::uint8_t { None, Start, Pause, Resume, End };
-    enum class ViewportTab : std::uint8_t { Scene, Sculpt, Game, UI, WorldForge, DesignDocs };
+    enum class ViewportTab : std::uint8_t { Scene, Sculpt, Game, Animation, UI, WorldForge, DesignDocs };
+    /// How the Game view is presented while a test session is active.
+    enum class PlayDisplayMode : std::uint8_t {
+        Embedded,   ///< Center Viewports panel (current default)
+        Maximized,  ///< Full editor work area (side/bottom panels hidden)
+        Fullscreen  ///< Borderless fullscreen over the editor window + maximized layout
+    };
+    /// Fixed pixel size for play UI/layout testing (letterboxed into available area).
+    enum class PlayResolution : std::uint8_t {
+        Fit,       ///< Stretch to available panel/area
+        Res720p,   ///< 1280×720
+        Res900p,   ///< 1600×900
+        Res1080p,  ///< 1920×1080
+        Design,    ///< Player HUD canvas design resolution (or 1920×1080)
+        Custom
+    };
 
     struct DesignDocEntry {
         std::string section;       // features | story | art | design
@@ -5606,6 +5714,17 @@ struct EditorState {
     TestSessionState test_session = TestSessionState::Inactive;
     TestSessionCommand test_session_command = TestSessionCommand::None;
     ViewportTab active_viewport_tab = ViewportTab::Scene;
+    /// Session-only play presentation prefs (applied on next Start Test).
+    PlayDisplayMode play_display_mode = PlayDisplayMode::Maximized;
+    PlayResolution play_resolution = PlayResolution::Res1080p;
+    int play_custom_width = 1920;
+    int play_custom_height = 1080;
+    /// True while test session uses collapsed editor chrome (Maximized/Fullscreen).
+    bool play_layout_maximized = false;
+    /// True while SDL borderless fullscreen is active for Fullscreen play mode.
+    bool play_fullscreen_active = false;
+    /// Set by end-session; main loop clears window fullscreen on the next frame.
+    bool play_request_leave_fullscreen = false;
     PlaySessionSettings play_session;
     CharacterAsset character_asset;
     CameraAsset camera_asset;
@@ -5680,8 +5799,64 @@ struct EditorState {
     /// Play-test held weapon: mesh path + column-major hand joint global (character model space).
     std::string test_held_weapon_mesh;
     std::optional<std::array<float, 16>> test_held_weapon_hand_global;
+    /// String-hand skin joint (RightHand) for nocked arrow attach during bow combat.
+    std::optional<std::array<float, 16>> test_string_hand_global;
+    /// Held shortbow `StringMid` joint (weapon model space) — preferred nock socket while drawn.
+    std::optional<std::array<float, 16>> test_held_string_mid_model;
+    /// Bone-slot entity id for skinned held mesh (empty when unskinned / no upload).
+    std::string test_held_weapon_skin_entity;
     /// Prefab part local transform of the skinned character mesh. Joint globals live in that mesh's model
     /// space, so a weld that skips this link misses the authored character scale.
+
+    /// Play-test nocked prop + free projectiles (TICKET-0260). Visual only — not scene entities.
+    bool nocked_arrow_active = false;
+    struct PlayTestProjectile {
+        TransformComponent transform{};
+        std::array<float, 3> velocity{0.0f, 0.0f, 0.0f};
+        float life = 0.0f;
+        std::string mesh_asset;
+        /// Recent world positions for a read-friendly flight trail (ImGui overlay).
+        std::vector<std::array<float, 3>> trail;
+        /// Meters since last trail particle burst (distance-throttled emit).
+        float trail_emit_accum = 0.0f;
+    };
+    std::vector<PlayTestProjectile> play_test_projectiles;
+    static constexpr const char* k_nocked_arrow_mesh = "assets/models/outrider_arrow.gltf";
+    static constexpr const char* k_arrow_trail_particle = "assets/vfx/arrow_trail.particle.json";
+    static constexpr const char* k_arrow_impact_particle = "assets/vfx/arrow_impact.particle.json";
+    /// Fallback weld when StringMid is unavailable (string-hand skin joint).
+    BoneWeld nocked_arrow_weld{"RightHand", {0.02f, 0.01f, 0.08f}, {0.0f, 0.0f, 0.0f}, {0.85f, 0.85f, 0.85f}};
+    /// Offset on StringMid so the nock sits on the string (arrow mesh runs ±Z).
+    BoneWeld nocked_string_mid_weld{"StringMid", {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.85f, 0.85f, 0.85f}};
+    float projectile_speed = 42.0f;
+    float projectile_lifetime = 3.0f;
+    /// Gravity scale matching tick integration (m/s² applied to Y).
+    float projectile_gravity = 4.0f;
+    /// Distance along camera look for reticle aim point (meters).
+    float projectile_aim_range = 45.0f;
+    /// Secs of ballistic path drawn while nocked / aiming (distance scales with projectile_speed).
+    float projectile_trajectory_preview = 1.5f;
+    /// World meters between trail wake wisps (single soft particle per step).
+    float projectile_trail_emit_distance = 0.22f;
+    /// Snap / impact when arrow height falls this far below terrain sample (meters).
+    float projectile_ground_impact_slack = 0.06f;
+    static constexpr std::size_t k_projectile_trail_max = 28;
+    /// Last play-test aim for overlay trajectory (updated each bow combat frame).
+    float play_test_aim_yaw = 0.0f;
+    float play_test_aim_pitch = 0.0f;
+    /// Live orbit camera eye / reticle ray (set each aim frame when orbit_camera exists).
+    std::array<float, 3> play_test_camera_eye{0.0f, 0.0f, 0.0f};
+    std::array<float, 3> play_test_camera_forward{0.0f, 0.0f, 1.0f};
+    /// tan(half horizontal FOV) for screen-consistent reticle aim offset (updated with perspective).
+    float play_test_camera_tan_half_h = 0.95f;
+    bool play_test_camera_valid = false;
+    /// Last muzzle→reticle fire dir (velocity / gold arc); shaft may use non-lead look dir.
+    std::array<float, 3> play_test_fire_dir{0.0f, 0.0f, 1.0f};
+    /// Play-test bow OTS aim framing (0 = hipfire rest, 1 = full over-shoulder zoom-in).
+    float bow_aim_camera_blend = 0.0f;
+    /// Desired distance captured when aim framing starts so release lerps back to user zoom.
+    float bow_aim_orbit_rest_distance = 0.0f;
+    bool bow_aim_orbit_rest_captured = false;
     TransformComponent test_skinned_visual_local;
     /// Joint names of the animated character's skin, for the Inspector joint dropdown.
     std::vector<std::string> test_skin_joint_names;
@@ -5707,8 +5882,15 @@ struct EditorState {
     bool play_camera_matrices_valid = false;
     std::array<float, 16> play_camera_view{};
     std::array<float, 16> play_camera_projection{};
+    std::array<float, 16> play_camera_view_projection{};
     bool show_movement_console = false;
     std::deque<std::string> console_lines;
+    /// Diagnostics → Console: play-test cheat / session command line (give, hotbar, flags, …).
+    std::deque<std::string> diag_console_lines;
+    char diag_console_input[256]{};
+    std::vector<std::string> diag_console_history;
+    int diag_console_history_pos = -1; // -1 = drafting new line; else index into history
+    bool diag_console_scroll_to_bottom = false;
     std::string asset_browser_folder;
     std::optional<std::string> asset_browser_selected_folder;
     char asset_folder_name_buffer[128]{};
@@ -5731,6 +5913,8 @@ struct EditorState {
     std::unique_ptr<FlagRuntime> flag_runtime;
     std::unique_ptr<ItemCatalogAsset> item_catalog;
     std::unique_ptr<InventoryRuntime> inventory_runtime;
+    /// Until character-creation lands: play-test starter kit lane (World Forge archetype id).
+    std::string play_test_starter_archetype_id = kDefaultPlayTestStarterArchetypeId;
     std::unique_ptr<WorldForgeFactionsAsset> standing_factions_asset;
     std::unique_ptr<WorldForgeRelationshipsAsset> standing_relationships_asset;
     GameSession game_session;
@@ -5745,6 +5929,9 @@ struct EditorState {
     float dodge_remaining = 0.0f;
     float dodge_dir_x = 0.0f;
     float dodge_dir_z = 1.0f;
+    /// Distance-based footstep dust (meters since last puff while grounded + moving).
+    float footstep_distance_accum = 0.0f;
+    int footstep_side = 0;
     /// Delay before stamina/magic regen resumes after a dodge spend.
     float dodge_resource_regen_delay = 0.0f;
     /// When true (editor --coop-local), F5 starts a local dual-slot co-op session.
@@ -5781,6 +5968,8 @@ struct EditorState {
     ScriptFileMonitor script_monitor;
     std::uint32_t script_reload_counter = 0;
     std::uint32_t bridge_poll_counter = 0;
+    GameModuleHost game_module_host;
+    bool game_module_auto_load_attempted = false;
     // The editor is automation-first: start the project-scoped MCP bridge with each editor session.
     // Authors can still disable it from Diagnostics when they do not want live tooling connected.
     bool live_automation_enabled = true;
@@ -5799,9 +5988,28 @@ struct EditorState {
     bool asset_bake_use_default_source = true;
     char asset_bake_source_buffer[512]{};
     std::string asset_bake_status = "Select a target and Bake.";
-    std::string asset_bake_report_json;
-    std::vector<EngineError> asset_bake_failures;
-    bool asset_bake_last_ok = false;
+    /// Diagnostics → Assets: in-editor model import (pick file → bake → verify → hot reload).
+    AssetImportPlan asset_import_plan;
+    bool asset_import_plan_ready = false;
+    char asset_import_id_buffer[128]{};
+    float asset_import_target_height = 1.0f;
+    std::string asset_import_stage;
+    std::string asset_import_status = "Choose a .gltf / .glb / .bbmodel to import.";
+    /// Worker future plus the stage string it publishes; the bake shells out to Python for ~1-90 s.
+    std::future<AssetImportOutcome> asset_import_job;
+    std::shared_ptr<std::string> asset_import_progress;
+    std::shared_ptr<std::mutex> asset_import_progress_mutex;
+    bool asset_import_running = false;
+    bool asset_import_last_ok = false;
+    double asset_import_started_seconds = 0.0;
+    double asset_import_elapsed_seconds = 0.0;
+    std::string asset_import_result_prefab;
+    std::vector<EngineError> asset_import_failures;
+    std::string asset_import_report_json;
+    std::vector<std::string> asset_import_baked_clips;
+    bool asset_import_refreshed_from_bbmodel = false;
+    /// Set by Asset Browser buttons so the Diagnostics → Assets tab pulls focus.
+    bool asset_import_focus_tab = false;
     double coordination_last_refresh = -1000.0;
     PlanningBacklog coordination_backlog;
     std::string coordination_backlog_error;
@@ -5811,6 +6019,9 @@ struct EditorState {
     std::optional<ImVec2> game_viewport_min;
     std::optional<ImVec2> game_viewport_max;
     bool game_viewport_hovered = false;
+    /// Scene / Sculpt panel image rect (for free-cam aspect; kept current each frame).
+    std::optional<ImVec2> scene_viewport_min;
+    std::optional<ImVec2> scene_viewport_max;
 
     [[nodiscard]] bool test_session_active() const { return test_session != TestSessionState::Inactive; }
     [[nodiscard]] bool test_session_running() const { return test_session == TestSessionState::Running; }
@@ -5847,6 +6058,7 @@ struct EditorState {
 
     [[nodiscard]] bool game_viewport_active() const { return active_viewport_tab == ViewportTab::Game; }
     [[nodiscard]] bool sculpt_viewport_active() const { return active_viewport_tab == ViewportTab::Sculpt; }
+    [[nodiscard]] bool animation_viewport_active() const { return active_viewport_tab == ViewportTab::Animation; }
     [[nodiscard]] bool ui_viewport_active() const { return active_viewport_tab == ViewportTab::UI; }
     [[nodiscard]] bool world_forge_viewport_active() const {
         return active_viewport_tab == ViewportTab::WorldForge;
@@ -5854,6 +6066,82 @@ struct EditorState {
     [[nodiscard]] bool design_docs_viewport_active() const {
         return active_viewport_tab == ViewportTab::DesignDocs;
     }
+    /// When true, bottom Diagnostics strip selects the Animation support tab once.
+    bool force_select_animation_support_tab = false;
+
+    // Animation Studio (TICKET-0249) — sandbox subject preview; never mutates the world scene.
+    static constexpr const char* k_anim_studio_entity_id = "animation-studio-subject";
+    static constexpr const char* k_held_weapon_skin_entity_id = "held-weapon";
+    static constexpr const char* k_anim_studio_held_skin_entity_id = "animation-studio-held";
+    std::string anim_studio_subject_prefab;
+    std::string anim_studio_controller_path;
+    std::string anim_studio_default_state;
+    std::string anim_studio_request_state;
+    AnimatorRuntime anim_studio_runtime;
+    bool anim_studio_playing = false;
+    float anim_studio_scrub = 0.0f;
+    float anim_studio_duration = 1.0f;
+    std::string anim_studio_status;
+    bool anim_studio_library_bound = false;
+    /// Studio-only held item preview (TICKET-0250); does not mutate inventory bags.
+    std::string anim_studio_held_item_id;
+    /// Working copy of the attached controller for timelineEvents authoring (TICKET-0252).
+    std::optional<AnimatorControllerAsset> anim_studio_controller_asset;
+    bool anim_studio_events_dirty = false;
+    int anim_studio_selected_event = -1;
+    /// Previous scrub time — used to fire markers when dragging the timeline forward.
+    float anim_studio_scrub_prev = 0.0f;
+    /// Clip keyframe dual-edit (TICKET-0253 / DEC-0052).
+    std::string anim_studio_edit_clip_source;
+    std::string anim_studio_edit_clip_name;
+    std::string anim_studio_edit_joint;
+    /// "subject" (character skin) or "held" (attached skinned item).
+    std::string anim_studio_edit_joint_source = "subject";
+    int anim_studio_edit_path = 0; // 0 translation, 1 rotation, 2 scale
+    int anim_studio_edit_key_index = -1;
+    std::optional<AnimationClip> anim_studio_edit_clip;
+    bool anim_studio_clip_dirty = false;
+    /// Bone TRS gizmo in Animation viewport (joint pose authoring).
+    bool anim_studio_bone_gizmo_enabled = true;
+    ImGuizmo::OPERATION anim_studio_bone_gizmo_op = ImGuizmo::TRANSLATE;
+    ImGuizmo::MODE anim_studio_bone_gizmo_mode = ImGuizmo::LOCAL;
+    std::array<float, 16> anim_studio_bone_gizmo_matrix{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    bool anim_studio_bone_gizmo_was_using = false;
+    std::optional<TransformComponent> anim_studio_joint_world;
+    std::optional<TransformComponent> anim_studio_joint_parent_world;
+    std::optional<TransformComponent> anim_studio_bone_drag_parent;
+    /// Armature overlay (TICKET-0259): skeleton lines + viewport joint pick.
+    bool anim_studio_skeleton_visible = true;
+    bool anim_studio_skeleton_labels = false;
+    std::string anim_studio_joint_filter;
+    struct AnimStudioArmatureJoint {
+        std::string name;
+        std::string source; // "subject" | "held"
+        int parent_index = -1; // absolute index in anim_studio_armature, or -1
+        TransformComponent world{};
+    };
+    std::vector<AnimStudioArmatureJoint> anim_studio_armature;
+    /// After viewport joint pick, ignore bone gizmo click-activate for a few frames so the same
+    /// mouse-down that selected a bone does not immediately drag/corrupt its pose (held item vanish).
+    int anim_studio_ignore_bone_gizmo_frames = 0;
+    /// Timeline key drag (track 0=T, 1=R, 2=S, 3=event).
+    int anim_studio_timeline_drag_track = -1;
+    int anim_studio_timeline_drag_key = -1;
+    /// In-memory keyframe clipboard (Ctrl+C / Ctrl+V) for subject/held clips.
+    struct AnimStudioClipboardKey {
+        AnimationChannelPath path = AnimationChannelPath::Translation;
+        float relative_time = 0.0f; // seconds vs anchor (0 for slice copies)
+        std::vector<float> values; // 3 (T/S) or 4 (R)
+    };
+    struct AnimStudioKeyClipboard {
+        bool valid = false;
+        bool tracks = false; // false = TRS slice at one time; true = all T/R/S keys for the joint
+        std::string source_skin_joint;
+        std::string source_display_joint;
+        float anchor_time = 0.0f;
+        std::vector<AnimStudioClipboardKey> keys;
+    };
+    AnimStudioKeyClipboard anim_studio_key_clipboard;
 };
 
 void commit_active_terrain_stroke(EditorState& state);
@@ -6403,6 +6691,8 @@ void commit_entity_component_edit(EditorState& state, AuthoredComponentEntry ent
     else mark_scene_dirty(state);
 }
 
+void sync_hotbar_equip_hud(EditorState& state);
+
 EditorSessionContext make_editor_session_context(EditorState& state, bool editor_running) {
     EditorSessionContext context;
     context.scene = &state.scene;
@@ -6440,6 +6730,11 @@ EditorSessionContext make_editor_session_context(EditorState& state, bool editor
     context.standing_runtime = state.standing_runtime.get();
     context.flag_runtime = state.flag_runtime.get();
     context.inventory_runtime = state.inventory_runtime.get();
+    context.play_test_starter_archetype_id = &state.play_test_starter_archetype_id;
+    context.refresh_inventory_ui = [&state]() {
+        sync_hotbar_equip_hud(state);
+        if (state.lua_runtime) (void)state.lua_runtime->call_handler("inventory_refresh_ui", "{}");
+    };
     context.dialogue_runtime = &state.dialogue_runtime;
     context.hud_runtime = state.ui_canvas_stack ? &state.ui_canvas_stack->hud() : nullptr;
     context.ui_canvas_stack = state.ui_canvas_stack.get();
@@ -6602,6 +6897,413 @@ void append_editor_console(EditorState& state, const std::string& line, bool mir
     }
 }
 
+void append_diag_console(EditorState& state, const std::string& line) {
+    state.diag_console_lines.push_back(line);
+    constexpr std::size_t k_max = 400;
+    while (state.diag_console_lines.size() > k_max) state.diag_console_lines.pop_front();
+    state.diag_console_scroll_to_bottom = true;
+}
+
+void refresh_inventory_session_ui(EditorState& state) {
+    sync_hotbar_equip_hud(state);
+    if (state.lua_runtime) (void)state.lua_runtime->call_handler("inventory_refresh_ui", "{}");
+}
+
+std::vector<std::string> split_diag_console_args(std::string_view line) {
+    std::vector<std::string> tokens;
+    std::string current;
+    for (char c : line) {
+        if (std::isspace(static_cast<unsigned char>(c))) {
+            if (!current.empty()) {
+                tokens.push_back(current);
+                current.clear();
+            }
+        } else {
+            current.push_back(c);
+        }
+    }
+    if (!current.empty()) tokens.push_back(current);
+    return tokens;
+}
+
+std::string join_diag_console_from(const std::vector<std::string>& tokens, std::size_t start) {
+    std::string out;
+    for (std::size_t i = start; i < tokens.size(); ++i) {
+        if (!out.empty()) out.push_back(' ');
+        out += tokens[i];
+    }
+    return out;
+}
+
+/// Session console command executor — reuses InventoryRuntime / FlagRuntime (same as MCP inventory_call / flag_call).
+void execute_diag_console_command(EditorState& state, std::string_view raw_line) {
+    std::string line(raw_line);
+    while (!line.empty() && std::isspace(static_cast<unsigned char>(line.front()))) line.erase(line.begin());
+    while (!line.empty() && std::isspace(static_cast<unsigned char>(line.back()))) line.pop_back();
+    if (line.empty()) return;
+
+    append_diag_console(state, std::string("> ") + line);
+    if (state.diag_console_history.empty() || state.diag_console_history.back() != line)
+        state.diag_console_history.push_back(line);
+    constexpr std::size_t k_max_history = 64;
+    if (state.diag_console_history.size() > k_max_history)
+        state.diag_console_history.erase(state.diag_console_history.begin());
+    state.diag_console_history_pos = -1;
+
+    auto tokens = split_diag_console_args(line);
+    if (tokens.empty()) return;
+    std::string cmd = tokens[0];
+    std::transform(cmd.begin(), cmd.end(), cmd.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+    auto require_inventory = [&]() -> InventoryRuntime* {
+        if (!state.inventory_runtime || !state.inventory_runtime->is_bound()) {
+            append_diag_console(state,
+                "error: inventory runtime not available (item catalog unbound)");
+            return nullptr;
+        }
+        return state.inventory_runtime.get();
+    };
+
+    if (cmd == "help" || cmd == "?") {
+        append_diag_console(state, "Session console (play-test / live inventory):");
+        append_diag_console(state, "  help                         List commands");
+        append_diag_console(state, "  clear                        Clear history pane");
+        append_diag_console(state, "  status                       Inventory bag / hotbar / gold summary");
+        append_diag_console(state, "  give <itemId> [count]        Grant item (bag or ammo; catalog id)");
+        append_diag_console(state, "  hotbar <slot> <itemId> [n]   Set hotbar slot (slot 0..7)");
+        append_diag_console(state, "  select <slot>                Select hotbar (0..7)");
+        append_diag_console(state, "  starter <archetypeId>        Set + apply starter loadout");
+        append_diag_console(state, "  gold [amount]                Show or set gold");
+        append_diag_console(state, "  flag <id> true|false         Set or clear story flag");
+        append_diag_console(state, "  flag <id>                    Query story flag");
+        append_diag_console(state, "  flags                        List story flags");
+        append_diag_console(state, "Examples: give outrider_shortbow | hotbar 0 ashfell_arming_sword");
+        append_diag_console(state, "          starter outrider | select 0");
+        if (!state.test_session_active()) {
+            append_diag_console(state,
+                "note: play-test inactive — inventory still edits session state; start Play (F5) for HUD/live player.");
+        }
+        return;
+    }
+
+    if (cmd == "clear") {
+        state.diag_console_lines.clear();
+        append_diag_console(state, "console cleared");
+        return;
+    }
+
+    if (cmd == "status") {
+        InventoryRuntime* inv = require_inventory();
+        if (!inv) return;
+        const auto snap = inv->status();
+        append_diag_console(state,
+            "session=" + std::string(state.test_session_active()
+                                         ? (state.test_session_running() ? "running" : "paused")
+                                         : "inactive") +
+            "  gold=" + std::to_string(snap.gold) +
+            "  selectedHotbar=" + std::to_string(snap.selected_hotbar) +
+            "  starter=" + state.play_test_starter_archetype_id);
+        std::string hotbar;
+        for (std::size_t i = 0; i < snap.hotbar.size(); ++i) {
+            if (snap.hotbar[i].empty()) continue;
+            if (!hotbar.empty()) hotbar += ", ";
+            hotbar += std::to_string(i) + ":" + snap.hotbar[i].item_id + "x" +
+                      std::to_string(snap.hotbar[i].count);
+        }
+        append_diag_console(state, "hotbar: " + (hotbar.empty() ? std::string("(empty)") : hotbar));
+        std::string bag;
+        for (const auto& stack : snap.bag) {
+            if (stack.empty()) continue;
+            if (!bag.empty()) bag += ", ";
+            bag += stack.item_id + "x" + std::to_string(stack.count);
+        }
+        append_diag_console(state, "bag: " + (bag.empty() ? std::string("(empty)") : bag));
+        return;
+    }
+
+    if (cmd == "give" || cmd == "grant") {
+        if (tokens.size() < 2) {
+            append_diag_console(state, "usage: give <itemId> [count]");
+            return;
+        }
+        InventoryRuntime* inv = require_inventory();
+        if (!inv) return;
+        const std::string& item_id = tokens[1];
+        int count = 1;
+        if (tokens.size() >= 3) {
+            try {
+                count = std::stoi(tokens[2]);
+            } catch (...) {
+                append_diag_console(state, "error: count must be an integer");
+                return;
+            }
+        }
+        if (count <= 0) {
+            append_diag_console(state, "error: count must be > 0");
+            return;
+        }
+        if (const auto result = inv->grant(item_id, count); !result) {
+            append_diag_console(state, "error: " + result.error().message);
+            return;
+        }
+        refresh_inventory_session_ui(state);
+        append_diag_console(state, "granted " + item_id + " x" + std::to_string(count));
+        return;
+    }
+
+    if (cmd == "hotbar" || cmd == "set_hotbar" || cmd == "sethotbar") {
+        if (tokens.size() < 3) {
+            append_diag_console(state, "usage: hotbar <slot 0..7> <itemId> [count]");
+            return;
+        }
+        InventoryRuntime* inv = require_inventory();
+        if (!inv) return;
+        int slot = -1;
+        try {
+            slot = std::stoi(tokens[1]);
+        } catch (...) {
+            append_diag_console(state, "error: slot must be an integer 0..7");
+            return;
+        }
+        const std::string& item_id = tokens[2];
+        int count = 1;
+        if (tokens.size() >= 4) {
+            try {
+                count = std::stoi(tokens[3]);
+            } catch (...) {
+                append_diag_console(state, "error: count must be an integer");
+                return;
+            }
+        }
+        if (count <= 0) count = 1;
+        if (const auto result = inv->set_hotbar(slot, item_id, count); !result) {
+            append_diag_console(state, "error: " + result.error().message);
+            return;
+        }
+        refresh_inventory_session_ui(state);
+        append_diag_console(state,
+            "hotbar[" + std::to_string(slot) + "] = " + item_id + " x" + std::to_string(count));
+        return;
+    }
+
+    if (cmd == "select" || cmd == "select_hotbar" || cmd == "selecthotbar") {
+        if (tokens.size() < 2) {
+            append_diag_console(state, "usage: select <slot 0..7>");
+            return;
+        }
+        InventoryRuntime* inv = require_inventory();
+        if (!inv) return;
+        int slot = -1;
+        try {
+            slot = std::stoi(tokens[1]);
+        } catch (...) {
+            append_diag_console(state, "error: slot must be an integer 0..7");
+            return;
+        }
+        if (const auto result = inv->select_hotbar(slot); !result) {
+            append_diag_console(state, "error: " + result.error().message);
+            return;
+        }
+        refresh_inventory_session_ui(state);
+        const auto active = inv->active_hotbar_item();
+        append_diag_console(state,
+            "selected hotbar " + std::to_string(slot) +
+                (active.empty() ? std::string(" (empty)") : (" (" + active.item_id + ")")));
+        return;
+    }
+
+    if (cmd == "starter" || cmd == "apply_starter" || cmd == "set_starter") {
+        if (tokens.size() < 2) {
+            append_diag_console(state, "usage: starter <archetypeId>  (ashfell_blade|outrider|runecaster …)");
+            return;
+        }
+        InventoryRuntime* inv = require_inventory();
+        if (!inv) return;
+        const auto id = normalize_starter_archetype_id(join_diag_console_from(tokens, 1));
+        state.play_test_starter_archetype_id = id;
+        std::optional<WorldForgeArchetypesAsset> archetypes;
+        if (!state.project_root.empty()) {
+            const auto path = default_world_forge_archetypes_path(state.project_root);
+            if (std::filesystem::exists(path)) {
+                if (auto loaded = WorldForgeArchetypesAsset::load(path))
+                    archetypes = std::move(loaded.value());
+            }
+        }
+        const auto weapon = resolve_starter_weapon_item_id(id, archetypes ? &*archetypes : nullptr);
+        if (const ItemDef* def = inv->find_def(weapon); !def) {
+            append_diag_console(state, "error: starter weapon '" + weapon + "' missing from catalog");
+            return;
+        }
+        if (const auto hotbar = inv->set_hotbar(0, weapon, 1); !hotbar) {
+            append_diag_console(state, "error: " + hotbar.error().message);
+            return;
+        }
+        (void)inv->grant(kAct0StarterBandageItemId, kAct0StarterBandageCount);
+        (void)inv->select_hotbar(0);
+        refresh_inventory_session_ui(state);
+        append_diag_console(state,
+            "starter " + id + " applied (weapon=" + weapon +
+                ", bandages=" + std::to_string(kAct0StarterBandageCount) + ")");
+        return;
+    }
+
+    if (cmd == "gold" || cmd == "coins") {
+        InventoryRuntime* inv = require_inventory();
+        if (!inv) return;
+        if (tokens.size() < 2) {
+            append_diag_console(state, "gold=" + std::to_string(inv->gold()));
+            return;
+        }
+        int amount = 0;
+        try {
+            amount = std::stoi(tokens[1]);
+        } catch (...) {
+            append_diag_console(state, "error: amount must be an integer");
+            return;
+        }
+        inv->set_gold(amount);
+        refresh_inventory_session_ui(state);
+        append_diag_console(state, "gold=" + std::to_string(inv->gold()));
+        return;
+    }
+
+    if (cmd == "flags") {
+        if (!state.flag_runtime) {
+            append_diag_console(state, "error: flag runtime not available");
+            return;
+        }
+        const auto list = state.flag_runtime->list();
+        if (list.empty()) {
+            append_diag_console(state, "flags: (none)");
+            return;
+        }
+        std::string joined;
+        for (const auto& f : list) {
+            if (!joined.empty()) joined += ", ";
+            joined += f;
+        }
+        append_diag_console(state, "flags: " + joined);
+        return;
+    }
+
+    if (cmd == "flag") {
+        if (!state.flag_runtime) {
+            append_diag_console(state, "error: flag runtime not available");
+            return;
+        }
+        if (tokens.size() < 2) {
+            append_diag_console(state, "usage: flag <id> [true|false]");
+            return;
+        }
+        const std::string& flag_id = tokens[1];
+        if (tokens.size() == 2) {
+            append_diag_console(state,
+                flag_id + " = " + (state.flag_runtime->has(flag_id) ? "true" : "false"));
+            return;
+        }
+        std::string val = tokens[2];
+        std::transform(val.begin(), val.end(), val.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        const bool set = (val == "true" || val == "1" || val == "on" || val == "yes" || val == "set");
+        const bool clear = (val == "false" || val == "0" || val == "off" || val == "no" || val == "clear");
+        if (!set && !clear) {
+            append_diag_console(state, "error: expected true|false");
+            return;
+        }
+        if (set) {
+            if (const auto r = state.flag_runtime->set(flag_id); !r) {
+                append_diag_console(state, "error: " + r.error().message);
+                return;
+            }
+            append_diag_console(state, "flag " + flag_id + " = true");
+        } else {
+            if (const auto r = state.flag_runtime->clear(flag_id); !r) {
+                append_diag_console(state, "error: " + r.error().message);
+                return;
+            }
+            append_diag_console(state, "flag " + flag_id + " = false");
+        }
+        return;
+    }
+
+    append_diag_console(state, "unknown command '" + cmd + "' — type help");
+}
+
+int diag_console_input_callback(ImGuiInputTextCallbackData* data) {
+    auto* state = static_cast<EditorState*>(data->UserData);
+    if (!state || data->EventFlag != ImGuiInputTextFlags_CallbackHistory) return 0;
+    if (state->diag_console_history.empty()) return 0;
+    if (data->EventKey == ImGuiKey_UpArrow) {
+        if (state->diag_console_history_pos < 0)
+            state->diag_console_history_pos = static_cast<int>(state->diag_console_history.size()) - 1;
+        else if (state->diag_console_history_pos > 0)
+            --state->diag_console_history_pos;
+    } else if (data->EventKey == ImGuiKey_DownArrow) {
+        if (state->diag_console_history_pos < 0) return 0;
+        if (state->diag_console_history_pos + 1 >= static_cast<int>(state->diag_console_history.size())) {
+            state->diag_console_history_pos = -1;
+            data->DeleteChars(0, data->BufTextLen);
+            return 0;
+        }
+        ++state->diag_console_history_pos;
+    } else {
+        return 0;
+    }
+    if (state->diag_console_history_pos >= 0 &&
+        state->diag_console_history_pos < static_cast<int>(state->diag_console_history.size())) {
+        const auto& entry =
+            state->diag_console_history[static_cast<std::size_t>(state->diag_console_history_pos)];
+        data->DeleteChars(0, data->BufTextLen);
+        data->InsertChars(0, entry.c_str());
+    }
+    return 0;
+}
+
+void draw_diag_console_tab(EditorState& state) {
+    ImGui::TextWrapped(
+        "Session / cheat console for play-test inventory and flags. Same runtime as MCP "
+        "engine_inventory_call / engine_flag_call. Hotbar slots are 0-based (0..7).");
+    ImGui::TextDisabled("Play-test: %s  |  starter: %s",
+        state.test_session_active() ? (state.test_session_running() ? "running" : "paused") : "inactive",
+        state.play_test_starter_archetype_id.c_str());
+    ImGui::Separator();
+
+    if (state.diag_console_lines.empty()) {
+        append_diag_console(state, "Diagnostics session console — type help");
+    }
+
+    const float footer = ImGui::GetFrameHeightWithSpacing() + 8.0f;
+    const float history_h = (std::max)(80.0f, ImGui::GetContentRegionAvail().y - footer);
+    if (ImGui::BeginChild("DiagConsoleHistory", ImVec2(0.0f, history_h), true,
+            ImGuiWindowFlags_HorizontalScrollbar)) {
+        for (const auto& line : state.diag_console_lines) ImGui::TextUnformatted(line.c_str());
+        if (state.diag_console_scroll_to_bottom) {
+            ImGui::SetScrollHereY(1.0f);
+            state.diag_console_scroll_to_bottom = false;
+        }
+    }
+    ImGui::EndChild();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    bool reclaim_focus = false;
+    if (ImGui::InputTextWithHint("##DiagConsoleInput", "command… (Enter to run, Up/Down history)",
+            state.diag_console_input, sizeof(state.diag_console_input),
+            ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory,
+            diag_console_input_callback, &state)) {
+        execute_diag_console_command(state, state.diag_console_input);
+        state.diag_console_input[0] = '\0';
+        reclaim_focus = true;
+    }
+    if (reclaim_focus) ImGui::SetKeyboardFocusHere(-1);
+    if (ImGui::Button("Clear##DiagConsoleClear")) {
+        state.diag_console_lines.clear();
+        append_diag_console(state, "console cleared");
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Help##DiagConsoleHelp")) execute_diag_console_command(state, "help");
+}
+
 void record_movement_debug(EditorState& state, const CharacterController& character, const LocalPosition& wish,
     float frame_delta_seconds, const WorldPosition& position_before) {
     if (!state.show_movement_console) return;
@@ -6746,6 +7448,3068 @@ std::vector<std::string> collect_asset_paths(const EditorState& state, std::stri
     }
     std::sort(paths.begin(), paths.end());
     return paths;
+}
+
+std::vector<std::string> collect_animator_prefab_paths(const EditorState& state) {
+    std::vector<std::string> paths;
+    for (const auto& entry : state.prefab_catalog) {
+        if (entry.second.animators.empty()) continue;
+        paths.push_back(normalize_asset_path(entry.first));
+    }
+    std::sort(paths.begin(), paths.end());
+    return paths;
+}
+
+void bind_anim_studio_clip_library(EditorState& state) {
+    if (state.anim_studio_library_bound) return;
+    state.anim_studio_runtime.set_project_root(state.project_root);
+    state.anim_studio_runtime.set_clip_library(&state.animation_clip_library);
+    state.anim_studio_library_bound = true;
+}
+
+bool reload_anim_studio_controller_asset(EditorState& state) {
+    state.anim_studio_controller_asset.reset();
+    state.anim_studio_events_dirty = false;
+    state.anim_studio_selected_event = -1;
+    if (state.anim_studio_controller_path.empty()) return false;
+    const auto loaded = AnimatorControllerAsset::load(state.project_root / state.anim_studio_controller_path);
+    if (!loaded) {
+        state.anim_studio_status = loaded.error().message;
+        return false;
+    }
+    state.anim_studio_controller_asset = loaded.value();
+    return true;
+}
+
+std::optional<std::string> particle_path_from_event_payload(const std::string& payload_json) {
+    try {
+        const auto document = nlohmann::json::parse(payload_json.empty() ? "{}" : payload_json);
+        if (document.contains("particle") && document["particle"].is_string()) {
+            const auto path = document["particle"].get<std::string>();
+            if (!path.empty()) return normalize_asset_path(path);
+        }
+        if (document.contains("effect") && document["effect"].is_string()) {
+            const auto path = document["effect"].get<std::string>();
+            if (!path.empty()) return normalize_asset_path(path);
+        }
+    } catch (...) {
+    }
+    return std::nullopt;
+}
+
+std::string merge_particle_into_payload(const std::string& payload_json, const std::string& particle_path) {
+    nlohmann::json document = nlohmann::json::object();
+    try {
+        document = nlohmann::json::parse(payload_json.empty() ? "{}" : payload_json);
+        if (!document.is_object()) document = nlohmann::json::object();
+    } catch (...) {
+        document = nlohmann::json::object();
+    }
+    if (particle_path.empty()) {
+        document.erase("particle");
+        document.erase("effect");
+    } else {
+        document["particle"] = normalize_asset_path(particle_path);
+    }
+    return document.dump();
+}
+
+void dispatch_anim_studio_particle_preview(EditorState& state, const std::string& event_name,
+    const std::string& payload_json) {
+    // Stage origin (matches anim_studio_stage_root position).
+    const std::array<float, 3> feet{0.0f, 0.04f, 0.0f};
+    if (event_name == "footstep") {
+        (void)state.particle_system.spawn_burst("assets/vfx/footstep_dust.particle.json", feet, 4);
+        return;
+    }
+    if (const auto particle = particle_path_from_event_payload(payload_json)) {
+        (void)state.particle_system.spawn_burst(*particle, feet, 8);
+    }
+}
+
+bool ensure_anim_studio_clip_edit(EditorState& state, const std::string& clip_source,
+    const std::string& clip_name);
+bool push_anim_studio_clip_to_library(EditorState& state);
+void trim_anim_studio_channel_keys_after(AnimationClipChannel& channel, float max_time);
+bool set_anim_studio_edit_clip_duration(EditorState& state, float duration_seconds);
+AnimationClipChannel* find_anim_studio_edit_channel(EditorState& state);
+void ensure_anim_studio_edit_clip_for_joint_source(EditorState& state);
+TransformComponent anim_studio_stage_root();
+std::string resolve_held_draw_clip_name(const EditorState& state, const std::string& mesh_path);
+float lookup_held_draw_clip_duration(const EditorState& state, const std::string& mesh_path,
+    const std::string& draw_clip);
+float resolve_held_weapon_draw_sample_time(const EditorState& state,
+    const AnimatorInstanceStatus* character_status, float scrub_time, float scrub_duration,
+    const std::string& draw_clip, float draw_duration);
+void select_anim_studio_joint(EditorState& state, std::string joint, std::string source = "subject");
+void refresh_anim_studio_selected_joint_world(EditorState& state);
+
+void fire_anim_studio_events_in_range(EditorState& state, float from_time, float to_time,
+    const std::string& state_name) {
+    if (!state.anim_studio_controller_asset || state_name.empty()) return;
+    if (!(to_time > from_time)) return;
+    for (const auto& event : state.anim_studio_controller_asset->timeline_events) {
+        if (event.state != state_name) continue;
+        if (event.time > from_time && event.time <= to_time)
+            dispatch_anim_studio_particle_preview(state, event.name, event.payload_json);
+    }
+}
+
+const AnimatorStateDef* find_anim_studio_state_def(const EditorState& state, const std::string& state_name) {
+    if (!state.anim_studio_controller_asset || state_name.empty()) return nullptr;
+    for (const auto& layer : state.anim_studio_controller_asset->layers) {
+        for (const auto& st : layer.states) {
+            if (st.name == state_name) return &st;
+        }
+    }
+    return nullptr;
+}
+
+float anim_studio_motion_duration(EditorState& state, const AnimatorMotion& motion) {
+    bind_anim_studio_clip_library(state);
+    auto clip_duration = [&](const AnimatorClipRef& ref) -> float {
+        if (ref.clip_source.empty() || ref.clip.empty()) return 0.0f;
+        const auto loaded = state.animation_clip_library.get(state.project_root / ref.clip_source);
+        if (!loaded || !loaded.value()) return 0.0f;
+        for (const auto& named : loaded.value()->clips) {
+            if (named.name != ref.clip) continue;
+            const float speed = ref.speed > 0.0f ? ref.speed : 1.0f;
+            return named.duration_seconds / speed;
+        }
+        return 0.0f;
+    };
+    if (motion.type == AnimatorMotionType::Clip) return std::max(0.01f, clip_duration(motion.clip));
+    float max_dur = 0.01f;
+    for (const auto& child : motion.blend_tree.children)
+        max_dur = std::max(max_dur, clip_duration(child.clip));
+    return max_dur;
+}
+
+float refresh_anim_studio_duration(EditorState& state) {
+    // Held item authoring drives the held draw clip directly — use its length on the timeline.
+    if (state.anim_studio_edit_joint_source == "held" && state.anim_studio_edit_clip &&
+        !state.test_held_weapon_mesh.empty() &&
+        normalize_asset_path(state.anim_studio_edit_clip_source) ==
+            normalize_asset_path(state.test_held_weapon_mesh)) {
+        state.anim_studio_duration = std::max(0.01f, state.anim_studio_edit_clip->duration_seconds);
+        return state.anim_studio_duration;
+    }
+    std::string state_name = state.anim_studio_request_state;
+    if (state_name.empty()) {
+        if (const auto status = state.anim_studio_runtime.status(EditorState::k_anim_studio_entity_id)) {
+            if (!status.value().layers.empty()) state_name = status.value().layers.front().state;
+        }
+    }
+    float duration = 0.01f;
+    if (const AnimatorStateDef* def = find_anim_studio_state_def(state, state_name))
+        duration = anim_studio_motion_duration(state, def->motion);
+    else if (const auto status = state.anim_studio_runtime.status(EditorState::k_anim_studio_entity_id)) {
+        for (const auto& clip : status.value().active_clips) {
+            const auto loaded = state.animation_clip_library.get(state.project_root / clip.clip_source);
+            if (!loaded || !loaded.value()) continue;
+            for (const auto& named : loaded.value()->clips) {
+                if (named.name == clip.clip) duration = std::max(duration, named.duration_seconds);
+            }
+        }
+    }
+    state.anim_studio_duration = std::max(0.01f, duration);
+    return state.anim_studio_duration;
+}
+
+/// Re-open the clip the Studio should edit for the current joint source.
+/// Subject joints → active character clip. Held joints → held item draw clip (never the character).
+void ensure_anim_studio_edit_clip_for_joint_source(EditorState& state) {
+    if (state.anim_studio_edit_joint_source == "held") {
+        if (state.test_held_weapon_mesh.empty()) return;
+        const std::string draw = resolve_held_draw_clip_name(state, state.test_held_weapon_mesh);
+        if (draw.empty()) return;
+        (void)ensure_anim_studio_clip_edit(state, state.test_held_weapon_mesh, draw);
+        return;
+    }
+    if (const auto status = state.anim_studio_runtime.status(EditorState::k_anim_studio_entity_id)) {
+        if (!status.value().active_clips.empty()) {
+            const auto& primary = status.value().active_clips.front();
+            (void)ensure_anim_studio_clip_edit(state, primary.clip_source, primary.clip);
+        }
+    }
+}
+
+/// Pin Animation Studio to a controller state at `time` for authoring (no graph transitions).
+void preview_anim_studio_state(EditorState& state, const std::string& state_name, float time_seconds,
+    bool pause_playback = true) {
+    if (pause_playback) state.anim_studio_playing = false;
+    bind_anim_studio_clip_library(state);
+    if (!state_name.empty()) {
+        if (state.anim_studio_request_state != state_name) {
+            state.anim_studio_request_state = state_name;
+            (void)state.anim_studio_runtime.crossfade(EditorState::k_anim_studio_entity_id, state_name, 0.0f);
+        } else {
+            // Re-pin even if already requested — clears any in-flight transition from a prior play.
+            (void)state.anim_studio_runtime.crossfade(EditorState::k_anim_studio_entity_id, state_name, 0.0f);
+        }
+    }
+    const float duration = refresh_anim_studio_duration(state);
+    const float t = std::clamp(time_seconds, 0.0f, duration);
+    (void)state.anim_studio_runtime.seek(EditorState::k_anim_studio_entity_id, t);
+    state.anim_studio_scrub = t;
+    state.anim_studio_scrub_prev = t;
+    // Do not stomp held draw-clip authoring with the character's active clip (bow bone gizmo bug).
+    ensure_anim_studio_edit_clip_for_joint_source(state);
+}
+
+/// Play/pause Animation Studio preview (toolbar button + Space).
+void toggle_anim_studio_playback(EditorState& state) {
+    if (!state.anim_studio_playing) {
+        // Re-pin the preview state before play so graph transitions from a prior scrub can't stick.
+        std::string pin = state.anim_studio_request_state;
+        if (pin.empty()) {
+            if (const auto status = state.anim_studio_runtime.status(EditorState::k_anim_studio_entity_id)) {
+                if (!status.value().layers.empty()) pin = status.value().layers.front().state;
+            }
+        }
+        if (!pin.empty()) preview_anim_studio_state(state, pin, state.anim_studio_scrub, false);
+    }
+    state.anim_studio_playing = !state.anim_studio_playing;
+    state.anim_studio_status =
+        state.anim_studio_playing ? "Playing (Space to pause)" : "Paused (Space to play)";
+}
+
+void tick_anim_studio_preview(EditorState& state, float dt_seconds) {
+    bind_anim_studio_clip_library(state);
+    // Solo state preview: ignore exitTime / parameter transitions so Attack stays Attack, Idle stays Idle.
+    state.anim_studio_runtime.tick(dt_seconds, false);
+    const float duration = refresh_anim_studio_duration(state);
+    float t = state.anim_studio_scrub;
+    if (const auto status = state.anim_studio_runtime.status(EditorState::k_anim_studio_entity_id)) {
+        if (!status.value().layers.empty()) t = status.value().layers.front().state_time_seconds;
+    }
+    // Authoring playhead always loops inside the preview state's clip length (Idle=2s, Attack≈1.15s, …).
+    if (duration > 0.01f && t >= duration) {
+        float wrapped = std::fmod(t, duration);
+        if (wrapped < 0.0f) wrapped += duration;
+        if (wrapped >= duration - 1.0e-5f) wrapped = 0.0f;
+        (void)state.anim_studio_runtime.seek(EditorState::k_anim_studio_entity_id, wrapped);
+        t = wrapped;
+    }
+    state.anim_studio_scrub = t;
+    state.anim_studio_scrub_prev = t;
+}
+
+
+bool attach_anim_studio_subject(EditorState& state);
+bool push_anim_studio_clip_to_library(EditorState& state);
+void clear_anim_studio_clip_edit(EditorState& state);
+bool anim_studio_subject_uses_sagittal_channels(const EditorState& state);
+std::string anim_studio_clip_channel_joint_name(const EditorState& state);
+std::string anim_studio_display_joint_name(const std::string& skin_joint, const std::string& source);
+bool copy_anim_studio_keys(EditorState& state, bool tracks);
+bool paste_anim_studio_keys(EditorState& state);
+AnimationClipChannel* find_anim_studio_edit_channel(EditorState& state);
+AnimationClipChannel* ensure_anim_studio_channel(EditorState& state, AnimationChannelPath path);
+int upsert_anim_studio_key(AnimationClipChannel& channel, float time_seconds, const float* values, int components);
+int nearest_anim_studio_key_index(const AnimationClipChannel& channel, float time_seconds);
+BoneWeld weld_from_item_hand_attach(const ItemHandAttach& attach);
+const ItemDef* resolve_item_def(const EditorState& state, const std::string& item_id);
+
+EditorBridgeResponse handle_animation_studio_call(EditorState& state, const nlohmann::json& params) {
+    auto make_ok = [](std::string summary, std::map<std::string, std::string> metadata = {}) {
+        EditorBridgeResponse response;
+        response.exit_code = ExitCode::Success;
+        response.summary = std::move(summary);
+        response.metadata = std::move(metadata);
+        return response;
+    };
+    auto make_err = [](ExitCode code, std::string summary, std::string err_code, std::string message,
+                        std::string remedy) {
+        EditorBridgeResponse response;
+        response.exit_code = code;
+        response.summary = std::move(summary);
+        response.diagnostics.push_back(EngineError{std::move(err_code), Severity::Error, ErrorCategory::Validation,
+            "automation", std::move(message), std::nullopt, {}, std::move(remedy)});
+        return response;
+    };
+
+    auto kind = params.value("kind", std::string{});
+    std::transform(kind.begin(), kind.end(), kind.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    for (char& c : kind) {
+        if (c == '-' || c == ' ') c = '_';
+    }
+
+    auto ensure_animation_tab = [&]() {
+        state.lock_viewport_tab = false;
+        state.active_viewport_tab = EditorState::ViewportTab::Animation;
+        state.force_select_viewport_tab = true;
+        state.force_select_animation_support_tab = true;
+    };
+
+    auto status_meta = [&]() {
+        std::map<std::string, std::string> meta{
+            {"kind", kind.empty() ? "status" : kind},
+            {"subject", state.anim_studio_subject_prefab},
+            {"controller", state.anim_studio_controller_path},
+            {"state", state.anim_studio_request_state},
+            {"playing", state.anim_studio_playing ? "true" : "false"},
+            {"scrub", std::to_string(state.anim_studio_scrub)},
+            {"duration", std::to_string(state.anim_studio_duration)},
+            {"joint", state.anim_studio_edit_joint},
+            {"jointSource", state.anim_studio_edit_joint_source.empty() ? "subject"
+                                                                       : state.anim_studio_edit_joint_source},
+            {"skeletonVisible", state.anim_studio_skeleton_visible ? "true" : "false"},
+            {"clipSource", state.anim_studio_edit_clip_source},
+            {"clipName", state.anim_studio_edit_clip_name},
+            {"clipDirty", state.anim_studio_clip_dirty ? "true" : "false"},
+            {"eventsDirty", state.anim_studio_events_dirty ? "true" : "false"},
+            {"heldItemId", state.anim_studio_held_item_id},
+            {"boneGizmo", state.anim_studio_bone_gizmo_enabled ? "true" : "false"},
+            {"weldGizmo", state.held_attach_gizmo_enabled ? "true" : "false"},
+            {"weldJoint", state.held_attach_weld.joint},
+            {"weldDirty", state.held_attach_dirty ? "true" : "false"},
+            {"status", state.anim_studio_status},
+        };
+        if (const auto st = state.anim_studio_runtime.status(EditorState::k_anim_studio_entity_id)) {
+            if (!st.value().layers.empty()) {
+                meta["runtimeState"] = st.value().layers.front().state;
+                meta["runtimeTime"] = std::to_string(st.value().layers.front().state_time_seconds);
+            }
+            if (!st.value().active_clips.empty()) {
+                meta["activeClip"] = st.value().active_clips.front().clip;
+                meta["activeClipSource"] = st.value().active_clips.front().clip_source;
+            }
+        }
+        meta["weldOffset"] = std::to_string(state.held_attach_weld.offset[0]) + "," +
+            std::to_string(state.held_attach_weld.offset[1]) + "," +
+            std::to_string(state.held_attach_weld.offset[2]);
+        meta["weldEulerDeg"] = std::to_string(state.held_attach_weld.euler_deg[0]) + "," +
+            std::to_string(state.held_attach_weld.euler_deg[1]) + "," +
+            std::to_string(state.held_attach_weld.euler_deg[2]);
+        meta["weldScale"] = std::to_string(state.held_attach_weld.scale[0]) + "," +
+            std::to_string(state.held_attach_weld.scale[1]) + "," +
+            std::to_string(state.held_attach_weld.scale[2]);
+        return meta;
+    };
+
+    auto read_vec3 = [&](const char* key, std::array<float, 3>& out) -> bool {
+        if (!params.contains(key) || !params[key].is_array() || params[key].size() < 3) return false;
+        out[0] = params[key][0].get<float>();
+        out[1] = params[key][1].get<float>();
+        out[2] = params[key][2].get<float>();
+        return true;
+    };
+    auto read_vec4 = [&](const char* key, std::array<float, 4>& out) -> bool {
+        if (!params.contains(key) || !params[key].is_array() || params[key].size() < 4) return false;
+        out[0] = params[key][0].get<float>();
+        out[1] = params[key][1].get<float>();
+        out[2] = params[key][2].get<float>();
+        out[3] = params[key][3].get<float>();
+        return true;
+    };
+
+    if (kind.empty() || kind == "status") {
+        // Bare "status" is OK; empty kind with extra params almost always means a broken client
+        // call (args dropped) — fail closed so agents fix transport instead of scrubbing wrong.
+        if (kind.empty()) {
+            bool has_other_keys = false;
+            for (auto it = params.begin(); it != params.end(); ++it) {
+                if (it.key() == "kind") continue;
+                has_other_keys = true;
+                break;
+            }
+            if (has_other_keys) {
+                return make_err(ExitCode::InvalidArguments, "kind required", "ANIM-MCP-KIND",
+                    "animation_call received parameters without kind (or kind was empty)",
+                    "Pass kind: seek|upsert_key|upsert_keys|set_state|… at the top level of the tool arguments.");
+            }
+        }
+        (void)refresh_anim_studio_duration(state);
+        return make_ok("Animation Studio status", status_meta());
+    }
+
+    if (kind == "open") {
+        ensure_animation_tab();
+        const auto subject = params.value("subject", params.value("subjectPrefab", std::string{}));
+        const auto controller = params.value("controller", params.value("controllerPath", std::string{}));
+        if (!subject.empty()) state.anim_studio_subject_prefab = normalize_asset_path(subject);
+        if (!controller.empty()) state.anim_studio_controller_path = normalize_asset_path(controller);
+        if (!state.anim_studio_subject_prefab.empty()) (void)attach_anim_studio_subject(state);
+        const auto preview_state = params.value("state", params.value("stateName", std::string{}));
+        if (!preview_state.empty())
+            preview_anim_studio_state(state, preview_state, params.value("time", 0.0f), true);
+        state.anim_studio_status = "Animation Studio opened via MCP";
+        return make_ok("Animation Studio opened", status_meta());
+    }
+
+    if (kind == "set_subject") {
+        const auto subject = params.value("subject", params.value("subjectPrefab", std::string{}));
+        if (subject.empty())
+            return make_err(ExitCode::InvalidArguments, "subject required", "ANIM-MCP-SUBJECT",
+                "set_subject requires subject prefab path",
+                "Example: {\"kind\":\"set_subject\",\"subject\":\"assets/prefabs/Characters/player.prefab.json\"}");
+        ensure_animation_tab();
+        state.anim_studio_subject_prefab = normalize_asset_path(subject);
+        state.anim_studio_controller_path.clear();
+        (void)attach_anim_studio_subject(state);
+        return make_ok("Subject attached", status_meta());
+    }
+
+    if (kind == "set_controller") {
+        const auto controller = params.value("controller", params.value("controllerPath", std::string{}));
+        if (controller.empty())
+            return make_err(ExitCode::InvalidArguments, "controller required", "ANIM-MCP-CONTROLLER",
+                "set_controller requires controller path",
+                "Example: {\"kind\":\"set_controller\",\"controller\":\"assets/animators/player.animator.json\"}");
+        ensure_animation_tab();
+        state.anim_studio_controller_path = normalize_asset_path(controller);
+        (void)attach_anim_studio_subject(state);
+        return make_ok("Controller attached", status_meta());
+    }
+
+    if (kind == "set_state" || kind == "preview_state") {
+        const auto state_name = params.value("state", params.value("stateName", std::string{}));
+        if (state_name.empty())
+            return make_err(ExitCode::InvalidArguments, "state required", "ANIM-MCP-STATE",
+                "set_state requires state name", "Example: {\"kind\":\"set_state\",\"state\":\"idle\",\"time\":0}");
+        ensure_animation_tab();
+        preview_anim_studio_state(state, state_name, params.value("time", 0.0f),
+            !params.value("play", false));
+        if (params.value("play", false)) state.anim_studio_playing = true;
+        return make_ok("Preview state pinned", status_meta());
+    }
+
+    if (kind == "play") {
+        ensure_animation_tab();
+        std::string pin = state.anim_studio_request_state;
+        if (pin.empty()) {
+            if (const auto st = state.anim_studio_runtime.status(EditorState::k_anim_studio_entity_id)) {
+                if (!st.value().layers.empty()) pin = st.value().layers.front().state;
+            }
+        }
+        if (!pin.empty()) preview_anim_studio_state(state, pin, state.anim_studio_scrub, false);
+        state.anim_studio_playing = true;
+        return make_ok("Playing (solo preview)", status_meta());
+    }
+    if (kind == "pause") {
+        state.anim_studio_playing = false;
+        return make_ok("Paused", status_meta());
+    }
+    if (kind == "stop") {
+        state.anim_studio_playing = false;
+        (void)attach_anim_studio_subject(state);
+        return make_ok("Stopped / reattached", status_meta());
+    }
+    if (kind == "step") {
+        state.anim_studio_playing = false;
+        tick_anim_studio_preview(state, params.value("dt", 1.0f / 60.0f));
+        return make_ok("Stepped", status_meta());
+    }
+    if (kind == "seek") {
+        const float time = params.value("time", params.value("scrub", 0.0f));
+        std::string pin = params.value("state", state.anim_studio_request_state);
+        if (pin.empty()) {
+            if (const auto st = state.anim_studio_runtime.status(EditorState::k_anim_studio_entity_id)) {
+                if (!st.value().layers.empty()) pin = st.value().layers.front().state;
+            }
+        }
+        if (pin.empty())
+            return make_err(ExitCode::InvalidArguments, "no preview state", "ANIM-MCP-SEEK",
+                "seek needs an attached subject/state", "Call open/set_subject and set_state first.");
+        preview_anim_studio_state(state, pin, time, true);
+        return make_ok("Seeked", status_meta());
+    }
+
+    if (kind == "set_joint") {
+        auto joint = params.value("joint", params.value("jointName", std::string{}));
+        if (joint.empty())
+            return make_err(ExitCode::InvalidArguments, "joint required", "ANIM-MCP-JOINT",
+                "set_joint requires joint name", "Example: {\"kind\":\"set_joint\",\"joint\":\"RightHand\"}");
+        const auto source = params.value("source", params.value("jointSource", std::string{"subject"}));
+        // Accept skin names, display/visual names, or clip channel names (sagittal swaps for subject).
+        if (!state.anim_studio_armature.empty()) {
+            bool found = false;
+            for (const auto& entry : state.anim_studio_armature) {
+                if (entry.source != source) continue;
+                if (entry.name == joint ||
+                    anim_studio_display_joint_name(entry.name, entry.source) == joint) {
+                    joint = entry.name;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found && source != "held") {
+                const std::string flipped = sagittal_joint_name(joint);
+                for (const auto& entry : state.anim_studio_armature) {
+                    if (entry.source != source) continue;
+                    if (entry.name == flipped) {
+                        joint = entry.name;
+                        break;
+                    }
+                }
+            }
+        }
+        select_anim_studio_joint(state, joint, source);
+        return make_ok("Joint selected", status_meta());
+    }
+
+    if (kind == "list_joints") {
+        nlohmann::json joints = nlohmann::json::array();
+        for (const auto& entry : state.anim_studio_armature) {
+            const std::string display = anim_studio_display_joint_name(entry.name, entry.source);
+            joints.push_back({
+                {"name", entry.name},
+                {"displayName", display},
+                {"channelName", entry.source == "held" ? entry.name : display},
+                {"source", entry.source},
+                {"parentIndex", entry.parent_index},
+                {"x", entry.world.position[0]},
+                {"y", entry.world.position[1]},
+                {"z", entry.world.position[2]},
+            });
+        }
+        // Fallback when armature hasn't been sample-filled this frame (studio not open yet).
+        if (joints.empty()) {
+            for (const auto& name : state.test_skin_joint_names) {
+                const std::string display = anim_studio_display_joint_name(name, "subject");
+                joints.push_back({{"name", name}, {"displayName", display}, {"channelName", display},
+                    {"source", "subject"}, {"parentIndex", -1}});
+            }
+        }
+        auto meta = status_meta();
+        meta["jointCount"] = std::to_string(joints.size());
+        meta["joints"] = joints.dump();
+        return make_ok("Listed joints", std::move(meta));
+    }
+
+    if (kind == "set_skeleton" || kind == "set_skeleton_visible") {
+        if (params.contains("visible") || params.contains("enabled"))
+            state.anim_studio_skeleton_visible =
+                params.contains("visible") ? params["visible"].get<bool>() : params["enabled"].get<bool>();
+        if (params.contains("labels")) state.anim_studio_skeleton_labels = params["labels"].get<bool>();
+        return make_ok("Skeleton overlay updated", status_meta());
+    }
+
+    if (kind == "set_bone_gizmo") {
+        if (params.contains("enabled")) state.anim_studio_bone_gizmo_enabled = params["enabled"].get<bool>();
+        const auto op = params.value("op", params.value("operation", std::string{}));
+        if (op == "move" || op == "translate") state.anim_studio_bone_gizmo_op = ImGuizmo::TRANSLATE;
+        else if (op == "rotate") state.anim_studio_bone_gizmo_op = ImGuizmo::ROTATE;
+        else if (op == "scale") state.anim_studio_bone_gizmo_op = ImGuizmo::SCALE;
+        const auto mode = params.value("mode", std::string{});
+        if (mode == "world") state.anim_studio_bone_gizmo_mode = ImGuizmo::WORLD;
+        else if (mode == "local") state.anim_studio_bone_gizmo_mode = ImGuizmo::LOCAL;
+        if (state.anim_studio_bone_gizmo_enabled) state.held_attach_gizmo_enabled = false;
+        return make_ok("Bone gizmo updated", status_meta());
+    }
+
+    if (kind == "edit_clip" || kind == "ensure_clip") {
+        const auto source = normalize_asset_path(
+            params.value("clipSource", params.value("clip_source", state.anim_studio_edit_clip_source)));
+        const auto name = params.value("clipName", params.value("clip", state.anim_studio_edit_clip_name));
+        if (source.empty() || name.empty())
+            return make_err(ExitCode::InvalidArguments, "clipSource+clipName required", "ANIM-MCP-CLIP",
+                "edit_clip requires clipSource and clipName",
+                "Example: {\"kind\":\"edit_clip\",\"clipSource\":\"assets/models/player.gltf\",\"clipName\":\"Idle\"}");
+        // Always re-merge sidecars from disk so external polish / Save Override from another buffer
+        // is visible (library early-out used to keep a stale edit buffer).
+        ensure_animation_tab();
+        bind_anim_studio_clip_library(state);
+        const auto absolute = state.project_root / source;
+        (void)state.animation_clip_library.reload(absolute);
+        if (state.anim_studio_edit_clip_source == source && state.anim_studio_edit_clip_name == name)
+            clear_anim_studio_clip_edit(state);
+        if (!ensure_anim_studio_clip_edit(state, source, name))
+            return make_err(ExitCode::ValidationFailed, state.anim_studio_status, "ANIM-MCP-CLIP-LOAD",
+                state.anim_studio_status, "Confirm the glTF exports that clip name.");
+        (void)refresh_anim_studio_duration(state);
+        return make_ok("Clip ready for edit", status_meta());
+    }
+
+    if (kind == "set_duration" || kind == "set_clip_duration") {
+        if (!state.anim_studio_edit_clip)
+            return make_err(ExitCode::Unavailable, "No clip open", "ANIM-MCP-NO-CLIP",
+                "Open a clip before set_duration", "Call edit_clip or create_clip first.");
+        float duration = 0.0f;
+        if (params.contains("duration") && params["duration"].is_number())
+            duration = params["duration"].get<float>();
+        else if (params.contains("durationSeconds") && params["durationSeconds"].is_number())
+            duration = params["durationSeconds"].get<float>();
+        else if (params.contains("duration_seconds") && params["duration_seconds"].is_number())
+            duration = params["duration_seconds"].get<float>();
+        else
+            return make_err(ExitCode::InvalidArguments, "duration required", "ANIM-MCP-DURATION",
+                "set_duration requires duration > 0 (seconds)",
+                "Example: {\"kind\":\"set_duration\",\"duration\":2.5}");
+        if (!(duration > 0.0f))
+            return make_err(ExitCode::InvalidArguments, "duration must be > 0", "ANIM-MCP-DURATION",
+                "duration_seconds must be positive", "Pass duration as a float greater than zero.");
+        if (!set_anim_studio_edit_clip_duration(state, duration))
+            return make_err(ExitCode::InternalError, "Failed to set duration", "ANIM-MCP-DURATION-SET",
+                state.anim_studio_status.empty() ? "Could not apply duration" : state.anim_studio_status,
+                "Retry edit_clip then set_duration.");
+        return make_ok("Clip duration updated", status_meta());
+    }
+
+    if (kind == "create_clip") {
+        const auto source = normalize_asset_path(params.value("clipSource", params.value("clip_source", std::string{})));
+        auto name = params.value("clipName", params.value("clip", std::string{}));
+        if (source.empty() || name.empty())
+            return make_err(ExitCode::InvalidArguments, "clipSource+clipName required", "ANIM-MCP-CREATE",
+                "create_clip requires clipSource and clipName",
+                "Example: {\"kind\":\"create_clip\",\"clipSource\":\"assets/models/player.gltf\",\"clipName\":\"CustomIdle\",\"duration\":2}");
+        ensure_animation_tab();
+        bind_anim_studio_clip_library(state);
+        const auto absolute = state.project_root / source;
+        auto loaded = state.animation_clip_library.load(absolute);
+        if (!loaded || !loaded.value())
+            return make_err(ExitCode::ValidationFailed, "Failed to load clip source", "ANIM-MCP-CREATE-LOAD",
+                loaded ? "empty clip set" : loaded.error().message, "Bake/export the glTF first.");
+
+        AnimationClip clip;
+        const auto clone_from = params.value("cloneFrom", params.value("clone_from", std::string{}));
+        if (!clone_from.empty()) {
+            bool found = false;
+            for (const auto& existing : loaded.value()->clips) {
+                if (existing.name != clone_from) continue;
+                clip = existing;
+                clip.name = name;
+                found = true;
+                break;
+            }
+            if (!found)
+                return make_err(ExitCode::ValidationFailed, "cloneFrom missing", "ANIM-MCP-CLONE",
+                    "Clip '" + clone_from + "' not found in " + source, "Pass an existing clip name.");
+        } else {
+            clip.name = name;
+            clip.duration_seconds = std::max(0.01f, params.value("duration", 1.0f));
+            std::vector<std::string> joints;
+            if (params.contains("joints") && params["joints"].is_array()) {
+                for (const auto& j : params["joints"])
+                    if (j.is_string()) joints.push_back(j.get<std::string>());
+            }
+            if (joints.empty()) joints = state.test_skin_joint_names;
+            if (joints.empty()) joints.push_back("Hips");
+            for (const auto& joint : joints) {
+                AnimationClipChannel tr;
+                tr.target_node_name = joint;
+                tr.path = AnimationChannelPath::Translation;
+                tr.interpolation = AnimationInterpolationMode::Linear;
+                tr.times = {0.0f, clip.duration_seconds};
+                tr.values = {0, 0, 0, 0, 0, 0};
+                AnimationClipChannel rot;
+                rot.target_node_name = joint;
+                rot.path = AnimationChannelPath::Rotation;
+                rot.interpolation = AnimationInterpolationMode::Linear;
+                rot.times = {0.0f, clip.duration_seconds};
+                rot.values = {0, 0, 0, 1, 0, 0, 0, 1};
+                AnimationClipChannel sc;
+                sc.target_node_name = joint;
+                sc.path = AnimationChannelPath::Scale;
+                sc.interpolation = AnimationInterpolationMode::Linear;
+                sc.times = {0.0f, clip.duration_seconds};
+                sc.values = {1, 1, 1, 1, 1, 1};
+                clip.channels.push_back(std::move(tr));
+                clip.channels.push_back(std::move(rot));
+                clip.channels.push_back(std::move(sc));
+            }
+        }
+        if (params.contains("duration") && params["duration"].is_number())
+            clip.duration_seconds = std::max(0.01f, params["duration"].get<float>());
+
+        auto asset = AnimationClipOverrideAsset::from_clip(source, clip);
+        const auto sidecar = animation_clip_override_path(absolute, name);
+        const auto saved = asset.save_atomic(sidecar);
+        if (!saved)
+            return make_err(ExitCode::InternalError, saved.error().message, saved.error().code,
+                saved.error().message, "Check write permissions next to the glTF.");
+        (void)state.animation_clip_library.replace_clip(absolute, clip);
+        (void)ensure_anim_studio_clip_edit(state, source, name);
+        state.anim_studio_clip_dirty = false;
+        state.anim_studio_status = "Created clip override " + sidecar.filename().string();
+        auto meta = status_meta();
+        meta["sidecar"] = sidecar.generic_string();
+        meta["created"] = "true";
+        return make_ok("Clip created (override sidecar)", std::move(meta));
+    }
+
+    if (kind == "create_state") {
+        const auto state_name = params.value("state", params.value("stateName", std::string{}));
+        const auto source = normalize_asset_path(params.value("clipSource", params.value("clip_source", std::string{})));
+        const auto clip_name = params.value("clipName", params.value("clip", std::string{}));
+        if (state_name.empty() || source.empty() || clip_name.empty())
+            return make_err(ExitCode::InvalidArguments, "state+clipSource+clipName required", "ANIM-MCP-STATE-CREATE",
+                "create_state requires state, clipSource, and clipName",
+                "Example: {\"kind\":\"create_state\",\"state\":\"flourish\",\"clipSource\":\"assets/models/player.gltf\",\"clipName\":\"Flourish\",\"loop\":false}");
+        if (!state.anim_studio_controller_asset && !reload_anim_studio_controller_asset(state))
+            return make_err(ExitCode::Unavailable, "No controller loaded", "ANIM-MCP-CTRL",
+                "Attach a subject/controller first", "Call open/set_controller before create_state.");
+        auto& controller = *state.anim_studio_controller_asset;
+        if (controller.layers.empty())
+            return make_err(ExitCode::ValidationFailed, "Controller has no layers", "ANIM-MCP-LAYER",
+                "Animator controller missing layers", "Fix the .animator.json.");
+        const auto layer_name = params.value("layer", std::string{"base"});
+        AnimatorLayerDef* layer = nullptr;
+        for (auto& candidate : controller.layers) {
+            if (candidate.name == layer_name || layer_name.empty()) {
+                layer = &candidate;
+                break;
+            }
+        }
+        if (!layer) layer = &controller.layers.front();
+        for (const auto& existing : layer->states) {
+            if (existing.name == state_name)
+                return make_err(ExitCode::ValidationFailed, "State already exists", "ANIM-MCP-STATE-EXISTS",
+                    "State '" + state_name + "' already on layer " + layer->name, "Use set_state or pick a new name.");
+        }
+        AnimatorStateDef created;
+        created.name = state_name;
+        created.motion.type = AnimatorMotionType::Clip;
+        created.motion.clip.clip_source = source;
+        created.motion.clip.clip = clip_name;
+        created.motion.clip.loop = params.value("loop", false);
+        layer->states.push_back(std::move(created));
+        state.anim_studio_events_dirty = true;
+        const auto validated = controller.validate();
+        if (!validated)
+            return make_err(ExitCode::ValidationFailed, validated.error().message, validated.error().code,
+                validated.error().message, "Fix controller fields and retry.");
+        const bool save_now = params.value("save", true);
+        if (save_now) {
+            const auto saved = controller.save_atomic(state.project_root / state.anim_studio_controller_path);
+            if (!saved)
+                return make_err(ExitCode::InternalError, saved.error().message, saved.error().code,
+                    saved.error().message, "Check controller path permissions.");
+            state.anim_studio_events_dirty = false;
+            (void)attach_anim_studio_subject(state);
+        }
+        preview_anim_studio_state(state, state_name, 0.0f, true);
+        auto meta = status_meta();
+        meta["createdState"] = state_name;
+        meta["layer"] = layer->name;
+        return make_ok(save_now ? "Controller state created and saved" : "Controller state created (unsaved)",
+            std::move(meta));
+    }
+
+    // Apply one key into the open edit clip. Prefer explicit params.joint over the last
+    // Studio selection so batch MCP polish can target different bones without set_joint each time.
+    auto apply_upsert_key_params = [&](const nlohmann::json& key_params, float& out_time)
+        -> std::optional<EditorBridgeResponse> {
+        if (!state.anim_studio_edit_clip)
+            return make_err(ExitCode::Unavailable, "No clip open", "ANIM-MCP-NO-CLIP",
+                "Open a clip before upsert_key", "Call edit_clip or create_clip first.");
+        if (key_params.contains("joint") && key_params["joint"].is_string()) {
+            const auto joint = key_params["joint"].get<std::string>();
+            if (!joint.empty()) state.anim_studio_edit_joint = joint;
+        }
+        if (state.anim_studio_edit_joint.empty())
+            return make_err(ExitCode::InvalidArguments, "joint required", "ANIM-MCP-KEY-JOINT",
+                "upsert_key needs a selected joint", "Call set_joint or pass joint.");
+        auto path_name = key_params.value("path", key_params.value("channel", std::string{"translation"}));
+        std::transform(path_name.begin(), path_name.end(), path_name.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        AnimationChannelPath path = AnimationChannelPath::Translation;
+        if (path_name == "rotation" || path_name == "rot") path = AnimationChannelPath::Rotation;
+        else if (path_name == "scale") path = AnimationChannelPath::Scale;
+        state.anim_studio_edit_path = path == AnimationChannelPath::Rotation ? 1
+            : (path == AnimationChannelPath::Scale ? 2 : 0);
+        AnimationClipChannel* channel = ensure_anim_studio_channel(state, path);
+        if (!channel)
+            return make_err(ExitCode::InternalError, "Failed to ensure channel", "ANIM-MCP-CHANNEL",
+                "Could not create channel", "Retry after edit_clip.");
+        const float time = key_params.value("time", state.anim_studio_scrub);
+        out_time = time;
+        if (path == AnimationChannelPath::Rotation) {
+            std::array<float, 4> values{0, 0, 0, 1};
+            auto read_vec4_local = [&](const char* key, std::array<float, 4>& out) {
+                if (!key_params.contains(key) || !key_params[key].is_array() || key_params[key].size() < 4)
+                    return false;
+                for (int i = 0; i < 4; ++i) out[static_cast<size_t>(i)] = key_params[key][i].get<float>();
+                return true;
+            };
+            if (!read_vec4_local("values", values) && !read_vec4_local("value", values)) {
+                // Optional local XYZ euler degrees → quaternion (xyzw), agent-friendly authoring.
+                if (key_params.contains("eulerDeg") && key_params["eulerDeg"].is_array()
+                    && key_params["eulerDeg"].size() >= 3) {
+                    const float rx = key_params["eulerDeg"][0].get<float>() * (3.14159265358979323846f / 180.0f);
+                    const float ry = key_params["eulerDeg"][1].get<float>() * (3.14159265358979323846f / 180.0f);
+                    const float rz = key_params["eulerDeg"][2].get<float>() * (3.14159265358979323846f / 180.0f);
+                    const float cx = std::cos(rx * 0.5f);
+                    const float sx = std::sin(rx * 0.5f);
+                    const float cy = std::cos(ry * 0.5f);
+                    const float sy = std::sin(ry * 0.5f);
+                    const float cz = std::cos(rz * 0.5f);
+                    const float sz = std::sin(rz * 0.5f);
+                    values = {
+                        sx * cy * cz - cx * sy * sz,
+                        cx * sy * cz + sx * cy * sz,
+                        cx * cy * sz - sx * sy * cz,
+                        cx * cy * cz + sx * sy * sz,
+                    };
+                    const float n = std::sqrt(values[0] * values[0] + values[1] * values[1]
+                        + values[2] * values[2] + values[3] * values[3]);
+                    if (n > 1e-8f) {
+                        values[0] /= n;
+                        values[1] /= n;
+                        values[2] /= n;
+                        values[3] /= n;
+                    }
+                } else {
+                    return make_err(ExitCode::InvalidArguments, "values[4] required", "ANIM-MCP-KEY-VAL",
+                        "rotation upsert_key needs values:[x,y,z,w] or eulerDeg:[x,y,z]",
+                        "Pass quaternion xyzw or local XYZ euler degrees.");
+                }
+            }
+            state.anim_studio_edit_key_index = upsert_anim_studio_key(*channel, time, values.data(), 4);
+        } else {
+            std::array<float, 3> values = path == AnimationChannelPath::Scale
+                ? std::array<float, 3>{1, 1, 1}
+                : std::array<float, 3>{0, 0, 0};
+            auto read_vec3_local = [&](const char* key, std::array<float, 3>& out) {
+                if (!key_params.contains(key) || !key_params[key].is_array() || key_params[key].size() < 3)
+                    return false;
+                for (int i = 0; i < 3; ++i) out[static_cast<size_t>(i)] = key_params[key][i].get<float>();
+                return true;
+            };
+            if (!read_vec3_local("values", values) && !read_vec3_local("value", values))
+                return make_err(ExitCode::InvalidArguments, "values[3] required", "ANIM-MCP-KEY-VAL",
+                    "translation/scale upsert_key needs values:[x,y,z]", "Pass a vec3.");
+            state.anim_studio_edit_key_index = upsert_anim_studio_key(*channel, time, values.data(), 3);
+        }
+        state.anim_studio_edit_clip->duration_seconds =
+            std::max(state.anim_studio_edit_clip->duration_seconds, time);
+        return std::nullopt;
+    };
+
+    if (kind == "upsert_key") {
+        float time = state.anim_studio_scrub;
+        if (auto err = apply_upsert_key_params(params, time)) return *err;
+        state.anim_studio_clip_dirty = true;
+        (void)push_anim_studio_clip_to_library(state);
+        if (!state.anim_studio_request_state.empty())
+            preview_anim_studio_state(state, state.anim_studio_request_state, time, true);
+        else {
+            state.anim_studio_scrub = time;
+            bind_anim_studio_clip_library(state);
+            (void)state.anim_studio_runtime.seek(EditorState::k_anim_studio_entity_id, time);
+            state.anim_studio_scrub_prev = time;
+        }
+        auto meta = status_meta();
+        meta["keyIndex"] = std::to_string(state.anim_studio_edit_key_index);
+        meta["path"] = params.value("path", params.value("channel", std::string{"rotation"}));
+        meta["joint"] = state.anim_studio_edit_joint;
+        return make_ok("Keyframe upserted", std::move(meta));
+    }
+
+    if (kind == "upsert_keys") {
+        if (!state.anim_studio_edit_clip)
+            return make_err(ExitCode::Unavailable, "No clip open", "ANIM-MCP-NO-CLIP",
+                "Open a clip before upsert_keys", "Call edit_clip or create_clip first.");
+        if (!params.contains("keys") || !params["keys"].is_array() || params["keys"].empty())
+            return make_err(ExitCode::InvalidArguments, "keys[] required", "ANIM-MCP-KEYS",
+                "upsert_keys needs keys:[{joint,path,time,values|eulerDeg},...]",
+                "Pass a non-empty keys array.");
+        float last_time = state.anim_studio_scrub;
+        int applied = 0;
+        for (const auto& key : params["keys"]) {
+            if (!key.is_object())
+                return make_err(ExitCode::InvalidArguments, "keys entry must be object", "ANIM-MCP-KEYS-ITEM",
+                    "Each keys[] item is an upsert_key payload", "Use joint/path/time/values.");
+            float t = last_time;
+            if (auto err = apply_upsert_key_params(key, t)) return *err;
+            last_time = t;
+            ++applied;
+        }
+        state.anim_studio_clip_dirty = true;
+        (void)push_anim_studio_clip_to_library(state);
+        if (!state.anim_studio_request_state.empty())
+            preview_anim_studio_state(state, state.anim_studio_request_state, last_time, true);
+        else {
+            state.anim_studio_scrub = last_time;
+            bind_anim_studio_clip_library(state);
+            (void)state.anim_studio_runtime.seek(EditorState::k_anim_studio_entity_id, last_time);
+            state.anim_studio_scrub_prev = last_time;
+        }
+        auto meta = status_meta();
+        meta["keysApplied"] = std::to_string(applied);
+        meta["joint"] = state.anim_studio_edit_joint;
+        return make_ok("Keyframes upserted", std::move(meta));
+    }
+
+    if (kind == "delete_key") {
+        AnimationClipChannel* channel = find_anim_studio_edit_channel(state);
+        if (!channel)
+            return make_err(ExitCode::Unavailable, "No channel", "ANIM-MCP-DEL",
+                "No edit channel selected", "set_joint + edit_clip first.");
+        int key = params.value("keyIndex", state.anim_studio_edit_key_index);
+        if (params.contains("time") && params["time"].is_number())
+            key = nearest_anim_studio_key_index(*channel, params["time"].get<float>());
+        if (key < 0 || key >= static_cast<int>(channel->times.size()) || channel->times.size() <= 1)
+            return make_err(ExitCode::InvalidArguments, "Cannot delete key", "ANIM-MCP-DEL-KEY",
+                "Invalid key index or last key", "Pass keyIndex or time; keep at least one key.");
+        const int components = channel->path == AnimationChannelPath::Rotation ? 4 : 3;
+        channel->times.erase(channel->times.begin() + key);
+        channel->values.erase(channel->values.begin() + key * components,
+            channel->values.begin() + (key + 1) * components);
+        state.anim_studio_edit_key_index = std::min(key, static_cast<int>(channel->times.size()) - 1);
+        state.anim_studio_clip_dirty = true;
+        (void)push_anim_studio_clip_to_library(state);
+        return make_ok("Keyframe deleted", status_meta());
+    }
+
+    if (kind == "copy_keys" || kind == "copy_key") {
+        const bool tracks = params.value("tracks", false)
+            || params.value("mode", std::string{}) == "tracks"
+            || params.value("mode", std::string{}) == "track";
+        if (!copy_anim_studio_keys(state, tracks))
+            return make_err(ExitCode::Unavailable, "Nothing to copy", "ANIM-MCP-COPY",
+                "No T/R/S keys on the selected joint", "set_joint and ensure the clip has channels.");
+        auto meta = status_meta();
+        meta["clipboardKeys"] = std::to_string(state.anim_studio_key_clipboard.keys.size());
+        meta["clipboardTracks"] = state.anim_studio_key_clipboard.tracks ? "1" : "0";
+        meta["clipboardAnchor"] = std::to_string(state.anim_studio_key_clipboard.anchor_time);
+        meta["clipboardJoint"] = state.anim_studio_key_clipboard.source_display_joint;
+        return make_ok(tracks ? "Copied joint track keys" : "Copied TRS slice", std::move(meta));
+    }
+
+    if (kind == "paste_keys" || kind == "paste_key") {
+        if (params.contains("time") && params["time"].is_number())
+            state.anim_studio_scrub = std::max(0.0f, params["time"].get<float>());
+        if (!paste_anim_studio_keys(state))
+            return make_err(ExitCode::Unavailable, "Paste failed", "ANIM-MCP-PASTE",
+                "Clipboard empty or no joint/clip open", "copy_keys first, then set_joint + scrub time.");
+        auto meta = status_meta();
+        meta["clipboardKeys"] = std::to_string(state.anim_studio_key_clipboard.keys.size());
+        meta["scrub"] = std::to_string(state.anim_studio_scrub);
+        return make_ok("Pasted keys at scrub", std::move(meta));
+    }
+
+    if (kind == "save_override") {
+        if (!state.anim_studio_edit_clip)
+            return make_err(ExitCode::Unavailable, "No clip", "ANIM-MCP-SAVE", "No clip open", "edit_clip first.");
+        auto asset = AnimationClipOverrideAsset::from_clip(state.anim_studio_edit_clip_source,
+            *state.anim_studio_edit_clip);
+        const auto path = animation_clip_override_path(
+            state.project_root / state.anim_studio_edit_clip_source, state.anim_studio_edit_clip_name);
+        const auto saved = asset.save_atomic(path);
+        if (!saved)
+            return make_err(ExitCode::InternalError, saved.error().message, saved.error().code,
+                saved.error().message, "Check disk permissions.");
+        state.anim_studio_clip_dirty = false;
+        (void)state.animation_clip_library.reload(state.project_root / state.anim_studio_edit_clip_source);
+        // Reload drops the in-memory edit buffer; reopen so override-only clips (BowShoot, …) stay editable.
+        clear_anim_studio_clip_edit(state);
+        (void)ensure_anim_studio_clip_edit(state, asset.clip_source, asset.clip_name);
+        auto meta = status_meta();
+        meta["sidecar"] = path.generic_string();
+        return make_ok("Override saved", std::move(meta));
+    }
+
+    if (kind == "sync_gltf" || kind == "sync_to_source") {
+        if (!state.anim_studio_edit_clip)
+            return make_err(ExitCode::Unavailable, "No clip", "ANIM-MCP-SYNC", "No clip open", "edit_clip first.");
+        auto asset = AnimationClipOverrideAsset::from_clip(state.anim_studio_edit_clip_source,
+            *state.anim_studio_edit_clip);
+        const auto ov_path = animation_clip_override_path(
+            state.project_root / state.anim_studio_edit_clip_source, state.anim_studio_edit_clip_name);
+        (void)asset.save_atomic(ov_path);
+        const auto synced = sync_animation_clip_override_to_gltf(
+            state.project_root / state.anim_studio_edit_clip_source, asset);
+        if (!synced)
+            return make_err(ExitCode::ValidationFailed, synced.error().message, synced.error().code,
+                synced.error().message, "Use .gltf (not .glb) sources for Sync.");
+        state.anim_studio_clip_dirty = false;
+        (void)state.animation_clip_library.reload(state.project_root / state.anim_studio_edit_clip_source);
+        (void)ensure_anim_studio_clip_edit(state, state.anim_studio_edit_clip_source, state.anim_studio_edit_clip_name);
+        return make_ok("Synced override into glTF", status_meta());
+    }
+
+    if (kind == "replace_from_source") {
+        if (state.anim_studio_edit_clip_source.empty() || state.anim_studio_edit_clip_name.empty())
+            return make_err(ExitCode::Unavailable, "No clip", "ANIM-MCP-REPLACE", "No clip open", "edit_clip first.");
+        const auto sidecar = animation_clip_override_path(
+            state.project_root / state.anim_studio_edit_clip_source, state.anim_studio_edit_clip_name);
+        std::error_code ec;
+        std::filesystem::remove(sidecar, ec);
+        (void)state.animation_clip_library.reload(state.project_root / state.anim_studio_edit_clip_source);
+        clear_anim_studio_clip_edit(state);
+        return make_ok("Override removed; sampling glTF source", status_meta());
+    }
+
+    if (kind == "list_events") {
+        if (!state.anim_studio_controller_asset && !reload_anim_studio_controller_asset(state))
+            return make_err(ExitCode::Unavailable, "No controller", "ANIM-MCP-EVENTS",
+                "No controller loaded", "open/set_controller first.");
+        std::string rows;
+        for (std::size_t i = 0; i < state.anim_studio_controller_asset->timeline_events.size(); ++i) {
+            const auto& event = state.anim_studio_controller_asset->timeline_events[i];
+            if (!rows.empty()) rows += '|';
+            rows += std::to_string(i) + ':' + event.state + '@' + std::to_string(event.time) + ':' + event.name;
+        }
+        auto meta = status_meta();
+        meta["events"] = rows;
+        meta["eventCount"] = std::to_string(state.anim_studio_controller_asset->timeline_events.size());
+        return make_ok("Timeline events listed", std::move(meta));
+    }
+
+    if (kind == "add_event") {
+        if (!state.anim_studio_controller_asset)
+            return make_err(ExitCode::Unavailable, "No controller", "ANIM-MCP-ADD-EVENT",
+                "No controller loaded", "open/set_controller first.");
+        AnimatorTimelineEvent created;
+        created.state = params.value("state",
+            state.anim_studio_request_state.empty() ? "idle" : state.anim_studio_request_state);
+        created.time = params.value("time", state.anim_studio_scrub);
+        created.name = params.value("name", std::string{"footstep"});
+        created.layer = params.value("layer", std::string{"base"});
+        created.payload_json = params.value("payload", params.value("payloadJson", std::string{"{}"}));
+        if (params.contains("particle") && params["particle"].is_string())
+            created.payload_json = merge_particle_into_payload(created.payload_json, params["particle"].get<std::string>());
+        state.anim_studio_controller_asset->timeline_events.push_back(std::move(created));
+        state.anim_studio_selected_event =
+            static_cast<int>(state.anim_studio_controller_asset->timeline_events.size()) - 1;
+        state.anim_studio_events_dirty = true;
+        preview_anim_studio_state(state,
+            state.anim_studio_controller_asset->timeline_events.back().state,
+            state.anim_studio_controller_asset->timeline_events.back().time, true);
+        return make_ok("Timeline event added", status_meta());
+    }
+
+    if (kind == "update_event") {
+        if (!state.anim_studio_controller_asset)
+            return make_err(ExitCode::Unavailable, "No controller", "ANIM-MCP-UPD-EVENT",
+                "No controller loaded", "open/set_controller first.");
+        int index = params.value("index", state.anim_studio_selected_event);
+        auto& events = state.anim_studio_controller_asset->timeline_events;
+        if (index < 0 || index >= static_cast<int>(events.size()))
+            return make_err(ExitCode::InvalidArguments, "Bad event index", "ANIM-MCP-EVENT-INDEX",
+                "Pass index of an existing timeline event", "Call list_events first.");
+        auto& event = events[static_cast<std::size_t>(index)];
+        if (params.contains("state")) event.state = params["state"].get<std::string>();
+        if (params.contains("time")) event.time = params["time"].get<float>();
+        if (params.contains("name")) event.name = params["name"].get<std::string>();
+        if (params.contains("layer")) event.layer = params["layer"].get<std::string>();
+        if (params.contains("payload") || params.contains("payloadJson"))
+            event.payload_json = params.value("payload", params.value("payloadJson", event.payload_json));
+        if (params.contains("particle") && params["particle"].is_string())
+            event.payload_json = merge_particle_into_payload(event.payload_json, params["particle"].get<std::string>());
+        state.anim_studio_selected_event = index;
+        state.anim_studio_events_dirty = true;
+        preview_anim_studio_state(state, event.state, event.time, true);
+        return make_ok("Timeline event updated", status_meta());
+    }
+
+    if (kind == "remove_event") {
+        if (!state.anim_studio_controller_asset)
+            return make_err(ExitCode::Unavailable, "No controller", "ANIM-MCP-RM-EVENT",
+                "No controller loaded", "open/set_controller first.");
+        int index = params.value("index", state.anim_studio_selected_event);
+        auto& events = state.anim_studio_controller_asset->timeline_events;
+        if (index < 0 || index >= static_cast<int>(events.size()))
+            return make_err(ExitCode::InvalidArguments, "Bad event index", "ANIM-MCP-EVENT-INDEX",
+                "Pass index of an existing timeline event", "Call list_events first.");
+        events.erase(events.begin() + index);
+        state.anim_studio_selected_event = -1;
+        state.anim_studio_events_dirty = true;
+        return make_ok("Timeline event removed", status_meta());
+    }
+
+    if (kind == "save_events" || kind == "save_controller") {
+        if (!state.anim_studio_controller_asset)
+            return make_err(ExitCode::Unavailable, "No controller", "ANIM-MCP-SAVE-CTRL",
+                "No controller loaded", "open/set_controller first.");
+        const auto validated = state.anim_studio_controller_asset->validate();
+        if (!validated)
+            return make_err(ExitCode::ValidationFailed, validated.error().message, validated.error().code,
+                validated.error().message, "Fix timelineEvents / states.");
+        const auto saved = state.anim_studio_controller_asset->save_atomic(
+            state.project_root / state.anim_studio_controller_path);
+        if (!saved)
+            return make_err(ExitCode::InternalError, saved.error().message, saved.error().code,
+                saved.error().message, "Check controller path permissions.");
+        state.anim_studio_events_dirty = false;
+        (void)attach_anim_studio_subject(state);
+        return make_ok("Controller saved", status_meta());
+    }
+
+    if (kind == "set_held") {
+        const auto item_id = params.value("itemId", params.value("item_id", std::string{}));
+        ensure_animation_tab();
+        if (item_id.empty()) {
+            state.anim_studio_held_item_id.clear();
+            state.held_attach_item_id.clear();
+            state.held_attach_dirty = false;
+            return make_ok("Held item cleared", status_meta());
+        }
+        const ItemDef* def = resolve_item_def(state, item_id);
+        if (!def)
+            return make_err(ExitCode::ValidationFailed, "Unknown item", "ANIM-MCP-ITEM",
+                "itemId not in catalog", "Pass a catalog id with worldMesh.");
+        state.anim_studio_held_item_id = item_id;
+        state.held_attach_item_id = item_id;
+        state.held_attach_weld = weld_from_item_hand_attach(def->hand_attach);
+        state.held_attach_dirty = false;
+        return make_ok("Held item set", status_meta());
+    }
+
+    if (kind == "get_weld") {
+        return make_ok("Current weld", status_meta());
+    }
+
+    if (kind == "set_weld") {
+        if (params.contains("joint") && params["joint"].is_string())
+            state.held_attach_weld.joint = params["joint"].get<std::string>();
+        (void)read_vec3("offset", state.held_attach_weld.offset);
+        (void)read_vec3("eulerDeg", state.held_attach_weld.euler_deg);
+        if (!params.contains("eulerDeg")) (void)read_vec3("euler", state.held_attach_weld.euler_deg);
+        (void)read_vec3("scale", state.held_attach_weld.scale);
+        state.held_attach_dirty = true;
+        if (params.value("enableGizmo", false)) {
+            state.held_attach_gizmo_enabled = true;
+            state.anim_studio_bone_gizmo_enabled = false;
+        }
+        return make_ok("Weld updated", status_meta());
+    }
+
+    if (kind == "set_weld_gizmo") {
+        if (params.contains("enabled")) state.held_attach_gizmo_enabled = params["enabled"].get<bool>();
+        if (state.held_attach_gizmo_enabled) state.anim_studio_bone_gizmo_enabled = false;
+        const auto op = params.value("op", params.value("operation", std::string{}));
+        if (op == "move" || op == "translate") state.held_attach_gizmo_operation = ImGuizmo::TRANSLATE;
+        else if (op == "rotate") state.held_attach_gizmo_operation = ImGuizmo::ROTATE;
+        else if (op == "scale") state.held_attach_gizmo_operation = ImGuizmo::SCALE;
+        return make_ok("Weld gizmo updated", status_meta());
+    }
+
+    if (kind == "save_weld") {
+        const auto item_id = params.value("itemId",
+            state.anim_studio_held_item_id.empty() ? state.held_attach_item_id : state.anim_studio_held_item_id);
+        if (item_id.empty())
+            return make_err(ExitCode::InvalidArguments, "itemId required", "ANIM-MCP-WELD-SAVE",
+                "save_weld needs a held/item id", "Call set_held first.");
+        ItemDef* mutable_def = nullptr;
+        if (state.item_catalog) {
+            for (auto& def : state.item_catalog->entities) {
+                if (def.id == item_id) {
+                    mutable_def = &def;
+                    break;
+                }
+            }
+        }
+        if (!mutable_def)
+            return make_err(ExitCode::ValidationFailed, "Item not mutable", "ANIM-MCP-WELD-ITEM",
+                "Item not found in live catalog", "Reload items / confirm id.");
+        mutable_def->hand_attach.joint = state.held_attach_weld.joint;
+        mutable_def->hand_attach.grip_offset = state.held_attach_weld.offset;
+        mutable_def->hand_attach.grip_euler_deg = state.held_attach_weld.euler_deg;
+        mutable_def->hand_attach.grip_scale = state.held_attach_weld.scale;
+        const auto saved = save_item_hand_attach(state.project_root, *mutable_def);
+        if (!saved)
+            return make_err(ExitCode::InternalError, saved.error().message, saved.error().code,
+                saved.error().message, "Check assets/items write permissions.");
+        state.held_attach_dirty = false;
+        auto meta = status_meta();
+        meta["itemId"] = item_id;
+        meta["saved"] = "true";
+        return make_ok("handAttach saved", std::move(meta));
+    }
+
+    return make_err(ExitCode::InvalidArguments, "Unknown animation_call kind", "ANIM-MCP-KIND",
+        "Unsupported kind: " + kind,
+        "Use status, open, set_subject, set_controller, set_state, play, pause, stop, step, seek, set_joint, "
+        "list_joints, set_skeleton, set_bone_gizmo, create_clip, create_state, edit_clip, set_duration, "
+        "upsert_key, upsert_keys, delete_key, copy_keys, paste_keys, save_override, sync_gltf, "
+        "replace_from_source, list_events, add_event, update_event, remove_event, save_events, set_held, get_weld, "
+        "set_weld, set_weld_gizmo, save_weld.");
+}
+
+
+void clear_anim_studio_clip_edit(EditorState& state) {
+    state.anim_studio_edit_clip_source.clear();
+    state.anim_studio_edit_clip_name.clear();
+    state.anim_studio_edit_joint.clear();
+    state.anim_studio_edit_joint_source = "subject";
+    state.anim_studio_edit_path = 0;
+    state.anim_studio_edit_key_index = -1;
+    state.anim_studio_edit_clip.reset();
+    state.anim_studio_clip_dirty = false;
+}
+
+bool ensure_anim_studio_clip_edit(EditorState& state, const std::string& clip_source,
+    const std::string& clip_name) {
+    if (clip_source.empty() || clip_name.empty()) return false;
+    if (state.anim_studio_edit_clip && state.anim_studio_edit_clip_source == clip_source &&
+        state.anim_studio_edit_clip_name == clip_name)
+        return true;
+    bind_anim_studio_clip_library(state);
+    const auto absolute = state.project_root / clip_source;
+    auto loaded = state.animation_clip_library.get(absolute);
+    if (!loaded) loaded = state.animation_clip_library.load(absolute);
+    if (!loaded || !loaded.value()) return false;
+    for (const auto& clip : loaded.value()->clips) {
+        if (clip.name != clip_name) continue;
+        state.anim_studio_edit_clip = clip;
+        state.anim_studio_edit_clip_source = clip_source;
+        state.anim_studio_edit_clip_name = clip_name;
+        state.anim_studio_clip_dirty = false;
+        state.anim_studio_edit_key_index = -1;
+        if (state.anim_studio_edit_joint.empty() && !state.test_skin_joint_names.empty())
+            state.anim_studio_edit_joint = state.test_skin_joint_names.front();
+        return true;
+    }
+    return false;
+}
+
+/// Subject character clips sample with RH→LH remapping: skin joint `Left*` is driven by clip channel
+/// `Right*` (and each local pose is reflected). Held weapon clips are not remapped.
+bool anim_studio_subject_uses_sagittal_channels(const EditorState& state) {
+    return state.anim_studio_edit_joint_source != "held";
+}
+
+std::string anim_studio_clip_channel_joint_name(const EditorState& state) {
+    if (state.anim_studio_edit_joint.empty()) return {};
+    if (!anim_studio_subject_uses_sagittal_channels(state)) return state.anim_studio_edit_joint;
+    return sagittal_joint_name(state.anim_studio_edit_joint);
+}
+
+/// What authors should see as the bone name (matches visual left/right + clip channel names).
+std::string anim_studio_display_joint_name(const std::string& skin_joint, const std::string& source) {
+    if (source == "held" || skin_joint.empty()) return skin_joint;
+    return sagittal_joint_name(skin_joint);
+}
+
+TransformComponent reflect_transform_across_x(const TransformComponent& transform) {
+    TransformComponent out = transform;
+    out.position[0] = -out.position[0];
+    out.rotation = {out.rotation[0], -out.rotation[1], -out.rotation[2], out.rotation[3]};
+    return out;
+}
+
+AnimationClipChannel* find_anim_studio_edit_channel(EditorState& state) {
+    if (!state.anim_studio_edit_clip || state.anim_studio_edit_joint.empty()) return nullptr;
+    const AnimationChannelPath path = state.anim_studio_edit_path == 1
+        ? AnimationChannelPath::Rotation
+        : (state.anim_studio_edit_path == 2 ? AnimationChannelPath::Scale
+                                           : AnimationChannelPath::Translation);
+    // Player subject: skin joints are RH/LH flipped vs clip channel names (and vs author expectation).
+    const std::string channel_joint = anim_studio_clip_channel_joint_name(state);
+    for (auto& channel : state.anim_studio_edit_clip->channels) {
+        if (channel.target_node_name == channel_joint && channel.path == path)
+            return &channel;
+    }
+    return nullptr;
+}
+
+int nearest_anim_studio_key_index(const AnimationClipChannel& channel, float time_seconds) {
+    if (channel.times.empty()) return -1;
+    int best = 0;
+    float best_dist = std::abs(channel.times[0] - time_seconds);
+    for (int i = 1; i < static_cast<int>(channel.times.size()); ++i) {
+        const float dist = std::abs(channel.times[static_cast<size_t>(i)] - time_seconds);
+        if (dist < best_dist) {
+            best = i;
+            best_dist = dist;
+        }
+    }
+    return best;
+}
+
+bool push_anim_studio_clip_to_library(EditorState& state) {
+    if (!state.anim_studio_edit_clip || state.anim_studio_edit_clip_source.empty()) return false;
+    bind_anim_studio_clip_library(state);
+    const auto absolute = state.project_root / state.anim_studio_edit_clip_source;
+    // Live keys need a loaded slot; held draw clips may only enter the library after select.
+    if (!state.animation_clip_library.get(absolute))
+        (void)state.animation_clip_library.load(absolute);
+    auto replaced = state.animation_clip_library.replace_clip(absolute, *state.anim_studio_edit_clip);
+    if (!replaced) {
+        state.anim_studio_status = "Clip push failed: " + replaced.error().message;
+        return false;
+    }
+    return true;
+}
+
+void trim_anim_studio_channel_keys_after(AnimationClipChannel& channel, float max_time) {
+    if (channel.times.empty()) return;
+    const int components = channel.path == AnimationChannelPath::Rotation ? 4 : 3;
+    max_time = std::max(0.0f, max_time);
+    for (int i = static_cast<int>(channel.times.size()) - 1; i >= 0; --i) {
+        if (!(channel.times[static_cast<size_t>(i)] > max_time)) continue;
+        if (channel.times.size() == 1) {
+            // Keep the clip valid: clamp the sole remaining key onto the new end.
+            channel.times[0] = max_time;
+            break;
+        }
+        channel.times.erase(channel.times.begin() + i);
+        channel.values.erase(channel.values.begin() + static_cast<std::ptrdiff_t>(i) * components,
+            channel.values.begin() + static_cast<std::ptrdiff_t>(i + 1) * components);
+    }
+}
+
+bool set_anim_studio_edit_clip_duration(EditorState& state, float duration_seconds) {
+    if (!state.anim_studio_edit_clip) return false;
+    if (!(duration_seconds > 0.0f)) return false;
+    const float d = std::max(0.01f, duration_seconds);
+    for (auto& channel : state.anim_studio_edit_clip->channels)
+        trim_anim_studio_channel_keys_after(channel, d);
+    state.anim_studio_edit_clip->duration_seconds = d;
+    state.anim_studio_clip_dirty = true;
+    if (AnimationClipChannel* selected = find_anim_studio_edit_channel(state)) {
+        if (selected->times.empty())
+            state.anim_studio_edit_key_index = -1;
+        else if (state.anim_studio_edit_key_index >= static_cast<int>(selected->times.size()))
+            state.anim_studio_edit_key_index = static_cast<int>(selected->times.size()) - 1;
+    }
+    if (!push_anim_studio_clip_to_library(state)) return false;
+    (void)refresh_anim_studio_duration(state);
+    state.anim_studio_scrub = std::clamp(state.anim_studio_scrub, 0.0f, state.anim_studio_duration);
+    state.anim_studio_scrub_prev = state.anim_studio_scrub;
+    if (!state.anim_studio_request_state.empty())
+        preview_anim_studio_state(state, state.anim_studio_request_state, state.anim_studio_scrub, true);
+    else {
+        bind_anim_studio_clip_library(state);
+        (void)state.anim_studio_runtime.seek(EditorState::k_anim_studio_entity_id, state.anim_studio_scrub);
+    }
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "Clip duration set to %.3fs", d);
+    state.anim_studio_status = buf;
+    return true;
+}
+
+AnimationClipChannel* ensure_anim_studio_channel(EditorState& state, AnimationChannelPath path) {
+    if (!state.anim_studio_edit_clip || state.anim_studio_edit_joint.empty()) return nullptr;
+    const std::string channel_joint = anim_studio_clip_channel_joint_name(state);
+    for (auto& channel : state.anim_studio_edit_clip->channels) {
+        if (channel.target_node_name == channel_joint && channel.path == path) return &channel;
+    }
+    AnimationClipChannel created;
+    created.target_node_name = channel_joint;
+    created.path = path;
+    created.interpolation = AnimationInterpolationMode::Linear;
+    const float t = std::max(0.0f, state.anim_studio_scrub);
+    created.times = {t};
+    if (path == AnimationChannelPath::Rotation) created.values = {0.0f, 0.0f, 0.0f, 1.0f};
+    else if (path == AnimationChannelPath::Scale) created.values = {1.0f, 1.0f, 1.0f};
+    else created.values = {0.0f, 0.0f, 0.0f};
+    state.anim_studio_edit_clip->channels.push_back(std::move(created));
+    return &state.anim_studio_edit_clip->channels.back();
+}
+
+int upsert_anim_studio_key(AnimationClipChannel& channel, float time_seconds, const float* values,
+    int components) {
+    constexpr float k_eps = 1.0e-3f;
+    time_seconds = std::max(0.0f, time_seconds);
+    for (int i = 0; i < static_cast<int>(channel.times.size()); ++i) {
+        if (std::abs(channel.times[static_cast<size_t>(i)] - time_seconds) <= k_eps) {
+            for (int c = 0; c < components; ++c)
+                channel.values[static_cast<size_t>(i) * components + static_cast<size_t>(c)] = values[c];
+            channel.times[static_cast<size_t>(i)] = time_seconds;
+            return i;
+        }
+    }
+    int insert_at = static_cast<int>(channel.times.size());
+    for (int i = 0; i < static_cast<int>(channel.times.size()); ++i) {
+        if (channel.times[static_cast<size_t>(i)] > time_seconds) {
+            insert_at = i;
+            break;
+        }
+    }
+    channel.times.insert(channel.times.begin() + insert_at, time_seconds);
+    channel.values.insert(channel.values.begin() + insert_at * components, values, values + components);
+    return insert_at;
+}
+
+void move_anim_studio_key_time(AnimationClipChannel& channel, int key_index, float new_time) {
+    if (key_index < 0 || key_index >= static_cast<int>(channel.times.size())) return;
+    new_time = std::max(0.0f, new_time);
+    if (key_index > 0)
+        new_time = std::max(new_time, channel.times[static_cast<size_t>(key_index - 1)] + 1.0e-3f);
+    if (key_index + 1 < static_cast<int>(channel.times.size()))
+        new_time = std::min(new_time, channel.times[static_cast<size_t>(key_index + 1)] - 1.0e-3f);
+    channel.times[static_cast<size_t>(key_index)] = new_time;
+}
+
+void write_anim_studio_local_pose(EditorState& state, const TransformComponent& local) {
+    if (!state.anim_studio_edit_clip || state.anim_studio_edit_joint.empty()) return;
+    // Never write held joint keys into the character clip (or the reverse) — that can zero the wrong
+    // skin or invent unused channels.
+    const bool joint_is_held = state.anim_studio_edit_joint_source == "held";
+    const bool clip_is_held = !state.test_held_weapon_mesh.empty() &&
+        normalize_asset_path(state.anim_studio_edit_clip_source) ==
+            normalize_asset_path(state.test_held_weapon_mesh);
+    if (joint_is_held != clip_is_held) return;
+    // Clip local for subject: inverse of sample_clip_pose_for_joint sagittal path
+    // (channel = sagittal(skin), sample then reflect → visual).
+    TransformComponent write_local = local;
+    if (anim_studio_subject_uses_sagittal_channels(state))
+        write_local = reflect_transform_across_x(local);
+    // Weld-rooted bow joints can decompose to near-zero axis scales; only fail closed for SCALE
+    // ops (or when the value would collapse the mesh). Pos/rot still write.
+    for (int i = 0; i < 3; ++i) {
+        if (!std::isfinite(write_local.position[i])) return;
+    }
+    for (int i = 0; i < 4; ++i) {
+        if (!std::isfinite(write_local.rotation[i])) return;
+    }
+    for (int i = 0; i < 3; ++i) {
+        if (!std::isfinite(write_local.scale[i])) return;
+        if (!(write_local.scale[i] > 1e-4f)) write_local.scale[i] = 1.0f;
+    }
+    const float t = std::max(0.0f, state.anim_studio_scrub);
+    if (state.anim_studio_bone_gizmo_op == ImGuizmo::ROTATE) {
+        if (AnimationClipChannel* ch = ensure_anim_studio_channel(state, AnimationChannelPath::Rotation)) {
+            const float values[4] = {write_local.rotation[0], write_local.rotation[1], write_local.rotation[2],
+                write_local.rotation[3]};
+            state.anim_studio_edit_key_index = upsert_anim_studio_key(*ch, t, values, 4);
+            state.anim_studio_edit_path = 1;
+        }
+    } else if (state.anim_studio_bone_gizmo_op == ImGuizmo::SCALE) {
+        if (!(write_local.scale[0] > 1e-4f && write_local.scale[1] > 1e-4f && write_local.scale[2] > 1e-4f))
+            return;
+        if (AnimationClipChannel* ch = ensure_anim_studio_channel(state, AnimationChannelPath::Scale)) {
+            const float values[3] = {write_local.scale[0], write_local.scale[1], write_local.scale[2]};
+            state.anim_studio_edit_key_index = upsert_anim_studio_key(*ch, t, values, 3);
+            state.anim_studio_edit_path = 2;
+        }
+    } else {
+        if (AnimationClipChannel* ch = ensure_anim_studio_channel(state, AnimationChannelPath::Translation)) {
+            const float values[3] = {write_local.position[0], write_local.position[1], write_local.position[2]};
+            state.anim_studio_edit_key_index = upsert_anim_studio_key(*ch, t, values, 3);
+            state.anim_studio_edit_path = 0;
+        }
+    }
+    state.anim_studio_edit_clip->duration_seconds =
+        std::max(state.anim_studio_edit_clip->duration_seconds, t);
+    state.anim_studio_clip_dirty = true;
+    (void)push_anim_studio_clip_to_library(state);
+}
+
+/// Write full local TRS keys at the scrub time (pose lock for the selected joint).
+void write_anim_studio_joint_trs_keys(EditorState& state, const TransformComponent& local) {
+    if (!state.anim_studio_edit_clip || state.anim_studio_edit_joint.empty()) return;
+    const bool joint_is_held = state.anim_studio_edit_joint_source == "held";
+    const bool clip_is_held = !state.test_held_weapon_mesh.empty() &&
+        normalize_asset_path(state.anim_studio_edit_clip_source) ==
+            normalize_asset_path(state.test_held_weapon_mesh);
+    if (joint_is_held != clip_is_held) return;
+    TransformComponent write_local = local;
+    if (anim_studio_subject_uses_sagittal_channels(state))
+        write_local = reflect_transform_across_x(local);
+    for (int i = 0; i < 3; ++i) {
+        if (!std::isfinite(write_local.position[i]) || !std::isfinite(write_local.scale[i])) return;
+        if (!(write_local.scale[i] > 1e-4f)) write_local.scale[i] = 1.0f;
+    }
+    for (int i = 0; i < 4; ++i) {
+        if (!std::isfinite(write_local.rotation[i])) return;
+    }
+    const float t = std::max(0.0f, state.anim_studio_scrub);
+    if (AnimationClipChannel* ch = ensure_anim_studio_channel(state, AnimationChannelPath::Translation)) {
+        const float values[3] = {write_local.position[0], write_local.position[1], write_local.position[2]};
+        state.anim_studio_edit_key_index = upsert_anim_studio_key(*ch, t, values, 3);
+        state.anim_studio_edit_path = 0;
+    }
+    if (AnimationClipChannel* ch = ensure_anim_studio_channel(state, AnimationChannelPath::Rotation)) {
+        const float values[4] = {write_local.rotation[0], write_local.rotation[1], write_local.rotation[2],
+            write_local.rotation[3]};
+        upsert_anim_studio_key(*ch, t, values, 4);
+    }
+    if (AnimationClipChannel* ch = ensure_anim_studio_channel(state, AnimationChannelPath::Scale)) {
+        const float values[3] = {write_local.scale[0], write_local.scale[1], write_local.scale[2]};
+        upsert_anim_studio_key(*ch, t, values, 3);
+    }
+    state.anim_studio_edit_clip->duration_seconds =
+        std::max(state.anim_studio_edit_clip->duration_seconds, t);
+    state.anim_studio_clip_dirty = true;
+    (void)push_anim_studio_clip_to_library(state);
+}
+
+bool sample_anim_studio_channel_at_scrub(const AnimationClipChannel& channel, float t,
+    std::vector<float>& out_values) {
+    const int components = channel.path == AnimationChannelPath::Rotation ? 4 : 3;
+    out_values.assign(static_cast<size_t>(components), 0.0f);
+    if (channel.path == AnimationChannelPath::Translation) {
+        if (const auto s = sample_translation_channel(channel, t)) {
+            out_values = {s.value()[0], s.value()[1], s.value()[2]};
+            return true;
+        }
+        return false;
+    }
+    if (channel.path == AnimationChannelPath::Rotation) {
+        if (const auto s = sample_rotation_channel(channel, t)) {
+            out_values = {s.value()[0], s.value()[1], s.value()[2], s.value()[3]};
+            return true;
+        }
+        out_values = {0.0f, 0.0f, 0.0f, 1.0f};
+        return false;
+    }
+    if (const auto s = sample_scale_channel(channel, t)) {
+        out_values = {s.value()[0], s.value()[1], s.value()[2]};
+        return true;
+    }
+    out_values = {1.0f, 1.0f, 1.0f};
+    return false;
+}
+
+bool insert_anim_studio_key_at_scrub(EditorState& state) {
+    if (!state.anim_studio_edit_clip || state.anim_studio_edit_joint.empty()) return false;
+    const AnimationChannelPath path = state.anim_studio_edit_path == 1
+        ? AnimationChannelPath::Rotation
+        : (state.anim_studio_edit_path == 2 ? AnimationChannelPath::Scale
+                                           : AnimationChannelPath::Translation);
+    AnimationClipChannel* ch = ensure_anim_studio_channel(state, path);
+    if (!ch) return false;
+    const float t = std::max(0.0f, state.anim_studio_scrub);
+    const int components = path == AnimationChannelPath::Rotation ? 4 : 3;
+    std::vector<float> sample;
+    (void)sample_anim_studio_channel_at_scrub(*ch, t, sample);
+    if (static_cast<int>(sample.size()) != components) {
+        if (path == AnimationChannelPath::Rotation) sample = {0.0f, 0.0f, 0.0f, 1.0f};
+        else if (path == AnimationChannelPath::Scale) sample = {1.0f, 1.0f, 1.0f};
+        else sample = {0.0f, 0.0f, 0.0f};
+    }
+    state.anim_studio_edit_key_index = upsert_anim_studio_key(*ch, t, sample.data(), components);
+    state.anim_studio_edit_clip->duration_seconds =
+        std::max(state.anim_studio_edit_clip->duration_seconds, t);
+    state.anim_studio_clip_dirty = true;
+    (void)push_anim_studio_clip_to_library(state);
+    return true;
+}
+
+bool delete_anim_studio_selected_key(EditorState& state) {
+    AnimationClipChannel* channel = find_anim_studio_edit_channel(state);
+    if (!channel || channel->times.size() <= 1 || state.anim_studio_edit_key_index < 0) return false;
+    if (state.anim_studio_edit_key_index >= static_cast<int>(channel->times.size())) return false;
+    const int components = channel->path == AnimationChannelPath::Rotation ? 4 : 3;
+    const int key = state.anim_studio_edit_key_index;
+    channel->times.erase(channel->times.begin() + key);
+    channel->values.erase(channel->values.begin() + key * components,
+        channel->values.begin() + (key + 1) * components);
+    state.anim_studio_edit_key_index = std::min(key, static_cast<int>(channel->times.size()) - 1);
+    state.anim_studio_clip_dirty = true;
+    (void)push_anim_studio_clip_to_library(state);
+    return true;
+}
+
+float anim_studio_copy_anchor_time(const EditorState& state) {
+    float t = std::max(0.0f, state.anim_studio_scrub);
+    if (!state.anim_studio_edit_clip || state.anim_studio_edit_joint.empty()) return t;
+    if (state.anim_studio_edit_key_index < 0) return t;
+    const AnimationChannelPath path = state.anim_studio_edit_path == 1
+        ? AnimationChannelPath::Rotation
+        : (state.anim_studio_edit_path == 2 ? AnimationChannelPath::Scale
+                                           : AnimationChannelPath::Translation);
+    // Inline channel lookup — helpers like find_anim_studio_edit_channel need non-const state.
+    const std::string channel_joint = [&]() {
+        if (state.anim_studio_edit_joint_source == "held") return state.anim_studio_edit_joint;
+        return sagittal_joint_name(state.anim_studio_edit_joint);
+    }();
+    for (const auto& channel : state.anim_studio_edit_clip->channels) {
+        if (channel.target_node_name == channel_joint && channel.path == path) {
+            if (state.anim_studio_edit_key_index < static_cast<int>(channel.times.size()))
+                t = channel.times[static_cast<size_t>(state.anim_studio_edit_key_index)];
+            break;
+        }
+    }
+    return t;
+}
+
+const AnimationClipChannel* find_anim_studio_channel_const(const EditorState& state,
+    AnimationChannelPath path) {
+    if (!state.anim_studio_edit_clip || state.anim_studio_edit_joint.empty()) return nullptr;
+    const std::string channel_joint = state.anim_studio_edit_joint_source == "held"
+        ? state.anim_studio_edit_joint
+        : sagittal_joint_name(state.anim_studio_edit_joint);
+    for (const auto& channel : state.anim_studio_edit_clip->channels) {
+        if (channel.target_node_name == channel_joint && channel.path == path) return &channel;
+    }
+    return nullptr;
+}
+
+bool copy_anim_studio_keys(EditorState& state, bool tracks) {
+    if (!state.anim_studio_edit_clip || state.anim_studio_edit_joint.empty()) return false;
+    const float anchor = anim_studio_copy_anchor_time(state);
+    EditorState::AnimStudioKeyClipboard board;
+    board.valid = false;
+    board.tracks = tracks;
+    board.anchor_time = anchor;
+    board.source_skin_joint = state.anim_studio_edit_joint;
+    board.source_display_joint =
+        anim_studio_display_joint_name(state.anim_studio_edit_joint, state.anim_studio_edit_joint_source);
+    const AnimationChannelPath paths[3] = {AnimationChannelPath::Translation, AnimationChannelPath::Rotation,
+        AnimationChannelPath::Scale};
+    if (!tracks) {
+        // One time slice: sample T/R/S at the selected key time (or scrub).
+        for (const AnimationChannelPath path : paths) {
+            const AnimationClipChannel* ch = find_anim_studio_channel_const(state, path);
+            if (!ch || ch->times.empty()) continue;
+            std::vector<float> sample;
+            (void)sample_anim_studio_channel_at_scrub(*const_cast<AnimationClipChannel*>(ch), anchor, sample);
+            const int components = path == AnimationChannelPath::Rotation ? 4 : 3;
+            if (static_cast<int>(sample.size()) != components) {
+                if (path == AnimationChannelPath::Rotation) sample = {0.0f, 0.0f, 0.0f, 1.0f};
+                else if (path == AnimationChannelPath::Scale) sample = {1.0f, 1.0f, 1.0f};
+                else sample = {0.0f, 0.0f, 0.0f};
+            }
+            EditorState::AnimStudioClipboardKey entry;
+            entry.path = path;
+            entry.relative_time = 0.0f;
+            entry.values = std::move(sample);
+            board.keys.push_back(std::move(entry));
+        }
+    } else {
+        // All keys on translation / rotation / scale for the selected joint.
+        float min_time = anchor;
+        bool have_min = false;
+        for (const AnimationChannelPath path : paths) {
+            if (const AnimationClipChannel* ch = find_anim_studio_channel_const(state, path)) {
+                for (float kt : ch->times) {
+                    if (!have_min || kt < min_time) {
+                        min_time = kt;
+                        have_min = true;
+                    }
+                }
+            }
+        }
+        if (!have_min) return false;
+        board.anchor_time = min_time;
+        for (const AnimationChannelPath path : paths) {
+            const AnimationClipChannel* ch = find_anim_studio_channel_const(state, path);
+            if (!ch || ch->times.empty()) continue;
+            const int components = path == AnimationChannelPath::Rotation ? 4 : 3;
+            for (int i = 0; i < static_cast<int>(ch->times.size()); ++i) {
+                EditorState::AnimStudioClipboardKey entry;
+                entry.path = path;
+                entry.relative_time = ch->times[static_cast<size_t>(i)] - min_time;
+                entry.values.assign(
+                    ch->values.begin() + static_cast<size_t>(i) * components,
+                    ch->values.begin() + static_cast<size_t>(i + 1) * components);
+                board.keys.push_back(std::move(entry));
+            }
+        }
+    }
+    if (board.keys.empty()) return false;
+    board.valid = true;
+    state.anim_studio_key_clipboard = std::move(board);
+    return true;
+}
+
+bool paste_anim_studio_keys(EditorState& state) {
+    if (!state.anim_studio_key_clipboard.valid || state.anim_studio_key_clipboard.keys.empty()) return false;
+    if (!state.anim_studio_edit_clip || state.anim_studio_edit_joint.empty()) return false;
+    const bool joint_is_held = state.anim_studio_edit_joint_source == "held";
+    const bool clip_is_held = !state.test_held_weapon_mesh.empty() &&
+        normalize_asset_path(state.anim_studio_edit_clip_source) ==
+            normalize_asset_path(state.test_held_weapon_mesh);
+    if (joint_is_held != clip_is_held) return false;
+    const float base = std::max(0.0f, state.anim_studio_scrub);
+    int written = 0;
+    for (const auto& key : state.anim_studio_key_clipboard.keys) {
+        if (key.values.empty()) continue;
+        const int components = key.path == AnimationChannelPath::Rotation ? 4 : 3;
+        if (static_cast<int>(key.values.size()) != components) continue;
+        AnimationClipChannel* ch = ensure_anim_studio_channel(state, key.path);
+        if (!ch) continue;
+        const float t = base + key.relative_time;
+        state.anim_studio_edit_key_index = upsert_anim_studio_key(*ch, t, key.values.data(), components);
+        state.anim_studio_edit_path = key.path == AnimationChannelPath::Rotation
+            ? 1
+            : (key.path == AnimationChannelPath::Scale ? 2 : 0);
+        state.anim_studio_edit_clip->duration_seconds =
+            std::max(state.anim_studio_edit_clip->duration_seconds, t);
+        ++written;
+    }
+    if (written == 0) return false;
+    state.anim_studio_clip_dirty = true;
+    (void)push_anim_studio_clip_to_library(state);
+    return true;
+}
+
+bool save_anim_studio_override_to_disk(EditorState& state) {
+    if (!state.anim_studio_edit_clip || state.anim_studio_edit_clip_source.empty() ||
+        state.anim_studio_edit_clip_name.empty())
+        return false;
+    auto asset = AnimationClipOverrideAsset::from_clip(state.anim_studio_edit_clip_source,
+        *state.anim_studio_edit_clip);
+    const auto sidecar = animation_clip_override_path(
+        state.project_root / state.anim_studio_edit_clip_source, state.anim_studio_edit_clip_name);
+    const auto saved = asset.save_atomic(sidecar);
+    if (!saved) {
+        state.anim_studio_status = saved.error().message;
+        Logger::instance().write(saved.error());
+        return false;
+    }
+    const std::string clip_source = asset.clip_source;
+    const std::string clip_name = asset.clip_name;
+    state.anim_studio_clip_dirty = false;
+    (void)state.animation_clip_library.reload(state.project_root / clip_source);
+    clear_anim_studio_clip_edit(state);
+    (void)ensure_anim_studio_clip_edit(state, clip_source, clip_name);
+    state.anim_studio_status = "Saved override -> " + sidecar.filename().string();
+    return true;
+}
+
+void store_transform_as_gizmo_matrix(const TransformComponent& transform, std::array<float, 16>& out_matrix);
+TransformComponent transform_from_gizmo_matrix(const std::array<float, 16>& matrix);
+
+void append_anim_studio_armature_from_skin(EditorState& state, const ImportedSkin& skin,
+    const std::vector<std::array<float, 16>>& globals, const TransformComponent& owner_world,
+    const TransformComponent& visual_local, const std::string& source) {
+    if (skin.joint_names.size() != globals.size() || skin.joint_rest_locals.size() != globals.size()) return;
+    const int base = static_cast<int>(state.anim_studio_armature.size());
+    for (std::size_t i = 0; i < skin.joint_names.size(); ++i) {
+        EditorState::AnimStudioArmatureJoint entry;
+        entry.name = skin.joint_names[i];
+        entry.source = source;
+        const std::int32_t parent = skin.joint_rest_locals[i].parent_joint;
+        entry.parent_index =
+            parent >= 0 ? base + parent : -1;
+        BoneSocketChain chain;
+        chain.owner_world = owner_world;
+        chain.visual_local = visual_local;
+        chain.joint_model = globals[i];
+        entry.world = bone_socket_world(chain);
+        state.anim_studio_armature.push_back(std::move(entry));
+    }
+}
+
+void refresh_anim_studio_selected_joint_world(EditorState& state) {
+    if (state.anim_studio_bone_gizmo_was_using) return;
+    state.anim_studio_joint_world.reset();
+    state.anim_studio_joint_parent_world.reset();
+    if (state.anim_studio_edit_joint.empty()) return;
+    const std::string source =
+        state.anim_studio_edit_joint_source == "held" ? "held" : "subject";
+    for (std::size_t i = 0; i < state.anim_studio_armature.size(); ++i) {
+        const auto& entry = state.anim_studio_armature[i];
+        if (entry.name != state.anim_studio_edit_joint || entry.source != source) continue;
+        state.anim_studio_joint_world = entry.world;
+        if (entry.parent_index >= 0 &&
+            static_cast<std::size_t>(entry.parent_index) < state.anim_studio_armature.size()) {
+            state.anim_studio_joint_parent_world =
+                state.anim_studio_armature[static_cast<std::size_t>(entry.parent_index)].world;
+        } else if (source == "held" && state.test_held_hand_world) {
+            state.anim_studio_joint_parent_world =
+                weld_world_transform(*state.test_held_hand_world, state.held_attach_weld);
+        } else {
+            state.anim_studio_joint_parent_world =
+                multiply_transforms(anim_studio_stage_root(), state.test_skinned_visual_local);
+        }
+        return;
+    }
+}
+
+void select_anim_studio_joint(EditorState& state, std::string joint, std::string source) {
+    if (source != "held") source = "subject";
+    state.anim_studio_edit_joint = std::move(joint);
+    state.anim_studio_edit_joint_source = source;
+    state.anim_studio_edit_key_index = -1;
+    state.anim_studio_bone_gizmo_was_using = false;
+    state.anim_studio_bone_drag_parent.reset();
+    // Consume the selection click so ImGuizmo does not instantly drag+key the new bone.
+    state.anim_studio_ignore_bone_gizmo_frames = 4;
+    if (source == "held") {
+        if (!state.test_held_weapon_mesh.empty()) {
+            const std::string draw = resolve_held_draw_clip_name(state, state.test_held_weapon_mesh);
+            if (!draw.empty()) {
+                if (ensure_anim_studio_clip_edit(state, state.test_held_weapon_mesh, draw)) {
+                    (void)refresh_anim_studio_duration(state);
+                    state.anim_studio_scrub = std::clamp(state.anim_studio_scrub, 0.0f, state.anim_studio_duration);
+                    state.anim_studio_scrub_prev = state.anim_studio_scrub;
+                    state.anim_studio_status = "Selected held joint " + state.anim_studio_edit_joint +
+                        " — editing " + draw + " (scrub drives bow bones; Save Override for mesh.draw)";
+                } else {
+                    state.anim_studio_status =
+                        "Could not open held draw clip '" + draw + "' on " + state.test_held_weapon_mesh;
+                }
+            } else {
+                ensure_anim_studio_edit_clip_for_joint_source(state);
+                state.anim_studio_status = "Selected held joint " + state.anim_studio_edit_joint +
+                    " (no draw clip on item — bone gizmo is display-only)";
+            }
+        }
+        if (state.anim_studio_status.empty())
+            state.anim_studio_status = "Selected held joint " + state.anim_studio_edit_joint;
+    } else {
+        ensure_anim_studio_edit_clip_for_joint_source(state);
+        {
+            const std::string display =
+                anim_studio_display_joint_name(state.anim_studio_edit_joint, "subject");
+            state.anim_studio_status = "Selected joint " + display;
+            if (anim_studio_subject_uses_sagittal_channels(state) && display != state.anim_studio_edit_joint) {
+                state.anim_studio_status += " (skin " + state.anim_studio_edit_joint + ", clip " + display + ")";
+            }
+        }
+    }
+    refresh_anim_studio_selected_joint_world(state);
+}
+
+void draw_anim_studio_skeleton_overlay(EditorState& state, const std::array<float, 16>& view_projection,
+    const ViewportFrame& frame, ImDrawList* draw_list) {
+    if (!state.animation_viewport_active() || !state.anim_studio_skeleton_visible || !draw_list) return;
+    if (state.anim_studio_armature.empty()) return;
+
+    const std::string selected_source =
+        state.anim_studio_edit_joint_source == "held" ? "held" : "subject";
+    for (const auto& entry : state.anim_studio_armature) {
+        float sx = 0.0f, sy = 0.0f, depth = 0.0f;
+        if (!project_world_to_screen(view_projection, frame, entry.world.position[0], entry.world.position[1],
+                entry.world.position[2], sx, sy, depth) ||
+            depth < 0.0f || depth > 1.0f)
+            continue;
+        if (entry.parent_index >= 0 &&
+            static_cast<std::size_t>(entry.parent_index) < state.anim_studio_armature.size()) {
+            const auto& parent = state.anim_studio_armature[static_cast<std::size_t>(entry.parent_index)];
+            float px = 0.0f, py = 0.0f, pdepth = 0.0f;
+            if (project_world_to_screen(view_projection, frame, parent.world.position[0], parent.world.position[1],
+                    parent.world.position[2], px, py, pdepth) &&
+                pdepth >= 0.0f && pdepth <= 1.0f) {
+                // Held orange / subject cyan — thicker stroke on held so gear rigs read at a glance.
+                const bool held = entry.source == "held";
+                const ImU32 line_col = held ? IM_COL32(255, 160, 60, 245) : IM_COL32(90, 195, 255, 210);
+                draw_list->AddLine({px, py}, {sx, sy}, line_col, held ? 2.6f : 1.6f);
+            }
+        }
+        const bool selected =
+            entry.name == state.anim_studio_edit_joint && entry.source == selected_source;
+        const bool held = entry.source == "held";
+        const float radius = selected ? 7.0f : (held ? 5.0f : 4.0f);
+        const ImU32 fill = selected ? IM_COL32(255, 230, 120, 255)
+            : (held ? IM_COL32(255, 130, 40, 240) : IM_COL32(70, 175, 255, 235));
+        draw_list->AddCircleFilled({sx, sy}, radius, fill);
+        draw_list->AddCircle({sx, sy}, radius, IM_COL32(10, 12, 16, 230), 0, 1.4f);
+        if (state.anim_studio_skeleton_labels || selected) {
+            const ImU32 label_col = selected ? IM_COL32(255, 240, 180, 255)
+                : (held ? IM_COL32(255, 190, 120, 235) : IM_COL32(200, 210, 225, 210));
+            draw_list->AddText({sx + 7.0f, sy - 8.0f}, label_col,
+                anim_studio_display_joint_name(entry.name, entry.source).c_str());
+        }
+    }
+
+    // Viewport pick: closest joint under the cursor (skip while weld/bone gizmo is captured).
+    if (!state.viewport_hovered || ImGuizmo::IsUsing() || ImGuizmo::IsOver()) return;
+    if (state.held_attach_gizmo_enabled) return;
+    if (!ImGui::IsMouseClicked(ImGuiMouseButton_Left)) return;
+    // Right-drag orbits are free-cam; left-click with no gizmo hit selects bones.
+    if (ImGui::GetIO().KeyAlt || ImGui::GetIO().KeyCtrl) return;
+
+    const ImVec2 mouse = ImGui::GetIO().MousePos;
+    int best = -1;
+    float best_dist_sq = 14.0f * 14.0f;
+    for (std::size_t i = 0; i < state.anim_studio_armature.size(); ++i) {
+        const auto& entry = state.anim_studio_armature[i];
+        float sx = 0.0f, sy = 0.0f, depth = 0.0f;
+        if (!project_world_to_screen(view_projection, frame, entry.world.position[0], entry.world.position[1],
+                entry.world.position[2], sx, sy, depth) ||
+            depth < 0.0f || depth > 1.0f)
+            continue;
+        const float dx = mouse.x - sx;
+        const float dy = mouse.y - sy;
+        const float d2 = dx * dx + dy * dy;
+        if (d2 < best_dist_sq) {
+            best_dist_sq = d2;
+            best = static_cast<int>(i);
+        }
+    }
+    if (best >= 0) {
+        const auto& pick = state.anim_studio_armature[static_cast<std::size_t>(best)];
+        select_anim_studio_joint(state, pick.name, pick.source);
+        if (state.anim_studio_bone_gizmo_enabled) state.held_attach_gizmo_enabled = false;
+    }
+}
+
+bool draw_anim_studio_bone_gizmo(EditorState& state, const std::array<float, 16>& view,
+    const std::array<float, 16>& projection, const ImVec2& image_min, float width, float height) {
+    if (!state.animation_viewport_active() || !state.anim_studio_bone_gizmo_enabled) return false;
+    if (state.anim_studio_ignore_bone_gizmo_frames > 0) {
+        --state.anim_studio_ignore_bone_gizmo_frames;
+        // Keep matrix aligned to the joint so the gizmo does not "snap" on first real drag.
+        if (state.anim_studio_joint_world)
+            store_transform_as_gizmo_matrix(*state.anim_studio_joint_world, state.anim_studio_bone_gizmo_matrix);
+        state.anim_studio_bone_gizmo_was_using = false;
+        state.anim_studio_bone_drag_parent.reset();
+        return false;
+    }
+    if (!state.anim_studio_joint_world || !state.anim_studio_joint_parent_world) return false;
+    if (state.anim_studio_edit_joint.empty()) return false;
+    // Held joint selected but character clip still open (no draw clip) — show, don't write.
+    const bool joint_is_held = state.anim_studio_edit_joint_source == "held";
+    const bool clip_is_held = !state.test_held_weapon_mesh.empty() &&
+        normalize_asset_path(state.anim_studio_edit_clip_source) ==
+            normalize_asset_path(state.test_held_weapon_mesh);
+    const bool allow_write = !joint_is_held || clip_is_held;
+
+    ImGuizmo::SetOrthographic(false);
+    ImGuizmo::SetDrawlist();
+    ImGuizmo::SetRect(image_min.x, image_min.y, width, height);
+
+    const TransformComponent parent_world =
+        state.anim_studio_bone_drag_parent.value_or(*state.anim_studio_joint_parent_world);
+    if (!state.anim_studio_bone_gizmo_was_using)
+        store_transform_as_gizmo_matrix(*state.anim_studio_joint_world, state.anim_studio_bone_gizmo_matrix);
+
+    ImGuizmo::OPERATION op = state.anim_studio_bone_gizmo_op;
+    if (op != ImGuizmo::TRANSLATE && op != ImGuizmo::ROTATE && op != ImGuizmo::SCALE) op = ImGuizmo::TRANSLATE;
+    const ImGuizmo::MODE mode =
+        (op == ImGuizmo::SCALE || state.anim_studio_bone_gizmo_mode == ImGuizmo::LOCAL) ? ImGuizmo::LOCAL
+                                                                                       : ImGuizmo::WORLD;
+    ImGuizmo::Manipulate(view.data(), projection.data(), op, mode, state.anim_studio_bone_gizmo_matrix.data(),
+        nullptr, nullptr);
+
+    const bool using_now = ImGuizmo::IsUsing();
+    if (using_now) state.anim_studio_playing = false;
+    if (using_now && !state.anim_studio_bone_gizmo_was_using)
+        state.anim_studio_bone_drag_parent = parent_world;
+    if (allow_write && (using_now || state.anim_studio_bone_gizmo_was_using)) {
+        const TransformComponent world = transform_from_gizmo_matrix(state.anim_studio_bone_gizmo_matrix);
+        const TransformComponent local =
+            multiply_transforms(inverse_transform(parent_world), world);
+        write_anim_studio_local_pose(state, local);
+        if (using_now) {
+            if (joint_is_held) {
+                state.anim_studio_status = "Editing held joint " + state.anim_studio_edit_joint + " @ " +
+                    std::to_string(state.anim_studio_scrub) + "s (" + state.anim_studio_edit_clip_name +
+                    ") - Save Override to keep";
+            } else {
+                state.anim_studio_status = "Editing joint pose - use Save Override to persist";
+            }
+        } else {
+            state.anim_studio_status = "Joint pose updated - use Save Override to persist";
+        }
+    } else if (!allow_write && using_now) {
+        state.anim_studio_status =
+            "Held bone gizmo needs the item draw clip open — reselect the orange joint or equip shortbow";
+    }
+    if (!using_now) state.anim_studio_bone_drag_parent.reset();
+    state.anim_studio_bone_gizmo_was_using = allow_write && using_now;
+    return using_now && allow_write;
+}
+
+void draw_anim_studio_timeline(EditorState& state, float duration) {
+    duration = std::max(0.01f, duration);
+    const float track_h = 18.0f;
+    const float label_w = 72.0f;
+    const float ruler_h = 18.0f;
+    const int track_count = 4; // T, R, S, Events
+    const float canvas_h = ruler_h + track_h * static_cast<float>(track_count) + 8.0f;
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    const float canvas_w = std::max(120.0f, ImGui::GetContentRegionAvail().x);
+    ImGui::InvisibleButton("##AnimStudioTimelineCanvas", ImVec2(canvas_w, canvas_h));
+    const bool hovered = ImGui::IsItemHovered();
+    const bool active = ImGui::IsItemActive();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const ImVec2 p0 = origin;
+    const ImVec2 p1{origin.x + canvas_w, origin.y + canvas_h};
+    dl->AddRectFilled(p0, p1, IM_COL32(18, 22, 30, 255));
+    dl->AddRect(p0, p1, IM_COL32(55, 65, 80, 255));
+
+    const float timeline_x0 = origin.x + label_w;
+    const float timeline_x1 = origin.x + canvas_w - 6.0f;
+    const float timeline_w = std::max(1.0f, timeline_x1 - timeline_x0);
+    auto time_to_x = [&](float t) {
+        return timeline_x0 + (std::clamp(t, 0.0f, duration) / duration) * timeline_w;
+    };
+    auto x_to_time = [&](float x) {
+        return std::clamp(((x - timeline_x0) / timeline_w) * duration, 0.0f, duration);
+    };
+
+    // Ruler
+    dl->AddRectFilled(p0, {p1.x, origin.y + ruler_h}, IM_COL32(28, 34, 44, 255));
+    for (int i = 0; i <= 8; ++i) {
+        const float t = duration * (static_cast<float>(i) / 8.0f);
+        const float x = time_to_x(t);
+        dl->AddLine({x, origin.y + 4.0f}, {x, origin.y + ruler_h - 2.0f}, IM_COL32(90, 100, 120, 200));
+        char label[16];
+        std::snprintf(label, sizeof(label), "%.2f", t);
+        dl->AddText({x + 2.0f, origin.y + 2.0f}, IM_COL32(160, 170, 185, 220), label);
+    }
+
+    const char* track_labels[4] = {"Pos", "Rot", "Scale", "Events"};
+    const ImU32 track_colors[4] = {IM_COL32(90, 170, 255, 255), IM_COL32(255, 180, 80, 255),
+        IM_COL32(140, 220, 140, 255), IM_COL32(220, 120, 220, 255)};
+    for (int track = 0; track < track_count; ++track) {
+        const float y0 = origin.y + ruler_h + track_h * static_cast<float>(track);
+        const float y1 = y0 + track_h;
+        const ImU32 row_bg = (track % 2) ? IM_COL32(22, 26, 34, 255) : IM_COL32(20, 24, 32, 255);
+        dl->AddRectFilled({origin.x, y0}, {p1.x, y1}, row_bg);
+        dl->AddText({origin.x + 6.0f, y0 + 2.0f}, track_colors[track], track_labels[track]);
+        dl->AddLine({timeline_x0, y0}, {timeline_x0, y1}, IM_COL32(50, 58, 70, 255));
+
+        if (track < 3 && state.anim_studio_edit_clip && !state.anim_studio_edit_joint.empty()) {
+            const AnimationChannelPath path = track == 0 ? AnimationChannelPath::Translation
+                : (track == 1 ? AnimationChannelPath::Rotation : AnimationChannelPath::Scale);
+            const std::string channel_joint = anim_studio_clip_channel_joint_name(state);
+            const AnimationClipChannel* channel = nullptr;
+            for (const auto& ch : state.anim_studio_edit_clip->channels) {
+                if (ch.target_node_name == channel_joint && ch.path == path) {
+                    channel = &ch;
+                    break;
+                }
+            }
+            if (channel) {
+                for (int ki = 0; ki < static_cast<int>(channel->times.size()); ++ki) {
+                    const float x = time_to_x(channel->times[static_cast<size_t>(ki)]);
+                    const float cy = (y0 + y1) * 0.5f;
+                    const float s = 5.0f;
+                    const bool selected = state.anim_studio_edit_path == track &&
+                        state.anim_studio_edit_key_index == ki;
+                    const ImU32 fill = selected ? IM_COL32(255, 230, 120, 255) : track_colors[track];
+                    dl->AddQuadFilled({x, cy - s}, {x + s, cy}, {x, cy + s}, {x - s, cy}, fill);
+                    dl->AddQuad({x, cy - s}, {x + s, cy}, {x, cy + s}, {x - s, cy}, IM_COL32(10, 12, 16, 220));
+                }
+            }
+        } else if (track == 3 && state.anim_studio_controller_asset) {
+            std::string marker_state = state.anim_studio_request_state;
+            if (marker_state.empty()) {
+                if (const auto status = state.anim_studio_runtime.status(EditorState::k_anim_studio_entity_id)) {
+                    if (!status.value().layers.empty()) marker_state = status.value().layers.front().state;
+                }
+            }
+            for (int ei = 0; ei < static_cast<int>(state.anim_studio_controller_asset->timeline_events.size());
+                 ++ei) {
+                const auto& event = state.anim_studio_controller_asset->timeline_events[static_cast<size_t>(ei)];
+                if (!marker_state.empty() && event.state != marker_state) continue;
+                const float x = time_to_x(event.time);
+                const float cy = (y0 + y1) * 0.5f;
+                const bool selected = state.anim_studio_selected_event == ei;
+                dl->AddCircleFilled({x, cy}, selected ? 5.0f : 4.0f,
+                    selected ? IM_COL32(255, 230, 120, 255) : track_colors[3]);
+            }
+        }
+    }
+
+    // Playhead
+    const float play_x = time_to_x(state.anim_studio_scrub);
+    dl->AddLine({play_x, origin.y}, {play_x, p1.y}, IM_COL32(255, 90, 90, 230), 1.5f);
+    dl->AddTriangleFilled({play_x - 5.0f, origin.y}, {play_x + 5.0f, origin.y},
+        {play_x, origin.y + 8.0f}, IM_COL32(255, 90, 90, 230));
+
+    const ImVec2 mouse = ImGui::GetIO().MousePos;
+    if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        state.anim_studio_playing = false;
+        const float local_y = mouse.y - (origin.y + ruler_h);
+        const int track = local_y < 0.0f ? -1 : static_cast<int>(local_y / track_h);
+        state.anim_studio_timeline_drag_track = -1;
+        state.anim_studio_timeline_drag_key = -1;
+        bool hit_key = false;
+        if (track >= 0 && track < 3 && state.anim_studio_edit_clip) {
+            const AnimationChannelPath path = track == 0 ? AnimationChannelPath::Translation
+                : (track == 1 ? AnimationChannelPath::Rotation : AnimationChannelPath::Scale);
+            const std::string channel_joint = anim_studio_clip_channel_joint_name(state);
+            AnimationClipChannel* channel = nullptr;
+            for (auto& ch : state.anim_studio_edit_clip->channels) {
+                if (ch.target_node_name == channel_joint && ch.path == path) {
+                    channel = &ch;
+                    break;
+                }
+            }
+            if (channel) {
+                for (int ki = 0; ki < static_cast<int>(channel->times.size()); ++ki) {
+                    const float x = time_to_x(channel->times[static_cast<size_t>(ki)]);
+                    if (std::abs(mouse.x - x) <= 7.0f) {
+                        state.anim_studio_edit_path = track;
+                        state.anim_studio_edit_key_index = ki;
+                        state.anim_studio_timeline_drag_track = track;
+                        state.anim_studio_timeline_drag_key = ki;
+                        state.anim_studio_scrub = channel->times[static_cast<size_t>(ki)];
+                        hit_key = true;
+                        break;
+                    }
+                }
+            }
+        } else if (track == 3 && state.anim_studio_controller_asset) {
+            for (int ei = 0; ei < static_cast<int>(state.anim_studio_controller_asset->timeline_events.size());
+                 ++ei) {
+                auto& event = state.anim_studio_controller_asset->timeline_events[static_cast<size_t>(ei)];
+                const float x = time_to_x(event.time);
+                if (std::abs(mouse.x - x) <= 7.0f) {
+                    state.anim_studio_selected_event = ei;
+                    state.anim_studio_timeline_drag_track = 3;
+                    state.anim_studio_timeline_drag_key = ei;
+                    preview_anim_studio_state(state, event.state, event.time, true);
+                    hit_key = true;
+                    break;
+                }
+            }
+        }
+        if (!hit_key && mouse.x >= timeline_x0) {
+            const float scrub_t = x_to_time(mouse.x);
+            if (!state.anim_studio_request_state.empty())
+                preview_anim_studio_state(state, state.anim_studio_request_state, scrub_t, true);
+            else {
+                state.anim_studio_scrub = scrub_t;
+                bind_anim_studio_clip_library(state);
+                (void)state.anim_studio_runtime.seek(EditorState::k_anim_studio_entity_id, state.anim_studio_scrub);
+                state.anim_studio_scrub_prev = state.anim_studio_scrub;
+            }
+            state.anim_studio_timeline_drag_track = -2; // scrub drag
+        } else if (hit_key && state.anim_studio_timeline_drag_track >= 0 &&
+            state.anim_studio_timeline_drag_track < 3) {
+            bind_anim_studio_clip_library(state);
+            (void)state.anim_studio_runtime.seek(EditorState::k_anim_studio_entity_id, state.anim_studio_scrub);
+            state.anim_studio_scrub_prev = state.anim_studio_scrub;
+        }
+    }
+
+    if (active && state.anim_studio_timeline_drag_track >= 0) {
+        const float t = x_to_time(mouse.x);
+        if (state.anim_studio_timeline_drag_track < 3 && state.anim_studio_edit_clip) {
+            const AnimationChannelPath path = state.anim_studio_timeline_drag_track == 0
+                ? AnimationChannelPath::Translation
+                : (state.anim_studio_timeline_drag_track == 1 ? AnimationChannelPath::Rotation
+                                                             : AnimationChannelPath::Scale);
+            const std::string channel_joint = anim_studio_clip_channel_joint_name(state);
+            for (auto& ch : state.anim_studio_edit_clip->channels) {
+                if (ch.target_node_name != channel_joint || ch.path != path) continue;
+                move_anim_studio_key_time(ch, state.anim_studio_timeline_drag_key, t);
+                state.anim_studio_scrub = ch.times[static_cast<size_t>(
+                    std::clamp(state.anim_studio_timeline_drag_key, 0, static_cast<int>(ch.times.size()) - 1))];
+                state.anim_studio_edit_key_index = state.anim_studio_timeline_drag_key;
+                state.anim_studio_edit_path = state.anim_studio_timeline_drag_track;
+                state.anim_studio_clip_dirty = true;
+                state.anim_studio_edit_clip->duration_seconds =
+                    std::max(state.anim_studio_edit_clip->duration_seconds, ch.times.back());
+                (void)push_anim_studio_clip_to_library(state);
+                break;
+            }
+        } else if (state.anim_studio_timeline_drag_track == 3 && state.anim_studio_controller_asset) {
+            const int ei = state.anim_studio_timeline_drag_key;
+            if (ei >= 0 && ei < static_cast<int>(state.anim_studio_controller_asset->timeline_events.size())) {
+                state.anim_studio_controller_asset->timeline_events[static_cast<size_t>(ei)].time = t;
+                state.anim_studio_scrub = t;
+                state.anim_studio_events_dirty = true;
+            }
+        }
+        bind_anim_studio_clip_library(state);
+        (void)state.anim_studio_runtime.seek(EditorState::k_anim_studio_entity_id, state.anim_studio_scrub);
+    } else if (active && state.anim_studio_timeline_drag_track == -2) {
+        state.anim_studio_scrub = x_to_time(mouse.x);
+        bind_anim_studio_clip_library(state);
+        (void)state.anim_studio_runtime.seek(EditorState::k_anim_studio_entity_id, state.anim_studio_scrub);
+    }
+    if (!active) {
+        state.anim_studio_timeline_drag_track = -1;
+        state.anim_studio_timeline_drag_key = -1;
+    }
+    if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && state.anim_studio_edit_clip) {
+        const float local_y = mouse.y - (origin.y + ruler_h);
+        const int track = local_y < 0.0f ? -1 : static_cast<int>(local_y / track_h);
+        if (track >= 0 && track < 3 && !state.anim_studio_edit_joint.empty()) {
+            state.anim_studio_edit_path = track;
+            state.anim_studio_scrub = x_to_time(mouse.x);
+            const AnimationChannelPath path = track == 0 ? AnimationChannelPath::Translation
+                : (track == 1 ? AnimationChannelPath::Rotation : AnimationChannelPath::Scale);
+            if (AnimationClipChannel* ch = ensure_anim_studio_channel(state, path)) {
+                const int components = path == AnimationChannelPath::Rotation ? 4 : 3;
+                std::vector<float> sample(static_cast<size_t>(components), 0.0f);
+                if (path == AnimationChannelPath::Translation) {
+                    if (const auto s = sample_translation_channel(*ch, state.anim_studio_scrub))
+                        sample = {s.value()[0], s.value()[1], s.value()[2]};
+                } else if (path == AnimationChannelPath::Rotation) {
+                    if (const auto s = sample_rotation_channel(*ch, state.anim_studio_scrub))
+                        sample = {s.value()[0], s.value()[1], s.value()[2], s.value()[3]};
+                    else
+                        sample = {0.0f, 0.0f, 0.0f, 1.0f};
+                } else if (const auto s = sample_scale_channel(*ch, state.anim_studio_scrub)) {
+                    sample = {s.value()[0], s.value()[1], s.value()[2]};
+                } else {
+                    sample = {1.0f, 1.0f, 1.0f};
+                }
+                state.anim_studio_edit_key_index =
+                    upsert_anim_studio_key(*ch, state.anim_studio_scrub, sample.data(), components);
+                state.anim_studio_clip_dirty = true;
+                (void)push_anim_studio_clip_to_library(state);
+            }
+        }
+    }
+}
+
+bool attach_anim_studio_subject(EditorState& state) {
+    bind_anim_studio_clip_library(state);
+    state.anim_studio_runtime.detach(EditorState::k_anim_studio_entity_id);
+    state.anim_studio_scrub = 0.0f;
+    state.anim_studio_scrub_prev = 0.0f;
+    state.anim_studio_playing = false;
+    clear_anim_studio_clip_edit(state);
+    if (state.anim_studio_subject_prefab.empty()) {
+        state.anim_studio_status = "No subject selected";
+        state.anim_studio_controller_asset.reset();
+        return false;
+    }
+    const PrefabAsset* prefab = find_prefab(state.prefab_catalog, state.anim_studio_subject_prefab);
+    if (!prefab) {
+        state.anim_studio_status = "Prefab not found: " + state.anim_studio_subject_prefab;
+        return false;
+    }
+    if (state.anim_studio_controller_path.empty()) {
+        if (prefab->animators.empty() || prefab->animators.front().controller.empty()) {
+            state.anim_studio_status = "Prefab has no animator controller";
+            return false;
+        }
+        state.anim_studio_controller_path = normalize_asset_path(prefab->animators.front().controller);
+        state.anim_studio_default_state = prefab->animators.front().default_state;
+    }
+    const auto attached = state.anim_studio_runtime.attach(EditorState::k_anim_studio_entity_id,
+        state.anim_studio_controller_path, state.anim_studio_default_state);
+    if (!attached) {
+        state.anim_studio_status = attached.error().message;
+        return false;
+    }
+    (void)reload_anim_studio_controller_asset(state);
+    state.anim_studio_status = "Attached " + state.anim_studio_subject_prefab;
+    return true;
+}
+
+std::vector<std::string> collect_held_item_ids(const EditorState& state) {
+    std::vector<std::string> ids;
+    if (!state.item_catalog) return ids;
+    for (const auto& def : state.item_catalog->entities) {
+        if (def.world_mesh.empty()) continue;
+        ids.push_back(def.id);
+    }
+    std::sort(ids.begin(), ids.end());
+    return ids;
+}
+
+const ItemDef* resolve_item_def(const EditorState& state, const std::string& item_id) {
+    if (item_id.empty()) return nullptr;
+    if (state.item_catalog) {
+        if (const ItemDef* def = state.item_catalog->find(item_id)) return def;
+    }
+    if (state.inventory_runtime) return state.inventory_runtime->find_def(item_id);
+    return nullptr;
+}
+
+TransformComponent anim_studio_stage_root() {
+    TransformComponent stage_root;
+    stage_root.position = {0.0f, 0.0f, 0.0f};
+    stage_root.rotation = {0.0f, 1.0f, 0.0f, 0.0f}; // 180° yaw — mesh −Z vs studio look
+    return stage_root;
+}
+
+const ImportedMesh* find_imported_mesh(
+    const std::vector<std::pair<std::string, ImportedMesh>>& imported_meshes, const std::string& asset_path) {
+    const std::string key = normalize_asset_path(asset_path);
+    if (key.empty()) return nullptr;
+    for (const auto& entry : imported_meshes) {
+        if (normalize_asset_path(entry.first) == key) return &entry.second;
+    }
+    return nullptr;
+}
+
+bool clip_name_is_bow_combat(const std::string& name) {
+    return name == "BowShoot" || name == "bowShoot" || name == "bow_shoot" || name == "BowDraw" ||
+        name == "BowAim" || name == "BowRelease" || name == "bowDraw" || name == "bowAim" ||
+        name == "bowRelease";
+}
+
+bool bow_state_name_is_combat(const std::string& name) {
+    return name == "bowShoot" || name == "bowDraw" || name == "bowAim" || name == "bowRelease" ||
+        name == "BowShoot" || name == "BowDraw" || name == "BowAim" || name == "BowRelease";
+}
+
+bool animator_status_is_bow_combat(const AnimatorInstanceStatus& status) {
+    for (const auto& layer : status.layers) {
+        if (bow_state_name_is_combat(layer.state) || bow_state_name_is_combat(layer.next_state)) return true;
+    }
+    for (const auto& clip : status.active_clips) {
+        if (clip_name_is_bow_combat(clip.clip)) return true;
+    }
+    return false;
+}
+
+/// Map legacy single-shot BowShoot (reference 1.7s) into draw progress 0..1.
+float map_bow_shoot_time_to_draw_u(float time_seconds, float duration_seconds) {
+    if (!(duration_seconds > 1e-6f)) return 0.0f;
+    const float ref = 1.7f;
+    const float s = std::clamp(time_seconds * (ref / duration_seconds), 0.0f, ref);
+    if (s <= 0.80f) return (s / 0.80f) * 0.50f;
+    if (s <= 1.40f) return 0.50f + ((s - 0.80f) / 0.60f) * 0.35f;
+    if (s <= 1.7f) return 0.85f + ((s - 1.40f) / 0.30f) * 0.15f;
+    return 1.0f;
+}
+
+/// Draw progress for the multi-state bow graph (TICKET-0260).
+float map_bow_phase_to_draw_u(const std::string& state_name, float state_time, float state_duration) {
+    const float dur = std::max(0.01f, state_duration);
+    const float n = std::clamp(state_time / dur, 0.0f, 1.0f);
+    if (state_name == "bowDraw" || state_name == "BowDraw") return n * 0.85f;
+    if (state_name == "bowAim" || state_name == "BowAim") return 0.85f;
+    if (state_name == "bowRelease" || state_name == "BowRelease") return 0.85f + n * 0.15f;
+    return map_bow_shoot_time_to_draw_u(state_time, state_duration);
+}
+
+float resolve_bow_combat_state_time(const AnimatorInstanceStatus& status, float duration_fallback) {
+    for (const auto& layer : status.layers) {
+        if (bow_state_name_is_combat(layer.state) || bow_state_name_is_combat(layer.next_state))
+            return layer.state_time_seconds;
+    }
+    for (const auto& clip : status.active_clips) {
+        if (clip_name_is_bow_combat(clip.clip)) return clip.time_seconds;
+    }
+    return duration_fallback;
+}
+
+std::string resolve_bow_combat_state_name(const AnimatorInstanceStatus& status) {
+    for (const auto& layer : status.layers) {
+        if (bow_state_name_is_combat(layer.state)) return layer.state;
+        if (bow_state_name_is_combat(layer.next_state)) return layer.next_state;
+    }
+    for (const auto& clip : status.active_clips) {
+        if (clip_name_is_bow_combat(clip.clip)) return clip.clip;
+    }
+    return {};
+}
+
+float resolve_bow_combat_duration(const EditorState& state, const AnimatorInstanceStatus& status,
+    float duration_fallback) {
+    for (const auto& clip : status.active_clips) {
+        if (!clip_name_is_bow_combat(clip.clip) || clip.clip_source.empty()) continue;
+        std::filesystem::path path = clip.clip_source;
+        if (path.is_relative() && !state.project_root.empty()) path = state.project_root / path;
+        auto loaded = state.animation_clip_library.get(path);
+        if (!loaded) loaded = const_cast<AnimationClipLibrary&>(state.animation_clip_library).load(path);
+        if (!loaded) continue;
+        for (const auto& named : loaded.value()->clips) {
+            if (named.name == clip.clip && named.duration_seconds > 1e-6f) return named.duration_seconds;
+        }
+    }
+    return duration_fallback > 1e-6f ? duration_fallback : 1.7f;
+}
+
+std::string resolve_held_draw_clip_name(const EditorState& state, const std::string& mesh_path) {
+    const std::string item_id = !state.held_attach_item_id.empty()
+        ? state.held_attach_item_id
+        : state.anim_studio_held_item_id;
+    if (!item_id.empty()) {
+        if (const ItemDef* def = resolve_item_def(state, item_id)) {
+            if (!def->hand_attach.draw_clip.empty()) return def->hand_attach.draw_clip;
+        }
+    }
+    // Convention: skinned weapon meshes with a `bow_draw` clip flex during BowShoot.
+    std::filesystem::path path = mesh_path;
+    if (path.is_relative() && !state.project_root.empty()) path = state.project_root / path;
+    auto loaded = state.animation_clip_library.get(path);
+    if (!loaded) loaded = const_cast<AnimationClipLibrary&>(state.animation_clip_library).load(path);
+    if (loaded) {
+        for (const auto& named : loaded.value()->clips) {
+            if (named.name == "bow_draw") return "bow_draw";
+        }
+    }
+    return {};
+}
+
+/// Sample time for the held weapon draw clip — direct scrub while authoring held bones; bow combat
+/// remapped preview otherwise so idle states don't freeze at rest forever for display-only.
+float resolve_held_weapon_draw_sample_time(const EditorState& state,
+    const AnimatorInstanceStatus* character_status, float scrub_time, float scrub_duration,
+    const std::string& draw_clip, float draw_duration) {
+    draw_duration = std::max(0.01f, draw_duration);
+    const bool editing_held_draw = state.anim_studio_edit_joint_source == "held" &&
+        !state.test_held_weapon_mesh.empty() && !state.anim_studio_edit_clip_source.empty() &&
+        normalize_asset_path(state.anim_studio_edit_clip_source) ==
+            normalize_asset_path(state.test_held_weapon_mesh) &&
+        (state.anim_studio_edit_clip_name == draw_clip || draw_clip.empty());
+    if (editing_held_draw) {
+        if (state.anim_studio_edit_clip && state.anim_studio_edit_clip->duration_seconds > 1e-6f)
+            draw_duration = state.anim_studio_edit_clip->duration_seconds;
+        return std::clamp(std::max(0.0f, scrub_time), 0.0f, draw_duration);
+    }
+    if (!draw_clip.empty() && character_status && animator_status_is_bow_combat(*character_status)) {
+        const std::string phase = resolve_bow_combat_state_name(*character_status);
+        const float player_t = resolve_bow_combat_state_time(*character_status, scrub_time);
+        const float player_dur =
+            resolve_bow_combat_duration(state, *character_status, scrub_duration > 1e-6f ? scrub_duration : 1.7f);
+        const float u = map_bow_phase_to_draw_u(phase, player_t, player_dur);
+        return u * draw_duration;
+    }
+    // Display-only held preview outside bow combat: still honor scrub when the held edit buffer is open.
+    if (!draw_clip.empty() && state.anim_studio_edit_clip &&
+        state.anim_studio_edit_clip_name == draw_clip &&
+        normalize_asset_path(state.anim_studio_edit_clip_source) ==
+            normalize_asset_path(state.test_held_weapon_mesh)) {
+        return std::clamp(std::max(0.0f, scrub_time), 0.0f, draw_duration);
+    }
+    return 0.0f;
+}
+
+float lookup_held_draw_clip_duration(const EditorState& state, const std::string& mesh_path,
+    const std::string& draw_clip) {
+    float draw_duration = 1.0f;
+    if (draw_clip.empty()) return draw_duration;
+    if (state.anim_studio_edit_clip && state.anim_studio_edit_clip_name == draw_clip &&
+        normalize_asset_path(state.anim_studio_edit_clip_source) == normalize_asset_path(mesh_path) &&
+        state.anim_studio_edit_clip->duration_seconds > 1e-6f)
+        return state.anim_studio_edit_clip->duration_seconds;
+    std::filesystem::path path = mesh_path;
+    if (path.is_relative() && !state.project_root.empty()) path = state.project_root / path;
+    auto loaded = state.animation_clip_library.get(path);
+    if (!loaded) loaded = const_cast<AnimationClipLibrary&>(state.animation_clip_library).load(path);
+    if (loaded) {
+        for (const auto& named : loaded.value()->clips) {
+            if (named.name == draw_clip && named.duration_seconds > 1e-6f) {
+                draw_duration = named.duration_seconds;
+                break;
+            }
+        }
+    }
+    return draw_duration;
+}
+
+/// Sample weapon skin matrices and upload a bone slot. Weld root still comes from handAttach.
+void upload_held_weapon_skin_if_any(EditorState& state, Renderer& renderer,
+    const std::vector<std::pair<std::string, ImportedMesh>>& imported_meshes,
+    const AnimatorInstanceStatus* character_status, float scrub_time, float scrub_duration,
+    const char* skin_entity_id) {
+    state.test_held_weapon_skin_entity.clear();
+    state.test_held_string_mid_model.reset();
+    if (state.test_held_weapon_mesh.empty() || skin_entity_id == nullptr || skin_entity_id[0] == '\0')
+        return;
+    const ImportedMesh* weapon =
+        find_imported_mesh(imported_meshes, state.test_held_weapon_mesh);
+    if (!weapon || !weapon->has_skinning() || weapon->skins.empty()
+        || weapon->influences.size() != weapon->vertices.size()
+        || weapon->skins[0].joint_node_indices.size() > k_max_bones)
+        return;
+
+    const std::string draw_clip = resolve_held_draw_clip_name(state, state.test_held_weapon_mesh);
+    const float draw_duration = lookup_held_draw_clip_duration(state, state.test_held_weapon_mesh, draw_clip);
+    const float sample_time = resolve_held_weapon_draw_sample_time(state, character_status, scrub_time,
+        scrub_duration, draw_clip, draw_duration);
+
+    std::vector<AnimatorClipWeight> weights;
+    if (!draw_clip.empty()) {
+        AnimatorClipWeight w;
+        w.clip_source = state.test_held_weapon_mesh;
+        w.clip = draw_clip;
+        w.weight = 1.0f;
+        w.time_seconds = sample_time;
+        w.loop = false;
+        weights.push_back(std::move(w));
+    }
+
+    auto locals = sample_skinned_local_poses(weapon->skins[0], state.animation_clip_library,
+        state.project_root, weights, /*apply_sagittal_handedness=*/false);
+    if (!locals) return;
+    auto matrices = build_skin_matrices(weapon->skins[0], locals.value());
+    if (!matrices) return;
+    if (renderer.upload_entity_bone_slot(skin_entity_id, matrices.value()) == 0) return;
+    state.test_held_weapon_skin_entity = skin_entity_id;
+    if (auto globals = build_joint_global_matrices(weapon->skins[0], locals.value())) {
+        if (auto string_mid = find_skin_joint_index(weapon->skins[0], "StringMid");
+            string_mid && *string_mid < globals.value().size()) {
+            state.test_held_string_mid_model = globals.value()[*string_mid];
+        }
+    }
+}
+
+void append_held_weapon_render_instance(EditorState& state, const TransformComponent& owner_world,
+    std::vector<RenderInstance>& out) {
+    if (state.test_held_weapon_mesh.empty() || !state.test_held_weapon_hand_global) return;
+    BoneSocketChain chain;
+    chain.owner_world = owner_world;
+    chain.visual_local = state.test_skinned_visual_local;
+    chain.joint_model = *state.test_held_weapon_hand_global;
+    const TransformComponent hand_world = bone_socket_world(chain);
+    state.test_held_hand_world = hand_world;
+    const TransformComponent weapon_world = weld_world_transform(hand_world, state.held_attach_weld);
+    RenderInstance weapon;
+    weapon.transform = weapon_world;
+    weapon.mesh_asset = state.test_held_weapon_mesh;
+    weapon.skin_entity_id = state.test_held_weapon_skin_entity;
+    weapon.pbr = PbrSurfaceParams::dielectric_default();
+    weapon.mesh_key_hash = static_cast<std::uint64_t>(std::hash<std::string>{}(weapon.mesh_asset));
+    if (const auto found = state.mesh_bounds.find(weapon.mesh_asset); found != state.mesh_bounds.end())
+        weapon.bounds = transform_mesh_bounds(found->second, weapon_world);
+    out.push_back(std::move(weapon));
+}
+
+/// Mesh local +Z (arrow tip) into a world aim / velocity direction.
+/// Roll-pitch-yaw matches OrbitCamera / orbit_aim_direction: +pitch looks down (−Y), yaw 0 is +Z.
+std::array<float, 4> quat_from_yaw_pitch(float yaw, float pitch) {
+    using namespace DirectX;
+    // XMQuaternionRotationRollPitchYaw: +pitch about X tilts +Z toward −Y (look down).
+    const XMVECTOR q = XMQuaternionRotationRollPitchYaw(pitch, yaw, 0.0f);
+    std::array<float, 4> out{};
+    XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(out.data()), q);
+    return out;
+}
+
+std::array<float, 4> quat_look_along_direction(const std::array<float, 3>& dir) {
+    const float len = std::sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
+    if (!(len > 1e-5f)) return {0.0f, 0.0f, 0.0f, 1.0f};
+    const float inv = 1.0f / len;
+    const float nx = dir[0] * inv;
+    const float ny = dir[1] * inv;
+    const float nz = dir[2] * inv;
+    // Invert: R*(0,0,1)=(sin(y)cos(p), −sin(p), cos(y)cos(p)) ⇒ pitch = asin(−ny).
+    const float yaw = std::atan2(nx, nz);
+    const float pitch = std::asin(std::clamp(-ny, -1.0f, 1.0f));
+    return quat_from_yaw_pitch(yaw, pitch);
+}
+
+std::array<float, 4> quat_look_along_velocity(const std::array<float, 3>& velocity) {
+    return quat_look_along_direction(velocity);
+}
+
+/// Orbit look axis from yaw/pitch — same basis as OrbitCamera::forward() (pure orientation).
+std::array<float, 3> orbit_aim_direction_from_yaw_pitch(float yaw, float pitch) {
+    const float cp = std::cos(pitch);
+    const float sp = std::sin(pitch);
+    return {std::sin(yaw) * cp, -sp, std::cos(yaw) * cp};
+}
+
+std::array<float, 3> normalize3(const std::array<float, 3>& v) {
+    const float len = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    if (!(len > 1.0e-6f)) return {0.0f, 0.0f, 1.0f};
+    const float inv = 1.0f / len;
+    return {v[0] * inv, v[1] * inv, v[2] * inv};
+}
+
+/// View-right in a LH look-to basis (world up = +Y). Kept for optional off-center aim rays.
+std::array<float, 3> camera_horizontal_right(const std::array<float, 3>& camera_fwd) {
+    // cross(world_up, forward) → (fz, 0, -fx); falls back if nearly vertical.
+    return normalize3({camera_fwd[2], 0.0f, -camera_fwd[0]});
+}
+
+// Screen-center reticle = true look axis once orbit view uses orientation (not pivot LookAt).
+// Keep hooks at 0 so fire/gold arc/nock share the same center ray as the drawn reticle.
+constexpr float k_bow_aim_reticle_ndc_x = 0.0f;
+constexpr float k_bow_aim_reticle_viewport_x = 0.0f;
+
+/// Look point along the reticle ray: forward + right*ndc*tan(half_hfov), then * aim_range.
+std::array<float, 3> camera_look_point(const std::array<float, 3>& camera_eye,
+    const std::array<float, 3>& camera_fwd, float aim_range, float reticle_ndc_x = 0.0f,
+    float tan_half_h = 0.0f) {
+    const auto f = normalize3(camera_fwd);
+    const float range = std::max(1.0f, aim_range);
+    if (std::abs(reticle_ndc_x) < 1.0e-6f || !(tan_half_h > 0.0f)) {
+        return {
+            camera_eye[0] + f[0] * range,
+            camera_eye[1] + f[1] * range,
+            camera_eye[2] + f[2] * range,
+        };
+    }
+    const auto r = camera_horizontal_right(f);
+    // Equivalent first-order form: eye + f*range + r*(ndc * tan_half_h * range); normalize dir for large
+    // offsets so range stays along the actual reticle ray.
+    const float side = reticle_ndc_x * tan_half_h;
+    const auto dir = normalize3({f[0] + r[0] * side, f[1] + r[1] * side, f[2] + r[2] * side});
+    return {
+        camera_eye[0] + dir[0] * range,
+        camera_eye[1] + dir[1] * range,
+        camera_eye[2] + dir[2] * range,
+    };
+}
+
+/// Direction from muzzle so a ballistic path (constant g on Y) passes near the camera look point.
+/// Parallel-to-camera velocity from an off-center nock misses the reticle; aim through the look point.
+std::array<float, 3> muzzle_fire_direction(const std::array<float, 3>& muzzle_pos,
+    const std::array<float, 3>& camera_eye, const std::array<float, 3>& camera_fwd, float speed, float gravity,
+    float aim_range, float reticle_ndc_x = 0.0f, float tan_half_h = 0.0f) {
+    const auto look_point =
+        camera_look_point(camera_eye, camera_fwd, aim_range, reticle_ndc_x, tan_half_h);
+    const float dx = look_point[0] - muzzle_pos[0];
+    const float dy = look_point[1] - muzzle_pos[1];
+    const float dz = look_point[2] - muzzle_pos[2];
+    const float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+    const float safe_speed = std::max(1.0f, speed);
+    const float t = dist / safe_speed;
+    // y(t) ≈ y0 + vy0*t − 0.5 g t²  ⇒ aim at a lead point above the look point.
+    const std::array<float, 3> lead_point{
+        look_point[0],
+        look_point[1] + 0.5f * gravity * t * t,
+        look_point[2],
+    };
+    return normalize3({
+        lead_point[0] - muzzle_pos[0],
+        lead_point[1] - muzzle_pos[1],
+        lead_point[2] - muzzle_pos[2],
+    });
+}
+
+/// Nock shaft points at the reticle look point (no gravity lead — visual aim line).
+std::array<float, 3> muzzle_look_direction(const std::array<float, 3>& muzzle_pos,
+    const std::array<float, 3>& camera_eye, const std::array<float, 3>& camera_fwd, float aim_range,
+    float reticle_ndc_x = 0.0f, float tan_half_h = 0.0f) {
+    const auto look_point =
+        camera_look_point(camera_eye, camera_fwd, aim_range, reticle_ndc_x, tan_half_h);
+    return normalize3({
+        look_point[0] - muzzle_pos[0],
+        look_point[1] - muzzle_pos[1],
+        look_point[2] - muzzle_pos[2],
+    });
+}
+
+/// Elevation (+up) for procedural arm/spine aim, degrees.
+float orbit_aim_elevation_deg(float orbit_pitch) {
+    // Camera pitch+ → look down; arm elevation is the opposite, slightly dampened.
+    return std::clamp(-orbit_pitch * 57.2957795f * 0.92f, -55.0f, 55.0f);
+}
+
+std::array<float, 4> mul_quat_xyzw(const std::array<float, 4>& a, const std::array<float, 4>& b) {
+    using namespace DirectX;
+    XMVECTOR qa = XMLoadFloat4(reinterpret_cast<const XMFLOAT4*>(a.data()));
+    XMVECTOR qb = XMLoadFloat4(reinterpret_cast<const XMFLOAT4*>(b.data()));
+    std::array<float, 4> out{};
+    XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(out.data()), XMQuaternionMultiply(qb, qa));
+    return out;
+}
+
+/// Procedural vertical aim: pitch spine/chest + both upper arms while in bow combat.
+void apply_bow_aim_to_local_poses(std::vector<JointLocalPose>& locals, const ImportedSkin& skin,
+    float orbit_pitch) {
+    if (locals.size() < skin.joint_names.size()) return;
+    const float elev_deg = orbit_aim_elevation_deg(orbit_pitch);
+    if (std::abs(elev_deg) < 0.15f) return;
+
+    auto pitch_joint = [&](const char* name, float weight) {
+        const auto idx = find_skin_joint_index(skin, name);
+        if (!idx || *idx >= locals.size()) return;
+        const float deg = elev_deg * weight;
+        // Local +X raise/lower for Blockbench-style T-pose limbs (arms hang along Y after idle).
+        const auto delta = quaternion_from_euler_deg({deg, 0.0f, 0.0f});
+        locals[*idx].rotation = mul_quat_xyzw(locals[*idx].rotation, delta);
+    };
+
+    // Spine contributes a share of elevation so the bow rises/lowers as a unit.
+    pitch_joint("Spine", 0.20f);
+    pitch_joint("Chest", 0.35f);
+    pitch_joint("Neck", 0.15f);
+    // Bow arm (skin LeftHand = visual right grip) and string arm both follow the aim plane.
+    pitch_joint("LeftUpperArm", 0.85f);
+    pitch_joint("RightUpperArm", 0.85f);
+    pitch_joint("LeftLowerArm", 0.25f);
+    pitch_joint("RightLowerArm", 0.25f);
+}
+
+std::array<float, 3> play_test_aim_direction(const EditorState& state,
+    const OrbitCamera* orbit = nullptr) {
+    if (orbit) return orbit->forward();
+    if (state.play_test_camera_valid) return normalize3(state.play_test_camera_forward);
+    return orbit_aim_direction_from_yaw_pitch(state.play_test_aim_yaw, state.play_test_aim_pitch);
+}
+
+TransformComponent nocked_arrow_world_transform(const EditorState& state, const TransformComponent& owner_world) {
+    TransformComponent arrow{};
+    arrow.scale = state.nocked_string_mid_weld.scale;
+
+    auto resolve_aim = [&](const std::array<float, 3>& origin) -> std::array<float, 3> {
+        if (state.play_test_camera_valid) {
+            return muzzle_look_direction(origin, state.play_test_camera_eye, state.play_test_camera_forward,
+                state.projectile_aim_range, k_bow_aim_reticle_ndc_x, state.play_test_camera_tan_half_h);
+        }
+        return orbit_aim_direction_from_yaw_pitch(state.play_test_aim_yaw, state.play_test_aim_pitch);
+    };
+
+    // Prefer welding to the bow StringMid while the draw clip flexes the string back.
+    if (state.test_held_weapon_hand_global && state.test_held_string_mid_model) {
+        BoneSocketChain grip_chain;
+        grip_chain.owner_world = owner_world;
+        grip_chain.visual_local = state.test_skinned_visual_local;
+        grip_chain.joint_model = *state.test_held_weapon_hand_global;
+        const TransformComponent weapon_world =
+            weld_world_transform(bone_socket_world(grip_chain), state.held_attach_weld);
+
+        BoneSocketChain string_chain;
+        string_chain.owner_world = weapon_world;
+        string_chain.visual_local = TransformComponent{};
+        string_chain.joint_model = *state.test_held_string_mid_model;
+        const TransformComponent string_socket = bone_socket_world(string_chain);
+
+        std::array<float, 3> origin = string_socket.position;
+        if (state.test_string_hand_global) {
+            BoneSocketChain hand_chain;
+            hand_chain.owner_world = owner_world;
+            hand_chain.visual_local = state.test_skinned_visual_local;
+            hand_chain.joint_model = *state.test_string_hand_global;
+            const TransformComponent string_hand = bone_socket_world(hand_chain);
+            origin[0] = origin[0] * 0.7f + string_hand.position[0] * 0.3f;
+            origin[1] = origin[1] * 0.7f + string_hand.position[1] * 0.3f;
+            origin[2] = origin[2] * 0.7f + string_hand.position[2] * 0.3f;
+        }
+        const auto aim = resolve_aim(origin);
+        // Arrow mesh spans ±Z; slide so nock sits on the string.
+        origin[0] -= aim[0] * 0.06f;
+        origin[1] -= aim[1] * 0.06f;
+        origin[2] -= aim[2] * 0.06f;
+        origin[0] += state.nocked_string_mid_weld.offset[0];
+        origin[1] += state.nocked_string_mid_weld.offset[1];
+        origin[2] += state.nocked_string_mid_weld.offset[2];
+        arrow.position = origin;
+        arrow.rotation = quat_look_along_direction(aim);
+        return arrow;
+    }
+
+    if (state.test_string_hand_global) {
+        BoneSocketChain chain;
+        chain.owner_world = owner_world;
+        chain.visual_local = state.test_skinned_visual_local;
+        chain.joint_model = *state.test_string_hand_global;
+        const TransformComponent socket = bone_socket_world(chain);
+        std::array<float, 3> origin = {
+            socket.position[0] + state.nocked_arrow_weld.offset[0],
+            socket.position[1] + state.nocked_arrow_weld.offset[1],
+            socket.position[2] + state.nocked_arrow_weld.offset[2],
+        };
+        const auto aim = resolve_aim(origin);
+        arrow.position = origin;
+        arrow.rotation = quat_look_along_direction(aim);
+        return arrow;
+    }
+    // Fallback: yaw/pitch rotation with no socket attach (same pitch convention as orbit).
+    arrow.rotation = quat_from_yaw_pitch(state.play_test_aim_yaw, state.play_test_aim_pitch);
+    return {};
+}
+
+void append_nocked_and_projectile_instances(EditorState& state, const TransformComponent& owner_world,
+    std::vector<RenderInstance>& out) {
+    auto push_mesh = [&](const TransformComponent& world, const std::string& mesh) {
+        if (mesh.empty()) return;
+        RenderInstance inst;
+        inst.transform = world;
+        inst.mesh_asset = mesh;
+        inst.pbr = PbrSurfaceParams::dielectric_default();
+        inst.mesh_key_hash = static_cast<std::uint64_t>(std::hash<std::string>{}(mesh));
+        if (const auto found = state.mesh_bounds.find(mesh); found != state.mesh_bounds.end())
+            inst.bounds = transform_mesh_bounds(found->second, world);
+        out.push_back(std::move(inst));
+    };
+    if (state.nocked_arrow_active &&
+        (state.test_held_string_mid_model || state.test_string_hand_global))
+        push_mesh(nocked_arrow_world_transform(state, owner_world), EditorState::k_nocked_arrow_mesh);
+    for (const auto& p : state.play_test_projectiles)
+        push_mesh(p.transform, p.mesh_asset.empty() ? EditorState::k_nocked_arrow_mesh : p.mesh_asset);
+}
+
+void spawn_arrow_trail_burst(EditorState& state, const std::array<float, 3>& world_position,
+    const std::array<float, 3>& velocity) {
+    const float speed = std::sqrt(
+        velocity[0] * velocity[0] + velocity[1] * velocity[1] + velocity[2] * velocity[2]);
+    // Emit slightly reverse of flight so wisps hang as a wake behind the tip.
+    const std::array<float, 3> emit_dir =
+        speed > 1.0e-4f
+            ? normalize3({-velocity[0], -velocity[1] * 0.35f + 0.15f * speed, -velocity[2]})
+            : std::array<float, 3>{0.0f, 0.2f, -1.0f};
+    // One soft wisp per step — density comes from spacing, not spark-cluster bursts.
+    (void)state.particle_system.spawn_burst(EditorState::k_arrow_trail_particle, world_position, 1, emit_dir);
+}
+
+void spawn_arrow_impact_burst(EditorState& state, const std::array<float, 3>& world_position,
+    const std::array<float, 3>& velocity) {
+    const float speed = std::sqrt(
+        velocity[0] * velocity[0] + velocity[1] * velocity[1] + velocity[2] * velocity[2]);
+    const std::array<float, 3> rebound =
+        speed > 1.0e-4f
+            ? normalize3({-velocity[0], std::max(0.35f, -velocity[1] * 0.4f + 0.5f * speed), -velocity[2]})
+            : std::array<float, 3>{0.0f, 1.0f, 0.0f};
+    (void)state.particle_system.spawn_burst(EditorState::k_arrow_impact_particle, world_position, 14, rebound);
+    // Soft dust companion on contact (readable against dirt/stone without cyber neon).
+    (void)state.particle_system.spawn_burst("assets/vfx/footstep_dust.particle.json", world_position, 6,
+        std::array<float, 3>{0.0f, 1.0f, 0.0f});
+}
+
+void tick_play_test_projectiles(EditorState& state, float dt, CollisionWorld* collision) {
+    if (!(dt > 0.0f)) return;
+    const float trail_step = std::max(0.08f, state.projectile_trail_emit_distance);
+    for (auto& p : state.play_test_projectiles) {
+        if (p.life <= 0.0f) continue;
+        const std::array<float, 3> prev = p.transform.position;
+        p.life -= dt;
+        p.transform.position[0] += p.velocity[0] * dt;
+        p.transform.position[1] += p.velocity[1] * dt;
+        p.transform.position[2] += p.velocity[2] * dt;
+        p.velocity[1] -= state.projectile_gravity * dt;
+        p.transform.rotation = quat_look_along_velocity(p.velocity);
+
+        const float dx = p.transform.position[0] - prev[0];
+        const float dy = p.transform.position[1] - prev[1];
+        const float dz = p.transform.position[2] - prev[2];
+        const float step_len = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+        bool impact = false;
+        if (collision && step_len > 1.0e-5f) {
+            if (const auto cast = collision->ray_cast(
+                    {static_cast<double>(prev[0]), static_cast<double>(prev[1]), static_cast<double>(prev[2])},
+                    {dx, dy, dz})) {
+                if (cast.value()) {
+                    p.transform.position = {
+                        static_cast<float>(cast.value()->position.x),
+                        static_cast<float>(cast.value()->position.y),
+                        static_cast<float>(cast.value()->position.z),
+                    };
+                    impact = true;
+                }
+            }
+        }
+        if (!impact) {
+            const float ground =
+                sample_terrain_height(p.transform.position[0], p.transform.position[2]);
+            if (p.transform.position[1] <= ground + state.projectile_ground_impact_slack) {
+                p.transform.position[1] = ground + 0.02f;
+                impact = true;
+            }
+        }
+        if (!impact && p.life <= 0.0f) impact = true;
+
+        if (impact) {
+            spawn_arrow_impact_burst(state, p.transform.position, p.velocity);
+            p.life = 0.0f;
+            p.trail.push_back(p.transform.position);
+            continue;
+        }
+
+        p.trail_emit_accum += step_len;
+        while (p.trail_emit_accum >= trail_step) {
+            p.trail_emit_accum -= trail_step;
+            spawn_arrow_trail_burst(state, p.transform.position, p.velocity);
+        }
+
+        if (p.trail.empty() ||
+            (std::abs(p.trail.back()[0] - p.transform.position[0]) +
+                std::abs(p.trail.back()[1] - p.transform.position[1]) +
+                std::abs(p.trail.back()[2] - p.transform.position[2])) > 0.08f) {
+            p.trail.push_back(p.transform.position);
+            if (p.trail.size() > EditorState::k_projectile_trail_max)
+                p.trail.erase(p.trail.begin(),
+                    p.trail.begin() +
+                        static_cast<std::ptrdiff_t>(p.trail.size() - EditorState::k_projectile_trail_max));
+        }
+    }
+    state.play_test_projectiles.erase(
+        std::remove_if(state.play_test_projectiles.begin(), state.play_test_projectiles.end(),
+            [](const EditorState::PlayTestProjectile& p) { return p.life <= 0.0f; }),
+        state.play_test_projectiles.end());
+}
+
+void spawn_play_test_projectile_from_nock(EditorState& state, const TransformComponent& owner_world,
+    float aim_yaw, float aim_pitch, const std::array<float, 3>& aim_dir) {
+    if (!state.nocked_arrow_active) return;
+    EditorState::PlayTestProjectile p;
+    state.play_test_aim_yaw = aim_yaw;
+    state.play_test_aim_pitch = aim_pitch;
+    p.transform = nocked_arrow_world_transform(state, owner_world);
+    p.mesh_asset = EditorState::k_nocked_arrow_mesh;
+    p.life = state.projectile_lifetime;
+
+    // Always fire from nock toward the camera look point (with gravity lead). Parallel-to-camera
+    // from an off-center nock misses the reticle under third-person shoulder offset.
+    std::array<float, 3> dir{};
+    if (state.play_test_camera_valid) {
+        dir = muzzle_fire_direction(p.transform.position, state.play_test_camera_eye,
+            state.play_test_camera_forward, state.projectile_speed, state.projectile_gravity,
+            state.projectile_aim_range, k_bow_aim_reticle_ndc_x, state.play_test_camera_tan_half_h);
+    } else {
+        const float aim_len =
+            std::sqrt(aim_dir[0] * aim_dir[0] + aim_dir[1] * aim_dir[1] + aim_dir[2] * aim_dir[2]);
+        dir = (aim_len > 1.0e-5f) ? normalize3(aim_dir)
+                                  : orbit_aim_direction_from_yaw_pitch(aim_yaw, aim_pitch);
+    }
+    state.play_test_fire_dir = dir;
+    p.velocity = {
+        dir[0] * state.projectile_speed,
+        dir[1] * state.projectile_speed,
+        dir[2] * state.projectile_speed,
+    };
+    p.transform.rotation = quat_look_along_direction(dir);
+    p.trail.push_back(p.transform.position);
+    state.play_test_projectiles.push_back(std::move(p));
+    state.nocked_arrow_active = false;
+}
+
+void handle_bow_combat_animation_event(EditorState& state, const AnimatorFiredEvent& fired,
+    const TransformComponent& owner_world, float aim_yaw, float aim_pitch,
+    const std::array<float, 3>& aim_dir) {
+    state.play_test_aim_yaw = aim_yaw;
+    state.play_test_aim_pitch = aim_pitch;
+    if (fired.name == "nockArrow") {
+        state.nocked_arrow_active = true;
+        return;
+    }
+    if (fired.name == "releaseArrow" || fired.name == "bowRelease") {
+        spawn_play_test_projectile_from_nock(state, owner_world, aim_yaw, aim_pitch, aim_dir);
+        return;
+    }
+}
+
+void draw_world_polyline_overlay(ImDrawList* draw_list, const std::array<float, 16>& view_projection,
+    const ViewportFrame& frame, const std::vector<std::array<float, 3>>& points, ImU32 color, float thickness) {
+    if (!draw_list || points.size() < 2) return;
+    for (std::size_t i = 1; i < points.size(); ++i) {
+        float sx0 = 0.0f, sy0 = 0.0f, d0 = 0.0f;
+        float sx1 = 0.0f, sy1 = 0.0f, d1 = 0.0f;
+        const auto& a = points[i - 1];
+        const auto& b = points[i];
+        const bool ok0 = project_world_to_screen(view_projection, frame, a[0], a[1], a[2], sx0, sy0, d0);
+        const bool ok1 = project_world_to_screen(view_projection, frame, b[0], b[1], b[2], sx1, sy1, d1);
+        if (ok0 && ok1) draw_list->AddLine({sx0, sy0}, {sx1, sy1}, color, thickness);
+    }
+}
+
+/// Aim arc (while nocked) + motion trails for flying play-test arrows + center reticle.
+void draw_play_test_bow_projectile_overlays(EditorState& state, ImDrawList* draw_list, const ViewportFrame& frame,
+    const std::array<float, 16>& view_projection, const TransformComponent& owner_world) {
+    if (!draw_list) return;
+
+    if (state.nocked_arrow_active &&
+        (state.test_held_string_mid_model || state.test_string_hand_global)) {
+        const TransformComponent nock = nocked_arrow_world_transform(state, owner_world);
+        std::array<float, 3> dir{};
+        if (state.play_test_camera_valid) {
+            dir = muzzle_fire_direction(nock.position, state.play_test_camera_eye, state.play_test_camera_forward,
+                state.projectile_speed, state.projectile_gravity, state.projectile_aim_range,
+                k_bow_aim_reticle_ndc_x, state.play_test_camera_tan_half_h);
+        } else {
+            dir = orbit_aim_direction_from_yaw_pitch(state.play_test_aim_yaw, state.play_test_aim_pitch);
+        }
+        state.play_test_fire_dir = dir;
+        std::array<float, 3> pos = nock.position;
+        std::array<float, 3> vel = {
+            dir[0] * state.projectile_speed,
+            dir[1] * state.projectile_speed,
+            dir[2] * state.projectile_speed,
+        };
+        std::vector<std::array<float, 3>> path;
+        path.reserve(48);
+        path.push_back(pos);
+        const float dt = 0.04f;
+        const float max_t = std::max(0.4f, state.projectile_trajectory_preview);
+        for (float t = 0.0f; t < max_t; t += dt) {
+            pos[0] += vel[0] * dt;
+            pos[1] += vel[1] * dt;
+            pos[2] += vel[2] * dt;
+            vel[1] -= state.projectile_gravity * dt;
+            path.push_back(pos);
+            if (pos[1] < -2.0f) break;
+        }
+        draw_world_polyline_overlay(draw_list, view_projection, frame, path, IM_COL32(255, 210, 90, 200), 2.0f);
+        for (std::size_t i = 0; i < path.size(); i += 4) {
+            float sx = 0.0f, sy = 0.0f, d = 0.0f;
+            if (project_world_to_screen(view_projection, frame, path[i][0], path[i][1], path[i][2], sx, sy, d))
+                draw_list->AddCircleFilled({sx, sy}, 2.2f, IM_COL32(255, 230, 140, 220));
+        }
+    }
+
+    // Flight marker: faint cool-white streak + soft tip ring (matches wind-rush trail VFX).
+    constexpr ImU32 k_arrow_flight_line = IM_COL32(232, 240, 255, 55);
+    constexpr ImU32 k_arrow_flight_ring = IM_COL32(240, 246, 255, 75);
+    for (const auto& p : state.play_test_projectiles) {
+        if (p.trail.size() >= 2)
+            draw_world_polyline_overlay(draw_list, view_projection, frame, p.trail, k_arrow_flight_line, 1.0f);
+        float sx = 0.0f, sy = 0.0f, d = 0.0f;
+        if (project_world_to_screen(view_projection, frame, p.transform.position[0], p.transform.position[1],
+                p.transform.position[2], sx, sy, d)) {
+            draw_list->AddCircle({sx, sy}, 2.4f, k_arrow_flight_ring, 0, 1.0f);
+        }
+    }
+
+    // Screen-center reticle = orbit look axis (shoulder is framing only).
+    if (state.nocked_arrow_active || !state.play_test_projectiles.empty()) {
+        const float width = frame.image_max.x - frame.image_min.x;
+        const float cx =
+            (frame.image_min.x + frame.image_max.x) * 0.5f + width * k_bow_aim_reticle_viewport_x;
+        const float cy = (frame.image_min.y + frame.image_max.y) * 0.5f;
+        const float arm = 9.0f;
+        const float gap = 3.0f;
+        const ImU32 col = state.nocked_arrow_active ? IM_COL32(255, 220, 120, 230) : IM_COL32(240, 245, 255, 180);
+        const float thick = 1.6f;
+        draw_list->AddLine({cx - arm, cy}, {cx - gap, cy}, col, thick);
+        draw_list->AddLine({cx + gap, cy}, {cx + arm, cy}, col, thick);
+        draw_list->AddLine({cx, cy - arm}, {cx, cy - gap}, col, thick);
+        draw_list->AddLine({cx, cy + gap}, {cx, cy + arm}, col, thick);
+        draw_list->AddCircle({cx, cy}, 2.0f, col, 0, thick);
+    }
+}
+
+bool item_def_is_ranged_weapon(const ItemDef* def) {
+    if (!def) return false;
+    for (const auto& tag : def->tags) {
+        if (tag == "ranged") return true;
+    }
+    return false;
+}
+
+/// Over-the-shoulder aim: wider right shoulder + closer orbit + slight FOV focus while bowDrawn (LMB).
+/// Pitch widen uses the same bow window as combat (draw/nock). Hipfire baselines come from the
+/// camera asset each frame; blend is exponential so enter/exit does not re-timer jump.
+/// Returns the vertical FOV to feed set_perspective (caller applies aspect/near/far).
+float apply_bow_aim_orbit_framing(EditorState& editor, OrbitCamera& orbit, float delta_seconds, bool want_aim,
+    bool pitch_widen) {
+    // OTS framing only (right + closer + FOV); aim stays pure orbit orientation.
+    // Hip default/max sit near 5.25/6 on open-world game.camera — aim pulls in without a huge dolly.
+    constexpr float k_bow_aim_shoulder = 1.12f;
+    constexpr float k_bow_aim_distance = 4.35f;
+    constexpr float k_bow_aim_blend_tau = 0.15f; // ~exp approach time constant (s)
+    // ~8° tighter VFOV at full aim — extra focus kick on top of closer distance.
+    constexpr float k_bow_aim_fov_delta = 0.140f;
+
+    const float dt = (delta_seconds > 0.0f && delta_seconds <= 0.25f) ? delta_seconds : (1.0f / 60.0f);
+    const float target_u = want_aim ? 1.0f : 0.0f;
+    const float alpha = 1.0f - std::exp(-dt / k_bow_aim_blend_tau);
+    editor.bow_aim_camera_blend += (target_u - editor.bow_aim_camera_blend) * alpha;
+    if (std::abs(editor.bow_aim_camera_blend - target_u) < 0.002f)
+        editor.bow_aim_camera_blend = target_u;
+    editor.bow_aim_camera_blend = std::clamp(editor.bow_aim_camera_blend, 0.0f, 1.0f);
+
+    const float u = editor.bow_aim_camera_blend;
+
+    // Rest distance: follow scroll when fully hipfire; freeze at aim-enter and hold through blend-out.
+    if (want_aim) {
+        if (!editor.bow_aim_orbit_rest_captured) {
+            editor.bow_aim_orbit_rest_distance = orbit.desired_distance();
+            editor.bow_aim_orbit_rest_captured = true;
+        }
+    } else if (u <= 0.0f) {
+        editor.bow_aim_orbit_rest_distance = orbit.desired_distance();
+        editor.bow_aim_orbit_rest_captured = false;
+    }
+
+    OrbitCameraConfig cfg = editor.camera_asset.orbit_config();
+    const float base_shoulder = cfg.shoulder_offset;
+    cfg.shoulder_offset = base_shoulder + (k_bow_aim_shoulder - base_shoulder) * u;
+    if (pitch_widen) {
+        cfg.min_pitch = -0.85f; // look up
+        cfg.max_pitch = 1.15f;  // look down
+    }
+    // set_config only replaces limits/framing fields — desired/resolved distance stay continuous.
+    orbit.set_config(cfg);
+
+    if (editor.bow_aim_orbit_rest_captured || u > 0.0f) {
+        const float rest = editor.bow_aim_orbit_rest_captured ? editor.bow_aim_orbit_rest_distance
+                                                              : orbit.desired_distance();
+        orbit.set_desired_distance(rest + (k_bow_aim_distance - rest) * u);
+    }
+
+    const float base_fov = editor.camera_asset.vertical_fov_radians;
+    const float aim_fov = std::max(0.35f, base_fov - k_bow_aim_fov_delta);
+    return base_fov + (aim_fov - base_fov) * u;
+}
+
+void reset_bow_aim_orbit_framing(EditorState& editor) {
+    editor.bow_aim_camera_blend = 0.0f;
+    editor.bow_aim_orbit_rest_distance = 0.0f;
+    editor.bow_aim_orbit_rest_captured = false;
+}
+
+const ImportedMesh* resolve_prefab_skinned_mesh(const PrefabAsset& prefab,
+    const std::vector<std::pair<std::string, ImportedMesh>>& imported_meshes,
+    TransformComponent* out_visual_local = nullptr) {
+    std::string mesh_key;
+    TransformComponent visual_local;
+    if (!prefab.is_compositional() && !prefab.mesh.empty()) {
+        mesh_key = normalize_asset_path(prefab.mesh);
+    } else {
+        for (const auto& part : prefab.parts) {
+            if (part.mesh.asset && !part.mesh.asset->empty()) {
+                mesh_key = normalize_asset_path(*part.mesh.asset);
+                visual_local = part.transform;
+                break;
+            }
+        }
+    }
+    if (mesh_key.empty()) return nullptr;
+    for (const auto& entry : imported_meshes) {
+        if (normalize_asset_path(entry.first) != mesh_key) continue;
+        if (out_visual_local) *out_visual_local = visual_local;
+        return &entry.second;
+    }
+    return nullptr;
 }
 
 std::optional<std::string> resolve_character_asset_for_prefab(const EditorState& state, const std::string& prefab_path) {
@@ -6996,9 +10760,8 @@ void draw_character_asset_inspector(EditorState& state, bool placement_entity = 
         state.character_asset_dirty = true;
     if (ImGui::InputFloat("Jump Velocity", &state.character_asset.jump_velocity, 0.1f, 0.5f, "%.2f"))
         state.character_asset_dirty = true;
-    ImGui::BeginDisabled(state.test_session_active());
     if (placement_entity && state.selected) {
-        if (ImGui::Button("Apply to Placement") && !state.test_session_active()) {
+        if (ImGui::Button("Apply to Placement")) {
             const auto valid = state.character_asset.validate();
             if (!valid) {
                 state.status = valid.error().message;
@@ -7012,7 +10775,7 @@ void draw_character_asset_inspector(EditorState& state, bool placement_entity = 
             }
         }
         ImGui::SameLine();
-        if (ImGui::Button("Reset from Asset File") && !state.test_session_active()) {
+        if (ImGui::Button("Reset from Asset File")) {
             if (const auto placement = state.scene.placement(*state.selected); placement && placement->character_asset) {
                 if (const auto loaded = CharacterAsset::load(state.project_root / *placement->character_asset); loaded) {
                     state.character_asset = loaded.value();
@@ -7022,10 +10785,10 @@ void draw_character_asset_inspector(EditorState& state, bool placement_entity = 
             }
         }
         if (state.test_session_active())
-            ImGui::TextDisabled("End test session to edit placement character settings.");
+            ImGui::TextDisabled("Edits apply live to the session character; save placement to persist after End Test.");
         else
             ImGui::TextDisabled("Settings are stored on this placement when you apply. F5 also uses unsaved edits while this spawn is selected.");
-    } else if (ImGui::Button("Save Character Asset") && !state.test_session_active()) {
+    } else if (ImGui::Button("Save Character Asset")) {
         const auto valid = state.character_asset.validate();
         if (!valid) {
             state.status = valid.error().message;
@@ -7037,9 +10800,6 @@ void draw_character_asset_inspector(EditorState& state, bool placement_entity = 
             else state.character_asset_dirty = false;
         }
     }
-    ImGui::EndDisabled();
-    if (!placement_entity && state.test_session_active())
-        ImGui::TextDisabled("End test session to save character asset changes.");
 }
 
 void draw_camera_asset_inspector(EditorState& state) {
@@ -7277,7 +11037,8 @@ void apply_held_attach_gizmo_to_weld(EditorState& state, const TransformComponen
 /// Draw the move/rotate/scale ImGuizmo for play-test weld authoring. Returns true if active.
 bool draw_held_attach_gizmo(EditorState& state, const std::array<float, 16>& view,
     const std::array<float, 16>& projection, const ImVec2& image_min, float width, float height) {
-    if (!state.held_attach_gizmo_enabled || !state.test_session_active() || !state.test_held_hand_world) return false;
+    const bool session_ok = state.test_session_active() || state.animation_viewport_active();
+    if (!state.held_attach_gizmo_enabled || !session_ok || !state.test_held_hand_world) return false;
     if (state.test_held_weapon_mesh.empty()) return false;
 
     ImGuizmo::SetOrthographic(false);
@@ -7319,31 +11080,48 @@ bool draw_held_attach_gizmo(EditorState& state, const std::array<float, 16>& vie
     return true;
 }
 
-void draw_held_weapon_attach_inspector(EditorState& state) {
-    if (!state.test_session_active() || !state.inventory_runtime) return;
+void draw_held_weapon_attach_inspector(EditorState& state, const std::string* studio_item_id = nullptr) {
+    const bool studio = studio_item_id != nullptr;
+    if (studio) {
+        if (!state.animation_viewport_active()) return;
+    } else if (!state.test_session_active() || !state.inventory_runtime) {
+        return;
+    }
     ImGui::Separator();
     ImGui::TextUnformatted("Held Weapon Weld");
-    ImGui::TextWrapped(
-        "Weld the active hotbar mesh to a character joint. Drag values or the gizmo and watch the Game view; Save writes handAttach into the item JSON.");
+    ImGui::TextWrapped(studio
+            ? "Weld the Animation Studio held mesh to a character joint. Prefer scrubbing/pausing while dragging. Save writes handAttach into the item JSON."
+            : "Weld the active hotbar mesh to a character joint. Drag values or the gizmo and watch the Game view; Save writes handAttach into the item JSON.");
 
-    const auto stack = state.inventory_runtime->active_hotbar_item();
-    if (stack.empty()) {
-        ImGui::TextDisabled("Select a hotbar weapon with a worldMesh (keys 1–8).");
-        return;
+    std::string item_id;
+    if (studio) {
+        item_id = *studio_item_id;
+        if (item_id.empty()) {
+            ImGui::TextDisabled("Equip a held item above to author its handAttach.");
+            return;
+        }
+    } else {
+        const auto stack = state.inventory_runtime->active_hotbar_item();
+        if (stack.empty()) {
+            ImGui::TextDisabled("Select a hotbar weapon with a worldMesh (keys 1–8).");
+            return;
+        }
+        item_id = stack.item_id;
     }
-    const ItemDef* def = state.inventory_runtime->find_def(stack.item_id);
+    const ItemDef* def = resolve_item_def(state, item_id);
     if (!def || def->world_mesh.empty()) {
-        ImGui::TextDisabled("Active hotbar item has no worldMesh to attach.");
+        ImGui::TextDisabled(studio ? "Held item has no worldMesh to attach."
+                                   : "Active hotbar item has no worldMesh to attach.");
         return;
     }
 
-    if (state.held_attach_item_id != stack.item_id) {
-        state.held_attach_item_id = stack.item_id;
+    if (state.held_attach_item_id != item_id) {
+        state.held_attach_item_id = item_id;
         state.held_attach_weld = weld_from_item_hand_attach(def->hand_attach);
         state.held_attach_dirty = false;
     }
 
-    ImGui::Text("Item: %s", def->display_name.empty() ? stack.item_id.c_str() : def->display_name.c_str());
+    ImGui::Text("Item: %s", def->display_name.empty() ? item_id.c_str() : def->display_name.c_str());
     ImGui::TextDisabled("%s", def->source_path.empty() ? "(no source path)" : def->source_path.c_str());
 
     ImGui::PushID("held_weapon_attach");
@@ -7403,6 +11181,10 @@ void draw_held_weapon_attach_inspector(EditorState& state) {
         state.held_attach_gizmo_was_using = false;
         state.held_attach_drag_socket.reset();
         if (state.held_attach_gizmo_enabled) {
+            // Mutual exclusivity with Animation Studio bone gizmo (default on) — otherwise the
+            // viewport keeps drawing the bone manipulator and the held mesh never moves.
+            state.anim_studio_bone_gizmo_enabled = false;
+            state.anim_studio_bone_gizmo_was_using = false;
             state.gizmo_entity.reset();
             state.particle_gizmo_index.reset();
             state.particle_gizmo_entity.reset();
@@ -7436,8 +11218,9 @@ void draw_held_weapon_attach_inspector(EditorState& state) {
             ImGui::SetNextItemWidth(80.0f);
             ImGui::DragFloat("x##grip_snap_s", &state.held_attach_scale_snap, 0.01f, 0.01f, 1.0f, "%.2f");
         }
-        ImGui::TextWrapped(
-            "Drag the gizmo in Scene or Game view. Local = weapon/hand axes; World = scene axes (scale is always local). The socket freezes for the duration of a drag, so an animating joint cannot pull the handles away. Combat (Attack/Block/Dodge) is paused while the gizmo is enabled — turn it off to test swings. Pause (F6) freezes the pose. Hotkeys: G=Move, R=Rotate, T=Scale, X=Local/World (not 1–2 — those are hotbar).");
+        ImGui::TextWrapped(studio
+                ? "Drag the gizmo in the Animation viewport. Local = weapon/hand axes; World = stage axes (scale is always local). The socket freezes for a drag so scrubbing cannot pull the handles away. Pause playback while fine-tuning."
+                : "Drag the gizmo in Scene or Game view. Local = weapon/hand axes; World = scene axes (scale is always local). The socket freezes for the duration of a drag, so an animating joint cannot pull the handles away. Combat (Attack/Block/Dodge) is paused while the gizmo is enabled — turn it off to test swings. Pause (F6) freezes the pose. Hotkeys: G=Move, R=Rotate, T=Scale, X=Local/World (not 1–2 — those are hotbar).");
     }
     ImGui::PopID();
 
@@ -7457,7 +11240,7 @@ void draw_held_weapon_attach_inspector(EditorState& state) {
     ImGui::BeginDisabled(def->source_path.empty());
     if (ImGui::Button("Save handAttach")) {
         if (state.item_catalog) {
-            if (ItemDef* mutable_def = state.item_catalog->find_mutable(stack.item_id)) {
+            if (ItemDef* mutable_def = state.item_catalog->find_mutable(item_id)) {
                 mutable_def->hand_attach.joint = state.held_attach_weld.joint;
                 mutable_def->hand_attach.grip_offset = state.held_attach_weld.offset;
                 mutable_def->hand_attach.grip_euler_deg = state.held_attach_weld.euler_deg;
@@ -7465,7 +11248,7 @@ void draw_held_weapon_attach_inspector(EditorState& state) {
                 const auto saved = save_item_hand_attach(state.project_root, *mutable_def);
                 if (saved) {
                     state.held_attach_dirty = false;
-                    state.status = "Saved handAttach for " + stack.item_id;
+                    state.status = "Saved handAttach for " + item_id;
                 } else {
                     state.status = saved.error().message;
                     Logger::instance().write(saved.error());
@@ -7953,6 +11736,8 @@ struct EditorTestSessionRestore {
     float camera_pitch = 0.0f;
     std::optional<EntityId> spawn_entity;
     std::optional<TransformComponent> spawn_transform;
+    /// Every placement pose at test start so physics write-back / visual follow cannot leave the scene dirty.
+    std::vector<std::pair<EntityId, TransformComponent>> entity_transforms;
 };
 
 TerrainPaintMaterialLookup editor_paint_material_lookup(EditorState& state) {
@@ -8250,10 +12035,16 @@ void process_test_session_ui_input(EditorState& state) {
             }
         }
     }
-    if (state.game_viewport_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        event.mouse_clicked = true;
-        event.mouse_pos = {io.MousePos.x, io.MousePos.y};
+    // Inventory drag needs continuous press tracking (mouse_down/held/released). Click-only was
+    // enough for non-slot buttons; slot binds never saw mouse_down so press→drag→drop was dead.
+    event.mouse_pos = {io.MousePos.x, io.MousePos.y};
+    if (state.game_viewport_hovered) {
+        event.mouse_clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+        event.mouse_down = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
     }
+    // Hold / release even if the cursor leaves the viewport mid-drag so drops still complete.
+    event.mouse_held = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    event.mouse_released = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
 
     const auto result = state.ui_canvas_stack->handle_modal_input(event, state.lua_runtime.get());
     if (result.modal_popped) {
@@ -8310,7 +12101,9 @@ void handle_editor_shortcuts(EditorState& state, bool camera_capture, MaterialAs
                 state.status = resumed.error().message;
         }
     }
-    if (state.test_session_active()) return;
+    // Placement shortcuts stay available on Scene while a test is running (live examine/edit).
+    // On Game, only play chrome / F5–F6 / co-op keys apply — skip scene mutate shortcuts.
+    if (state.test_session_active() && state.active_viewport_tab != EditorState::ViewportTab::Scene) return;
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S)) {
         const auto saved = state.scene.save_atomic(state.world_path);
         if (!saved) {
@@ -9444,6 +13237,299 @@ void draw_sculpt_toolbar(EditorState& state, StreamedTerrainField* streamed_terr
     ImGui::TextDisabled("Tint multiplies procedural terrain colors only. Painted samples keep their material colors.");
 }
 
+std::filesystem::path repository_root_path();
+
+std::string asset_import_source_hint(const EditorState& state) {
+    // Prefer the folder the author last imported from; fall back to their own art sources.
+    if (state.asset_import_plan_ready && !state.asset_import_plan.source.empty())
+        return state.asset_import_plan.source.parent_path().string();
+    const auto art = repository_root_path() / "tools" / "art";
+    std::error_code error;
+    if (!art.empty() && std::filesystem::exists(art, error)) return art.string();
+    return {};
+}
+
+/// Resolve a picked file into an import plan and seed the editable fields for new targets.
+/// `pinned_target_id` forces the plan onto that catalog target ("Replace..." on a browser row), so a
+/// renamed export still updates the same asset instead of registering a lookalike.
+void prepare_asset_import(EditorState& state, const std::filesystem::path& source,
+    const std::string& pinned_target_id = {}) {
+    if (state.asset_import_running) {
+        state.asset_import_status = "An import is already running.";
+        return;
+    }
+    state.asset_import_plan = pinned_target_id.empty()
+        ? plan_asset_import(state.project_root, source)
+        : plan_asset_replace(state.project_root, pinned_target_id, source);
+    state.asset_import_plan_ready = true;
+    state.asset_import_failures = state.asset_import_plan.diagnostics;
+    state.asset_import_last_ok = false;
+    state.asset_import_result_prefab.clear();
+    state.asset_import_report_json.clear();
+    state.asset_import_baked_clips.clear();
+    state.asset_import_refreshed_from_bbmodel = false;
+    state.asset_import_focus_tab = true;
+    std::snprintf(state.asset_import_id_buffer, sizeof(state.asset_import_id_buffer), "%s",
+        state.asset_import_plan.target_id.c_str());
+    state.asset_import_target_height = state.asset_import_plan.target_height > 0.0f
+        ? state.asset_import_plan.target_height
+        : 1.0f;
+    if (!state.asset_import_plan.supported) {
+        state.asset_import_status = state.asset_import_plan.diagnostics.empty()
+            ? "Cannot import " + source.filename().generic_string()
+            : state.asset_import_plan.diagnostics.front().message;
+        return;
+    }
+    state.asset_import_status = state.asset_import_plan.existing_target
+        ? "Ready to update " + state.asset_import_plan.target_id + " (matched by " +
+            to_string(state.asset_import_plan.match) + ")"
+        : "Ready to import as new asset " + state.asset_import_plan.target_id;
+    state.status = state.asset_import_status;
+}
+
+void request_asset_import_dialog(EditorState& state, const std::string& pinned_target_id = {}) {
+    if (!file_dialog_available()) {
+        state.asset_import_status = "Native file dialog unavailable on this platform.";
+        return;
+    }
+    const auto title =
+        pinned_target_id.empty() ? std::string("Import model") : "Replace " + pinned_target_id + " source";
+    const auto picked = open_file_dialog(title, model_file_dialog_filters(), asset_import_source_hint(state));
+    if (!picked) return;
+    prepare_asset_import(state, *picked, pinned_target_id);
+}
+
+void start_asset_import(EditorState& state, const AssetImportPlan& plan, double now_seconds) {
+    if (state.asset_import_running || state.project_root.empty()) return;
+    state.asset_import_running = true;
+    state.asset_import_last_ok = false;
+    state.asset_import_failures.clear();
+    state.asset_import_report_json.clear();
+    state.asset_import_result_prefab.clear();
+    state.asset_import_started_seconds = now_seconds;
+    state.asset_import_elapsed_seconds = 0.0;
+    state.asset_import_stage = "Starting import...";
+    state.asset_import_status = state.asset_import_stage;
+    state.asset_import_progress = std::make_shared<std::string>(state.asset_import_stage);
+    state.asset_import_progress_mutex = std::make_shared<std::mutex>();
+    auto stage = state.asset_import_progress;
+    auto stage_mutex = state.asset_import_progress_mutex;
+    const auto project_root = state.project_root;
+    state.asset_import_job = std::async(std::launch::async, [project_root, plan, stage, stage_mutex]() {
+        return run_asset_import(project_root, plan, [stage, stage_mutex](std::string_view text) {
+            const std::lock_guard<std::mutex> guard(*stage_mutex);
+            *stage = std::string(text);
+        });
+    });
+}
+
+/// Drain the worker future, then hot-reload the baked mesh, its clips, and the asset catalog.
+void poll_asset_import(EditorState& state, double now_seconds) {
+    if (!state.asset_import_running) return;
+    state.asset_import_elapsed_seconds = now_seconds - state.asset_import_started_seconds;
+    if (state.asset_import_progress && state.asset_import_progress_mutex) {
+        const std::lock_guard<std::mutex> guard(*state.asset_import_progress_mutex);
+        state.asset_import_stage = *state.asset_import_progress;
+    }
+    if (!state.asset_import_job.valid()) {
+        state.asset_import_running = false;
+        return;
+    }
+    if (state.asset_import_job.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) return;
+
+    const auto outcome = state.asset_import_job.get();
+    state.asset_import_running = false;
+    state.asset_import_last_ok = outcome.ok;
+    state.asset_import_failures = outcome.diagnostics;
+    state.asset_import_report_json = outcome.report_json;
+    state.asset_import_result_prefab = outcome.prefab_path;
+    state.asset_import_baked_clips.clear();
+    state.asset_import_refreshed_from_bbmodel = false;
+    if (!outcome.report_json.empty()) {
+        try {
+            const auto report = nlohmann::json::parse(outcome.report_json);
+            if (report.contains("bake") && report["bake"].is_object()) {
+                const auto& bake = report["bake"];
+                state.asset_import_refreshed_from_bbmodel = bake.value("refreshedFromBbmodel", false);
+                const auto& clips = bake.contains("bakedClips") ? bake["bakedClips"]
+                    : bake.contains("exportedClips") ? bake["exportedClips"] : nlohmann::json::array();
+                if (clips.is_array()) {
+                    for (const auto& clip : clips) {
+                        if (clip.is_string()) state.asset_import_baked_clips.push_back(clip.get<std::string>());
+                    }
+                }
+            }
+        } catch (...) {
+            // Report JSON is best-effort UI enrichment; bake success still stands.
+        }
+    }
+    state.asset_import_stage.clear();
+    state.asset_import_status = outcome.summary;
+    state.status = outcome.summary;
+    if (!outcome.ok) {
+        append_editor_console(state, "Asset import failed: " + outcome.summary, true);
+        return;
+    }
+    for (const auto& mesh : outcome.mesh_reloads) {
+        state.pending_mesh_reloads.insert(mesh);
+        // Reload clips immediately so play test / preview do not keep stale Run/Attack poses
+        // until the next prefab mesh ensure pass.
+        const auto extension = std::filesystem::path(mesh).extension().string();
+        if (extension == ".gltf" || extension == ".glb") {
+            const auto absolute = state.project_root / mesh;
+            if (auto reloaded = state.animation_clip_library.reload(absolute); reloaded) {
+                append_editor_console(state, "Animation clips reloaded: " + mesh, false);
+            } else {
+                Logger::instance().write(reloaded.error());
+                append_editor_console(state,
+                    "Animation clip reload failed after import: " + reloaded.error().message, true);
+            }
+        }
+    }
+    if (!outcome.mesh_reloads.empty()) state.prefab_meshes_dirty = true;
+    if (outcome.created_prefab || outcome.registered_target) {
+        if (const auto refreshed = refresh_editor_assets(state); !refreshed) {
+            state.status = refreshed.error().message;
+            Logger::instance().write(refreshed.error());
+        }
+        state.asset_bake_targets = list_asset_bake_targets();
+    }
+    append_editor_console(state, "Asset import: " + outcome.summary, false);
+    if (state.test_session_active()) {
+        append_editor_console(state,
+            "Play test is still running — restart it (Shift+F5, then F5) to feel updated Run/Attack clips.",
+            false);
+    }
+}
+
+void draw_asset_import_panel(EditorState& state) {
+    ImGui::TextWrapped(
+        "Import a model straight into the project: mesh, texture atlas, and animation clips are baked, "
+        "verified, and hot-reloaded. Pick a .gltf / .glb export or a player .bbmodel — registered "
+        "assets (like the player) update in place. Player Re-import rebuilds clips from the "
+        "Blockbench project so Run/Attack stay correct.");
+
+    ImGui::BeginDisabled(state.asset_import_running);
+    if (ImGui::Button("Choose model file...##AssetImportPick")) request_asset_import_dialog(state);
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("Pick a .gltf / .glb export, or GoodPlayerModel_rigged.bbmodel for the player");
+
+    const auto& plan = state.asset_import_plan;
+    if (state.asset_import_plan_ready) {
+        ImGui::Separator();
+        ImGui::TextDisabled("Source: %s", plan.source_display.c_str());
+        if (plan.supported) {
+            if (plan.existing_target) {
+                ImGui::TextColored(ImVec4(0.55f, 0.78f, 1.0f, 1.0f), "Updates existing asset '%s'",
+                    plan.target_id.c_str());
+                ImGui::TextDisabled("Matched by %s: %s", to_string(plan.match).c_str(),
+                    plan.match_detail.c_str());
+            } else {
+                ImGui::TextColored(ImVec4(0.65f, 0.9f, 0.65f, 1.0f), "New asset");
+                if (ImGui::InputText("Asset id##AssetImportId", state.asset_import_id_buffer,
+                        sizeof(state.asset_import_id_buffer))) {
+                    state.asset_import_plan.target_id = state.asset_import_id_buffer;
+                    state.asset_import_plan.mesh_output =
+                        "assets/models/" + state.asset_import_plan.target_id + ".gltf";
+                    state.asset_import_plan.atlas_output =
+                        "assets/models/" + state.asset_import_plan.target_id + ".png";
+                    state.asset_import_plan.prefab_path =
+                        "assets/prefabs/Imported/" + state.asset_import_plan.target_id + ".prefab.json";
+                }
+                if (ImGui::DragFloat("World height (m)##AssetImportHeight", &state.asset_import_target_height,
+                        0.05f, 0.05f, 12.0f, "%.2f")) {
+                    state.asset_import_plan.target_height = state.asset_import_target_height;
+                }
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("The bake normalizes the model to this height with feet at y=0.");
+            }
+            ImGui::Text("Kind: %s", plan.kind.c_str());
+            if (plan.source_height > 0.0f)
+                ImGui::TextDisabled("Authored source height: %.4f units", plan.source_height);
+            ImGui::Text("Mesh: %s", plan.mesh_output.c_str());
+            ImGui::Text("Atlas: %s", plan.atlas_output.c_str());
+            if (plan.clip_names.empty()) {
+                ImGui::TextDisabled("Animations: none in source");
+            } else {
+                ImGui::Text("Animations: %d clip(s)", static_cast<int>(plan.clip_names.size()));
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    for (const auto& clip : plan.clip_names) ImGui::TextUnformatted(clip.c_str());
+                    ImGui::EndTooltip();
+                }
+                const auto source_ext = plan.source.extension().string();
+                if (source_ext == ".bbmodel" || source_ext == ".BBMODEL")
+                    ImGui::TextDisabled("Clips listed from Blockbench project (preferred over native glTF export)");
+            }
+            if (!plan.prefab_path.empty()) {
+                ImGui::Text("Prefab: %s%s", plan.prefab_path.c_str(),
+                    plan.existing_prefab ? " (existing)" : " (will be created)");
+            }
+        }
+    }
+
+    ImGui::Separator();
+    const bool can_import = state.asset_import_plan_ready && plan.supported && !state.project_root.empty();
+    ImGui::BeginDisabled(state.asset_import_running || !can_import);
+    if (ImGui::Button(plan.existing_target ? "Update Asset##AssetImportRun" : "Import Asset##AssetImportRun")) {
+        auto queued = state.asset_import_plan;
+        if (!queued.existing_target) {
+            queued.target_id = state.asset_import_id_buffer;
+            queued.target_height = state.asset_import_target_height;
+        }
+        start_asset_import(state, queued, ImGui::GetTime());
+    }
+    ImGui::EndDisabled();
+
+    if (state.asset_import_running) {
+        ImGui::SameLine();
+        // Indeterminate: the bake is a single Python call, so animate rather than fake a percentage.
+        const float fraction = static_cast<float>(std::fmod(state.asset_import_elapsed_seconds, 1.5) / 1.5);
+        ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), "");
+        ImGui::Text("%s", state.asset_import_stage.c_str());
+        ImGui::TextDisabled("Elapsed %.1fs (skinned character bakes can take over a minute)",
+            state.asset_import_elapsed_seconds);
+    } else if (state.asset_import_last_ok) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.3f, 0.85f, 0.35f, 1.0f), ICON_FA_CHECK " %s",
+            state.asset_import_status.c_str());
+        ImGui::TextDisabled("Completed in %.1fs", state.asset_import_elapsed_seconds);
+        if (state.asset_import_refreshed_from_bbmodel)
+            ImGui::TextDisabled(
+                "Synced clips from Blockbench project (mesh/UVs kept; rest-relative positions)");
+        if (!state.asset_import_baked_clips.empty()) {
+            ImGui::Text("Baked clips: %d", static_cast<int>(state.asset_import_baked_clips.size()));
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                for (const auto& clip : state.asset_import_baked_clips) ImGui::TextUnformatted(clip.c_str());
+                ImGui::EndTooltip();
+            }
+        }
+        if (!state.asset_import_result_prefab.empty())
+            ImGui::TextDisabled("Placeable prefab: %s", state.asset_import_result_prefab.c_str());
+        if (state.test_session_active())
+            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.35f, 1.0f),
+                "Restart play test (Shift+F5, then F5) to feel the new animations.");
+    } else {
+        ImGui::SameLine();
+        ImGui::TextWrapped("%s", state.asset_import_status.c_str());
+    }
+
+    if (!state.asset_import_failures.empty()) {
+        ImGui::Separator();
+        ImGui::Text("Import failures");
+        for (const auto& error : state.asset_import_failures) {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.2f, 1.0f), "[%s] %s", error.code.c_str(),
+                error.message.c_str());
+            if (!error.remediation.empty()) ImGui::TextDisabled("  -> %s", error.remediation.c_str());
+        }
+    }
+    if (!state.asset_import_report_json.empty() && ImGui::CollapsingHeader("Last import JSON")) {
+        ImGui::TextUnformatted(state.asset_import_report_json.c_str());
+    }
+}
+
 void draw_asset_browser(EditorState& state) {
     ImGui::TextDisabled("Drag prefabs into the viewport, or click terrain then Place.");
     if (state.placement_cursor)
@@ -9490,6 +13576,13 @@ void draw_asset_browser(EditorState& state) {
     if (ImGui::SmallButton("+ New Folder")) open_new_folder_popup();
     ImGui::SameLine();
     if (ImGui::SmallButton("+ New Material")) request_new_material_asset(state, false);
+    // Second row: the browser panel is narrow, so four buttons on one line clip the last two.
+    ImGui::BeginDisabled(state.asset_import_running);
+    if (ImGui::SmallButton("Import Model...")) request_asset_import_dialog(state);
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip(
+            "Pick a .gltf / .glb / .bbmodel to bake into this project (Diagnostics -> Assets shows progress)");
     ImGui::SameLine();
     ImGui::BeginDisabled(!state.asset_browser_selected_folder);
     if (ImGui::SmallButton("Rename Folder")) {
@@ -9652,6 +13745,31 @@ void draw_asset_browser(EditorState& state) {
                 }
                 if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\nClick to edit in Inspector", path.c_str());
                 begin_asset_file_drag_source(normalized, display_name, false);
+            } else if (path_ends_with(normalized, ".gltf") || path_ends_with(normalized, ".glb")) {
+                draw_file_asset_icon(IM_COL32(210, 170, 120, 230));
+                ImGui::SameLine();
+                ImGui::TextUnformatted(display_name.c_str());
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip(
+                        "%s\nRe-import rebakes from the registered source "
+                        "(player uses the Blockbench .bbmodel for animations)",
+                        path.c_str());
+                begin_asset_file_drag_source(normalized, display_name, false);
+                ImGui::SameLine();
+                ImGui::BeginDisabled(state.asset_import_running);
+                if (ImGui::SmallButton(("Re-import##import-" + entry.first).c_str()))
+                    prepare_asset_import(state, state.project_root / normalized);
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    ImGui::SetTooltip("Plan + confirm in Diagnostics -> Assets, then Update Asset");
+                ImGui::SameLine();
+                if (ImGui::SmallButton(("Replace...##replace-" + entry.first).c_str())) {
+                    // Resolve which catalog target owns this baked mesh, then pin the picker to it.
+                    const auto owner = plan_asset_import(state.project_root, state.project_root / normalized);
+                    request_asset_import_dialog(state, owner.existing_target ? owner.target_id : std::string{});
+                }
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    ImGui::SetTooltip("Pick a different .gltf / .glb / .bbmodel and update this asset in place");
+                ImGui::EndDisabled();
             } else {
                 draw_file_asset_icon(IM_COL32(145, 154, 172, 230));
                 ImGui::SameLine();
@@ -10484,6 +14602,46 @@ void draw_design_docs_viewport(EditorState& state) {
     ImGui::EndChild();
 }
 
+std::pair<float, float> resolve_play_target_resolution(const EditorState& state) {
+    switch (state.play_resolution) {
+    case EditorState::PlayResolution::Res720p: return {1280.0f, 720.0f};
+    case EditorState::PlayResolution::Res900p: return {1600.0f, 900.0f};
+    case EditorState::PlayResolution::Res1080p: return {1920.0f, 1080.0f};
+    case EditorState::PlayResolution::Custom:
+        return {static_cast<float>(std::max(160, state.play_custom_width)),
+            static_cast<float>(std::max(90, state.play_custom_height))};
+    case EditorState::PlayResolution::Design:
+        if (state.ui_canvas_stack) {
+            const auto& canvas = state.ui_canvas_stack->hud().asset();
+            if (canvas.design_resolution[0] > 0.0f && canvas.design_resolution[1] > 0.0f)
+                return {canvas.design_resolution[0], canvas.design_resolution[1]};
+        }
+        return {1920.0f, 1080.0f};
+    case EditorState::PlayResolution::Fit:
+    default:
+        return {0.0f, 0.0f};
+    }
+}
+
+/// Fit a target design resolution into available area with letterboxing; zero target uses full area.
+void play_letterbox_rect(const ImVec2& area_min, const ImVec2& area_max, float target_w, float target_h,
+    ImVec2& out_min, ImVec2& out_max) {
+    const float avail_w = std::max(1.0f, area_max.x - area_min.x);
+    const float avail_h = std::max(1.0f, area_max.y - area_min.y);
+    if (!(target_w > 1.0f) || !(target_h > 1.0f)) {
+        out_min = area_min;
+        out_max = area_max;
+        return;
+    }
+    const float scale = std::min(avail_w / target_w, avail_h / target_h);
+    const float draw_w = target_w * scale;
+    const float draw_h = target_h * scale;
+    const float ox = (avail_w - draw_w) * 0.5f;
+    const float oy = (avail_h - draw_h) * 0.5f;
+    out_min = {area_min.x + ox, area_min.y + oy};
+    out_max = {out_min.x + draw_w, out_min.y + draw_h};
+}
+
 std::string format_dip_local_time(std::int64_t epoch_ms) {
     const std::time_t seconds = static_cast<std::time_t>(epoch_ms / 1000);
     const int millis = static_cast<int>(epoch_ms % 1000);
@@ -10612,6 +14770,8 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     state.ui_hotspots.clear();
     state.ui_hotspots.set_window_size(static_cast<int>(ImGui::GetIO().DisplaySize.x),
         static_cast<int>(ImGui::GetIO().DisplaySize.y));
+    // Import runs on a worker thread; drain it every frame so results land even when the tab is hidden.
+    poll_asset_import(state, ImGui::GetTime());
 
     const auto* main = ImGui::GetMainViewport();
     constexpr ImGuiWindowFlags locked =
@@ -10715,6 +14875,43 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 state.test_session_command = EditorState::TestSessionCommand::Resume;
             if (ImGui::MenuItem(ICON_FA_STOP " End Test Session", "Shift+F5", false, !inactive))
                 state.test_session_command = EditorState::TestSessionCommand::End;
+            ImGui::Separator();
+            ImGui::BeginDisabled(!inactive);
+            if (ImGui::BeginMenu("Play Display")) {
+                if (ImGui::MenuItem("Embedded panel", nullptr,
+                        state.play_display_mode == EditorState::PlayDisplayMode::Embedded))
+                    state.play_display_mode = EditorState::PlayDisplayMode::Embedded;
+                if (ImGui::MenuItem("Maximized viewport", nullptr,
+                        state.play_display_mode == EditorState::PlayDisplayMode::Maximized))
+                    state.play_display_mode = EditorState::PlayDisplayMode::Maximized;
+                if (ImGui::MenuItem("Fullscreen window", nullptr,
+                        state.play_display_mode == EditorState::PlayDisplayMode::Fullscreen))
+                    state.play_display_mode = EditorState::PlayDisplayMode::Fullscreen;
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Play Resolution")) {
+                auto res_item = [&](const char* label, EditorState::PlayResolution res) {
+                    if (ImGui::MenuItem(label, nullptr, state.play_resolution == res))
+                        state.play_resolution = res;
+                };
+                res_item("Fit panel", EditorState::PlayResolution::Fit);
+                res_item("1280 × 720", EditorState::PlayResolution::Res720p);
+                res_item("1600 × 900", EditorState::PlayResolution::Res900p);
+                res_item("1920 × 1080", EditorState::PlayResolution::Res1080p);
+                res_item("HUD design resolution", EditorState::PlayResolution::Design);
+                res_item("Custom…", EditorState::PlayResolution::Custom);
+                if (state.play_resolution == EditorState::PlayResolution::Custom) {
+                    ImGui::SetNextItemWidth(90.0f);
+                    ImGui::InputInt("W##play_custom_w", &state.play_custom_width);
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(90.0f);
+                    ImGui::InputInt("H##play_custom_h", &state.play_custom_height);
+                    state.play_custom_width = std::clamp(state.play_custom_width, 160, 7680);
+                    state.play_custom_height = std::clamp(state.play_custom_height, 90, 4320);
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndDisabled();
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -10762,6 +14959,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     switch (state.active_viewport_tab) {
     case EditorState::ViewportTab::Sculpt: active_area = "Sculpt"; break;
     case EditorState::ViewportTab::Game: active_area = "Game"; break;
+    case EditorState::ViewportTab::Animation: active_area = "Animation"; break;
     case EditorState::ViewportTab::UI: active_area = "UI Canvas"; break;
     case EditorState::ViewportTab::WorldForge: active_area = "World Forge"; break;
     case EditorState::ViewportTab::DesignDocs: active_area = "Design Docs"; break;
@@ -10823,15 +15021,24 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
 
     const ImVec2 origin{main->WorkPos.x, main->WorkPos.y + EditorChrome::kHeaderHeight};
     const ImVec2 extent{main->WorkSize.x, std::max(1.0f, main->WorkSize.y - EditorChrome::kHeaderHeight)};
-    const float left = std::min(extent.x * 0.20f, 310.0f);
-    const float right = std::min(extent.x * 0.25f, 390.0f);
+    // Collapse side chrome only while the Game view is the active play surface (not while examining on Scene).
+    const bool play_chrome_collapsed = state.test_session_active() &&
+        state.active_viewport_tab == EditorState::ViewportTab::Game &&
+        (state.play_display_mode == EditorState::PlayDisplayMode::Maximized ||
+            state.play_display_mode == EditorState::PlayDisplayMode::Fullscreen || state.play_layout_maximized);
+    const float left = play_chrome_collapsed ? 0.0f : std::min(extent.x * 0.20f, 310.0f);
+    const float right = play_chrome_collapsed ? 0.0f : std::min(extent.x * 0.25f, 390.0f);
     const float center = std::max(1.0f, extent.x - left - right);
-    const float top = extent.y * 0.63f;
+    const float top = play_chrome_collapsed ? extent.y : extent.y * 0.63f;
     const float bottom = extent.y - top;
 
     handle_editor_shortcuts(state, camera_capture, terrain_material, streamed_terrain, streamed_water, collision);
 
-    const bool edit_mode = !state.test_session_active();
+    // Scene stays editable during play so authors can inspect, tweak, and re-select while the simulation runs.
+    // Sculpt / World Forge / UI canvas still require ending play (unsafe mid-sim terrain/content tools).
+    const bool scene_edit_mode = !state.test_session_active() ||
+        state.active_viewport_tab == EditorState::ViewportTab::Scene;
+    const bool edit_mode = scene_edit_mode; // legacy name for scene-tool gates below
     ImGui::SetNextWindowPos({origin.x + left, origin.y}, ImGuiCond_Always);
     ImGui::SetNextWindowSize({center, top}, ImGuiCond_Always);
     ImGui::Begin("Viewports", nullptr, locked);
@@ -10870,6 +15077,19 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             ImGui::EndTabItem();
         }
         ImGui::BeginDisabled(state.test_session_active());
+        const bool animation_open = ImGui::BeginTabItem(ICON_FA_FILM " Animation##ViewportAnimation", nullptr,
+            tab_flags(EditorState::ViewportTab::Animation));
+        register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.Animation", "Animation");
+        if (animation_open) {
+            if (!state.lock_viewport_tab && !state.force_select_viewport_tab) {
+                if (state.active_viewport_tab != EditorState::ViewportTab::Animation)
+                    state.force_select_animation_support_tab = true;
+                state.active_viewport_tab = EditorState::ViewportTab::Animation;
+            }
+            ImGui::EndTabItem();
+        }
+        ImGui::EndDisabled();
+        ImGui::BeginDisabled(state.test_session_active());
         const bool ui_open =
             ImGui::BeginTabItem(ICON_FA_DESKTOP " UI##ViewportUI", nullptr, tab_flags(EditorState::ViewportTab::UI));
         register_ui_hotspot_last_item(&state.ui_hotspots, "Viewport.UI", "UI");
@@ -10905,6 +15125,7 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     const bool scene_tab = state.active_viewport_tab == EditorState::ViewportTab::Scene;
     const bool sculpt_tab = state.active_viewport_tab == EditorState::ViewportTab::Sculpt;
     const bool game_tab = state.active_viewport_tab == EditorState::ViewportTab::Game;
+    const bool animation_tab = state.active_viewport_tab == EditorState::ViewportTab::Animation;
     const bool ui_tab = state.active_viewport_tab == EditorState::ViewportTab::UI;
     const bool world_forge_tab = state.active_viewport_tab == EditorState::ViewportTab::WorldForge;
     const bool design_docs_tab = state.active_viewport_tab == EditorState::ViewportTab::DesignDocs;
@@ -10938,7 +15159,8 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         if (editor_icon_button("gizmo_scale", ICON_FA_EXPAND_ALT, "Scale [3]"))
             state.gizmo_operation = ImGuizmo::SCALE;
     }
-    if (state.test_session_active() && state.held_attach_gizmo_enabled) {
+    if (state.held_attach_gizmo_enabled &&
+        (state.test_session_active() || (animation_tab && !state.anim_studio_bone_gizmo_enabled))) {
         ImGui::SameLine();
         ImGui::TextDisabled("| Weld");
         ImGui::SameLine();
@@ -10966,6 +15188,67 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                     state.held_attach_gizmo_mode == ImGuizmo::WORLD ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
             }
         }
+    } else if (animation_tab && state.anim_studio_bone_gizmo_enabled) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("| Bone");
+        ImGui::SameLine();
+        if (editor_icon_button("anim_bone_move", ICON_FA_ARROWS_ALT, "Bone Move [G]"))
+            state.anim_studio_bone_gizmo_op = ImGuizmo::TRANSLATE;
+        ImGui::SameLine();
+        if (editor_icon_button("anim_bone_rotate", ICON_FA_SYNC_ALT, "Bone Rotate [R]"))
+            state.anim_studio_bone_gizmo_op = ImGuizmo::ROTATE;
+        ImGui::SameLine();
+        if (editor_icon_button("anim_bone_scale", ICON_FA_EXPAND_ALT, "Bone Scale [T]"))
+            state.anim_studio_bone_gizmo_op = ImGuizmo::SCALE;
+        ImGui::SameLine();
+        if (editor_icon_button("anim_bone_space",
+                state.anim_studio_bone_gizmo_mode == ImGuizmo::WORLD ? ICON_FA_GLOBE : ICON_FA_CUBE,
+                state.anim_studio_bone_gizmo_mode == ImGuizmo::WORLD ? "Bone World [X]" : "Bone Local [X]")) {
+            state.anim_studio_bone_gizmo_mode =
+                state.anim_studio_bone_gizmo_mode == ImGuizmo::WORLD ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
+        }
+        if (state.viewport_focused && !camera_capture && !ImGui::GetIO().WantTextInput) {
+            if (ImGui::IsKeyPressed(ImGuiKey_G)) state.anim_studio_bone_gizmo_op = ImGuizmo::TRANSLATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_R)) state.anim_studio_bone_gizmo_op = ImGuizmo::ROTATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_T)) state.anim_studio_bone_gizmo_op = ImGuizmo::SCALE;
+            if (ImGui::IsKeyPressed(ImGuiKey_X)) {
+                state.anim_studio_bone_gizmo_mode =
+                    state.anim_studio_bone_gizmo_mode == ImGuizmo::WORLD ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
+            }
+        }
+    }
+    // Space / Ctrl+C/V for Animation Studio (not in text fields / play-test).
+    if (animation_tab && !state.test_session_active() && !camera_capture && !ImGui::GetIO().WantTextInput) {
+        if (ImGui::IsKeyPressed(ImGuiKey_Space, false)) toggle_anim_studio_playback(state);
+        const ImGuiIO& anim_io = ImGui::GetIO();
+        if (anim_io.KeyCtrl && !anim_io.KeyAlt) {
+            if (ImGui::IsKeyPressed(ImGuiKey_C, false)) {
+                const bool tracks = anim_io.KeyShift;
+                if (copy_anim_studio_keys(state, tracks)) {
+                    const auto& board = state.anim_studio_key_clipboard;
+                    state.anim_studio_status =
+                        (tracks ? "Copied " : "Copied TRS @ ")
+                        + (tracks ? std::to_string(board.keys.size()) + " keys from "
+                                  : std::to_string(board.anchor_time) + "s ")
+                        + board.source_display_joint
+                        + (tracks ? " track (Ctrl+V pastes at scrub, keeps spacing)"
+                                  : " (Ctrl+V pastes pos/rot/scale at scrub)");
+                } else {
+                    state.anim_studio_status = "Nothing to copy — select a joint with keys";
+                }
+            }
+            if (ImGui::IsKeyPressed(ImGuiKey_V, false)) {
+                if (paste_anim_studio_keys(state)) {
+                    state.anim_studio_status =
+                        "Pasted " + std::to_string(state.anim_studio_key_clipboard.keys.size())
+                        + " keys at " + std::to_string(state.anim_studio_scrub) + "s on "
+                        + anim_studio_display_joint_name(state.anim_studio_edit_joint,
+                              state.anim_studio_edit_joint_source);
+                } else {
+                    state.anim_studio_status = "Paste failed — copy keys first and select a joint";
+                }
+            }
+        }
     }
     if (edit_mode && sculpt_tab) {
         draw_sculpt_toolbar(state, streamed_terrain, streamed_foliage, streamed_water, collision, terrain_material,
@@ -10975,6 +15258,20 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         ImGui::SameLine();
         if (editor_icon_button("test_start", ICON_FA_PLAY, "Start Test (F5)", true, &state.ui_hotspots))
             state.test_session_command = EditorState::TestSessionCommand::Start;
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(118.0f);
+        int display_mode = static_cast<int>(state.play_display_mode);
+        if (ImGui::Combo("##play_display", &display_mode, "Embedded\0Maximized\0Fullscreen\0"))
+            state.play_display_mode = static_cast<EditorState::PlayDisplayMode>(display_mode);
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+            ImGui::SetTooltip("Play presentation: embedded Game tab, maximized work area, or borderless fullscreen");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(128.0f);
+        int res_mode = static_cast<int>(state.play_resolution);
+        if (ImGui::Combo("##play_res", &res_mode, "Fit\0 720p\0 900p\0 1080p\0 Design\0 Custom\0"))
+            state.play_resolution = static_cast<EditorState::PlayResolution>(res_mode);
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+            ImGui::SetTooltip("Play resolution (letterboxed for UI layout testing)");
     } else {
         if (state.test_session == EditorState::TestSessionState::Running) {
             ImGui::SameLine();
@@ -10988,6 +15285,12 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         ImGui::SameLine();
         if (editor_icon_button("test_end", ICON_FA_STOP, "End Test (Shift+F5)", true, &state.ui_hotspots))
             state.test_session_command = EditorState::TestSessionCommand::End;
+        ImGui::SameLine();
+        const auto target = resolve_play_target_resolution(state);
+        if (target.first > 0.0f)
+            ImGui::TextDisabled("| %dx%d", static_cast<int>(target.first), static_cast<int>(target.second));
+        else
+            ImGui::TextDisabled("| Fit");
     }
     const auto available = ImGui::GetContentRegionAvail();
     const ImTextureID active_texture = game_tab ? game_texture : scene_texture;
@@ -11032,15 +15335,68 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     } else if (design_docs_tab) {
         draw_design_docs_viewport(state);
     } else if (available.x > 1.0f && available.y > 1.0f) {
-        ImGui::Image(active_texture, available);
-        state.viewport_hovered = ImGui::IsItemHovered();
-        const ImVec2 image_min = ImGui::GetItemRectMin();
-        const ImVec2 image_max = ImGui::GetItemRectMax();
-        const ViewportFrame frame{image_min, image_max, image_max.x - image_min.x, image_max.y - image_min.y};
-        const ImVec2 mouse = ImGui::GetMousePos();
+        const ImVec2 area_min = ImGui::GetCursorScreenPos();
+        const ImVec2 area_max{area_min.x + available.x, area_min.y + available.y};
+        ImVec2 image_min = area_min;
+        ImVec2 image_max = area_max;
+        if (game_tab && state.test_session_active()) {
+            const auto target = resolve_play_target_resolution(state);
+            play_letterbox_rect(area_min, area_max, target.first, target.second, image_min, image_max);
+            if (image_min.x > area_min.x + 0.5f || image_min.y > area_min.y + 0.5f ||
+                image_max.x < area_max.x - 0.5f || image_max.y < area_max.y - 0.5f) {
+                ImDrawList* bars = ImGui::GetWindowDrawList();
+                bars->AddRectFilled(area_min, area_max, IM_COL32(4, 6, 10, 255));
+            }
+        }
+        const ImVec2 image_size{std::max(1.0f, image_max.x - image_min.x), std::max(1.0f, image_max.y - image_min.y)};
+        // Reserve layout space without an InvisibleButton: ImGuizmo::CanActivate rejects
+        // MouseClicked when any item is hovered/active (IsAnyItemHovered/Active), so a full-rect
+        // button draws the gizmo correctly but blocks every drag. Viewports uses NoMove, so we do
+        // not need a button to stop window dragging.
+        ImGui::Dummy(available);
+        const bool window_hovered =
+            ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddImage(active_texture, image_min, image_max);
+        state.viewport_hovered = window_hovered && ImGui::IsMouseHoveringRect(image_min, image_max);
+        const ViewportFrame frame{image_min, image_max, image_size.x, image_size.y};
+        const ImVec2 mouse = ImGui::GetMousePos();
+        // Animation sandbox shares the Scene offscreen chain: panel aspect must drive the free-cam
+        // projection or ImGuizmo hit-tests (bone + weld) miss the axes drawn over the stretched image.
+        if (scene_tab || sculpt_tab || animation_tab) {
+            state.scene_viewport_min = image_min;
+            state.scene_viewport_max = image_max;
+        } else {
+            state.scene_viewport_min.reset();
+            state.scene_viewport_max.reset();
+        }
 
-        if (game_tab && !state.test_session_active()) {
+        if (animation_tab) {
+            const char* hint = state.held_attach_gizmo_enabled
+                ? "Animation Studio - weld gizmo (G/R/T) - drag held mesh on the joint"
+                : (state.anim_studio_bone_gizmo_enabled
+                        ? "Animation Studio - skeleton + bone gizmo - click bones - G/R/T"
+                        : "Animation Studio - subject + held gear preview (sandbox)");
+            const ImVec2 text_size = ImGui::CalcTextSize(hint);
+            const ImVec2 text_pos{image_min.x + 12.0f, image_max.y - text_size.y - 12.0f};
+            draw_list->AddRectFilled({text_pos.x - 6.0f, text_pos.y - 4.0f},
+                {text_pos.x + text_size.x + 6.0f, text_pos.y + text_size.y + 4.0f}, IM_COL32(8, 10, 14, 160));
+            draw_list->AddText(text_pos, IM_COL32(200, 210, 225, 230), hint);
+            // Compose VP once for skeleton + (bone gizmo uses view/projection separately).
+            std::array<float, 16> anim_view_projection{};
+            {
+                using namespace DirectX;
+                XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4*>(anim_view_projection.data()),
+                    XMLoadFloat4x4(reinterpret_cast<const XMFLOAT4X4*>(view.data())) *
+                        XMLoadFloat4x4(reinterpret_cast<const XMFLOAT4X4*>(projection.data())));
+            }
+            draw_anim_studio_skeleton_overlay(state, anim_view_projection, frame, draw_list);
+            // Weld authoring takes priority when enabled (bone gizmo is on by default and would steal the drawlist).
+            if (state.held_attach_gizmo_enabled)
+                (void)draw_held_attach_gizmo(state, view, projection, image_min, frame.width, frame.height);
+            else if (state.anim_studio_bone_gizmo_enabled)
+                (void)draw_anim_studio_bone_gizmo(state, view, projection, image_min, frame.width, frame.height);
+        } else if (game_tab && !state.test_session_active()) {
             const char* hint = "Start a test session (F5) to preview the game view";
             const ImVec2 text_size = ImGui::CalcTextSize(hint);
             const ImVec2 text_pos{image_min.x + (frame.width - text_size.x) * 0.5f,
@@ -11075,7 +15431,18 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
                 state.world_ui_billboards.sync_interact_prompt(show_prompt, label, wx, wy, wz);
             }
             const ViewportRect game_rect{image_min.x, image_min.y, image_max.x, image_max.y};
-            state.world_ui_billboards.draw(draw_list, view_projection, game_rect);
+            // Project world prompts with the play orbit camera, not freecam Scene matrices.
+            const std::array<float, 16>& billboard_vp =
+                state.play_camera_matrices_valid ? state.play_camera_view_projection : view_projection;
+            state.world_ui_billboards.draw(draw_list, billboard_vp, game_rect);
+            if (state.test_session_active()) {
+                TransformComponent player_owner{};
+                if (state.test_player_spawn_entity) {
+                    if (const auto tr = state.scene.transform(*state.test_player_spawn_entity))
+                        player_owner = *tr;
+                }
+                draw_play_test_bow_projectile_overlays(state, draw_list, frame, billboard_vp, player_owner);
+            }
             if (state.held_attach_gizmo_enabled && state.play_camera_matrices_valid) {
                 (void)draw_held_attach_gizmo(state, state.play_camera_view, state.play_camera_projection, image_min,
                     frame.width, frame.height);
@@ -11535,20 +15902,25 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             commit_active_terrain_stroke(state);
         }
 
-            draw_viewport_markers(state, frame, view_projection);
-            if (!(sculpt_tab && edit_mode))
-                draw_viewport_selection_overlays(state, frame, view_projection);
-            draw_collision_debug_overlays(collision, state, frame, view_projection, character, interactions, combat);
-            draw_authored_collider_overlays(state, frame, view_projection);
-            draw_event_zone_overlays(state, frame, view_projection);
-            draw_world_forge_map_marker_overlays(state, frame, view_projection);
-            if (state.drop_preview_prefab)
-                ImGui::SetTooltip("Drop %s here", state.drop_preview_prefab->c_str());
+            // Scene/Sculpt edit chrome only — never paint selection AABBs / zones over the Game RT.
+            if (scene_tab || sculpt_tab) {
+                draw_viewport_markers(state, frame, view_projection);
+                if (!(sculpt_tab && edit_mode))
+                    draw_viewport_selection_overlays(state, frame, view_projection);
+                draw_collision_debug_overlays(collision, state, frame, view_projection, character, interactions,
+                    combat);
+                draw_authored_collider_overlays(state, frame, view_projection);
+                draw_event_zone_overlays(state, frame, view_projection);
+                draw_world_forge_map_marker_overlays(state, frame, view_projection);
+                if (state.drop_preview_prefab)
+                    ImGui::SetTooltip("Drop %s here", state.drop_preview_prefab->c_str());
+            }
     }
     ImGui::End();
     process_test_session_ui_input(state);
     process_coop_lobby_editor_hooks(state);
 
+    if (!play_chrome_collapsed) {
     ImGui::SetNextWindowPos(origin, ImGuiCond_Always);
     ImGui::SetNextWindowSize({left, top * 0.48f}, ImGuiCond_Always);
     ImGui::Begin("Scene Hierarchy", nullptr, locked);
@@ -12098,6 +16470,776 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
     ImGui::SetNextWindowSize({center, bottom}, ImGuiCond_Always);
     ImGui::Begin("Diagnostics", nullptr, locked);
     ImGui::BeginTabBar("DiagnosticsTabs");
+    ImGuiTabItemFlags animation_support_flags = ImGuiTabItemFlags_None;
+    if (state.force_select_animation_support_tab) {
+        animation_support_flags |= ImGuiTabItemFlags_SetSelected;
+        state.force_select_animation_support_tab = false;
+    }
+    if (ImGui::BeginTabItem(ICON_FA_FILM " Animation##DiagnosticsAnimation", nullptr, animation_support_flags)) {
+        // Compact Animation Studio strip — transport, joint/gizmo, visual timeline (Roblox-style).
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 4.0f));
+        auto subject_options = collect_animator_prefab_paths(state);
+        if (!state.anim_studio_subject_prefab.empty()) {
+            const bool listed = std::find(subject_options.begin(), subject_options.end(),
+                                     state.anim_studio_subject_prefab) != subject_options.end();
+            if (!listed) subject_options.insert(subject_options.begin(), state.anim_studio_subject_prefab);
+        }
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.34f);
+        if (draw_asset_path_combo("Subject##AnimStudioSubject", state.anim_studio_subject_prefab, subject_options,
+                "(none)")) {
+            state.anim_studio_controller_path.clear();
+            state.anim_studio_default_state.clear();
+            state.anim_studio_request_state.clear();
+            (void)attach_anim_studio_subject(state);
+        }
+        ImGui::SameLine();
+        auto controller_options = collect_asset_paths(state, ".animator.json");
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.48f);
+        if (draw_asset_path_combo("Controller##AnimStudioController", state.anim_studio_controller_path,
+                controller_options, "(prefab default)")) {
+            (void)attach_anim_studio_subject(state);
+        }
+        ImGui::SameLine();
+        auto state_names = collect_animator_state_names(state, state.anim_studio_controller_path);
+        if (state_names.empty() && !state.anim_studio_request_state.empty())
+            state_names.push_back(state.anim_studio_request_state);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        if (draw_asset_path_combo("State##AnimStudioState", state.anim_studio_request_state, state_names,
+                "(current)")) {
+            if (!state.anim_studio_request_state.empty())
+                preview_anim_studio_state(state, state.anim_studio_request_state, 0.0f, true);
+        }
+
+        if (ImGui::Button(state.anim_studio_playing ? (ICON_FA_PAUSE " Pause##AnimStudioPlay")
+                                                    : (ICON_FA_PLAY " Play##AnimStudioPlay"))) {
+            toggle_anim_studio_playback(state);
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Play / pause the preview state (Space)");
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_FORWARD " Step##AnimStudioStep")) {
+            state.anim_studio_playing = false;
+            tick_anim_studio_preview(state, 1.0f / 60.0f);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_STOP " Stop##AnimStudioStop")) {
+            state.anim_studio_playing = false;
+            (void)attach_anim_studio_subject(state);
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("%.2f / %.2f s", state.anim_studio_scrub, std::max(0.01f, state.anim_studio_duration));
+        ImGui::SameLine();
+        {
+            ImGui::BeginDisabled(!state.anim_studio_edit_clip.has_value());
+            // Keep a draft while the drag is active so the value does not snap back each frame.
+            static float duration_draft = 1.0f;
+            static std::string duration_draft_clip_key;
+            const std::string clip_key = state.anim_studio_edit_clip
+                ? (state.anim_studio_edit_clip_source + "::" + state.anim_studio_edit_clip_name)
+                : std::string{};
+            if (clip_key != duration_draft_clip_key) {
+                duration_draft_clip_key = clip_key;
+                duration_draft = state.anim_studio_edit_clip
+                    ? state.anim_studio_edit_clip->duration_seconds
+                    : state.anim_studio_duration;
+            }
+            ImGui::SetNextItemWidth(90.0f);
+            ImGui::DragFloat("##AnimStudioDuration", &duration_draft, 0.05f, 0.01f, 120.0f, "%.2fs");
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGui::SetTooltip(
+                    "Edit clip length (seconds). Shorten removes keys after the new end; lengthen keeps keys. "
+                    "Save Override to persist.");
+            bool apply_duration = ImGui::IsItemDeactivatedAfterEdit();
+            if (!ImGui::IsItemActive() && state.anim_studio_edit_clip && !apply_duration)
+                duration_draft = state.anim_studio_edit_clip->duration_seconds;
+            ImGui::SameLine();
+            if (ImGui::Button("Duration##AnimStudioDurationApply")) apply_duration = true;
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGui::SetTooltip("Apply the duration field to the open edit clip.");
+            if (apply_duration && state.anim_studio_edit_clip) {
+                if (!(duration_draft > 0.0f)) {
+                    state.anim_studio_status = "Duration must be > 0";
+                } else if (!set_anim_studio_edit_clip_duration(state, duration_draft)) {
+                    if (state.anim_studio_status.empty())
+                        state.anim_studio_status = "Failed to set clip duration";
+                } else {
+                    duration_draft = state.anim_studio_edit_clip->duration_seconds;
+                }
+            }
+            ImGui::EndDisabled();
+        }
+        if (const auto status = state.anim_studio_runtime.status(EditorState::k_anim_studio_entity_id)) {
+            if (!status.value().layers.empty()) {
+                ImGui::SameLine();
+                ImGui::Text("| %s", status.value().layers.front().state.c_str());
+            }
+            // Only auto-attach the character's active clip for subject bone editing.
+            // Held limbs must keep the weapon draw clip open or bone gizmo writes become display-only.
+            if (state.anim_studio_edit_joint_source != "held") {
+                if (!status.value().active_clips.empty()) {
+                    const auto& primary = status.value().active_clips.front();
+                    (void)ensure_anim_studio_clip_edit(state, primary.clip_source, primary.clip);
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("%s", primary.clip.c_str());
+                }
+            } else {
+                ensure_anim_studio_edit_clip_for_joint_source(state);
+                ImGui::SameLine();
+                if (!state.anim_studio_edit_clip_name.empty())
+                    ImGui::TextDisabled("held:%s", state.anim_studio_edit_clip_name.c_str());
+                else
+                    ImGui::TextDisabled("held");
+            }
+        }
+        if (state.anim_studio_clip_dirty) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "unsaved");
+        }
+        if (state.anim_studio_events_dirty) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.85f, 1.0f), "events*");
+        }
+
+        std::vector<std::string> joint_options;
+        std::vector<std::string> joint_option_sources;
+        auto push_joint_option = [&](const std::string& name, const std::string& source) {
+            for (std::size_t i = 0; i < joint_options.size(); ++i) {
+                if (joint_options[i] == name && joint_option_sources[i] == source) return;
+            }
+            joint_options.push_back(name);
+            joint_option_sources.push_back(source);
+        };
+        for (const auto& entry : state.anim_studio_armature)
+            push_joint_option(entry.name, entry.source);
+        if (joint_options.empty()) {
+            for (const auto& name : state.test_skin_joint_names) push_joint_option(name, "subject");
+        }
+        if (joint_options.empty() && state.anim_studio_edit_clip) {
+            for (const auto& channel : state.anim_studio_edit_clip->channels) {
+                if (channel.target_node_name.empty()) continue;
+                push_joint_option(channel.target_node_name, "subject");
+            }
+        }
+        if (!state.anim_studio_edit_joint.empty()) {
+            const std::string src =
+                state.anim_studio_edit_joint_source == "held" ? "held" : "subject";
+            push_joint_option(state.anim_studio_edit_joint, src);
+        }
+
+        ImGui::Checkbox("Skeleton##AnimStudioSkeletonVis", &state.anim_studio_skeleton_visible);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Draw armature bones for subject + held skinned item. Click joints in the viewport to select.");
+        ImGui::SameLine();
+        ImGui::Checkbox("Labels##AnimStudioSkeletonLabels", &state.anim_studio_skeleton_labels);
+        ImGui::SameLine();
+        if (ImGui::Checkbox("Bone gizmo##AnimStudioBoneGizmo", &state.anim_studio_bone_gizmo_enabled)) {
+            if (state.anim_studio_bone_gizmo_enabled) {
+                state.held_attach_gizmo_enabled = false;
+                state.held_attach_gizmo_was_using = false;
+                state.held_attach_drag_socket.reset();
+            }
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Viewport Move / Rotate / Scale on the selected joint (writes clip keys at scrub). Disables weld gizmo.");
+        if (state.anim_studio_bone_gizmo_enabled) {
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Move##AnimBoneOp", state.anim_studio_bone_gizmo_op == ImGuizmo::TRANSLATE))
+                state.anim_studio_bone_gizmo_op = ImGuizmo::TRANSLATE;
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Rotate##AnimBoneOp", state.anim_studio_bone_gizmo_op == ImGuizmo::ROTATE))
+                state.anim_studio_bone_gizmo_op = ImGuizmo::ROTATE;
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Scale##AnimBoneOp", state.anim_studio_bone_gizmo_op == ImGuizmo::SCALE))
+                state.anim_studio_bone_gizmo_op = ImGuizmo::SCALE;
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Local##AnimBoneMode", state.anim_studio_bone_gizmo_mode == ImGuizmo::LOCAL))
+                state.anim_studio_bone_gizmo_mode = ImGuizmo::LOCAL;
+            ImGui::SameLine();
+            if (ImGui::RadioButton("World##AnimBoneMode", state.anim_studio_bone_gizmo_mode == ImGuizmo::WORLD))
+                state.anim_studio_bone_gizmo_mode = ImGuizmo::WORLD;
+        }
+
+        ImGui::SetNextItemWidth(180.0f);
+        char filter_buf[96];
+        std::snprintf(filter_buf, sizeof(filter_buf), "%s", state.anim_studio_joint_filter.c_str());
+        if (ImGui::InputTextWithHint("##AnimStudioJointFilter", "filter bones...", filter_buf, sizeof(filter_buf)))
+            state.anim_studio_joint_filter = filter_buf;
+        ImGui::SameLine();
+        const std::string selected_src =
+            state.anim_studio_edit_joint_source == "held" ? "held" : "subject";
+        const std::string selected_display = state.anim_studio_edit_joint.empty()
+            ? std::string("(none)")
+            : anim_studio_display_joint_name(state.anim_studio_edit_joint, selected_src);
+        ImGui::TextDisabled("%s | %s | %d bones", selected_display.c_str(), selected_src.c_str(),
+            static_cast<int>(state.anim_studio_armature.size()));
+
+        // Tall enough for held + subject groups without eating the key toolbar under the fold.
+        const float list_h = 150.0f;
+        ImGui::BeginChild("##AnimStudioBoneList", ImVec2(0.0f, list_h), true,
+            ImGuiWindowFlags_HorizontalScrollbar);
+        auto joint_depth = [&](int index) {
+            int depth = 0;
+            int guard = 0;
+            int cur = index;
+            while (cur >= 0 && cur < static_cast<int>(state.anim_studio_armature.size()) && guard++ < 64) {
+                cur = state.anim_studio_armature[static_cast<std::size_t>(cur)].parent_index;
+                if (cur >= 0) ++depth;
+            }
+            return depth;
+        };
+        auto count_source = [&](const char* source_id) {
+            int n = 0;
+            for (const auto& entry : state.anim_studio_armature) {
+                if (entry.source != source_id) continue;
+                if (!state.anim_studio_joint_filter.empty() &&
+                    entry.name.find(state.anim_studio_joint_filter) == std::string::npos)
+                    continue;
+                ++n;
+            }
+            return n;
+        };
+        auto draw_bone_group = [&](const char* header, const char* source_id, bool default_open) {
+            const int count = count_source(source_id);
+            if (count == 0 && std::string_view(source_id) == "held") return;
+            if (count == 0 && !state.anim_studio_joint_filter.empty()) return;
+            ImGui::PushID(source_id);
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed;
+            if (default_open) flags |= ImGuiTreeNodeFlags_DefaultOpen;
+            char label[192];
+            std::snprintf(label, sizeof(label), "%s (%d)###AnimBoneGroup", header, count);
+            const bool open = ImGui::TreeNodeEx(label, flags);
+            if (open) {
+                for (std::size_t i = 0; i < state.anim_studio_armature.size(); ++i) {
+                    const auto& entry = state.anim_studio_armature[i];
+                    if (entry.source != source_id) continue;
+                    if (!state.anim_studio_joint_filter.empty()) {
+                        const std::string display = anim_studio_display_joint_name(entry.name, entry.source);
+                        if (entry.name.find(state.anim_studio_joint_filter) == std::string::npos &&
+                            display.find(state.anim_studio_joint_filter) == std::string::npos)
+                            continue;
+                    }
+                    const int depth = joint_depth(static_cast<int>(i));
+                    const bool selected = entry.name == state.anim_studio_edit_joint &&
+                        entry.source == selected_src;
+                    ImGui::PushID(static_cast<int>(i));
+                    if (depth > 0) ImGui::Indent(static_cast<float>(depth) * 10.0f);
+                    const std::string row_label = anim_studio_display_joint_name(entry.name, entry.source);
+                    if (ImGui::Selectable(row_label.c_str(), selected)) {
+                        select_anim_studio_joint(state, entry.name, entry.source);
+                        ImGui::SetScrollHereY(0.35f);
+                    }
+                    if (depth > 0) ImGui::Unindent(static_cast<float>(depth) * 10.0f);
+                    ImGui::PopID();
+                }
+                ImGui::TreePop();
+            }
+            ImGui::PopID();
+        };
+        if (!state.anim_studio_armature.empty()) {
+            // Held first so skinned gear bones are not buried under a full character rig.
+            if (!state.test_held_weapon_mesh.empty()) {
+                const std::string mesh = state.test_held_weapon_mesh;
+                const auto slash = mesh.find_last_of("/\\");
+                const std::string short_name =
+                    slash == std::string::npos ? mesh : mesh.substr(slash + 1);
+                const std::string held_header = "Held - " + short_name;
+                draw_bone_group(held_header.c_str(), "held", true);
+            } else {
+                draw_bone_group("Held", "held", true);
+            }
+            draw_bone_group("Subject", "subject", true);
+        } else if (!joint_options.empty()) {
+            ImGui::TextDisabled("Subject (mesh joints)");
+            for (std::size_t i = 0; i < joint_options.size(); ++i) {
+                if (!state.anim_studio_joint_filter.empty() &&
+                    joint_options[i].find(state.anim_studio_joint_filter) == std::string::npos)
+                    continue;
+                const bool selected = joint_options[i] == state.anim_studio_edit_joint &&
+                    joint_option_sources[i] == selected_src;
+                ImGui::PushID(static_cast<int>(i));
+                if (ImGui::Selectable(joint_options[i].c_str(), selected)) {
+                    select_anim_studio_joint(state, joint_options[i], joint_option_sources[i]);
+                    ImGui::SetScrollHereY(0.35f);
+                }
+                ImGui::PopID();
+            }
+        } else {
+            ImGui::TextDisabled("No skinned joints yet - pick a subject and preview a state.");
+        }
+        ImGui::EndChild();
+
+        const float duration = std::max(0.01f, state.anim_studio_duration);
+        draw_anim_studio_timeline(state, duration);
+
+        // Always-visible key authoring — not buried under CollapsingHeader.
+        {
+            const bool has_clip = state.anim_studio_edit_clip.has_value();
+            const bool has_joint = !state.anim_studio_edit_joint.empty();
+            ImGui::BeginDisabled(!has_clip || !has_joint);
+            if (ImGui::Button("Insert key##AnimStudioBarInsert")) {
+                if (insert_anim_studio_key_at_scrub(state))
+                    state.anim_studio_status = "Inserted key at scrub on current channel";
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Insert/update the current Pos/Rot/Scale channel key at the playhead.");
+            ImGui::SameLine();
+            if (ImGui::Button("Key joint TRS##AnimStudioBarKeyPose")) {
+                if (state.anim_studio_joint_world && state.anim_studio_joint_parent_world) {
+                    const TransformComponent local = multiply_transforms(
+                        inverse_transform(*state.anim_studio_joint_parent_world), *state.anim_studio_joint_world);
+                    write_anim_studio_joint_trs_keys(state, local);
+                    state.anim_studio_status = "Keyed full joint TRS at scrub";
+                } else {
+                    state.anim_studio_status = "No joint world pose yet - wait one frame or reselect joint";
+                }
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Write translation+rotation+scale keys for the selected joint at the playhead (current posed values).");
+            ImGui::SameLine();
+            {
+                AnimationClipChannel* ch = find_anim_studio_edit_channel(state);
+                const bool can_delete =
+                    ch && ch->times.size() > 1 && state.anim_studio_edit_key_index >= 0;
+                ImGui::BeginDisabled(!can_delete);
+                if (ImGui::Button("Delete key##AnimStudioBarDelete")) {
+                    if (delete_anim_studio_selected_key(state))
+                        state.anim_studio_status = "Deleted keyframe";
+                }
+                ImGui::EndDisabled();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Copy TRS##AnimStudioBarCopy")) {
+                if (copy_anim_studio_keys(state, false))
+                    state.anim_studio_status =
+                        "Copied pos/rot/scale at selected key (or scrub) — Ctrl+V or Paste";
+                else
+                    state.anim_studio_status = "Nothing to copy on this joint";
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip(
+                    "Copy T+R+S values at the selected keyframe time (or playhead). Ctrl+C. Paste places them "
+                    "at the playhead — can retarget to another joint.");
+            ImGui::SameLine();
+            if (ImGui::Button("Copy track##AnimStudioBarCopyTrack")) {
+                if (copy_anim_studio_keys(state, true))
+                    state.anim_studio_status =
+                        "Copied all T/R/S keys for joint ("
+                        + std::to_string(state.anim_studio_key_clipboard.keys.size())
+                        + ") — scrub to landing time, Paste / Ctrl+V";
+                else
+                    state.anim_studio_status = "No track keys to copy";
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip(
+                    "Copy every translation/rotation/scale key on this joint. Ctrl+Shift+C. Paste keeps relative "
+                    "spacing from the earliest key, aligned to the playhead.");
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!state.anim_studio_key_clipboard.valid);
+            if (ImGui::Button("Paste##AnimStudioBarPaste")) {
+                if (paste_anim_studio_keys(state))
+                    state.anim_studio_status = "Pasted clipboard keys at scrub";
+                else
+                    state.anim_studio_status = "Paste failed";
+            }
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Paste clipboard keys onto the current joint at the playhead (Ctrl+V).");
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!has_clip);
+            // Snapshot dirty before Save runs — save clears the flag mid-frame; PopStyleColor must still match Push.
+            const bool save_dirty_highlight = state.anim_studio_clip_dirty;
+            if (save_dirty_highlight) {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.38f, 0.08f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.72f, 0.50f, 0.12f, 1.0f));
+            }
+            if (ImGui::Button(save_dirty_highlight ? "Save Override*##AnimStudioBarSave"
+                                                   : "Save Override##AnimStudioBarSave")) {
+                (void)save_anim_studio_override_to_disk(state);
+            }
+            if (save_dirty_highlight) ImGui::PopStyleColor(2);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Write live keys to mesh.ClipName.anim.json so they survive reload.");
+            ImGui::SameLine();
+            if (ImGui::Button("Sync to glTF##AnimStudioBarSync")) {
+                if (state.anim_studio_edit_clip) {
+                    auto asset = AnimationClipOverrideAsset::from_clip(state.anim_studio_edit_clip_source,
+                        *state.anim_studio_edit_clip);
+                    const auto sidecar = animation_clip_override_path(
+                        state.project_root / state.anim_studio_edit_clip_source, state.anim_studio_edit_clip_name);
+                    (void)asset.save_atomic(sidecar);
+                    const auto synced = sync_animation_clip_override_to_gltf(
+                        state.project_root / state.anim_studio_edit_clip_source, asset);
+                    if (!synced) {
+                        state.anim_studio_status = synced.error().message;
+                        Logger::instance().write(synced.error());
+                    } else {
+                        state.anim_studio_clip_dirty = false;
+                        (void)state.animation_clip_library.reload(
+                            state.project_root / state.anim_studio_edit_clip_source);
+                        (void)ensure_anim_studio_clip_edit(state, state.anim_studio_edit_clip_source,
+                            state.anim_studio_edit_clip_name);
+                        state.anim_studio_status =
+                            "Synced " + state.anim_studio_edit_clip_name + " into glTF source";
+                    }
+                }
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Also bake the override into the source .gltf (optional). Prefer Save Override while iterating.");
+            ImGui::EndDisabled();
+            if (has_clip) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s :: %s", state.anim_studio_edit_clip_source.c_str(),
+                    state.anim_studio_edit_clip_name.c_str());
+            }
+        }
+
+        ImGui::TextDisabled(
+            "Insert/Key after posing | Copy TRS (Ctrl+C) / track (Ctrl+Shift+C) | Paste (Ctrl+V) | Save Override | double-click track to key | G/R/T bone gizmo");
+        if (!state.anim_studio_status.empty()) ImGui::TextWrapped("%s", state.anim_studio_status.c_str());
+
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        if (ImGui::CollapsingHeader("Selected key values##AnimStudioKeyValues")) {
+            if (!state.anim_studio_edit_clip) {
+                ImGui::TextDisabled("Play or scrub a state with an active clip to edit keys.");
+            } else {
+                ImGui::Text("%s :: %s", state.anim_studio_edit_clip_source.c_str(),
+                    state.anim_studio_edit_clip_name.c_str());
+                const char* path_items[] = {"translation", "rotation", "scale"};
+                if (ImGui::Combo("Channel##AnimStudioKeyPath", &state.anim_studio_edit_path, path_items, 3))
+                    state.anim_studio_edit_key_index = -1;
+                AnimationClipChannel* channel = find_anim_studio_edit_channel(state);
+                if (!channel) {
+                    const std::string channel_joint = anim_studio_clip_channel_joint_name(state);
+                    ImGui::TextDisabled("No %s channel on %s.", path_items[state.anim_studio_edit_path],
+                        channel_joint.empty() ? "(joint)" : channel_joint.c_str());
+                    if (ImGui::Button("Add channel##AnimStudioAddChannel") && !state.anim_studio_edit_joint.empty()) {
+                        AnimationClipChannel* created = ensure_anim_studio_channel(state,
+                            state.anim_studio_edit_path == 1
+                                ? AnimationChannelPath::Rotation
+                                : (state.anim_studio_edit_path == 2 ? AnimationChannelPath::Scale
+                                                                   : AnimationChannelPath::Translation));
+                        if (created) {
+                            state.anim_studio_clip_dirty = true;
+                            (void)push_anim_studio_clip_to_library(state);
+                            state.anim_studio_status = "Added " + channel_joint + " channel";
+                        }
+                    }
+                } else {
+                    if (state.anim_studio_edit_key_index < 0 ||
+                        state.anim_studio_edit_key_index >= static_cast<int>(channel->times.size()))
+                        state.anim_studio_edit_key_index =
+                            nearest_anim_studio_key_index(*channel, state.anim_studio_scrub);
+                    ImGui::Text("Keys: %d", static_cast<int>(channel->times.size()));
+                    if (state.anim_studio_edit_key_index >= 0) {
+                        const int key = state.anim_studio_edit_key_index;
+                        float key_time = channel->times[static_cast<size_t>(key)];
+                        if (ImGui::DragFloat("Key time##AnimStudioKeyTime", &key_time, 0.01f, 0.0f, 60.0f, "%.3f")) {
+                            move_anim_studio_key_time(*channel, key, key_time);
+                            state.anim_studio_edit_key_index = nearest_anim_studio_key_index(*channel, key_time);
+                            state.anim_studio_edit_clip->duration_seconds =
+                                std::max(state.anim_studio_edit_clip->duration_seconds, channel->times.back());
+                            state.anim_studio_clip_dirty = true;
+                            (void)push_anim_studio_clip_to_library(state);
+                        }
+                        const int components = channel->path == AnimationChannelPath::Rotation ? 4 : 3;
+                        float* values = channel->values.data() + static_cast<size_t>(key) * components;
+                        bool value_changed = false;
+                        if (components == 4)
+                            value_changed = ImGui::DragFloat4("Key value##AnimStudioKeyValue", values, 0.01f);
+                        else
+                            value_changed = ImGui::DragFloat3("Key value##AnimStudioKeyValue", values, 0.01f);
+                        if (value_changed) {
+                            state.anim_studio_clip_dirty = true;
+                            (void)push_anim_studio_clip_to_library(state);
+                        }
+                    }
+                    if (ImGui::Button("Prev key##AnimStudioPrevKey") && state.anim_studio_edit_key_index > 0)
+                        --state.anim_studio_edit_key_index;
+                    ImGui::SameLine();
+                    if (ImGui::Button("Next key##AnimStudioNextKey") &&
+                        state.anim_studio_edit_key_index + 1 < static_cast<int>(channel->times.size()))
+                        ++state.anim_studio_edit_key_index;
+                    ImGui::SameLine();
+                    if (ImGui::Button("Insert at scrub##AnimStudioInsertKey")) {
+                        const int components = channel->path == AnimationChannelPath::Rotation ? 4 : 3;
+                        const float t = std::max(0.0f, state.anim_studio_scrub);
+                        std::vector<float> sample(static_cast<size_t>(components), 0.0f);
+                        if (channel->path == AnimationChannelPath::Translation) {
+                            if (const auto s = sample_translation_channel(*channel, t))
+                                sample = {s.value()[0], s.value()[1], s.value()[2]};
+                        } else if (channel->path == AnimationChannelPath::Rotation) {
+                            if (const auto s = sample_rotation_channel(*channel, t))
+                                sample = {s.value()[0], s.value()[1], s.value()[2], s.value()[3]};
+                        } else if (const auto s = sample_scale_channel(*channel, t)) {
+                            sample = {s.value()[0], s.value()[1], s.value()[2]};
+                        }
+                        state.anim_studio_edit_key_index =
+                            upsert_anim_studio_key(*channel, t, sample.data(), components);
+                        state.anim_studio_edit_clip->duration_seconds =
+                            std::max(state.anim_studio_edit_clip->duration_seconds, channel->times.back());
+                        state.anim_studio_clip_dirty = true;
+                        (void)push_anim_studio_clip_to_library(state);
+                    }
+                    ImGui::SameLine();
+                    ImGui::BeginDisabled(channel->times.size() <= 1 || state.anim_studio_edit_key_index < 0);
+                    if (ImGui::Button("Delete key##AnimStudioDeleteKey")) {
+                        const int components = channel->path == AnimationChannelPath::Rotation ? 4 : 3;
+                        const int key = state.anim_studio_edit_key_index;
+                        channel->times.erase(channel->times.begin() + key);
+                        channel->values.erase(channel->values.begin() + key * components,
+                            channel->values.begin() + (key + 1) * components);
+                        state.anim_studio_edit_key_index =
+                            std::min(key, static_cast<int>(channel->times.size()) - 1);
+                        state.anim_studio_clip_dirty = true;
+                        (void)push_anim_studio_clip_to_library(state);
+                    }
+                    ImGui::EndDisabled();
+                }
+            }
+        }
+
+        if (ImGui::CollapsingHeader("Clip override (disk)##AnimStudioOverride")) {
+            if (!state.anim_studio_edit_clip) {
+                ImGui::TextDisabled("No active clip.");
+            } else {
+                const auto sidecar = animation_clip_override_path(
+                    state.project_root / state.anim_studio_edit_clip_source, state.anim_studio_edit_clip_name);
+                const bool has_sidecar = std::filesystem::exists(sidecar);
+                ImGui::TextDisabled("Live edits → *.anim.json; Sync writes LINEAR/STEP TRS back to .gltf.");
+                if (has_sidecar) ImGui::TextColored(ImVec4(0.55f, 0.85f, 0.55f, 1.0f), "Override on disk");
+                else ImGui::TextDisabled("No override sidecar yet");
+                if (ImGui::Button("Save override##AnimStudioSaveOverride")) {
+                    (void)save_anim_studio_override_to_disk(state);
+                }
+                ImGui::SameLine();
+                ImGui::BeginDisabled(!state.anim_studio_edit_clip);
+                if (ImGui::Button("Sync to source##AnimStudioSyncGltf")) {
+                    if (state.anim_studio_edit_clip) {
+                        auto asset = AnimationClipOverrideAsset::from_clip(state.anim_studio_edit_clip_source,
+                            *state.anim_studio_edit_clip);
+                        (void)asset.save_atomic(sidecar);
+                        const auto synced = sync_animation_clip_override_to_gltf(
+                            state.project_root / state.anim_studio_edit_clip_source, asset);
+                        if (!synced) {
+                            state.anim_studio_status = synced.error().message;
+                            Logger::instance().write(synced.error());
+                        } else {
+                            state.anim_studio_clip_dirty = false;
+                            (void)state.animation_clip_library.reload(
+                                state.project_root / state.anim_studio_edit_clip_source);
+                            (void)ensure_anim_studio_clip_edit(state, state.anim_studio_edit_clip_source,
+                                state.anim_studio_edit_clip_name);
+                            state.anim_studio_status =
+                                "Synced " + state.anim_studio_edit_clip_name + " -> " + state.anim_studio_edit_clip_source;
+                        }
+                    }
+                }
+                ImGui::EndDisabled();
+                ImGui::SameLine();
+                ImGui::BeginDisabled(!has_sidecar);
+                if (ImGui::Button("Replace from source##AnimStudioReplaceSource")) {
+                    std::error_code ec;
+                    std::filesystem::remove(sidecar, ec);
+                    (void)state.animation_clip_library.reload(
+                        state.project_root / state.anim_studio_edit_clip_source);
+                    clear_anim_studio_clip_edit(state);
+                    state.anim_studio_status = "Removed override; sampling glTF source again";
+                }
+                ImGui::EndDisabled();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    ImGui::SetTooltip("Delete the *.anim.json sidecar and reload channels from glTF.");
+                ImGui::SameLine();
+                if (ImGui::Button("Reload clip memory##AnimStudioReloadClip") && state.anim_studio_edit_clip) {
+                    const auto src = state.anim_studio_edit_clip_source;
+                    const auto name = state.anim_studio_edit_clip_name;
+                    (void)state.animation_clip_library.reload(state.project_root / src);
+                    clear_anim_studio_clip_edit(state);
+                    (void)ensure_anim_studio_clip_edit(state, src, name);
+                    state.anim_studio_status = "Reloaded clip from disk (discards unsaved studio buffer)";
+                }
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("If a held item collapsed after a bad gizmo write, reload to discard in-memory keys.");
+            }
+        }
+
+        if (ImGui::CollapsingHeader("Timeline events##AnimStudioEventsHeader")) {
+            if (!state.anim_studio_controller_asset) {
+                ImGui::TextDisabled("Attach a subject with a controller to edit timelineEvents.");
+            } else {
+                ImGui::TextDisabled("%s", state.anim_studio_controller_path.c_str());
+                auto& events = state.anim_studio_controller_asset->timeline_events;
+                if (ImGui::BeginListBox("##AnimStudioEvents", ImVec2(-FLT_MIN, 5 * ImGui::GetTextLineHeightWithSpacing()))) {
+                    for (int i = 0; i < static_cast<int>(events.size()); ++i) {
+                        const auto& event = events[static_cast<size_t>(i)];
+                        char row[160];
+                        std::snprintf(row, sizeof(row), "%s  %s  t=%.2f  %s", event.state.c_str(), event.name.c_str(),
+                            event.time, event.layer.empty() ? "(any layer)" : event.layer.c_str());
+                        const bool selected = state.anim_studio_selected_event == i;
+                        if (ImGui::Selectable(row, selected)) {
+                            state.anim_studio_selected_event = i;
+                            // Selecting an event jumps the sandbox to that state's clip at the marker time.
+                            preview_anim_studio_state(state, event.state, event.time, true);
+                        }
+                    }
+                    ImGui::EndListBox();
+                }
+                if (ImGui::Button("Add event##AnimStudioAddEvent")) {
+                    AnimatorTimelineEvent created;
+                    created.state = state.anim_studio_request_state.empty() ? "idle" : state.anim_studio_request_state;
+                    created.time = state.anim_studio_scrub;
+                    created.name = "footstep";
+                    created.layer = "base";
+                    created.payload_json = "{}";
+                    events.push_back(std::move(created));
+                    state.anim_studio_selected_event = static_cast<int>(events.size()) - 1;
+                    state.anim_studio_events_dirty = true;
+                }
+                ImGui::SameLine();
+                ImGui::BeginDisabled(state.anim_studio_selected_event < 0 ||
+                    state.anim_studio_selected_event >= static_cast<int>(events.size()));
+                if (ImGui::Button("Remove##AnimStudioRemoveEvent")) {
+                    events.erase(events.begin() + state.anim_studio_selected_event);
+                    state.anim_studio_selected_event = -1;
+                    state.anim_studio_events_dirty = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Preview##AnimStudioPreviewEvent")) {
+                    if (state.anim_studio_selected_event >= 0 &&
+                        state.anim_studio_selected_event < static_cast<int>(events.size())) {
+                        const auto& event = events[static_cast<size_t>(state.anim_studio_selected_event)];
+                        dispatch_anim_studio_particle_preview(state, event.name, event.payload_json);
+                    }
+                }
+                ImGui::EndDisabled();
+                if (state.anim_studio_selected_event >= 0 &&
+                    state.anim_studio_selected_event < static_cast<int>(events.size())) {
+                    auto& event = events[static_cast<size_t>(state.anim_studio_selected_event)];
+                    auto event_state_names = collect_animator_state_names(state, state.anim_studio_controller_path);
+                    if (event_state_names.empty() && !event.state.empty()) event_state_names.push_back(event.state);
+                    if (draw_asset_path_combo("State##AnimStudioEventState", event.state, event_state_names, "(required)")) {
+                        state.anim_studio_events_dirty = true;
+                        preview_anim_studio_state(state, event.state, event.time, true);
+                    }
+                    std::vector<std::string> layer_names;
+                    layer_names.emplace_back("");
+                    for (const auto& layer : state.anim_studio_controller_asset->layers)
+                        layer_names.push_back(layer.name);
+                    if (std::find(layer_names.begin(), layer_names.end(), event.layer) == layer_names.end())
+                        layer_names.insert(layer_names.begin() + 1, event.layer);
+                    const char* layer_preview = event.layer.empty() ? "(any)" : event.layer.c_str();
+                    if (ImGui::BeginCombo("Layer##AnimStudioEventLayer", layer_preview)) {
+                        for (const auto& layer : layer_names) {
+                            const char* label = layer.empty() ? "(any)" : layer.c_str();
+                            const bool selected = layer == event.layer;
+                            if (ImGui::Selectable(label, selected)) {
+                                event.layer = layer;
+                                state.anim_studio_events_dirty = true;
+                            }
+                            if (selected) ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::EndCombo();
+                    }
+                    char name_buf[64];
+                    std::snprintf(name_buf, sizeof(name_buf), "%s", event.name.c_str());
+                    if (ImGui::InputText("Name##AnimStudioEventName", name_buf, sizeof(name_buf))) {
+                        event.name = name_buf;
+                        state.anim_studio_events_dirty = true;
+                    }
+                    if (ImGui::DragFloat("Time##AnimStudioEventTime", &event.time, 0.01f, 0.0f, 30.0f, "%.2f s")) {
+                        state.anim_studio_events_dirty = true;
+                        preview_anim_studio_state(state, event.state, event.time, true);
+                    }
+                    std::string particle_path;
+                    if (const auto particle = particle_path_from_event_payload(event.payload_json))
+                        particle_path = *particle;
+                    auto particle_options = collect_asset_paths(state, ".particle.json");
+                    if (draw_asset_path_combo("Particle##AnimStudioEventParticle", particle_path, particle_options,
+                            "(none / footstep default)")) {
+                        event.payload_json = merge_particle_into_payload(event.payload_json, particle_path);
+                        state.anim_studio_events_dirty = true;
+                    }
+                }
+                if (ImGui::Button("Reload events##AnimStudioReloadEvents")) {
+                    (void)reload_anim_studio_controller_asset(state);
+                    state.anim_studio_status = "Reloaded timelineEvents from disk";
+                }
+                ImGui::SameLine();
+                ImGui::BeginDisabled(!state.anim_studio_events_dirty);
+                if (ImGui::Button("Save timelineEvents##AnimStudioSaveEvents")) {
+                    const auto validated = state.anim_studio_controller_asset->validate();
+                    if (!validated) {
+                        state.anim_studio_status = validated.error().message;
+                        Logger::instance().write(validated.error());
+                    } else {
+                        const auto saved = state.anim_studio_controller_asset->save_atomic(
+                            state.project_root / state.anim_studio_controller_path);
+                        if (!saved) {
+                            state.anim_studio_status = saved.error().message;
+                            Logger::instance().write(saved.error());
+                        } else {
+                            state.anim_studio_events_dirty = false;
+                            const std::string saved_path = state.anim_studio_controller_path;
+                            (void)attach_anim_studio_subject(state);
+                            state.anim_studio_status = "Saved timelineEvents → " + saved_path;
+                        }
+                    }
+                }
+                ImGui::EndDisabled();
+            }
+        }
+
+        if (ImGui::CollapsingHeader("Held item / weld##AnimStudioHeldHeader")) {
+            auto held_ids = collect_held_item_ids(state);
+            if (!state.anim_studio_held_item_id.empty()) {
+                const bool listed = std::find(held_ids.begin(), held_ids.end(), state.anim_studio_held_item_id) !=
+                    held_ids.end();
+                if (!listed) held_ids.insert(held_ids.begin(), state.anim_studio_held_item_id);
+            }
+            const char* held_preview = state.anim_studio_held_item_id.empty() ? "(none)" : nullptr;
+            std::string held_preview_storage;
+            if (!state.anim_studio_held_item_id.empty()) {
+                if (const ItemDef* def = resolve_item_def(state, state.anim_studio_held_item_id)) {
+                    held_preview_storage = def->display_name.empty()
+                        ? state.anim_studio_held_item_id
+                        : (def->display_name + " (" + state.anim_studio_held_item_id + ")");
+                } else {
+                    held_preview_storage = state.anim_studio_held_item_id;
+                }
+                held_preview = held_preview_storage.c_str();
+            }
+            if (ImGui::BeginCombo("Held##AnimStudioHeld", held_preview)) {
+                if (ImGui::Selectable("(none)", state.anim_studio_held_item_id.empty())) {
+                    state.anim_studio_held_item_id.clear();
+                    state.held_attach_item_id.clear();
+                    state.held_attach_dirty = false;
+                }
+                for (const auto& id : held_ids) {
+                    const ItemDef* def = resolve_item_def(state, id);
+                    const std::string label = def && !def->display_name.empty()
+                        ? (def->display_name + " (" + id + ")")
+                        : id;
+                    const bool selected = id == state.anim_studio_held_item_id;
+                    if (ImGui::Selectable(label.c_str(), selected)) {
+                        state.anim_studio_held_item_id = id;
+                        if (def) {
+                            state.held_attach_item_id = id;
+                            state.held_attach_weld = weld_from_item_hand_attach(def->hand_attach);
+                            state.held_attach_dirty = false;
+                        }
+                    }
+                    if (selected) ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::TextDisabled("Studio-only equip — does not change play-test inventory bags.");
+            draw_held_weapon_attach_inspector(state, &state.anim_studio_held_item_id);
+        }
+
+        ImGui::TextDisabled("Right-drag look, WASD move — Animation camera only.");
+        ImGui::PopStyleVar();
+        ImGui::EndTabItem();
+    }
     if (ImGui::BeginTabItem("Diagnostics")) {
     ImGui::Checkbox("Show collision debug", &state.show_collision_debug);
     ImGui::Checkbox("Show event zones", &state.show_event_zones);
@@ -12310,23 +17452,84 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
         ImGui::Text("%llu terrain cells", static_cast<unsigned long long>(state.performance_terrain_cells));
         ImGui::EndTabItem();
     }
+    if (ImGui::BeginTabItem("Console")) {
+        draw_diag_console_tab(state);
+        ImGui::EndTabItem();
+    }
     if (ImGui::BeginTabItem("Coordination")) {
         draw_build_coordination_tab(state);
         ImGui::EndTabItem();
     }
-    if (ImGui::BeginTabItem("Assets")) {
+    if (ImGui::BeginTabItem("Game Module")) {
+        ImGui::TextWrapped(
+            "Hot-reload native C++ game logic without restarting the editor (DEC-0053). "
+            "Rebuild the game_module target, then Reload. Core engine still needs a full restart.");
+        ImGui::Separator();
+        const auto& gm = state.game_module_host;
+        ImGui::Text("Status: %s", gm.loaded() ? "loaded" : "not loaded");
+        ImGui::Text("Name: %s", gm.module_name().empty() ? "(none)" : gm.module_name().c_str());
+        ImGui::Text("ABI: %u | Generation: %u | Host ticks: %llu",
+            static_cast<unsigned>(gm.abi_version()), static_cast<unsigned>(gm.generation()),
+            static_cast<unsigned long long>(gm.tick_count()));
+        ImGui::TextWrapped("Source: %s",
+            gm.source_path().empty() ? GameModuleHost::default_module_path().string().c_str()
+                                     : gm.source_path().string().c_str());
+        if (gm.loaded()) {
+            ImGui::TextDisabled("Mapped copy: %s", gm.loaded_path().string().c_str());
+        }
+        if (const auto ticks = gm.mirror_number("game.module_ticks")) {
+            ImGui::Text("game.module_ticks: %.0f", *ticks);
+        }
+        if (const auto build_id = gm.mirror_number("game.module_build_id")) {
+            ImGui::Text("game.module_build_id: %.0f", *build_id);
+        }
+        if (!gm.last_error().empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.25f, 1.0f), "%s", gm.last_error().c_str());
+        }
+        ImGui::Separator();
+        bool auto_reload = state.game_module_host.auto_reload();
+        if (ImGui::Checkbox("Auto-reload on DLL write", &auto_reload)) {
+            state.game_module_host.set_auto_reload(auto_reload);
+        }
+        if (ImGui::Button("Load / Reload##GameModuleReload")) {
+            state.game_module_host.set_lua_runtime(state.lua_runtime.get());
+            if (const auto reloaded = state.game_module_host.reload(); !reloaded) {
+                state.status = "Game module: " + reloaded.error().message;
+            } else {
+                state.status = "Game module loaded: " + state.game_module_host.module_name();
+            }
+        }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!state.game_module_host.loaded());
+        if (ImGui::Button("Unload##GameModuleUnload")) {
+            state.game_module_host.unload();
+            state.status = "Game module unloaded";
+        }
+        ImGui::EndDisabled();
+        ImGui::EndTabItem();
+    }
+    ImGuiTabItemFlags assets_tab_flags = ImGuiTabItemFlags_None;
+    if (state.asset_import_focus_tab) {
+        assets_tab_flags |= ImGuiTabItemFlags_SetSelected;
+        state.asset_import_focus_tab = false;
+    }
+    if (ImGui::BeginTabItem("Assets", nullptr, assets_tab_flags)) {
         if (state.asset_bake_targets.empty()) {
             state.asset_bake_targets = list_asset_bake_targets();
             if (state.asset_bake_selected >= static_cast<int>(state.asset_bake_targets.size()))
                 state.asset_bake_selected = 0;
         }
+        draw_asset_import_panel(state);
+        ImGui::Separator();
         ImGui::TextWrapped(
-            "Named Blockbench bake (TICKET-0245). Fail-closed verify for clips, atlas, scale, joints.");
+            "Rebake a registered target (TICKET-0245). Fail-closed verify for clips, atlas, scale, joints.");
         if (ImGui::Button("Refresh catalog##AssetBakeRefresh")) {
             state.asset_bake_targets = list_asset_bake_targets();
             state.asset_bake_status =
                 "Catalog refreshed (" + std::to_string(state.asset_bake_targets.size()) + " targets)";
         }
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s", state.asset_bake_status.c_str());
         if (state.asset_bake_targets.empty()) {
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.2f, 1.0f), "No targets in tools/asset_bake_catalog.json");
         } else {
@@ -12350,44 +17553,28 @@ void draw_editor(EditorState& state, CollisionWorld* collision, bool camera_capt
             ImGui::InputText("Source override##AssetBakeSource", state.asset_bake_source_buffer,
                 sizeof(state.asset_bake_source_buffer));
             ImGui::EndDisabled();
+            // Bake runs through the shared import job so a 90 s player bake never freezes the editor.
+            ImGui::BeginDisabled(state.asset_import_running);
             if (ImGui::Button("Bake##AssetBakeRun") && !state.project_root.empty()) {
-                state.asset_bake_status = "Baking " + selected.id + "...";
-                state.asset_bake_failures.clear();
-                const std::string source = state.asset_bake_use_default_source
-                    ? std::string{}
-                    : std::string(state.asset_bake_source_buffer);
-                const auto result = run_asset_bake(state.project_root, selected.id, source);
-                state.asset_bake_last_ok = result.ok;
-                state.asset_bake_status = result.summary;
-                state.asset_bake_report_json = result.raw_json;
-                state.asset_bake_failures = result.diagnostics;
-                if (result.ok) {
-                    for (const auto& mesh : result.mesh_reloads) state.pending_mesh_reloads.insert(mesh);
-                    if (!result.mesh_reloads.empty()) state.prefab_meshes_dirty = true;
+                auto queued = plan_target_rebake(state.project_root, selected.id);
+                if (!state.asset_bake_use_default_source &&
+                    state.asset_bake_source_buffer[0] != '\0') {
+                    queued.source = std::filesystem::path(state.asset_bake_source_buffer);
+                    queued.source_display = queued.source.generic_string();
+                    queued.match = AssetImportMatch::DefaultSource;
                 }
+                state.asset_import_plan = queued;
+                state.asset_import_plan_ready = true;
+                start_asset_import(state, queued, ImGui::GetTime());
             }
-            ImGui::SameLine();
-            if (state.asset_bake_last_ok)
-                ImGui::TextColored(ImVec4(0.3f, 0.85f, 0.35f, 1.0f), "%s", state.asset_bake_status.c_str());
-            else
-                ImGui::TextWrapped("%s", state.asset_bake_status.c_str());
-            if (!state.asset_bake_failures.empty()) {
-                ImGui::Separator();
-                ImGui::Text("Verify failures");
-                for (const auto& err : state.asset_bake_failures) {
-                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.2f, 1.0f), "[%s] %s", err.code.c_str(),
-                        err.message.c_str());
-                    if (!err.remediation.empty()) ImGui::TextDisabled("  -> %s", err.remediation.c_str());
-                }
-            }
-            if (!state.asset_bake_report_json.empty() && ImGui::CollapsingHeader("Last bake JSON")) {
-                ImGui::TextUnformatted(state.asset_bake_report_json.c_str());
-            }
+            ImGui::EndDisabled();
+            ImGui::TextDisabled("Bake progress and the completion check mark show above.");
         }
         ImGui::EndTabItem();
     }
     ImGui::EndTabBar();
     ImGui::End();
+    } // !play_chrome_collapsed
     draw_new_material_asset_popup(state);
 }
 }
@@ -12484,7 +17671,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         const auto water_path=default_water_surfaces_path(options.project_root);if(std::filesystem::exists(water_path)){const auto water_loaded=WaterStore::load(water_path);if(!water_loaded)return abort_startup(water_loaded.error());value.water_store=std::move(water_loaded.value());}
         if(const auto map_loaded=WorldForgeMapAsset::load(default_world_forge_map_path(options.project_root));map_loaded){std::vector<WaterSeaRegion> sea_regions;for(const auto& region:map_loaded.value().hydrology_regions){if(region.kind!=WorldForgeHydrologyKind::Sea)continue;sea_regions.push_back(WaterSeaRegion{region.id,region.min_x,region.max_x,region.min_z,region.max_z});}value.water_store.set_sea_regions(std::move(sea_regions));}
         value.terrain_paint_brush_material=value.terrain_material_path;warm_material_cache(value);
-        if(!options.initial_viewport.empty()){const auto&v=options.initial_viewport;if(v=="sculpt")value.active_viewport_tab=EditorState::ViewportTab::Sculpt;else if(v=="game")value.active_viewport_tab=EditorState::ViewportTab::Game;else if(v=="ui")value.active_viewport_tab=EditorState::ViewportTab::UI;else if(v=="world-forge"||v=="world_forge"||v=="worldforge")value.active_viewport_tab=EditorState::ViewportTab::WorldForge;else value.active_viewport_tab=EditorState::ViewportTab::Scene;value.force_select_viewport_tab=true;value.lock_viewport_tab=true;}
+        if(!options.initial_viewport.empty()){const auto&v=options.initial_viewport;if(v=="sculpt")value.active_viewport_tab=EditorState::ViewportTab::Sculpt;else if(v=="game")value.active_viewport_tab=EditorState::ViewportTab::Game;else if(v=="animation")value.active_viewport_tab=EditorState::ViewportTab::Animation;else if(v=="ui")value.active_viewport_tab=EditorState::ViewportTab::UI;else if(v=="world-forge"||v=="world_forge"||v=="worldforge")value.active_viewport_tab=EditorState::ViewportTab::WorldForge;else if(v=="design-docs"||v=="design_docs"||v=="designdocs")value.active_viewport_tab=EditorState::ViewportTab::DesignDocs;else value.active_viewport_tab=EditorState::ViewportTab::Scene;value.force_select_viewport_tab=true;value.lock_viewport_tab=true;if(value.active_viewport_tab==EditorState::ViewportTab::Animation)value.force_select_animation_support_tab=true;}
         editor=std::move(value);set_active_terrain_edits(&editor->terrain_edits);set_active_water_store(&editor->water_store);
         editor->app_icon_tex = renderer.app_icon_tex_id();
     }
@@ -12765,6 +17952,9 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
     InteractionOverlapTracker debug_interaction_tracker;
     CombatVolumeRegistry debug_combat_registry;
     DebugCamera camera;
+    // Animation Studio free-cam (TICKET-0248) — independent of Scene DebugCamera pose.
+    DebugCamera animation_camera;
+    animation_camera.set_pose({0.0f, 2.5f, -6.0f}, 0.0f, 0.18f);
     if (editor) frame_camera_on_unique_player_spawn(*editor, camera);
     std::optional<OrbitCamera> orbit_camera;
     float player_facing_yaw = 0.0f;
@@ -12848,6 +18038,10 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 auto resized = renderer.resize(static_cast<UINT>(width), static_cast<UINT>(height));
                 if (!resized) { SDL_DestroyWindow(window); SDL_Quit(); return Result<RenderStats>::failure(resized.error()); }
             }
+        }
+        if (editor && editor->play_request_leave_fullscreen) {
+            editor->play_request_leave_fullscreen = false;
+            (void)SDL_SetWindowFullscreen(window, false);
         }
         if (!running) break;
         const auto frame_time = std::chrono::steady_clock::now();
@@ -13026,6 +18220,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                         switch (editor->active_viewport_tab) {
                         case EditorState::ViewportTab::Sculpt: tab = "sculpt"; break;
                         case EditorState::ViewportTab::Game: tab = "game"; break;
+                        case EditorState::ViewportTab::Animation: tab = "animation"; break;
                         case EditorState::ViewportTab::UI: tab = "ui"; break;
                         case EditorState::ViewportTab::WorldForge: tab = "world_forge"; break;
                         case EditorState::ViewportTab::DesignDocs: tab = "design_docs"; break;
@@ -13195,6 +18390,116 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                         EngineError{"COOP-KIND", Severity::Error, ErrorCategory::Validation, "automation",
                             "Unsupported kind: " + kind, std::nullopt, {},
                             "Use status|start_local|end|pause|resume|possess|move|jump|disconnect_guest|reconnect_guest."});
+                }
+
+                if (request.operation == "editor_session") {
+                    nlohmann::json params = nlohmann::json::object();
+                    try {
+                        if (!request.params_json.empty()) params = nlohmann::json::parse(request.params_json);
+                    } catch (...) {
+                        return make_bridge_err(ExitCode::InvalidArguments, "Invalid JSON params",
+                            EngineError{"SES-JSON", Severity::Error, ErrorCategory::Validation, "automation",
+                                "params_json parse failed", std::nullopt, {}, "Send valid JSON arguments."});
+                    }
+                    auto kind = params.value("kind", params.value("action", std::string{}));
+                    std::transform(kind.begin(), kind.end(), kind.begin(),
+                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                    for (char& c : kind) {
+                        if (c == '-' || c == ' ') c = '_';
+                    }
+
+                    auto ensure_game_tab = [&]() {
+                        editor->lock_viewport_tab = false;
+                        editor->world_forge_editor.lock_pane_tab = false;
+                        editor->active_viewport_tab = EditorState::ViewportTab::Game;
+                        editor->force_select_viewport_tab = true;
+                    };
+
+                    auto session_meta = [&]() {
+                        const char* tab = "scene";
+                        switch (editor->active_viewport_tab) {
+                        case EditorState::ViewportTab::Sculpt: tab = "sculpt"; break;
+                        case EditorState::ViewportTab::Game: tab = "game"; break;
+                        case EditorState::ViewportTab::Animation: tab = "animation"; break;
+                        case EditorState::ViewportTab::UI: tab = "ui"; break;
+                        case EditorState::ViewportTab::WorldForge: tab = "world_forge"; break;
+                        case EditorState::ViewportTab::DesignDocs: tab = "design_docs"; break;
+                        default: break;
+                        }
+                        return std::map<std::string, std::string>{
+                            {"kind", kind.empty() ? "status" : kind},
+                            {"viewportTab", tab},
+                            {"testSession", editor->test_session_active()
+                                    ? (editor->test_session_running() ? "running" : "paused")
+                                    : "inactive"},
+                            {"sessionMode", to_string(editor->game_session.session_mode())},
+                            {"sessionState", to_string(editor->game_session.state())},
+                            {"coopLocal", editor->coop_local ? "true" : "false"},
+                            {"showEventZones", editor->show_event_zones ? "true" : "false"},
+                            {"showCollisionDebug", editor->show_collision_debug ? "true" : "false"},
+                            {"showWorldForgeMapMarkers",
+                                editor->show_world_forge_map_markers ? "true" : "false"},
+                        };
+                    };
+
+                    if (kind.empty() || kind == "status") {
+                        editor->status = "MCP editor_session status";
+                        return make_bridge_ok("Editor session status", session_meta());
+                    }
+                    if (kind == "start") {
+                        ensure_game_tab();
+                        // Solo play-test (use coop_call start_local for dual-slot).
+                        editor->pending_coop_local_restart = false;
+                        if (editor->test_session_active()) {
+                            editor->test_session_command = EditorState::TestSessionCommand::End;
+                            editor->status = "MCP: end prior session before start";
+                            auto meta = session_meta();
+                            meta["restart"] = "true";
+                            return make_bridge_ok(
+                                "Play-test already active; end requested — call start again", std::move(meta));
+                        }
+                        editor->coop_local = false;
+                        editor->test_session_command = EditorState::TestSessionCommand::Start;
+                        editor->status = "MCP: play-test start requested";
+                        auto meta = session_meta();
+                        meta["kind"] = "start";
+                        return make_bridge_ok("Play-test start requested", std::move(meta));
+                    }
+                    if (kind == "end") {
+                        editor->test_session_command = EditorState::TestSessionCommand::End;
+                        editor->pending_coop_local_restart = false;
+                        editor->mcp_forced_wish_frames = 0;
+                        editor->status = "MCP: play-test end requested";
+                        return make_bridge_ok("Play-test end requested", session_meta());
+                    }
+                    if (kind == "pause") {
+                        ensure_game_tab();
+                        editor->test_session_command = EditorState::TestSessionCommand::Pause;
+                        editor->status = "MCP: play-test pause requested";
+                        return make_bridge_ok("Play-test pause requested", session_meta());
+                    }
+                    if (kind == "resume") {
+                        ensure_game_tab();
+                        editor->test_session_command = EditorState::TestSessionCommand::Resume;
+                        editor->status = "MCP: play-test resume requested";
+                        return make_bridge_ok("Play-test resume requested", session_meta());
+                    }
+                    if (kind == "set_overlays" || kind == "setoverlays") {
+                        if (params.contains("showEventZones") && params["showEventZones"].is_boolean())
+                            editor->show_event_zones = params["showEventZones"].get<bool>();
+                        if (params.contains("showCollisionDebug") && params["showCollisionDebug"].is_boolean())
+                            editor->show_collision_debug = params["showCollisionDebug"].get<bool>();
+                        if (params.contains("showWorldForgeMapMarkers") &&
+                            params["showWorldForgeMapMarkers"].is_boolean())
+                            editor->show_world_forge_map_markers =
+                                params["showWorldForgeMapMarkers"].get<bool>();
+                        editor->status = "MCP: play-test overlays updated";
+                        return make_bridge_ok("Overlays updated", session_meta());
+                    }
+                    return make_bridge_err(ExitCode::InvalidArguments, "Unknown editor_session kind",
+                        EngineError{"SES-KIND", Severity::Error, ErrorCategory::Validation, "automation",
+                            "Unsupported kind: " + kind, std::nullopt, {},
+                            "Use status|start|end|pause|resume|set_overlays."});
                 }
 
                 if (request.operation == "editor_ui_query") {
@@ -13473,12 +18778,27 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                             {"cursorY", std::to_string(editor->mcp_cursor_y)}});
                 }
 
+                if (request.operation == "animation_call") {
+                    nlohmann::json params = nlohmann::json::object();
+                    try {
+                        if (!request.params_json.empty()) params = nlohmann::json::parse(request.params_json);
+                    } catch (...) {
+                        return make_bridge_err(ExitCode::InvalidArguments, "Invalid JSON params",
+                            EngineError{"ANIM-MCP-JSON", Severity::Error, ErrorCategory::Validation, "automation",
+                                "params_json parse failed", std::nullopt, {}, "Send valid JSON arguments."});
+                    }
+                    auto response = handle_animation_studio_call(*editor, params);
+                    response.request_id = request.request_id;
+                    return response;
+                }
+
                 auto response = execute_editor_operation(context, request.operation, request.params_json);
                 if (request.operation == "editor_status" && response.exit_code == ExitCode::Success) {
                     const char* tab = "scene";
                     switch (editor->active_viewport_tab) {
                     case EditorState::ViewportTab::Sculpt: tab = "sculpt"; break;
                     case EditorState::ViewportTab::Game: tab = "game"; break;
+                    case EditorState::ViewportTab::Animation: tab = "animation"; break;
                     case EditorState::ViewportTab::UI: tab = "ui"; break;
                     case EditorState::ViewportTab::WorldForge: tab = "world_forge"; break;
                     case EditorState::ViewportTab::DesignDocs: tab = "design_docs"; break;
@@ -13640,6 +18960,19 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 editor->status = "Live automation disabled";
             }
             reload_changed_lua_scripts(*editor);
+            if (!editor->game_module_auto_load_attempted) {
+                editor->game_module_auto_load_attempted = true;
+                editor->game_module_host.set_lua_runtime(editor->lua_runtime.get());
+                if (const auto loaded = editor->game_module_host.load(GameModuleHost::default_module_path());
+                    !loaded) {
+                    Logger::instance().write(Severity::Info, "game_module",
+                        "Optional game module not loaded at startup: " + loaded.error().message);
+                }
+            } else {
+                editor->game_module_host.set_lua_runtime(editor->lua_runtime.get());
+                editor->game_module_host.poll_source_changes();
+            }
+            editor->game_module_host.tick(frame_delta_seconds);
         }
         if (editor && debug_world) {
             const auto command = editor->test_session_command;
@@ -13650,6 +18983,10 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 editor->drop_preview.reset();
                 editor->drop_preview_prefab.reset();
                 editor_test_restore = EditorTestSessionRestore{camera.position(), camera.yaw(), camera.pitch()};
+                for (const auto& id : editor->scene.entity_ids()) {
+                    if (const auto transform = editor->scene.transform(id))
+                        editor_test_restore->entity_transforms.emplace_back(id, *transform);
+                }
                 const auto spawn_resolution = resolve_test_player_spawn(*editor, camera);
                 CharacterAsset spawn_character = editor->character_asset;
                 if (spawn_resolution.placement_entity)
@@ -13723,6 +19060,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     orbit_camera->set_sensitivity(editor->camera_asset.look_sensitivity);
                     // Keep yaw from edit camera; start with authored RPG look-down pitch.
                     orbit_camera->set_orientation(camera.yaw(), editor->camera_asset.default_pitch);
+                    reset_bow_aim_orbit_framing(*editor);
                     player_facing_yaw = orbit_camera->yaw();
                     guest_facing_yaw = player_facing_yaw;
                     guest_character.reset();
@@ -13758,7 +19096,22 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     editor->world_forge_editor.lock_pane_tab = false;
                     editor->active_viewport_tab = EditorState::ViewportTab::Game;
                     editor->force_select_viewport_tab = true;
-                editor->static_render_cache_dirty = true;
+                    editor->play_layout_maximized =
+                        editor->play_display_mode == EditorState::PlayDisplayMode::Maximized ||
+                        editor->play_display_mode == EditorState::PlayDisplayMode::Fullscreen;
+                    if (editor->play_display_mode == EditorState::PlayDisplayMode::Fullscreen) {
+                        if (!editor->play_fullscreen_active) {
+                            if (SDL_SetWindowFullscreen(window, true)) {
+                                editor->play_fullscreen_active = true;
+                            } else {
+                                Logger::instance().write(graphics_error("EDITOR-PLAY-FULLSCREEN",
+                                    std::string("Fullscreen play failed: ") + SDL_GetError(), E_FAIL));
+                                editor->status = "Fullscreen play unavailable — using maximized layout";
+                                editor->play_display_mode = EditorState::PlayDisplayMode::Maximized;
+                            }
+                        }
+                    }
+                    editor->static_render_cache_dirty = true;
                     if (editor->ui_canvas_stack) {
                         editor->ui_canvas_stack->clear_modals();
                         (void)editor->ui_canvas_stack->set_hud(default_player_hud_path(editor->project_root));
@@ -13864,8 +19217,21 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     if (editor->inventory_runtime) {
                         editor->inventory_runtime->reset();
                         (void)editor->inventory_runtime->bind(editor->item_catalog.get());
-                        (void)editor->inventory_runtime->set_hotbar(0, "ashfell_arming_sword", 1);
-                        (void)editor->inventory_runtime->grant("field_bandage", 2);
+                        const auto archetype_id =
+                            normalize_starter_archetype_id(editor->play_test_starter_archetype_id);
+                        editor->play_test_starter_archetype_id = archetype_id;
+                        std::optional<WorldForgeArchetypesAsset> archetypes;
+                        const auto archetypes_path =
+                            default_world_forge_archetypes_path(editor->project_root);
+                        if (std::filesystem::exists(archetypes_path)) {
+                            if (auto loaded = WorldForgeArchetypesAsset::load(archetypes_path))
+                                archetypes = std::move(loaded.value());
+                        }
+                        const auto weapon = resolve_starter_weapon_item_id(archetype_id,
+                            archetypes ? &*archetypes : nullptr);
+                        (void)editor->inventory_runtime->set_hotbar(0, weapon, 1);
+                        (void)editor->inventory_runtime->grant(kAct0StarterBandageItemId,
+                            kAct0StarterBandageCount);
                         (void)editor->inventory_runtime->select_hotbar(0);
                         sync_hotbar_equip_hud(*editor);
                         if (editor->lua_runtime)
@@ -13880,6 +19246,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     editor->dodge_remaining = 0.0f;
                     editor->dodge_dir_x = 0.0f;
                     editor->dodge_dir_z = 1.0f;
+                    editor->footstep_distance_accum = 0.0f;
+                    editor->footstep_side = 0;
                     editor->dodge_resource_regen_delay = 0.0f;
                 }
             } else if (command == EditorState::TestSessionCommand::Pause &&
@@ -13894,12 +19262,22 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 if (editor->ui_canvas_stack) editor->ui_canvas_stack->clear_modals();
                 editor->world_ui_billboards.clear();
                 editor->dialogue_runtime.reset();
-                if (editor_test_restore && editor_test_restore->spawn_entity && editor_test_restore->spawn_transform)
-                    (void)editor->scene.set_transform(*editor_test_restore->spawn_entity, *editor_test_restore->spawn_transform);
+                // Restore pre-play world poses (physics write-back and spawn follow leave entities elsewhere).
+                if (editor_test_restore) {
+                    for (const auto& [id, pose] : editor_test_restore->entity_transforms) {
+                        if (editor->scene.contains(id))
+                            (void)editor->scene.set_transform(id, pose, true);
+                    }
+                    if (editor_test_restore->spawn_entity && editor_test_restore->spawn_transform &&
+                        editor->scene.contains(*editor_test_restore->spawn_entity))
+                        (void)editor->scene.set_transform(*editor_test_restore->spawn_entity,
+                            *editor_test_restore->spawn_transform, true);
+                }
                 debug_character.reset();
                 guest_character.reset();
                 player_locomotion.reset();
                 orbit_camera.reset();
+                reset_bow_aim_orbit_framing(*editor);
                 if (editor->game_session.state() != GameSessionState::Menu &&
                     editor->game_session.state() != GameSessionState::Ended)
                     (void)editor->game_session.end_session();
@@ -13914,9 +19292,18 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 }
                 camera_look_active = false;
                 SDL_SetWindowRelativeMouseMode(window, false);
+                if (editor->play_fullscreen_active) {
+                    editor->play_request_leave_fullscreen = true;
+                    editor->play_fullscreen_active = false;
+                }
+                editor->play_layout_maximized = false;
                 editor->test_session = EditorState::TestSessionState::Inactive;
                 editor->test_player_spawn_entity.reset();
                 editor->static_render_cache_dirty = true;
+                // Return to Scene with edit tools, matching pre-play workflow.
+                editor->active_viewport_tab = EditorState::ViewportTab::Scene;
+                editor->force_select_viewport_tab = true;
+                editor->lock_viewport_tab = false;
                 if (editor->lua_runtime) editor->lua_runtime->set_animator_runtime(nullptr);
                 editor->event_timeline_runtime.cancel();
                 editor->event_cine_pivot.reset();
@@ -13926,13 +19313,17 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 editor->test_skinned_mesh_asset.clear();
                 editor->test_held_weapon_mesh.clear();
                 editor->test_held_weapon_hand_global.reset();
+                editor->test_held_weapon_skin_entity.clear();
                 editor->test_held_hand_world.reset();
                 editor->test_skin_joint_names.clear();
                 editor->held_attach_gizmo_enabled = false;
                 editor->held_attach_gizmo_was_using = false;
                 editor->held_attach_drag_socket.reset();
                 editor->play_camera_matrices_valid = false;
-                editor->status = "Test session ended";
+                editor->game_viewport_min.reset();
+                editor->game_viewport_max.reset();
+                editor->game_viewport_hovered = false;
+                editor->status = "Test session ended — Scene view restored";
                 clear_editor_manipulation(*editor);
             }
         }
@@ -13955,6 +19346,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             ImGui_ImplDX12_NewFrame();
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
+            ImGuizmo::BeginFrame();
             if (editor) {
                 drain_mcp_input_queue(*editor, window);
                 draw_mcp_cursor_overlay(*editor);
@@ -13975,39 +19367,167 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         std::array<float, 3> camera_position = camera.position();
         int pixel_w = 1, pixel_h = 1;
         SDL_GetWindowSizeInPixels(window, &pixel_w, &pixel_h);
+        // ---- Per-view sizes ----------------------------------------------------------------
+        // Each view owns its target size, which drives its projection aspect (and its render target).
+        // Game uses the authored play resolution when one is set so UI can be reviewed at design size.
+        const std::uint32_t window_view_w = static_cast<std::uint32_t>(std::max(pixel_w, 1));
+        const std::uint32_t window_view_h = static_cast<std::uint32_t>(std::max(pixel_h, 1));
+        const auto panel_view_size = [&](const std::optional<ImVec2>& panel_min,
+                                         const std::optional<ImVec2>& panel_max) {
+            if (panel_min && panel_max) {
+                const float w = panel_max->x - panel_min->x;
+                const float h = panel_max->y - panel_min->y;
+                if (w > 1.0f && h > 1.0f)
+                    return std::pair<std::uint32_t, std::uint32_t>{static_cast<std::uint32_t>(w),
+                        static_cast<std::uint32_t>(h)};
+            }
+            return std::pair<std::uint32_t, std::uint32_t>{window_view_w, window_view_h};
+        };
+        // Scene renders at window size and is scaled into its panel, so only its aspect tracks the panel.
+        // Resizing the offscreen chain on every splitter drag would thrash GPU allocations for no gain.
+        const std::uint32_t scene_view_w = window_view_w, scene_view_h = window_view_h;
+        std::uint32_t game_view_w = window_view_w, game_view_h = window_view_h;
+        float scene_view_aspect =
+            static_cast<float>(window_view_w) / static_cast<float>(std::max<std::uint32_t>(window_view_h, 1u));
+        if (editor) {
+            const auto scene_panel = panel_view_size(editor->scene_viewport_min, editor->scene_viewport_max);
+            scene_view_aspect = static_cast<float>(scene_panel.first) /
+                static_cast<float>(std::max<std::uint32_t>(scene_panel.second, 1u));
+            const auto play_target = resolve_play_target_resolution(*editor);
+            if (play_target.first > 1.0f && play_target.second > 1.0f) {
+                game_view_w = static_cast<std::uint32_t>(play_target.first);
+                game_view_h = static_cast<std::uint32_t>(play_target.second);
+            } else {
+                const auto game_panel = panel_view_size(editor->game_viewport_min, editor->game_viewport_max);
+                game_view_w = game_panel.first;
+                game_view_h = game_panel.second;
+            }
+        }
         if (orbit_camera) {
             if (editor && editor->test_session_active()) {
                 // Keep orbit limits/framing in sync with inspector edits (zoom already applied live).
+                // Bow aiming re-applies shoulder/pitch on top immediately below — do not thrash resolved
+                // distance (set_config clamps desired only; resolved/eye stay continuous).
                 orbit_camera->set_config(editor->camera_asset.orbit_config());
                 orbit_camera->set_sensitivity(editor->camera_asset.look_sensitivity);
             }
-            const float fov = editor && editor->test_session_active() ? editor->camera_asset.vertical_fov_radians : 1.04719755f;
+            const float base_fov =
+                editor && editor->test_session_active() ? editor->camera_asset.vertical_fov_radians : 1.04719755f;
             const float near_plane = editor && editor->test_session_active() ? editor->camera_asset.near_plane : 0.1f;
             const float far_plane = editor && editor->test_session_active() ? editor->camera_asset.far_plane : 2000.0f;
-            float aspect = static_cast<float>(pixel_w) / static_cast<float>(std::max(pixel_h, 1));
-            if (editor && editor->game_viewport_min && editor->game_viewport_max) {
-                const float gw = editor->game_viewport_max->x - editor->game_viewport_min->x;
-                const float gh = editor->game_viewport_max->y - editor->game_viewport_min->y;
-                if (gw > 1.0f && gh > 1.0f) aspect = gw / gh;
+            // Game renders at its own target size, so the projection aspect is the target's.
+            const float aspect =
+                static_cast<float>(game_view_w) / static_cast<float>(std::max<std::uint32_t>(game_view_h, 1u));
+            float fov = base_fov;
+            if (pending_orbit_zoom != 0.0f) {
+                // Only zoom the orbit camera while Game has look focus — Scene free-cam ignores the wheel.
+                if (!editor || editor->game_viewport_active()) {
+                    const float meters_per_notch =
+                        editor ? std::max(0.05f, editor->camera_asset.zoom_sensitivity) : 1.5f;
+                    orbit_camera->adjust_distance(pending_orbit_zoom * meters_per_notch);
+                    // Aim framing freezes rest and re-writes desired each frame; when fully hipfire
+                    // the next apply_bow_aim_orbit_framing tracks rest from desired automatically.
+                    // While OTS is blending/active, advance the frozen rest by the same scroll delta
+                    // so release lands on the new wheel zoom (desired itself is about to be overridden).
+                    if (editor && editor->bow_aim_orbit_rest_captured && editor->bow_aim_camera_blend > 0.001f) {
+                        editor->bow_aim_orbit_rest_distance =
+                            std::max(1.5f, editor->bow_aim_orbit_rest_distance -
+                                               pending_orbit_zoom * meters_per_notch);
+                    }
+                }
+                pending_orbit_zoom = 0.0f;
+            }
+            // Bow OTS aim: apply after base config + wheel so the same-frame orbit update sees aim framing.
+            // Scene free-cam / DebugCamera are untouched (orbit only).
+            if (editor && editor->test_session_active()) {
+                const bool game_tab = editor->game_viewport_active();
+                const bool control_locked = editor->event_timeline_runtime.control_locked();
+                const bool ui_modal = editor->ui_canvas_stack && editor->ui_canvas_stack->has_modal();
+                const bool grip_authoring = editor->held_attach_gizmo_enabled;
+                const bool input_ok = game_tab && !control_locked && !ui_modal && !editor->test_anim_dead &&
+                    !grip_authoring;
+                bool has_ranged = false;
+                if (editor->inventory_runtime) {
+                    const auto stack = editor->inventory_runtime->active_hotbar_item();
+                    if (!stack.empty())
+                        has_ranged =
+                            item_def_is_ranged_weapon(editor->inventory_runtime->find_def(stack.item_id));
+                }
+                bool grounded = true;
+                if (player_locomotion)
+                    grounded = player_locomotion->on_ground();
+                else if (debug_character)
+                    grounded = debug_character->on_ground();
+                const bool lmb_down =
+                    (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK) != 0;
+                // Prefer bowDrawn (LMB) so release lerps camera back while nock/release still animate.
+                const bool want_aim =
+                    input_ok && has_ranged && grounded && lmb_down && editor->test_session_running() &&
+                    editor->game_session.simulation_allowed();
+                const bool pitch_widen = has_ranged &&
+                    (want_aim || editor->nocked_arrow_active ||
+                        (input_ok && lmb_down && editor->test_session_running()));
+                fov = apply_bow_aim_orbit_framing(
+                    *editor, *orbit_camera, frame_delta_seconds, want_aim, pitch_widen);
             }
             (void)orbit_camera->set_perspective(fov, aspect, near_plane, far_plane);
-            if (pending_orbit_zoom != 0.0f) {
-                const float meters_per_notch =
-                    editor ? std::max(0.05f, editor->camera_asset.zoom_sensitivity) : 1.5f;
-                orbit_camera->adjust_distance(pending_orbit_zoom * meters_per_notch);
-                pending_orbit_zoom = 0.0f;
+            if (editor) {
+                editor->play_test_camera_tan_half_h = std::tan(std::max(0.2f, fov) * 0.5f) * aspect;
             }
         } else {
             pending_orbit_zoom = 0.0f;
-            (void)camera.set_perspective(1.04719755f, static_cast<float>(pixel_w) / static_cast<float>(std::max(pixel_h, 1)),
-                0.1f, 2000.0f);
         }
+        // Free-cam perspective must stay current for Scene even while a play orbit camera exists —
+        // otherwise switching to Scene during play uses a stale window/aspect matrix and looks broken.
+        (void)camera.set_perspective(1.04719755f, scene_view_aspect, 0.1f, 2000.0f);
+        (void)animation_camera.set_perspective(1.04719755f, scene_view_aspect, 0.1f, 2000.0f);
+        // Views are rebuilt on demand (streaming, then render) so late camera updates — the post-physics
+        // follow step in particular — are always reflected instead of snapshotted early.
+        const auto collect_render_views = [&]() {
+            std::vector<RenderView> views;
+            if (!editor) return views;
+            const bool animation_tab = editor->animation_viewport_active();
+            const bool scene_like = editor->active_viewport_tab == EditorState::ViewportTab::Scene ||
+                editor->active_viewport_tab == EditorState::ViewportTab::Sculpt || animation_tab;
+            const DebugCamera& scene_rt_camera = animation_tab ? animation_camera : camera;
+            RenderView scene_view;
+            scene_view.kind = RenderView::Kind::Scene;
+            scene_view.visible = scene_like;
+            scene_view.view = scene_rt_camera.view_matrix();
+            scene_view.projection = scene_rt_camera.projection_matrix();
+            scene_view.view_projection = scene_rt_camera.view_projection();
+            scene_view.camera_position = scene_rt_camera.position();
+            scene_view.camera_forward = scene_rt_camera.forward();
+            scene_view.camera_yaw = scene_rt_camera.yaw();
+            scene_view.pixel_width = scene_view_w;
+            scene_view.pixel_height = scene_view_h;
+            scene_view.aspect = scene_view_aspect;
+            views.push_back(scene_view);
+            if (orbit_camera) {
+                RenderView game_view;
+                game_view.kind = RenderView::Kind::Game;
+                game_view.visible = editor->active_viewport_tab == EditorState::ViewportTab::Game;
+                game_view.view = orbit_camera->view_matrix();
+                game_view.projection = orbit_camera->projection_matrix();
+                game_view.view_projection = orbit_camera->view_projection();
+                game_view.camera_position = orbit_camera->position();
+                game_view.camera_forward = orbit_camera->forward();
+                game_view.camera_yaw = orbit_camera->yaw();
+                game_view.pixel_width = game_view_w;
+                game_view.pixel_height = game_view_h;
+                game_view.aspect = static_cast<float>(game_view_w) /
+                    static_cast<float>(std::max<std::uint32_t>(game_view_h, 1u));
+                views.push_back(game_view);
+            }
+            return views;
+        };
         if (debug_world) {
             const bool* keys = SDL_GetKeyboardState(nullptr);
             const bool editor_mode = editor.has_value();
             const bool test_active = editor_mode && editor->test_session_active();
             const bool test_running = editor_mode && editor->test_session_running();
             const bool game_tab = editor_mode && editor->game_viewport_active();
+            const bool animation_tab = editor_mode && editor->animation_viewport_active();
             const bool mcp_drive =
                 editor_mode && (editor->mcp_forced_wish_frames > 0 || editor->mcp_forced_jump);
 
@@ -14211,7 +19731,16 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                         body_position.z + std::cos(yaw)};
                     (void)query_combat_hits("player_attack", attack_probe, 1.0f, *debug_world, combat_reg);
                 }
-                if (!game_tab) {
+                if (animation_tab) {
+                    const bool camera_keyboard = camera_look_active && editor->viewport_focused;
+                    CameraInput input{
+                        camera_keyboard * ((keys[SDL_SCANCODE_W] ? 1.0f : 0.0f) - (keys[SDL_SCANCODE_S] ? 1.0f : 0.0f)),
+                        camera_keyboard * ((keys[SDL_SCANCODE_D] ? 1.0f : 0.0f) - (keys[SDL_SCANCODE_A] ? 1.0f : 0.0f)),
+                        camera_keyboard * ((keys[SDL_SCANCODE_SPACE] ? 1.0f : 0.0f) -
+                            (keys[SDL_SCANCODE_LCTRL] ? 1.0f : 0.0f)),
+                        mouse_x, mouse_y, camera_keyboard && keys[SDL_SCANCODE_LSHIFT]};
+                    animation_camera.apply(input, frame_delta_seconds);
+                } else if (!game_tab) {
                     const bool camera_keyboard = camera_look_active && editor->viewport_focused;
                     CameraInput input{
                         camera_keyboard * ((keys[SDL_SCANCODE_W] ? 1.0f : 0.0f) - (keys[SDL_SCANCODE_S] ? 1.0f : 0.0f)),
@@ -14256,10 +19785,16 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     camera_keyboard * ((keys[SDL_SCANCODE_SPACE] ? 1.0f : 0.0f) -
                         (keys[SDL_SCANCODE_LCTRL] ? 1.0f : 0.0f)),
                     mouse_x, mouse_y, camera_keyboard && keys[SDL_SCANCODE_LSHIFT]};
-                camera.apply(input, frame_delta_seconds);
+                if (animation_tab) {
+                    animation_camera.apply(input, frame_delta_seconds);
+                    view_projection_matrix = animation_camera.view_projection();
+                    camera_position = animation_camera.position();
+                } else {
+                    camera.apply(input, frame_delta_seconds);
+                    view_projection_matrix = camera.view_projection();
+                    camera_position = camera.position();
+                }
                 mouse_x = mouse_y = 0;
-                view_projection_matrix = camera.view_projection();
-                camera_position = camera.position();
             }
         }
         if (editor && editor->audio_engine && editor->audio_engine->is_initialized()) {
@@ -14271,11 +19806,24 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             editor->audio_engine->update_listener(camera_position, listener_forward);
             editor->audio_engine->update(frame_delta_seconds);
         }
+        const auto stream_views = collect_render_views();
+        // The view the user is actually looking through drives stream bias and particle facing.
+        const RenderView* primary_stream_view = nullptr;
+        for (const auto& view : stream_views)
+            if (view.visible) {
+                primary_stream_view = &view;
+                break;
+            }
         if (streamed_terrain && debug_world) {
-            // During play-test, stream around gameplay foci — not the frozen edit camera.
+            // Foci are the union of every visible view plus the gameplay avatars: a view must keep the
+            // world loaded under its own lens, and the play avatar must never lose ground under itself
+            // just because its view is hidden behind the Scene tab.
             // Prefer feet/pivot over orbit eye so look-only yaw does not flip the focus cell at edges.
             // Local co-op: keep heightfields under every avatar, not only the possessed camera.
             std::vector<std::array<float, 3>> terrain_foci;
+            // Visible views come first — foliage sync uses front() as its scatter center.
+            for (const auto& view : stream_views)
+                if (view.visible) terrain_foci.push_back(view.camera_position);
             if (editor && editor->test_session_active()) {
                 const bool focus_guest =
                     editor->coop_local && editor->coop_focus_slot == 1 && guest_character.has_value();
@@ -14295,8 +19843,6 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     const auto pivot = orbit_camera->pivot();
                     terrain_foci.push_back(
                         {static_cast<float>(pivot.x), static_cast<float>(pivot.y), static_cast<float>(pivot.z)});
-                } else {
-                    terrain_foci.push_back(camera_position);
                 }
                 if (editor->coop_local) {
                     if (player_locomotion) {
@@ -14314,11 +19860,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                             {static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)});
                     }
                 }
-            } else if (editor) {
-                terrain_foci.push_back(camera.position());
-            } else {
-                terrain_foci.push_back(camera_position);
             }
+            if (terrain_foci.empty()) terrain_foci.push_back(editor ? camera.position() : camera_position);
             const TerrainEditStore* edits = editor ? &editor->terrain_edits : nullptr;
             const TerrainPaintStore* paint = editor ? &editor->terrain_paint : nullptr;
             TerrainPaintMaterialLookup paint_lookup;
@@ -14331,8 +19874,11 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             stream_params.max_ready_commits = StreamedTerrainField::k_default_max_ready_commits_per_update;
             stream_params.async_generation = true;
             stream_params.view_bias = true;
-            const auto look = orbit_camera ? orbit_camera->forward() : camera.forward();
-            const float yaw = orbit_camera ? orbit_camera->yaw() : camera.yaw();
+            // Bias toward what the visible view is looking at, not whichever camera happens to exist.
+            const auto look = primary_stream_view ? primary_stream_view->camera_forward
+                : (orbit_camera ? orbit_camera->forward() : camera.forward());
+            const float yaw = primary_stream_view ? primary_stream_view->camera_yaw
+                : (orbit_camera ? orbit_camera->yaw() : camera.yaw());
             (void)apply_stream_view_bias_look_gate(stream_view_bias_gate, yaw, look[0], look[2], stream_params);
             const auto terrain_started = std::chrono::steady_clock::now();
             const auto updated =
@@ -14397,7 +19943,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             if (streamed_water && debug_world) {
             const auto water_started = std::chrono::steady_clock::now();
             const std::array<float, 3> stream_focus =
-                (editor && editor->test_session_active()) ? camera_position : (editor ? camera.position() : camera_position);
+                primary_stream_view ? primary_stream_view->camera_position : camera_position;
             const WaterStore* water = editor ? &editor->water_store : &runtime_water;
             const auto updated = streamed_water->update(stream_focus, StreamedWaterField::k_default_radius, water,
                 defer_water_stream ? 0 : StreamedWaterField::k_default_max_new_cells_per_update);
@@ -14441,7 +19987,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         } else if (streamed_water && debug_world) {
             const auto water_started = std::chrono::steady_clock::now();
             const std::array<float, 3> stream_focus =
-                (editor && editor->test_session_active()) ? camera_position : (editor ? camera.position() : camera_position);
+                primary_stream_view ? primary_stream_view->camera_position : camera_position;
             const WaterStore* water = editor ? &editor->water_store : &runtime_water;
             const auto updated = streamed_water->update(stream_focus, StreamedWaterField::k_default_radius, water,
                 StreamedWaterField::k_default_max_new_cells_per_update);
@@ -14642,17 +20188,24 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             if (orbit_camera && editor->test_session_active()) {
                 editor->play_camera_view = orbit_camera->view_matrix();
                 editor->play_camera_projection = orbit_camera->projection_matrix();
+                editor->play_camera_view_projection = orbit_camera->view_projection();
                 editor->play_camera_matrices_valid = true;
             } else {
                 editor->play_camera_matrices_valid = false;
             }
-            draw_editor(*editor, debug_world.get(), camera_look_active, renderer.scene_viewport_texture(),
-                renderer.game_viewport_texture(), camera.view_matrix(), camera.projection_matrix(),
-                camera.view_projection(), camera.position(), streamed_terrain ? &*streamed_terrain : nullptr,
-                streamed_foliage ? &*streamed_foliage : nullptr, streamed_water ? &*streamed_water : nullptr,
-                &terrain_material, debug_character ? &*debug_character : nullptr,
-                placement_collision ? &placement_collision->interaction_registry() : nullptr,
-                placement_collision ? &placement_collision->combat_registry() : nullptr);
+            {
+                // Weld gizmo / viewport overlays must use the camera that actually drew the tab.
+                const bool anim_tab = editor->animation_viewport_active();
+                const DebugCamera& editor_draw_camera = anim_tab ? animation_camera : camera;
+                draw_editor(*editor, debug_world.get(), camera_look_active, renderer.scene_viewport_texture(),
+                    renderer.game_viewport_texture(), editor_draw_camera.view_matrix(),
+                    editor_draw_camera.projection_matrix(), editor_draw_camera.view_projection(),
+                    editor_draw_camera.position(), streamed_terrain ? &*streamed_terrain : nullptr,
+                    streamed_foliage ? &*streamed_foliage : nullptr, streamed_water ? &*streamed_water : nullptr,
+                    &terrain_material, debug_character ? &*debug_character : nullptr,
+                    placement_collision ? &placement_collision->interaction_registry() : nullptr,
+                    placement_collision ? &placement_collision->combat_registry() : nullptr);
+            }
             apply_pending_world_forge_marker_focus(*editor, camera);
         }
         const auto render_prep_started = std::chrono::steady_clock::now();
@@ -14831,6 +20384,12 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     }
                     return one_handed && melee;
                 };
+                auto active_ranged_weapon = [&]() -> bool {
+                    if (!editor->inventory_runtime) return false;
+                    const auto stack = editor->inventory_runtime->active_hotbar_item();
+                    if (stack.empty()) return false;
+                    return item_def_is_ranged_weapon(editor->inventory_runtime->find_def(stack.item_id));
+                };
 
                 if (input_ok) {
                     const bool* keys = SDL_GetKeyboardState(nullptr);
@@ -14839,6 +20398,20 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     const bool shift_down =
                         keys[SDL_SCANCODE_LSHIFT] != 0 || keys[SDL_SCANCODE_RSHIFT] != 0;
                     const bool has_melee = active_one_handed_melee();
+                    const bool has_ranged = active_ranged_weapon();
+
+                    if (has_ranged && grounded) {
+                        (void)anim.set_bool(anim_id, "bowDrawn", lmb_down);
+                        // Orbit OTS aim + pitch widen run earlier each frame (apply_bow_aim_orbit_framing).
+                        if (!lmb_down && !editor->nocked_arrow_active) {
+                            // Clear stray nock only when fully idle of bow; release event owns fire.
+                        }
+                    } else {
+                        (void)anim.set_bool(anim_id, "bowDrawn", false);
+                        if (!has_ranged) {
+                            editor->nocked_arrow_active = false;
+                        }
+                    }
 
                     if (lmb_down && !editor->test_anim_lmb_was_down && has_melee && grounded)
                         (void)anim.set_trigger(anim_id, "attack");
@@ -14955,16 +20528,91 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
 
             if (simulating) {
                 anim.tick(frame_delta_seconds);
-                if (editor->lua_runtime) {
-                    for (const auto& fired : anim.take_fired_events())
-                        editor->lua_runtime->dispatch_animation_event(fired);
+                auto spawn_footstep_dust = [&](const WorldPosition& feet, float lateral_sign, float strength) {
+                    // Facing-relative foot placement so left/right steps don't pile on the pivot.
+                    const float yaw = player_facing_yaw;
+                    const float right_x = std::cos(yaw);
+                    const float right_z = -std::sin(yaw);
+                    const float side = 0.12f * lateral_sign;
+                    const float count_f = std::clamp(3.0f + strength * 3.0f, 3.0f, 6.0f);
+                    const std::array<float, 3> burst_pos{
+                        static_cast<float>(feet.x) + right_x * side,
+                        static_cast<float>(feet.y) + 0.04f,
+                        static_cast<float>(feet.z) + right_z * side};
+                    (void)editor->particle_system.spawn_burst("assets/vfx/footstep_dust.particle.json",
+                        burst_pos, static_cast<std::uint32_t>(count_f));
+                };
+
+                WorldPosition step_feet{};
+                float horizontal_speed = 0.0f;
+                bool step_grounded = false;
+                if (player_locomotion) {
+                    step_feet = player_locomotion->feet_position();
+                    const auto vel = player_locomotion->linear_velocity();
+                    horizontal_speed = std::sqrt(vel[0] * vel[0] + vel[2] * vel[2]);
+                    step_grounded = player_locomotion->on_ground();
+                } else if (debug_character) {
+                    step_feet = character_feet_pivot(*debug_character);
+                    const auto vel = debug_character->linear_velocity();
+                    horizontal_speed = std::sqrt(vel[0] * vel[0] + vel[2] * vel[2]);
+                    step_grounded = debug_character->on_ground();
                 }
+
+                // Stride dust while moving on ground (blend-tree duration ≠ clip phase, so use distance).
+                if (step_grounded && horizontal_speed > 0.45f && editor->dodge_remaining <= 0.0f) {
+                    editor->footstep_distance_accum += horizontal_speed * frame_delta_seconds;
+                    // Slightly longer stride as speed rises so walk is denser than a full sprint.
+                    const float max_speed = std::max(0.01f, editor->character_asset.max_speed);
+                    const float speed_t = std::clamp(horizontal_speed / max_speed, 0.0f, 1.0f);
+                    const float stride = 0.48f + speed_t * 0.28f;
+                    if (editor->footstep_distance_accum >= stride) {
+                        editor->footstep_distance_accum = 0.0f;
+                        const float side = editor->footstep_side == 0 ? -1.0f : 1.0f;
+                        editor->footstep_side ^= 1;
+                        spawn_footstep_dust(step_feet, side, 0.35f + speed_t * 0.65f);
+                    }
+                } else {
+                    editor->footstep_distance_accum = 0.0f;
+                }
+
+                const auto fired_events = anim.take_fired_events();
+                TransformComponent player_owner{};
+                if (editor->test_player_spawn_entity) {
+                    if (const auto tr = editor->scene.transform(*editor->test_player_spawn_entity))
+                        player_owner = *tr;
+                }
+                const float aim_yaw = orbit_camera ? orbit_camera->yaw() : camera.yaw();
+                const float aim_pitch = orbit_camera ? orbit_camera->pitch() : camera.pitch();
+                editor->play_test_aim_yaw = aim_yaw;
+                editor->play_test_aim_pitch = aim_pitch;
+                if (orbit_camera) {
+                    editor->play_test_camera_eye = orbit_camera->position();
+                    editor->play_test_camera_forward = orbit_camera->forward();
+                    // tan_half_h updated when orbit perspective is set each frame.
+                    editor->play_test_camera_valid = true;
+                } else {
+                    editor->play_test_camera_valid = false;
+                    editor->play_test_camera_forward = orbit_aim_direction_from_yaw_pitch(aim_yaw, aim_pitch);
+                }
+                const std::array<float, 3> aim_dir = orbit_camera
+                    ? orbit_camera->forward()
+                    : orbit_aim_direction_from_yaw_pitch(aim_yaw, aim_pitch);
+                for (const auto& fired : fired_events) {
+                    if (fired.name == "footstep" && step_grounded)
+                        spawn_footstep_dust(step_feet, 0.0f, 0.85f);
+                    handle_bow_combat_animation_event(*editor, fired, player_owner, aim_yaw, aim_pitch, aim_dir);
+                    if (editor->lua_runtime) editor->lua_runtime->dispatch_animation_event(fired);
+                }
+                tick_play_test_projectiles(*editor, frame_delta_seconds, debug_world.get());
             }
 
             const auto skin_started = std::chrono::steady_clock::now();
             renderer.begin_bone_slot_frame();
             editor->test_held_weapon_mesh.clear();
             editor->test_held_weapon_hand_global.reset();
+            editor->test_string_hand_global.reset();
+            editor->test_held_string_mid_model.reset();
+            editor->test_held_weapon_skin_entity.clear();
             editor->test_held_hand_world.reset();
             editor->test_skinned_visual_local = TransformComponent{};
             // The skinned mesh usually lives on a prefab part whose local transform carries the character
@@ -15012,6 +20660,12 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 auto locals = sample_skinned_local_poses(skinned->skins[0], editor->animation_clip_library,
                     editor->project_root, status.value().active_clips);
                 if (!locals) continue;
+                // Vertical aim: raise/lower spine + arms with camera pitch during bow combat.
+                if (entity_id_str == editor->test_animator_entity_id &&
+                    animator_status_is_bow_combat(status.value())) {
+                    apply_bow_aim_to_local_poses(locals.value(), skinned->skins[0],
+                        editor->play_test_aim_pitch);
+                }
                 auto matrices = build_skin_matrices(skinned->skins[0], locals.value());
                 if (matrices) (void)renderer.upload_entity_bone_slot(entity_id_str, matrices.value());
 
@@ -15043,11 +20697,165 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                                     editor->test_held_weapon_hand_global = globals.value()[*hand_idx];
                                     editor->test_skinned_visual_local = visual_local;
                                 }
+                                // String hand for nocked arrows (skin RightHand = visual left string side).
+                                if (globals) {
+                                    std::optional<std::size_t> string_idx =
+                                        find_skin_joint_index(skinned->skins[0], "RightHand");
+                                    if (!string_idx)
+                                        string_idx = find_skin_joint_index(skinned->skins[0], "LeftHand");
+                                    if (string_idx && *string_idx < globals.value().size())
+                                        editor->test_string_hand_global = globals.value()[*string_idx];
+                                }
                             }
                         }
                     }
                 }
             }
+            if (!editor->test_held_weapon_mesh.empty()) {
+                const auto player_status = anim.status(editor->test_animator_entity_id);
+                upload_held_weapon_skin_if_any(*editor, renderer, imported_meshes,
+                    player_status ? &player_status.value() : nullptr, 0.0f, 1.7f,
+                    EditorState::k_held_weapon_skin_entity_id);
+            }
+            frame_cpu_skin_ms = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - skin_started)
+                                   .count();
+        } else if (editor && editor->animation_viewport_active() &&
+            !editor->anim_studio_runtime.attached_entity_ids().empty()) {
+            const auto skin_started = std::chrono::steady_clock::now();
+            bind_anim_studio_clip_library(*editor);
+            auto& studio = editor->anim_studio_runtime;
+            if (editor->anim_studio_playing)
+                tick_anim_studio_preview(*editor, frame_delta_seconds);
+            else
+                (void)refresh_anim_studio_duration(*editor);
+            for (const auto& fired : studio.take_fired_events())
+                dispatch_anim_studio_particle_preview(*editor, fired.name, fired.payload_json);
+            renderer.begin_bone_slot_frame();
+            editor->test_held_weapon_mesh.clear();
+            editor->test_held_weapon_hand_global.reset();
+            editor->test_held_weapon_skin_entity.clear();
+            // Do not clear hand socket mid weld-drag; draw_held_attach_gizmo runs next frame before
+            // this block and needs the socket for early-out + drag freeze.
+            if (!editor->held_attach_gizmo_was_using) editor->test_held_hand_world.reset();
+            editor->test_skinned_visual_local = TransformComponent{};
+            editor->anim_studio_armature.clear();
+            if (!editor->anim_studio_bone_gizmo_was_using) {
+                editor->anim_studio_joint_world.reset();
+                editor->anim_studio_joint_parent_world.reset();
+            }
+            if (const PrefabAsset* prefab = find_prefab(editor->prefab_catalog, editor->anim_studio_subject_prefab)) {
+                TransformComponent visual_local;
+                const ImportedMesh* skinned =
+                    resolve_prefab_skinned_mesh(*prefab, imported_meshes, &visual_local);
+                if (skinned && skinned->has_skinning() && !skinned->skins.empty() &&
+                    skinned->influences.size() == skinned->vertices.size() &&
+                    skinned->skins[0].joint_node_indices.size() <= k_max_bones) {
+                    if (const auto status = studio.status(EditorState::k_anim_studio_entity_id)) {
+                        auto locals = sample_skinned_local_poses(skinned->skins[0], editor->animation_clip_library,
+                            editor->project_root, status.value().active_clips);
+                        if (locals) {
+                            auto matrices = build_skin_matrices(skinned->skins[0], locals.value());
+                            if (matrices)
+                                (void)renderer.upload_entity_bone_slot(EditorState::k_anim_studio_entity_id,
+                                    matrices.value());
+                            editor->test_skin_joint_names = skinned->skins[0].joint_names;
+                            editor->test_skinned_visual_local = visual_local;
+                            auto globals = build_joint_global_matrices(skinned->skins[0], locals.value());
+                            if (globals) {
+                                const TransformComponent stage_root = anim_studio_stage_root();
+                                append_anim_studio_armature_from_skin(*editor, skinned->skins[0], globals.value(),
+                                    stage_root, visual_local, "subject");
+                            }
+                            // Studio held gear — same weld path as play-test hotbar, without inventory bags.
+                            if (!editor->anim_studio_held_item_id.empty()) {
+                                if (const ItemDef* def =
+                                        resolve_item_def(*editor, editor->anim_studio_held_item_id)) {
+                                    if (!def->world_mesh.empty()) {
+                                        if (editor->held_attach_item_id != editor->anim_studio_held_item_id) {
+                                            editor->held_attach_item_id = editor->anim_studio_held_item_id;
+                                            editor->held_attach_weld =
+                                                weld_from_item_hand_attach(def->hand_attach);
+                                            editor->held_attach_dirty = false;
+                                        }
+                                        auto hand_idx = find_skin_joint_index(skinned->skins[0],
+                                            editor->held_attach_weld.joint);
+                                        if (!hand_idx)
+                                            hand_idx =
+                                                find_skin_joint_index(skinned->skins[0], "RightHand");
+                                        if (!hand_idx)
+                                            hand_idx =
+                                                find_skin_joint_index(skinned->skins[0], "LeftHand");
+                                        if (globals && hand_idx && *hand_idx < globals.value().size()) {
+                                            editor->test_held_weapon_mesh =
+                                                normalize_asset_path(def->world_mesh);
+                                            editor->test_held_weapon_hand_global =
+                                                globals.value()[*hand_idx];
+                                            // Seed socket for next ImGui pass (gizmo draws before this block).
+                                            // Keep the prior socket while dragging so mid-drag clears cannot
+                                            // open a hole before append_held_weapon runs.
+                                            if (!editor->held_attach_gizmo_was_using) {
+                                                BoneSocketChain chain;
+                                                chain.owner_world = anim_studio_stage_root();
+                                                chain.visual_local = editor->test_skinned_visual_local;
+                                                chain.joint_model = globals.value()[*hand_idx];
+                                                editor->test_held_hand_world = bone_socket_world(chain);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (!editor->test_held_weapon_mesh.empty()) {
+                const auto studio_status = studio.status(EditorState::k_anim_studio_entity_id);
+                upload_held_weapon_skin_if_any(*editor, renderer, imported_meshes,
+                    studio_status ? &studio_status.value() : nullptr, editor->anim_studio_scrub,
+                    editor->anim_studio_duration > 1e-6f ? editor->anim_studio_duration : 1.7f,
+                    EditorState::k_anim_studio_held_skin_entity_id);
+                // Skinned held item bones under the weld root (same sample used by upload).
+                if (editor->test_held_hand_world) {
+                    const ImportedMesh* weapon =
+                        find_imported_mesh(imported_meshes, editor->test_held_weapon_mesh);
+                    if (weapon && weapon->has_skinning() && !weapon->skins.empty() &&
+                        weapon->influences.size() == weapon->vertices.size() &&
+                        weapon->skins[0].joint_node_indices.size() <= k_max_bones) {
+                        const std::string draw_clip =
+                            resolve_held_draw_clip_name(*editor, editor->test_held_weapon_mesh);
+                        const float draw_duration = lookup_held_draw_clip_duration(*editor,
+                            editor->test_held_weapon_mesh, draw_clip);
+                        const float sample_time = resolve_held_weapon_draw_sample_time(*editor,
+                            studio_status ? &studio_status.value() : nullptr, editor->anim_studio_scrub,
+                            editor->anim_studio_duration > 1e-6f ? editor->anim_studio_duration : 1.7f, draw_clip,
+                            draw_duration);
+                        std::vector<AnimatorClipWeight> weights;
+                        if (!draw_clip.empty()) {
+                            AnimatorClipWeight w;
+                            w.clip_source = editor->test_held_weapon_mesh;
+                            w.clip = draw_clip;
+                            w.weight = 1.0f;
+                            w.time_seconds = sample_time;
+                            w.loop = false;
+                            weights.push_back(std::move(w));
+                        }
+                        auto held_locals = sample_skinned_local_poses(weapon->skins[0],
+                            editor->animation_clip_library, editor->project_root, weights,
+                            /*apply_sagittal_handedness=*/false);
+                        if (held_locals) {
+                            if (auto held_globals =
+                                    build_joint_global_matrices(weapon->skins[0], held_locals.value())) {
+                                const TransformComponent weapon_world =
+                                    weld_world_transform(*editor->test_held_hand_world, editor->held_attach_weld);
+                                append_anim_studio_armature_from_skin(*editor, weapon->skins[0],
+                                    held_globals.value(), weapon_world, TransformComponent{}, "held");
+                            }
+                        }
+                    }
+                }
+            }
+            refresh_anim_studio_selected_joint_world(*editor);
             frame_cpu_skin_ms = std::chrono::duration<double, std::milli>(
                 std::chrono::steady_clock::now() - skin_started)
                                    .count();
@@ -15208,9 +21016,9 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                 }
                 light_placements.emplace_back(normalize_asset_path(placement->prefab_asset), *transform);
 
-                // Held hotbar weapon: unskinned mesh welded to the animated joint each frame. The chain must
-                // include the prefab part transform the skinned body is drawn with, or the weapon hangs off
-                // an unscaled skeleton instead of the visible hand.
+                // Held hotbar weapon: weld to the animated joint (skins when mesh has JOINTS_0 + draw clip).
+                // The chain must include the prefab part transform the skinned body is drawn with, or the
+                // weapon hangs off an unscaled skeleton instead of the visible hand.
                 if (!editor->test_held_weapon_mesh.empty() && editor->test_held_weapon_hand_global) {
                     BoneSocketChain chain;
                     chain.owner_world = *transform;
@@ -15225,6 +21033,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     RenderInstance weapon;
                     weapon.transform = weapon_world;
                     weapon.mesh_asset = editor->test_held_weapon_mesh;
+                    weapon.skin_entity_id = editor->test_held_weapon_skin_entity;
                     weapon.pbr = PbrSurfaceParams::dielectric_default();
                     weapon.mesh_key_hash =
                         static_cast<std::uint64_t>(std::hash<std::string>{}(weapon.mesh_asset));
@@ -15234,6 +21043,7 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     }
                     placed_objects.push_back(std::move(weapon));
                 }
+                append_nocked_and_projectile_instances(*editor, *transform, placed_objects);
             }
         }
         if (editor && editor->drop_preview && editor->drop_preview_prefab) {
@@ -15281,6 +21091,16 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
             auto preview_lights = collect_point_lights(editor->prefab_catalog, light_placements);
             point_lights.insert(point_lights.end(), preview_lights.begin(), preview_lights.end());
         }
+        // Rebuilt here (not reused from the streaming pass) so the post-physics camera follow is included.
+        const auto render_views = collect_render_views();
+        const RenderView* render_primary_view = nullptr;
+        const RenderView* render_scene_view = nullptr;
+        const RenderView* render_game_view = nullptr;
+        for (const auto& view : render_views) {
+            if (view.kind == RenderView::Kind::Scene) render_scene_view = &view;
+            if (view.kind == RenderView::Kind::Game) render_game_view = &view;
+            if (view.visible && !render_primary_view) render_primary_view = &view;
+        }
         if (editor) {
             std::vector<std::pair<std::string, TransformComponent>> particle_placements;
             for (const auto& id : editor->scene.entity_ids()) {
@@ -15295,9 +21115,8 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
                     previewing_selected ? *editor->gizmo_preview : *transform);
             }
             editor->particle_system.sync_placements(editor->prefab_catalog, particle_placements);
-            const auto cam = (editor->active_viewport_tab == EditorState::ViewportTab::Game && orbit_camera)
-                                 ? orbit_camera->position()
-                                 : camera.position();
+            // Billboards face one camera per frame — use the view being displayed.
+            const auto cam = render_primary_view ? render_primary_view->camera_position : camera.position();
             WindFieldParams wind = renderer.wind_field();
             wind.time_seconds += frame_delta_seconds;
             wind.normalize_direction();
@@ -15342,12 +21161,17 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         const PbrSurfaceParams terrain_pbr = material_supports_opaque_pbr_runtime(terrain_material)
                                                  ? PbrSurfaceParams::from_material(terrain_material)
                                                  : PbrSurfaceParams::dielectric_default();
+        const bool animation_sandbox = editor && editor->animation_viewport_active();
         Renderer::WorldPassParams scene_pass;
-        scene_pass.view_projection = camera.view_projection();
-        scene_pass.camera_position = camera.position();
+        scene_pass.view_projection =
+            render_scene_view ? render_scene_view->view_projection : camera.view_projection();
+        scene_pass.camera_position = render_scene_view ? render_scene_view->camera_position : camera.position();
         scene_pass.body_position = body_position;
-        scene_pass.draw_physics_body = (debug_character.has_value() || player_locomotion.has_value()) &&
-            !draw_player_visual && (!editor || editor->test_session_active());
+        scene_pass.sandbox_stage = animation_sandbox;
+        // Never draw the unit physics box in the editor Scene view — the player mesh is already expanded.
+        // That cube was the "square body instead of the character" when inspecting during play.
+        scene_pass.draw_physics_body = !editor && (debug_character.has_value() || player_locomotion.has_value()) &&
+            !draw_player_visual;
         scene_pass.influence = influence_bus.empty() ? nullptr : &influence_bus;
         scene_pass.time_seconds = foliage_time_seconds;
         scene_pass.terrain_pbr = terrain_pbr;
@@ -15355,9 +21179,10 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         scene_pass.water_roughness = water_roughness;
         Renderer::WorldPassParams game_pass = scene_pass;
         game_pass.draw_physics_body = false;
-        if (orbit_camera && (debug_character || player_locomotion) && editor && editor->test_session_active()) {
-            game_pass.view_projection = orbit_camera->view_projection();
-            game_pass.camera_position = orbit_camera->position();
+        game_pass.sandbox_stage = false;
+        if (render_game_view && (debug_character || player_locomotion) && editor && editor->test_session_active()) {
+            game_pass.view_projection = render_game_view->view_projection;
+            game_pass.camera_position = render_game_view->camera_position;
             game_pass.body_position = body_position;
         }
         Renderer::WorldPassParams runtime_pass;
@@ -15370,20 +21195,53 @@ Result<RenderStats> run_render_app(const RenderOptions& options) {
         runtime_pass.terrain_pbr = terrain_pbr;
         runtime_pass.water_color = water_color;
         runtime_pass.water_roughness = water_roughness;
+        // Size the offscreen chain to the view being drawn so a fixed play resolution is a real target.
+        const bool capture_game_rt = options.capture_game_viewport || options.initial_viewport == "game";
+        const bool game_capture_this_frame = capture_game_rt && !capture.empty();
+        if (editor) {
+            const RenderView* sizing_view = render_primary_view;
+            if (render_game_view && (render_game_view->visible || options.require_gpu_timestamps ||
+                                        game_capture_this_frame))
+                sizing_view = render_game_view;
+            if (sizing_view) {
+                const auto sized =
+                    renderer.set_render_resolution(sizing_view->pixel_width, sizing_view->pixel_height);
+                if (!sized) {
+                    renderer.release();
+                    SDL_DestroyWindow(window);
+                    SDL_Quit();
+                    return Result<RenderStats>::failure(sized.error());
+                }
+            }
+        }
         const auto render_started = std::chrono::steady_clock::now();
         auto rendered = [&]() {
-            const bool capture_game = options.capture_game_viewport || options.initial_viewport == "game";
             if (!editor) return renderer.render(capture, runtime_pass, nullptr, placed_objects, point_lights);
             // Benchmark gate measures Game play-test only (single world pass).
             if (options.require_gpu_timestamps)
                 return renderer.render(capture, game_pass, static_placed, placed_objects, point_lights, nullptr, false);
-            // Only produce the viewport the user can see. Rendering Scene and Game every editor frame doubled
-            // world, shadow, water, and SSAO work during play-tests.
-            if (editor->active_viewport_tab == EditorState::ViewportTab::Game)
+            // Exactly one view is drawn per frame — the one on screen (or the one a capture asks for).
+            // Drawing both doubled world, shadow, water, and SSAO work for a target nobody sampled.
+            if (render_game_view && (render_game_view->visible || game_capture_this_frame))
                 return renderer.render(capture, game_pass, static_placed, placed_objects, point_lights, nullptr,
-                    capture_game, true);
-            return renderer.render(capture, scene_pass, static_placed, placed_objects, point_lights, &game_pass,
-                capture_game);
+                    capture_game_rt, true);
+            if (animation_sandbox) {
+                std::vector<RenderInstance> sandbox_placed;
+                const TransformComponent stage_root = anim_studio_stage_root();
+                if (!editor->anim_studio_subject_prefab.empty()) {
+                    if (const PrefabAsset* prefab =
+                            find_prefab(editor->prefab_catalog, editor->anim_studio_subject_prefab)) {
+                        expand_prefab_render_instances(*prefab, stage_root, sandbox_placed, editor_material_lookup,
+                            &editor->mesh_bounds, EditorState::k_anim_studio_entity_id);
+                    }
+                }
+                append_held_weapon_render_instance(*editor, stage_root, sandbox_placed);
+                static const std::vector<ActivePointLight> k_empty_sandbox_lights{};
+                return renderer.render(capture, scene_pass, nullptr, sandbox_placed, k_empty_sandbox_lights, nullptr,
+                    capture_game_rt);
+            }
+            return renderer.render(capture, scene_pass, static_placed, placed_objects, point_lights, nullptr,
+                capture_game_rt);
         }();
         const auto render_finished = std::chrono::steady_clock::now();
         if (!rendered) {

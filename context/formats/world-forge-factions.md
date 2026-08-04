@@ -55,8 +55,8 @@ Optional `standing` ([DEC-0029](../decisions/index.md#dec-0029-continuous-factio
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `emblemPath` | string | Project-relative heraldry PNG (Map Canvas / future player map) |
-| `mapColor` | `[r,g,b]` 0..1 | Political border / tint; never the only culture cue |
+| `emblemPath` | string | Project-relative heraldry PNG — Map Canvas / future player map **and** armored character / shield / banner stamps ([character-direction.md](../art/character-direction.md#heraldry-on-characters-and-armor-production-lock)) |
+| `mapColor` | `[r,g,b]` 0..1 | Political border / soft kit accent tint; never the only culture cue |
 | `mapTypefaceId` | string | `cinzel` \| `forum` \| `eb_garamond` \| `uncial_antiqua` \| `metamorphous` \| `medievalsharp` — see [cartography-design.md](../art/cartography-design.md) |
 
 ## Enums

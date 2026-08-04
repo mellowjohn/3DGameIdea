@@ -8,7 +8,7 @@ Agent-clonable fire looks matching owner refs (blob mesh + particle trio) via DE
 
 | Family | Path | Engine approach |
 | --- | --- | --- |
-| Blob / mesh | [`../art/reference/stylized-flame-blob-mesh.png`](../art/reference/stylized-flame-blob-mesh.png) | Campfire mesh + `flame_core_emissive.material.json` (`emissive_magic` pulse + `emissiveMap`). True noise-displace/dissolve master deferred; masked/maps/bloom already help readability. |
+| Blob / mesh | [`../art/reference/stylized-flame-blob-mesh.png`](../art/reference/stylized-flame-blob-mesh.png) | Campfire / torch mesh keeps glTF albedo. **Do not** apply `flame_core_emissive.material.json` to the whole prop — that path floods every face with pulsed emissive and reads as a solid yellow model. Bright core comes from flipbook particle layers + warm point light. True noise-displace/dissolve master deferred. |
 | Particle trio | [`../art/reference/stylized-flame-particle-trio.png`](../art/reference/stylized-flame-particle-trio.png) | Layered recipes: molten / wispy / column + smoke + sparks. |
 
 ## Hero sample
@@ -16,13 +16,13 @@ Agent-clonable fire looks matching owner refs (blob mesh + particle trio) via DE
 Place: `assets/prefabs/Scene Assets/stylized_flame.prefab.json`
 
 Production prefabs use the same look:
-- `campfire.prefab.json` — molten + sparks + smoke + `flame_core_emissive`
-- `wall_torch.prefab.json` — torch-scale `wall_torch_molten` + embers + smoke + emissive material
+- `campfire.prefab.json` — molten + sparks + smoke (mesh keeps glTF texture)
+- `wall_torch.prefab.json` — torch-scale `wall_torch_molten` + embers + smoke (mesh keeps glTF texture)
 
-- Mesh: `campfire.gltf` with `flame_core_emissive`
-- Particles: core + `stylized_flame_molten` + `hit_spark` + smoke
-- Point light: warm orange
-- Bloom (TICKET-0242) softens the emissive core and sparks
+- Mesh: `campfire.gltf` / `wall_torch.gltf` (default baked textures; no whole-mesh emissive override)
+- Particles: textured core + `stylized_flame_molten` / `wall_torch_molten` + sparks + smoke
+- Point light: warm orange (moderate radius/strength so it does not wash the prop)
+- Bloom (TICKET-0242) softens sparks; keep mesh lit by albedo + light only
 
 ## Recipes
 

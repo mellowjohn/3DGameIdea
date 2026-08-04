@@ -320,25 +320,29 @@ Result<void> OrbitCamera::update(WorldPosition pivot, const CollisionWorld& worl
 
 
     // Fast pull-in when blocked (avoid clipping), slow ease-out when clear — stops look-around distance pop
-    // as the probe grazes trees/terrain undulation. Snap the pull-in when the new aim is clearly buried
-    // (instant look deltas in captures / fast flicks); soft rate alone left the eye inside hills for frames.
-    constexpr float k_pull_in_rate = 48.0f;
+    // as the probe grazes trees/terrain undulation. Snap only on real collision hits: intentional
+    // zoom / ADS distance changes (desired shrinking while clear) must ease, not jump — otherwise
+    // a 10.5→6m aim pull trips the 0.85 ratio mid-blend and looks like a hard orbit-seat teleport.
+    constexpr float k_collision_pull_in_rate = 48.0f;
+    constexpr float k_intentional_pull_in_rate = 14.0f;
     constexpr float k_recover_rate = 7.0f;
     constexpr float k_snap_pull_in_ratio = 0.85f;
     if (target_distance < resolved_distance_) {
-        if (target_distance < resolved_distance_ * k_snap_pull_in_ratio)
+        if (collision_shortened_ && target_distance < resolved_distance_ * k_snap_pull_in_ratio)
             resolved_distance_ = target_distance;
         else
-            resolved_distance_ = exp_smooth(resolved_distance_, target_distance, k_pull_in_rate, seconds);
+            resolved_distance_ = exp_smooth(resolved_distance_, target_distance,
+                collision_shortened_ ? k_collision_pull_in_rate : k_intentional_pull_in_rate, seconds);
     } else
         resolved_distance_ = exp_smooth(resolved_distance_, target_distance, k_recover_rate, seconds);
     resolved_distance_ = std::clamp(resolved_distance_, lo, hi);
 
     if (target_shoulder_scale < shoulder_scale_) {
-        if (target_shoulder_scale < shoulder_scale_ * k_snap_pull_in_ratio)
+        if (collision_shortened_ && target_shoulder_scale < shoulder_scale_ * k_snap_pull_in_ratio)
             shoulder_scale_ = target_shoulder_scale;
         else
-            shoulder_scale_ = exp_smooth(shoulder_scale_, target_shoulder_scale, k_pull_in_rate, seconds);
+            shoulder_scale_ = exp_smooth(shoulder_scale_, target_shoulder_scale,
+                collision_shortened_ ? k_collision_pull_in_rate : k_intentional_pull_in_rate, seconds);
     } else
         shoulder_scale_ = exp_smooth(shoulder_scale_, target_shoulder_scale, k_recover_rate, seconds);
     shoulder_scale_ = std::clamp(shoulder_scale_, 0.0f, 1.0f);
@@ -379,21 +383,14 @@ Result<void> OrbitCamera::set_perspective(float f, float a, float n, float z) {
 
 std::array<float, 3> OrbitCamera::forward() const {
 
-    // Aim at the character pivot (not the shoulder-shifted eye), classic RPG framing.
+    // Pure look orientation (yaw/pitch). Shoulder offset only frames the eye — view direction must
+    // not LookAt the character pivot or screen center / reticle stick to the head under OTS.
 
-    const auto target = look_target();
+    const float cp = std::cos(pitch_);
 
-    const float dx = static_cast<float>(target.x) - position_[0];
+    const float sp = std::sin(pitch_);
 
-    const float dy = static_cast<float>(target.y) - position_[1];
-
-    const float dz = static_cast<float>(target.z) - position_[2];
-
-    const float length = vector_length(dx, dy, dz);
-
-    if (!(length > 0)) return {0, 0, 1};
-
-    return {dx / length, dy / length, dz / length};
+    return {std::sin(yaw_) * cp, -sp, std::cos(yaw_) * cp};
 
 }
 

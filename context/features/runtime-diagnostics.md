@@ -2,6 +2,8 @@
 
 The engine writes structured JSON Lines to `out/logs/engine.jsonl` by default. Override it with `--log-file <path>`.
 
+**Editor Diagnostics → Console** is a separate in-panel session/cheat terminal for play-test inventory and flags (see [diagnostics-console.md](diagnostics-console.md)). It does not replace process logging.
+
 Console output uses severity colors when attached to a Windows console: warnings are yellow and errors/fatal events are bright red. Every process writes session start and finish events. Recoverable errors include stable code, category, subsystem, correlation ID, remediation, causes, and source context.
 
 Every event also carries an independent priority label: `P0` critical immediate action, `P1` high, `P2` normal, or `P3` low. Console text shows both, for example `[error][P1]`; JSON exposes `severity` and `priority` separately.

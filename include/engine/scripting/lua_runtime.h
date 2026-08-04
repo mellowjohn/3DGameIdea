@@ -70,6 +70,7 @@ public:
 
     [[nodiscard]] std::optional<ScriptBlackboardEntry> blackboard_get(const std::string& key) const;
     void blackboard_set_bool(const std::string& key, bool value);
+    void blackboard_set_number(const std::string& key, double value);
     void blackboard_clear();
 
     void set_hud_runtime(HudRuntime* hud) noexcept;

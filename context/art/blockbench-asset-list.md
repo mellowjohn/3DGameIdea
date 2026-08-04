@@ -73,49 +73,74 @@ Draft Blockbench references under `context/art/` (palette-aligned; not final mes
 
 ## Tier 2 — Act 0 Calrenoth (Landfall)
 
-Story-critical set dressing and interactables for the siege tutorial. Scene mood / layout targets: [concepts/README.md](concepts/README.md) (`act0-a0-03` … `act0-a0-09`).
+Story-critical set dressing and interactables for the siege tutorial.
 
-| Asset | Why | Beat / quest |
-| --- | --- | --- |
-| Wheelbarrow (upright + overturned) | Arkand intro + cart gag | A0-03, SQ-01 |
-| Wooden cart / supply wagon | Siege roads, rescue clutter | A0-04, SQ-01 |
-| Drawbridge kit (planks, chain spool, gate posts) | Rear defense set piece | A0-06 |
-| Castle wall / battlement kit (wall, corner, crenel, tower stub) | Fortress silhouette | A0-04–A0-06 |
-| Keep door / gate | Entrance beats | A0-04 |
-| Signal pyre / watchtower fire basket | Hill signal quest | SQ-02 |
-| Command table / desk | Grenge / ledger prop | A0-05, SQ-03 |
-| Barricade / sandbags / spike fence | Road blockers | A0-04 |
-| Catapult / siege engine (simple) | Approach backdrop | A0-04 |
-| Arrow bundle / quiver prop | Clutter + combat vibe | |
-| Scaffold / ladder | Vertical fortress routes | A0-06 |
+**Layout targets (in order):** LD perspectives → scene sets → kits — see [concepts/README.md](concepts/README.md).
+
+- LD: `act0-ld-overview-perspective.png`, `act0-ld-a0-03` … `a0-06`, `act0-ld-a0-09-camp-perspective.png`
+- Scene sets: `act0-sceneset-a0-03` … `a0-06`, `act0-sceneset-a0-09-camp.png`
+- Legacy mood: `act0-a0-03` … `act0-a0-09`
+
+### Tier 2 concept sheets
+
+| Sheet | Covers |
+| --- | --- |
+| `tier2-castle-wall-kit-concept.png` | Wall / corner / crenel / tower stub / gatehouse / keep door / walk / stair |
+| `tier2-drawbridge-kit-concept.png` | Bridge panel, posts, chain spool, hinges, moat edge |
+| `tier2-siege-props-kit-concept.png` | Wheelbarrow (both), cart, barricade, sandbags, catapult, pyre, banner, arrows, ladder/scaffold |
+| `tier2-command-clutter-kit-concept.png` | Command table, benches, crate stacks, torches, green shroud pole |
+
+| Asset | Why | Beat / quest | Kit sheet |
+| --- | --- | --- | --- |
+| Wheelbarrow (upright + overturned) | Arkand intro + cart gag | A0-03, SQ-01 | siege props |
+| Wooden cart / supply wagon | Siege roads, rescue clutter | A0-04, SQ-01 | siege props |
+| Drawbridge kit (planks, chain spool, gate posts) | Rear defense set piece | A0-06 | drawbridge |
+| Castle wall / battlement kit (wall, corner, crenel, tower stub) | Fortress silhouette | A0-04–A0-06 | castle wall |
+| Keep door / gate | Entrance beats | A0-04 | castle wall / command |
+| Signal pyre / watchtower fire basket | Hill signal quest | SQ-02 | siege props |
+| Command table / desk | Grenge / ledger prop | A0-05, SQ-03 | command clutter |
+| Barricade / sandbags / spike fence | Road blockers | A0-04 | siege props |
+| Catapult / siege engine (simple) | Approach backdrop | A0-04 | siege props |
+| Arrow bundle / quiver prop | Clutter + combat vibe | | siege props |
+| Scaffold / ladder | Vertical fortress routes | A0-06 | siege props / command |
 
 ## Tier 3 — Characters and weapons
 
-Prefer one shared body + kit swaps over per-archetype body remakes. Rig in T-pose for later retargeting.
+**Body lock:** every Act 0 **humanoid** reuses **GoodPlayerModel** (`tools/art/player/GoodPlayerModel.gltf` → `assets/models/player.gltf`). No per-character body remakes. Concept `act0-char-*.png` sheets are **costume / kit identity** over that body. Exceptions: Creotar (vision non-human); Underflow orc (non-human kit or later dedicated mesh).
+
+**Heraldry lock:** armored / ranked kits stamp from shipped `assets/ui/cartography/heraldry-*.png` via World Forge `emblemPath` — do not freehand faction logos. Placement, simplify rules, and cast bindings: [character-direction.md § Heraldry on characters and armor](character-direction.md#heraldry-on-characters-and-armor-production-lock). Masters also under `context/art/cartography/`.
 
 ### Humanoids / kits
 
-| Asset | Why |
-| --- | --- |
-| Player base body (clean T-pose, modular slots) | Character creation foundation — match approved front `reference/player-base-body-front.png`; WIP mesh `tools/art/player/Player_V3.bbmodel` |
-| Ashfell Blade starter kit | Tunic, wraps, belt/pouch, boots — match `reference/starting-player-ashfell-blade-turnaround.png` |
-| Outrider starter kit | Cloak/hood, vest, bracer, quiver — match `reference/starting-player-outrider-turnaround.png` |
-| Runecaster starter kit | Wrap-coat, etched wraps, focus pouch — match `reference/starting-player-runecaster-turnaround.png`; not crystal-warden default |
-| Arkand | Full-plate knight; goofy personality vs imposing armor |
-| Vanessa | Mage robes, academy look |
-| Generic Tessera soldier / guard | Grenge’s forces, Pellin, Larrell |
-| Commander Grenge variant | Plate + green shroud accent |
-| Imperium footsoldier | Act 0 blockers |
-| Underflow orc | Local warband enemy (`underflow`) |
-| Thalassar coastal fighter | Act 1 dual-path neighbor (`thalassar`) |
+| Asset | Why | Concept sheet | Heraldry |
+| --- | --- | --- | --- |
+| **GoodPlayerModel** (shared body + rig) | Runtime foundation for player + NPC humanoids | Body is the mesh; kits layer on top | — |
+| Starter kit trio | Ashfell mail / Outrider Lodge / Runecaster Guild on GoodPlayerModel | `act0-char-{ashfell-blade,outrider,runecaster}.png` + lineup `act0-char-player-archetypes.png` | Draft lane-org stamps (ash-tree / Lodge antler / Guild rune); not sphere `emblemPath` yet |
+| Modular slots / gear language | Hair, helm, hand, belt attach reference | `act0-char-modular-body-slots.png` (read against GoodPlayerModel scale) | Reserve chest / shield / banner UV for stamps |
+| Arkand | Full-plate **kit** on shared body; personality vs armor | `concepts/act0-char-arkand.png` | `kingdom_tessera` |
+| Vanessa | Mage robes kit (Act 1) | (Act 1) | `cristallo` when faction tag applies |
+| Tessera soldier / guard | Armor/tabard kit; Grenge forces, Larrell as kit variant | `concepts/act0-char-tessera-soldier.png`, `act0-char-larrell.png` | `kingdom_tessera` |
+| Commander Grenge | Rank + **green shroud** kit on shared body | `concepts/act0-char-grenge.png` | `kingdom_tessera` (+ shroud prop) |
+| Scout Damius | Leather + cloak scout kit | `concepts/act0-char-damius.png` | Restrained `kingdom_tessera` |
+| **Imperium ladder (A0→A3)** | Weak→strong dark crusade kits | `concepts/chaotic-imperium-power-ladder.png` + unit sheets | `chaotic_imperium` |
+| Imperium skirmisher (A0 weak) | Levy / road trash | `concepts/act0-char-imperium-skirmisher.png` | `chaotic_imperium` (minimal) |
+| Imperium footsoldier (A0 mid) | Siege blockers — **revamped** dark iron + oxblood jagged star (not parade gold) | `concepts/act0-char-imperium-footsoldier.png` | `chaotic_imperium` |
+| Imperium siege vanguard (A0 heavy) | Landfall heavy | `concepts/act0-char-imperium-vanguard.png` | `chaotic_imperium` |
+| Imperium Act 1 units | Man-at-arms + shade scout | `concepts/act1-char-imperium-units.png` | `chaotic_imperium` |
+| Imperium Act 2 units | Blackguard + voidbound | `concepts/act2-char-imperium-units.png` | `chaotic_imperium` |
+| Imperium Act 3 units | Hollow elite (+ Luceran compare) | `concepts/act3-char-imperium-units.png` | `chaotic_imperium` |
+| Luceran the Hollow | Hollow dark rider apex (A0-07 / A3) — black iron + crimson + void aura | `concepts/act0-char-luceran.png` | `chaotic_imperium` (restrained chest stamp) |
+| Creotar (Creo) | Vision instance — **not** GoodPlayerModel body | `concepts/act0-char-creotar.png` | No army heraldry |
+| Underflow orc | Non-human enemy — separate if needed | `concepts/act0-char-underflow-orc.png` | `underflow` |
+| Thalassar coastal fighter | Act 1 dual-path | (Act 1; still prefer shared humanoid body when human) | `thalassar` |
 
 ### Attachable weapons
 
 | Asset | Kit / role |
 | --- | --- |
-| ~~Ashfell arming sword~~ | Ashfell Blade — **Shipped** mesh + Scene Asset prefab; hand-slot attach follow-on |
-| ~~Outrider shortbow + arrow~~ | Outrider — **Shipped** static meshes + Scene Assets (`outrider_shortbow`, `outrider_arrow`); draw armature / hand-slot attach follow-on |
-| ~~Guild rune focus~~ | Runecaster — **Shipped** mesh + Scene Asset; hand-slot attach follow-on |
+| ~~Ashfell arming sword~~ | Ashfell Blade — **Shipped** mesh + Scene Asset + `handAttach` |
+| ~~Outrider shortbow + arrow~~ | Outrider — **Shipped** skinned shortbow (`bow_draw` + handAttach.drawClip) + static arrow Scene Assets |
+| ~~Guild rune focus~~ | Runecaster — **Shipped** mesh + Scene Asset + `handAttach` |
 | Knight sword / shield | Arkand |
 | Orc axe / cleaver | Underflow |
 | Spear | Guards |
@@ -123,6 +148,8 @@ Prefer one shared body + kit swaps over per-archetype body remakes. Rig in T-pos
 ## Tier 4 — Player camp
 
 Anywhere-camp kit ([DEC-0033](../decisions/index.md#dec-0033-anywhere-player-camp-as-editable-instance-dao-style)).
+
+**Concept sheet:** `tier4-camp-kit-concept.png` (LD: `concepts/act0-ld-a0-09-camp-perspective.png`; scene: `concepts/act0-sceneset-a0-09-camp.png`).
 
 | Asset | Why |
 | --- | --- |
@@ -132,10 +159,14 @@ Anywhere-camp kit ([DEC-0033](../decisions/index.md#dec-0033-anywhere-player-cam
 | Cooking pot over fire | Camp life |
 | Storage chest | Shared stash visual |
 | Banner pole (neutral / Tessera) | Camp identity |
+| Campfire ring + flame module | Landmark / rest focal |
 
 ## Tier 5 — Ledgeport / Act 1 hub
 
 Modular coastal market kit — variants beat unique hero buildings.
+
+**Concept sheet:** `tier5-ledgeport-hub-kit-concept.png`  
+**LD / scenes:** `concepts/act1-ld-overview-ledgeport.png`, `act1-ld-market-perspective.png`, `act1-ld-dock-ferry-perspective.png`, matching `act1-sceneset-*`.
 
 | Asset | Why |
 | --- | --- |
@@ -144,13 +175,16 @@ Modular coastal market kit — variants beat unique hero buildings.
 | Tavern sign + barrel stack | Social hub |
 | Small house A/B (door + window variants) | Street fill |
 | Fishing boat / skiff | Harbor flavor |
-| Ferry dock bollard / cleat | If ferry path locks (Dom D-P0-09) |
+| Ferry dock bollard / cleat | Ferry to Porto Lucente (D-P0-09) |
 | Notice board | Side-quest starts |
 | Rope coil / net / crate pile | Port clutter |
 
 ## Tier 6 — Story / supernatural
 
 Do after Tier 1–3; reserved saturated accents per [theme-palette.md](theme-palette.md).
+
+**Concept sheet:** `tier6-supernatural-kit-concept.png`  
+**LD / scenes:** A0-07/08 + Act 3 `act3-ld-luceran-approach.png`.
 
 | Asset | Why |
 | --- | --- |
@@ -159,6 +193,7 @@ Do after Tier 1–3; reserved saturated accents per [theme-palette.md](theme-pal
 | Throne | Prologue Luceran beat |
 | Simple shrine / standing stone | Sea of Whispers / Muirthalia / Grakk-Maren sites |
 | Corrupted ground prop (jagged crystal outcrop) | Imperium blight landmarks |
+| Claritas staff head | Cristallo relic accent (sparse) |
 
 ---
 
@@ -203,5 +238,5 @@ Mirror existing conventions: `tools/art/tree/`, `tools/art/stones/`, `tools/art/
 ## Open art questions
 
 - Flat shading versus softened normals on characters/props ([visual-direction.md](visual-direction.md)).
-- Whether starting kits share one base body with swaps or use per-archetype bodies (direction currently: shared body + kit swaps).
+- ~~Whether starting kits share one base body with swaps or use per-archetype bodies~~ — **locked:** **GoodPlayerModel** body + kit swaps for Act 0 humanoids (`character-direction.md`).
 - Ferry dock asset only after Dom locks ferry yes/no (D-P0-09).

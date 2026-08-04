@@ -1,0 +1,8 @@
+﻿{
+  "buildCommand": null,
+  "outputDirectory": "dist",
+  "framework": null,
+  "rewrites": [
+    { "source": "/((?!api/|media/|assets/|branding/).*)", "destination": "/index.html" }
+  ]
+}

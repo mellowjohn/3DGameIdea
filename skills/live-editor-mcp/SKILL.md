@@ -11,6 +11,8 @@ description: >-
 
 Agent loop for content edits against a running `engine.exe mcp` / editor session.
 
+**MCP first (repo-wide):** if a tool exists for the job, use it or **fix** it — never Python/pipe/script substitutes. See [`mcp-no-python-substitutes.mdc`](../../.cursor/rules/mcp-no-python-substitutes.mdc).
+
 **Read first:** [`context/features/mcp-live-editor.md`](../../context/features/mcp-live-editor.md), [`context/architecture/content-vs-engine-workflows.md`](../../context/architecture/content-vs-engine-workflows.md), [`context/features/agent-build-coordination.md`](../../context/features/agent-build-coordination.md).
 
 **Server:** `project-0-3DGameIdea-ai-rpg-engine` (Cursor `.cursor/mcp.json` → `tools/mcp-server.cmd`).
@@ -36,6 +38,7 @@ Live edit:
 | `lua_script` | `engine_lua_apply` (+ `engine_lua_call` to exercise) |
 | `hud_asset` / UI canvas | `engine_hud_apply` / `engine_ui_canvas_mutate` / `engine_ui_stack` |
 | `world_forge` | `engine_world_forge_apply` (offline OK) |
+| `animation` / weld | `engine_animation_call` (create_clip/create_state/keys/events/weld) |
 | `engine_code` | Edit `src/`/`include/` then rebuild (below) |
 
 Direct offline JSON edits to the open world while the editor is live are **rejected by design**.
@@ -54,6 +57,7 @@ Direct offline JSON edits to the open world while the editor is live are **rejec
 - **No `bush_wide`:** use `bush` / `bush_tall` ([`no-bush-wide-asset.mdc`](../../.cursor/rules/no-bush-wide-asset.mdc)).
 - **Particles:** `engine_asset_apply` `kind: particle` then attach on prefab `particles[]`.
 - **Validate:** `engine_project_validate` after content batches.
+- **Animation Studio:** `engine_animation_call` only when live — **not** Python/`*.anim.json` disk rewrites ([`animation-studio-mcp-first.mdc`](../../.cursor/rules/animation-studio-mcp-first.mdc)). Workflow: `open` → `set_state` → `edit_clip` → optional **`set_duration`** (`duration` seconds; trims keys after new end) → `upsert_key` / `upsert_keys` / `delete_key` → **`save_override`** (reloads library) → `seek`/`play` to verify; `set_held` + `set_weld` + `save_weld` for grips; events via `*_event` / `save_events`. Pass `joint` per key (overrides Studio selection). Rotation may use `eulerDeg`. If an MCP animation op is missing or wrong, **fix the engine path** (rebuild lease + reset); do not permanently work around with scripts.
 
 ## 4. Rebuild loop (C++ / shaders / locked exe)
 

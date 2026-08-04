@@ -42,6 +42,10 @@ struct EditorSessionContext {
     StandingRuntime* standing_runtime = nullptr;
     FlagRuntime* flag_runtime = nullptr;
     InventoryRuntime* inventory_runtime = nullptr;
+    /// Play-test starter kit selection (World Forge archetype id). Pointer into editor state.
+    std::string* play_test_starter_archetype_id = nullptr;
+    /// Refresh HUD/hotbar chrome after starter apply (optional).
+    std::function<void()> refresh_inventory_ui;
     DialogueRuntime* dialogue_runtime = nullptr;
     HudRuntime* hud_runtime = nullptr;
     UiCanvasStack* ui_canvas_stack = nullptr;

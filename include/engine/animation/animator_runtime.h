@@ -78,7 +78,12 @@ public:
     [[nodiscard]] Result<bool> apply_root_motion(const std::string& entity_id) const;
     [[nodiscard]] Result<AnimatorRootMotionDelta> root_motion_delta(const std::string& entity_id) const;
 
-    void tick(float dt_seconds);
+    /// Advance attached instances. When `allow_transitions` is false, stay pinned on the current state
+    /// (Animation Studio solo preview — no exitTime / parameter graph jumps).
+    void tick(float dt_seconds, bool allow_transitions = true);
+    /// Jump layer `state_time` for Animation Studio scrub (TICKET-0249). Clears in-flight transition.
+    [[nodiscard]] Result<void> seek(const std::string& entity_id, float state_time_seconds,
+        const std::string& layer_name = {});
     /** Drain timeline events fired during the last `tick` (DEC-0031). */
     [[nodiscard]] std::vector<AnimatorFiredEvent> take_fired_events();
     [[nodiscard]] const std::vector<EngineError>& recent_errors() const noexcept { return recent_errors_; }
@@ -122,7 +127,8 @@ private:
     [[nodiscard]] bool conditions_met(const Instance& instance, const AnimatorTransition& transition) const;
     void consume_triggers(Instance& instance, const AnimatorTransition& transition);
     void evaluate_transitions(Instance& instance, LayerRuntime& layer, const AnimatorLayerDef& layer_def);
-    void advance_layer(Instance& instance, LayerRuntime& layer, const AnimatorLayerDef& layer_def, float dt);
+    void advance_layer(Instance& instance, LayerRuntime& layer, const AnimatorLayerDef& layer_def, float dt,
+        bool allow_transitions);
     [[nodiscard]] std::vector<AnimatorClipWeight> sample_motion(Instance& instance, const AnimatorMotion& motion,
         float state_time, float weight_scale);
     void accumulate_root_motion(Instance& instance, float dt);

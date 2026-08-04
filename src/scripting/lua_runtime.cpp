@@ -1552,6 +1552,14 @@ void LuaRuntime::blackboard_set_bool(const std::string& key, bool value) {
     impl_->host.blackboard[key] = std::move(entry);
 }
 
+void LuaRuntime::blackboard_set_number(const std::string& key, double value) {
+    if (!impl_) return;
+    ScriptBlackboardEntry entry;
+    entry.type = ScriptBlackboardType::Number;
+    entry.number_value = value;
+    impl_->host.blackboard[key] = std::move(entry);
+}
+
 void LuaRuntime::blackboard_clear() {
     if (impl_) impl_->host.blackboard.clear();
 }

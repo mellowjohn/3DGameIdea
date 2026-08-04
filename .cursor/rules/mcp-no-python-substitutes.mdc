@@ -1,0 +1,78 @@
+---
+description: Repo-wide — if an MCP tool covers the job, use MCP (or fix MCP); no Python/script substitutes
+alwaysApply: true
+---
+
+# MCP Owns The Job (No Python Substitutes)
+
+**Whole-repo rule.** When a Cursor MCP tool or live editor bridge op already covers (or should cover) the task, **use that tool**. Do **not** write, run, or rely on Python (or ad-hoc shell/scripts) as a substitute path around MCP.
+
+Domain-specific rules still apply and add detail (UI canvases, Animation Studio, Blockbench mesh authoring, etc.). This rule is the umbrella.
+
+## Prefer
+
+| Area | Use |
+| --- | --- |
+| Scene / world / prefabs / components | `engine_scene_plan`, `engine_scene_apply`, `engine_*_apply` |
+| Terrain / foliage / water | `engine_terrain_apply`, `engine_water_apply` |
+| UI canvases / HUD | `engine_ui_canvas_mutate`, `engine_hud_apply`, `engine_ui_stack` |
+| Animation Studio / holds / welds | `engine_animation_call` |
+| Lua / quests / inventory / flags / dialogue | `engine_*_call` / `engine_lua_apply` |
+| Asset bake (named targets) | `engine_asset_bake` / Diagnostics Assets |
+| Build lease | `engine_build_coordination` |
+| Editor verify | `engine_editor_screenshot`, `engine_editor_status`, ui query / input |
+| Blockbench modeling | Blockbench MCP mesh tools (not generate-from-script first) |
+| Pencil design | Pencil MCP |
+
+Skill map: `skills/live-editor-mcp/SKILL.md`. Content vs engine: `context/architecture/content-vs-engine-workflows.md`.
+
+## Banned habits
+
+- Writing **one-off Python** (or JS, PowerShell bulk) under `tools/`, `out/`, or chat-only scripts to:
+  - talk to the editor bridge / named pipe / live-automation files
+  - rewrite assets the live session owns (world, canvas, anim override, etc.)
+  - “inspect dump regenerate” what MCP mutate + screenshot already does
+  - paper over a missing or buggy MCP kind (`upsert_key` wrong joint, no batch, no seek, stale reload, …)
+- Regenerating whole assets from Python while MCP/editor is available and owns that surface
+- Treating Python as the permanent workflow because MCP was flaky **once**
+
+## If MCP does not work — fix MCP (or the engine path)
+
+1. **Diagnose** the real tool: wrong args, not connected, stale binary, bridge race, missing kind, early-out cache, pipe probe too short, etc.
+2. **Fix** in `src/` / MCP handlers / bridge / schema / Cursor MCP config as needed — not in a companion script.
+3. **Rebuild + reset** per `rebuild-after-code-changes.mdc` / `reset-editor-after-edits.mdc` when C++ changes; release the build lease.
+4. **Resume via MCP**; verify with status / seek / screenshot.
+5. Record reusable defects in `context/testing/findings.md` when useful.
+6. **Owner ops for Cursor:** after engine/MCP binary schema changes, often **reload the MCP server** or a full Cursor restart is enough for the host to pick up the new process — that does not excuse a Python fork of the same API.
+
+## Allowed (narrow)
+
+- **No MCP surface exists and is not the product gap for this task:** offline content tools (importers, bakers with explicit name filters, tests), C++/Lua product code, planned provenance scripts that are **not** the live polish path.
+- **MCP truly unavailable** (host down after reloads): state that clearly; minimal offline stopgap only; fix reconnect/tooling next if the gap is repo-owned.
+- **Batch math offline** is fine only to *prepare* values you then apply with MCP (e.g. list of euler keys), not to replace `upsert_keys` / mutate / apply entirely.
+
+## Examples
+
+```text
+❌ BAD: out/_bridge_anim_call.py / named-pipe client because CallMcpTool is hard
+✅ GOOD: Fix bridge/MCP kinds or reconnect; then engine_animation_call
+
+❌ BAD: python tools/generate_*canvas*.py while live UI MCP works
+✅ GOOD: engine_ui_canvas_mutate / engine_hud_apply
+
+❌ BAD: rewrite player.BowShoot.anim.json on disk and hope Studio sees it
+✅ GOOD: edit_clip → upsert_keys → save_override
+
+❌ BAD: hand-edit open.world.json while the editor owns the scene
+✅ GOOD: engine_scene_apply after engine_scene_plan
+
+❌ BAD: “MCP has no batch keys so I’ll always use Python”
+✅ GOOD: add upsert_keys (or equivalent) in C++, rebuild, use MCP
+```
+
+## Related
+
+- UI: `.cursor/rules/ui-canvas-mcp-first.mdc`
+- Animation: `.cursor/rules/animation-studio-mcp-first.mdc`
+- Blockbench: `.cursor/rules/blockbench-mcp-model-first.mdc`
+- Import bake scope: `.cursor/rules/import-only-named-assets.mdc`
