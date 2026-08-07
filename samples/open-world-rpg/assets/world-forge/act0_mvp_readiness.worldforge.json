@@ -14,7 +14,7 @@
           "priority": "p2",
           "workstream": "art",
           "notes": "Baseline world dressing already in runtime.",
-          "description": "Oak variants and stones are baked. Do not remake first — refine only when a higher-tier kit needs a shared base.",
+          "description": "Oak variants and stones are baked. Do not remake first \u2014 refine only when a higher-tier kit needs a shared base.",
           "imagePaths": [
             "context/art/oak-variants-concept-sheet.png"
           ],
@@ -53,7 +53,7 @@
           "priority": "p0",
           "workstream": "art",
           "notes": "Prerequisite for creation flow looking real.",
-          "description": "At least 3–5 readable hair meshes/slots that attach to the shared player body. Without these, character creation is numbers-only and feels unfinished.",
+          "description": "At least 3\u20135 readable hair meshes/slots that attach to the shared player body. Without these, character creation is numbers-only and feels unfinished.",
           "dependsOn": [
             "art_shipped_player_body"
           ]
@@ -79,10 +79,14 @@
           "status": "todo",
           "priority": "p0",
           "workstream": "art",
-          "notes": "Former Squire kit id. Tunic, wraps, belt, boots.",
-          "description": "Modular Ashfell Blade kit matching character-direction (legacy Squire turnaround). Prerequisite for archetype creation preview and Act 0 player silhouette.",
+          "notes": "Former Squire kit id. Concept MVP-locked 2026-08-05 \u2014 Blockbench mail kit still open.",
+          "description": "Modular Ashfell Blade Blockbench kit on GoodPlayerModel matching act0-char-ashfell-blade (mail hauberk, pauldrons, ash-tree stamp). Prerequisite for archetype creation preview and Act 0 player silhouette.",
+          "imagePaths": [
+            "context/art/concepts/act0-char-ashfell-blade.png"
+          ],
           "dependsOn": [
-            "art_shipped_player_body"
+            "art_shipped_player_body",
+            "art_concept_archer_acolyte"
           ]
         },
         {
@@ -91,8 +95,11 @@
           "status": "todo",
           "priority": "p0",
           "workstream": "art",
-          "notes": "Former Archer kit id. Cloak/hood, bracer, quiver attach — concept still open.",
-          "description": "Needs turnaround concept lock then Blockbench kit. Blocks Outrider creation fantasy and bow attach readability.",
+          "notes": "Former Archer kit id. Concept MVP-locked 2026-08-05 \u2014 Blockbench cloak/bracer/quiver kit still open.",
+          "description": "Blockbench Outrider Lodge kit on GoodPlayerModel matching act0-char-outrider (forest-green hooded cloak, leather vest, bracer, quiver). Blocks Outrider creation fantasy and bow attach readability.",
+          "imagePaths": [
+            "context/art/concepts/act0-char-outrider.png"
+          ],
           "dependsOn": [
             "art_shipped_player_body",
             "art_concept_archer_acolyte"
@@ -104,8 +111,11 @@
           "status": "todo",
           "priority": "p0",
           "workstream": "art",
-          "notes": "Former Acolyte kit id. Rune/sigil caster look — concept still open (not crystal-warden robes by default).",
-          "description": "Needs turnaround concept lock then Blockbench kit. Blocks Runecaster creation fantasy.",
+          "notes": "Former Acolyte kit id. Concept MVP-locked 2026-08-05 \u2014 Blockbench wrap-coat kit still open (not Cristallo robes).",
+          "description": "Blockbench Runecaster Guild kit on GoodPlayerModel matching act0-char-runecaster (navy wrap-coat, etched arm runes, Guild seal). Blocks Runecaster creation fantasy.",
+          "imagePaths": [
+            "context/art/concepts/act0-char-runecaster.png"
+          ],
           "dependsOn": [
             "art_shipped_player_body",
             "art_concept_archer_acolyte"
@@ -113,20 +123,26 @@
         },
         {
           "id": "art_concept_archer_acolyte",
-          "title": "Outrider + Runecaster kit concept turnarounds",
-          "status": "todo",
+          "title": "Starter kit concept trio (Ashfell / Outrider / Runecaster)",
+          "status": "done",
           "priority": "p0",
           "workstream": "art",
-          "notes": "Legacy item id. Prerequisite art-direction lock before modeling.",
-          "description": "Open in character-direction: approve front/side sheets for Outrider and Runecaster so kits do not fork canon silhouettes mid-production."
+          "notes": "2026-08-05 owner lock: act0-char-{ashfell-blade,outrider,runecaster} + lineup approved as first MVP concept art. Outfit meshes still open.",
+          "description": "Concept sheets locked for all three starting archetype outfits. Blockbench modular kits remain under art_squire_outfit / art_archer_outfit / art_acolyte_outfit.",
+          "imagePaths": [
+            "context/art/concepts/act0-char-ashfell-blade.png",
+            "context/art/concepts/act0-char-outrider.png",
+            "context/art/concepts/act0-char-runecaster.png",
+            "context/art/concepts/act0-char-player-archetypes.png"
+          ]
         },
         {
           "id": "art_starter_weapons",
           "title": "Starter weapons (sword, bow, rune focus)",
-          "status": "todo",
+          "status": "done",
           "priority": "p0",
           "workstream": "art",
-          "notes": "Attachables for combat + creation. Staff/rod may become rune-inscribed focus.",
+          "notes": "2026-08-05 owner lock: Ashfell sword, Outrider shortbow+arrow (dedicated ammo icons), Guild rune focus shipped as Scene Assets + handAttach. Grip polish deferred.",
           "description": "Short sword, bow+arrow, and Runecaster focus (staff/rod or inscribed token) as attachable meshes on shared body slots. Prerequisite for weapon feel and creation preview.",
           "dependsOn": [
             "art_shipped_player_body"
@@ -217,11 +233,41 @@
           "priority": "p0",
           "workstream": "art",
           "notes": "Scene composition once kits exist.",
-          "description": "Place wall/gate/drawbridge kits so beats A0-03–A0-06 have a readable fortress. Depends on sculpt + kit art.",
+          "description": "Place wall/gate/drawbridge kits so beats A0-03\u2013A0-06 have a readable fortress. Depends on sculpt + kit art.",
           "dependsOn": [
             "art_drawbridge_walls",
             "art_siege_clutter",
             "coding_calrenoth_sculpt_ready"
+          ]
+        },
+        {
+          "id": "art_prologue_cathedral_kit_refs",
+          "title": "A0-01 prologue cathedral art kit refs",
+          "status": "done",
+          "priority": "p1",
+          "workstream": "art",
+          "notes": "2026-08-07: LD + sceneset + cathedral modular kit. Blockbench meshes still open; Tier 6 covers throne/Shroud.",
+          "description": "Production references for prologue cinematic_instance graybox\u2192final: nave/vault modules, blood-glass, pews, camera footprint. Complements Tier 6 throne and Nefarium Shroud.",
+          "imagePaths": [
+            "context/art/concepts/act0-ld-a0-01-prologue-perspective.png",
+            "context/art/concepts/act0-sceneset-a0-01-prologue.png",
+            "context/art/act0-prologue-cathedral-kit-concept.png",
+            "context/art/tier6-supernatural-kit-concept.png"
+          ]
+        },
+        {
+          "id": "art_appearance_courtyard_kit_refs",
+          "title": "A0-02 appearance courtyard art kit refs",
+          "status": "done",
+          "priority": "p1",
+          "workstream": "art",
+          "notes": "2026-08-07: LD + sceneset + courtyard modular kit. Pedestal/class stands for appearanceWorld.",
+          "description": "Production references for character-creation appearance courtyard: pedestal dais, class mannequin stands, battlement shell, kit clutter. Hair/outfit meshes remain under separate art rows.",
+          "imagePaths": [
+            "context/art/concepts/act0-ld-a0-02-creation-perspective.png",
+            "context/art/concepts/act0-sceneset-a0-02-character-creation.png",
+            "context/art/act0-appearance-courtyard-kit-concept.png",
+            "context/art/concepts/act0-a0-02-character-creation.png"
           ]
         }
       ]
@@ -245,8 +291,8 @@
           "status": "wip",
           "priority": "p0",
           "workstream": "archetype",
-          "notes": "House Ashfell / Outrider Lodge / Runecaster Guild — DEC-0044.",
-          "description": "Story essays + World Forge seeds describe each starter’s home org, sub-themes, and hybrid bind into major factions. Prerequisite for per-lane quests and creation copy.",
+          "notes": "House Ashfell / Outrider Lodge / Runecaster Guild \u2014 DEC-0044.",
+          "description": "Story essays + World Forge seeds describe each starter\u2019s home org, sub-themes, and hybrid bind into major factions. Prerequisite for per-lane quests and creation copy.",
           "dependsOn": [
             "archetype_worldforge_seed"
           ]
@@ -269,7 +315,7 @@
           "status": "todo",
           "priority": "p1",
           "workstream": "archetype",
-          "notes": "Combat systems and party/build comps — still open after DEC-0044 naming lock.",
+          "notes": "Combat systems and party/build comps \u2014 still open after DEC-0044 naming lock.",
           "description": "Define what systems and comps mean for Ashfell Blade / Outrider / Runecaster (including sub-themes), then how each is playable before specialization.",
           "dependsOn": [
             "archetype_lane_org_stories"
@@ -294,7 +340,7 @@
           "status": "todo",
           "priority": "p0",
           "workstream": "archetype",
-          "notes": "ashfell_blade / outrider / runecaster → outfit + weapon.",
+          "notes": "ashfell_blade / outrider / runecaster \u2192 outfit + weapon.",
           "description": "Each starting archetype points at its outfit kit + default weapon. Prerequisite for creation flow and Act 0 spawn loadout.",
           "dependsOn": [
             "archetype_worldforge_seed",
@@ -331,7 +377,7 @@
           "status": "wip",
           "priority": "p0",
           "workstream": "coding",
-          "notes": "Existing combat foundation — finish gaps.",
+          "notes": "Existing combat foundation \u2014 finish gaps.",
           "description": "Player move/attack and basic hit reaction path must be reliable before Act 0 waves. Treat remaining gaps as P0 blockers for combat workstream."
         },
         {
@@ -352,7 +398,7 @@
           "status": "wip",
           "priority": "p0",
           "workstream": "coding",
-          "notes": "Beat A0-02 — blocked on kits looking real.",
+          "notes": "Beat A0-02 \u2014 blocked on kits looking real.",
           "description": "Playable create: pick archetype, hair/skin/outfit options, difficulty; persist into spawn. Without art kits + slots, keep status honest (wip/blocked).",
           "dependsOn": [
             "archetype_worldforge_seed",
@@ -419,7 +465,7 @@
           "status": "done",
           "priority": "p0",
           "workstream": "coding",
-          "notes": "TICKET-0122 needs-approval — Roblox-shaped CPU emitters + campfire wire-up.",
+          "notes": "TICKET-0122 needs-approval \u2014 Roblox-shaped CPU emitters + campfire wire-up.",
           "description": "Spawn/update/draw path content can drive for siege fire/ash/fog. Prerequisite for effects_siege_particles.",
           "refs": {
             "ticketId": "TICKET-0122"
@@ -540,7 +586,7 @@
           "status": "wip",
           "priority": "p2",
           "workstream": "effects",
-          "notes": "Campfire wired to campfire_flame.particle.json; wall_torch/lantern meshes + lights shipped — torch emitter still pending.",
+          "notes": "Campfire wired to campfire_flame.particle.json; wall_torch/lantern meshes + lights shipped \u2014 torch emitter still pending.",
           "description": "Campfire already uses particle fire. Add particle flame to wall_torch (and optional lantern ember) once desired; keep warm point lights.",
           "dependsOn": [
             "coding_particle_system_mvp",
@@ -628,10 +674,10 @@
         {
           "id": "combat_weapon_feel",
           "title": "Starter weapon hit-feel (sword / bow / staff)",
-          "status": "todo",
+          "status": "done",
           "priority": "p1",
           "workstream": "combat",
-          "notes": "Distinct cadence per archetype.",
+          "notes": "2026-08-05 owner lock: Ashfell 3-hit + stamina, Outrider draw/aim/release + ammo, Runecaster MagicCast + rune pips \u2014 all in. Further anim/weld polish deferred.",
           "description": "Simple but distinct timing/range so creation choice matters. Depends on weapon meshes + melee base.",
           "dependsOn": [
             "art_starter_weapons",
@@ -715,7 +761,7 @@
           "priority": "p1",
           "workstream": "gameplay",
           "notes": "Loot containers grant into InventoryRuntime; starter hotbar on play-test. TICKET-0237.",
-          "description": "Players obtain some items during Landfall: starter kit weapon, 1–2 approach finds, low-rate footsoldier commons, one story-grant reward, optional single obscure nook rare. Place pickups/grants on the siege → camp path. Does not block boot→camp goal until inventory thin path exists.",
+          "description": "Players obtain some items during Landfall: starter kit weapon, 1\u20132 approach finds, low-rate footsoldier commons, one story-grant reward, optional single obscure nook rare. Place pickups/grants on the siege \u2192 camp path. Does not block boot\u2192camp goal until inventory thin path exists.",
           "dependsOn": [
             "coding_inventory_thin_act0",
             "gameplay_interaction_volumes",
@@ -748,11 +794,11 @@
       "items": [
         {
           "id": "story_beat_sheet_lock_act0",
-          "title": "Act 0 beat sheet reviewed (A0-01…A0-09)",
-          "status": "wip",
+          "title": "Act 0 beat sheet reviewed (A0-01\u2026A0-09)",
+          "status": "done",
           "priority": "p0",
           "workstream": "storyline",
-          "notes": "Prerequisite for dialogue + cinematic copy.",
+          "notes": "Owner MVP lock 2026-08-05; spine established in campaign-beat-sheet.md.",
           "description": "Owner/Dom review of Landfall beats so art/cinematics do not chase moving targets. Mark done when beat statuses are accepted for MVP.",
           "refs": {
             "storyRef": "context/story/campaign-beat-sheet.md"
@@ -760,11 +806,11 @@
         },
         {
           "id": "story_beats_a0_01_03",
-          "title": "Beats A0-01…A0-03 playable copy",
+          "title": "Beats A0-01\u2026A0-03 playable copy",
           "status": "wip",
           "priority": "p0",
           "workstream": "storyline",
-          "notes": "Prologue → creation → Arkand.",
+          "notes": "Prologue \u2192 creation \u2192 Arkand.",
           "description": "Lock and stage prologue, creation handoff, Arkand intro branches.",
           "dependsOn": [
             "story_beat_sheet_lock_act0",
@@ -773,11 +819,11 @@
         },
         {
           "id": "story_beats_a0_04_07",
-          "title": "Beats A0-04…A0-07 playable copy",
+          "title": "Beats A0-04\u2026A0-07 playable copy",
           "status": "todo",
           "priority": "p0",
           "workstream": "storyline",
-          "notes": "Siege → Larrell → Luceran.",
+          "notes": "Siege \u2192 Larrell \u2192 Luceran.",
           "description": "Objective copy + flags for approach, Grenge, drawbridge, Larrell choice.",
           "dependsOn": [
             "story_beat_sheet_lock_act0",
@@ -786,7 +832,7 @@
         },
         {
           "id": "story_beats_a0_08_09",
-          "title": "Beats A0-08…A0-09 playable copy",
+          "title": "Beats A0-08\u2026A0-09 playable copy",
           "status": "todo",
           "priority": "p0",
           "workstream": "storyline",
@@ -851,11 +897,18 @@
         {
           "id": "cine_prologue_throne",
           "title": "Prologue throne cinematic (A0-01)",
-          "status": "todo",
+          "status": "done",
           "priority": "p0",
           "workstream": "cinematics",
-          "notes": "Players watch, then create.",
+          "notes": "Graybox cinematic_instance world + evt_prologue_throne verified in New Game boot (2026-08-07). Final throne art / dlg_act0_prologue as sole VO source still open. LD/sceneset/cathedral kit refs landed 2026-08-07.",
           "description": "Throne zoom, Frangitur address, Shroud beat, handoff to creation.",
+          "imagePaths": [
+            "context/art/concepts/act0-ld-a0-01-prologue-perspective.png",
+            "context/art/concepts/act0-sceneset-a0-01-prologue.png",
+            "context/art/act0-prologue-cathedral-kit-concept.png",
+            "context/art/tier6-supernatural-kit-concept.png",
+            "context/art/concepts/act0-prologue-01-throne-pullback.png"
+          ],
           "dependsOn": [
             "cine_event_timeline_ready",
             "story_beats_a0_01_03",
@@ -945,7 +998,7 @@
           "priority": "p0",
           "workstream": "ui_ux",
           "notes": "Screen HUD: HP + class stamina/magic + objective. World billboards for prompts; Lua world_ui_*.",
-          "description": "Ship a coherent play HUD: health (and stamina if used), current quest objective text, and contextual interaction prompts. Layout should stay legible at 1080p+ and not fight cinematic letterboxing. Uses canvas/HUD toolkit — polish presentation here even when bind plumbing lives under coding.",
+          "description": "Ship a coherent play HUD: health (and stamina if used), current quest objective text, and contextual interaction prompts. Layout should stay legible at 1080p+ and not fight cinematic letterboxing. Uses canvas/HUD toolkit \u2014 polish presentation here even when bind plumbing lives under coding.",
           "dependsOn": [
             "coding_quest_runtime_flags"
           ],
@@ -960,7 +1013,7 @@
           "status": "wip",
           "priority": "p0",
           "workstream": "ui_ux",
-          "notes": "Pencil dialogue-ui.pen guideline: chips, prompt strip, portrait, keys 1–4 shipped in canvas/runtime.",
+          "notes": "Pencil dialogue-ui.pen guideline: chips, prompt strip, portrait, keys 1\u20134 shipped in canvas/runtime.",
           "description": "In-play dialogue UI: speaker name, body text, choice list, advance/back affordances, focus capture while open. Distinct from World Forge dialogue graph editing. Required for Grenge/Larrell/Arkand/Creotar beats to feel playable.",
           "dependsOn": [
             "story_dialogue_cast",
@@ -976,9 +1029,12 @@
           "status": "todo",
           "priority": "p0",
           "workstream": "ui_ux",
-          "notes": "A0-02 — readable options + preview.",
+          "notes": "A0-02 \u2014 readable options + preview. LD/sceneset/courtyard kit refs landed 2026-08-07.",
           "description": "Creation flow presentation: archetype cards, hair/skin/outfit pickers, difficulty, confirm. Preview must read on the Player_V2 body. Coding owns persist/slots; this row tracks layout, copy, and feel.",
           "imagePaths": [
+            "context/art/concepts/act0-ld-a0-02-creation-perspective.png",
+            "context/art/concepts/act0-sceneset-a0-02-character-creation.png",
+            "context/art/act0-appearance-courtyard-kit-concept.png",
             "context/art/concepts/act0-a0-02-character-creation.png"
           ],
           "dependsOn": [
@@ -1009,7 +1065,7 @@
         },
         {
           "id": "ui_boot_to_creation_handoff",
-          "title": "Boot → prologue → creation handoff UX",
+          "title": "Boot \u2192 prologue \u2192 creation handoff UX",
           "status": "todo",
           "priority": "p0",
           "workstream": "ui_ux",
@@ -1017,6 +1073,8 @@
           "description": "First-run flow from engine boot through prologue watch into character creation without dead ends or editor chrome leaking into play. Skip/continue affordances must be obvious.",
           "imagePaths": [
             "context/art/concepts/act0-main-menu.png",
+            "context/art/concepts/act0-sceneset-a0-01-prologue.png",
+            "context/art/concepts/act0-sceneset-a0-02-character-creation.png",
             "context/art/concepts/act0-a0-02-character-creation.png"
           ],
           "dependsOn": [
@@ -1030,7 +1088,7 @@
           "status": "todo",
           "priority": "p1",
           "workstream": "ui_ux",
-          "notes": "Esc stack — canvas push/pop.",
+          "notes": "Esc stack \u2014 canvas push/pop.",
           "description": "Pause canvas with Resume and a minimal settings stub (sensitivity/volume placeholders ok). Must pop cleanly and restore play HUD. Proves DEC-0025 stack for Act 0 demos.",
           "dependsOn": [
             "ui_play_hud_chrome"
@@ -1095,7 +1153,7 @@
           "priority": "p2",
           "workstream": "ui_ux",
           "notes": "Watch beats without fighting HUD.",
-          "description": "During prologue/siege/vision events: letterbox or HUD hide, clear Skip/Continue control, restore play chrome afterward. Presentation only — timeline content stays under Cinematics.",
+          "description": "During prologue/siege/vision events: letterbox or HUD hide, clear Skip/Continue control, restore play chrome afterward. Presentation only \u2014 timeline content stays under Cinematics.",
           "dependsOn": [
             "cine_event_timeline_ready",
             "ui_play_hud_chrome"
@@ -1126,18 +1184,18 @@
           "status": "wip",
           "priority": "p1",
           "workstream": "project",
-          "notes": "This pane — keep statuses and deps honest.",
-          "description": "Curated checklist with priorities, workstreams, descriptions, images, and dependsOn. Owners update after real progress — not World Forge field %."
+          "notes": "This pane \u2014 keep statuses and deps honest.",
+          "description": "Curated checklist with priorities, workstreams, descriptions, images, and dependsOn. Owners update after real progress \u2014 not World Forge field %."
         },
         {
           "id": "project_vertical_slice_gate",
-          "title": "Playable demo exit met (boot → camp)",
+          "title": "Playable demo exit met (boot \u2192 camp)",
           "status": "todo",
           "priority": "p0",
           "workstream": "project",
           "goal": true,
           "notes": "Verifiable Act 0 acceptance sink.",
-          "description": "Mark done when cold boot → creation → fight approach → Grenge → drawbridge → vision → camp plays in one sitting. Anything else is P2+. Overview ranks open work by progress toward this goal.",
+          "description": "Mark done when cold boot \u2192 creation \u2192 fight approach \u2192 Grenge \u2192 drawbridge \u2192 vision \u2192 camp plays in one sitting. Anything else is P2+. Overview ranks open work by progress toward this goal.",
           "dependsOn": [
             "ui_boot_to_creation_handoff",
             "combat_road_blockers",
@@ -1148,11 +1206,11 @@
         },
         {
           "id": "project_art_pipeline_review",
-          "title": "Art pipeline review (Blockbench → glTF → prefab)",
+          "title": "Art pipeline review (Blockbench \u2192 glTF \u2192 prefab)",
           "status": "todo",
           "priority": "p0",
           "workstream": "project",
-          "notes": "Unblocks Tier 1–3 throughput.",
+          "notes": "Unblocks Tier 1\u20133 throughput.",
           "description": "Confirm bake scripts, slot naming, and prefab swap steps so hair/outfits/weapons land consistently. Prerequisite for parallel art work.",
           "dependsOn": [
             "art_shipped_player_body"
@@ -1172,7 +1230,7 @@
         },
         {
           "id": "project_twine_sync",
-          "title": "Twine ↔ World Forge sync habit",
+          "title": "Twine \u2194 World Forge sync habit",
           "status": "wip",
           "priority": "p2",
           "workstream": "project",

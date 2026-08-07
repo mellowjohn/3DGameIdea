@@ -22,6 +22,8 @@ Style: [visual-direction.md](../visual-direction.md), [theme-palette.md](../them
 
 | File | Beat | Notes |
 | --- | --- | --- |
+| `act0-ld-a0-01-prologue-perspective.png` | A0-01 | Throne hall massing + modular callouts (cinematic_instance) |
+| `act0-ld-a0-02-creation-perspective.png` | A0-02 | Appearance courtyard pedestal + class stands |
 | `act0-ld-overview-perspective.png` | A0-03→A0-06 | Full corridor overview |
 | `act0-ld-a0-03-approach-perspective.png` | A0-03 | Road + wheelbarrow staging |
 | `act0-ld-a0-04-gate-perspective.png` | A0-04 | Combat corridor + gate |
@@ -35,6 +37,8 @@ Style: [visual-direction.md](../visual-direction.md), [theme-palette.md](../them
 
 | File | Beat |
 | --- | --- |
+| `act0-sceneset-a0-01-prologue.png` | A0-01 |
+| `act0-sceneset-a0-02-character-creation.png` | A0-02 |
 | `act0-sceneset-a0-03-approach.png` | A0-03 |
 | `act0-sceneset-a0-04-gate.png` | A0-04 |
 | `act0-sceneset-a0-05-courtyard.png` | A0-05 |
@@ -105,9 +109,11 @@ Act 4 endings remain open in the beat sheet — no level kits until locks firm u
 | `tier2-drawbridge-kit-concept.png` | 2 | Drawbridge + spool |
 | `tier2-siege-props-kit-concept.png` | 2 | Approach / combat props |
 | `tier2-command-clutter-kit-concept.png` | 2 | Courtyard clutter |
+| `act0-appearance-courtyard-kit-concept.png` | 2 / A0-02 | Pedestal dais, class stands, courtyard wall, banner |
 | `tier4-camp-kit-concept.png` | 4 | Player camp |
 | `tier5-ledgeport-hub-kit-concept.png` | 5 | Dock / market / house modules |
 | `tier6-supernatural-kit-concept.png` | 6 | Shroud / crystal / throne / blight |
+| `act0-prologue-cathedral-kit-concept.png` | 6 / A0-01 | Nave column, vault rib, blood-glass, pew (pairs with Tier 6 throne/Shroud) |
 
 ---
 

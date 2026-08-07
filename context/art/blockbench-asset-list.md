@@ -77,9 +77,10 @@ Story-critical set dressing and interactables for the siege tutorial.
 
 **Layout targets (in order):** LD perspectives → scene sets → kits — see [concepts/README.md](concepts/README.md).
 
-- LD: `act0-ld-overview-perspective.png`, `act0-ld-a0-03` … `a0-06`, `act0-ld-a0-09-camp-perspective.png`
-- Scene sets: `act0-sceneset-a0-03` … `a0-06`, `act0-sceneset-a0-09-camp.png`
-- Legacy mood: `act0-a0-03` … `act0-a0-09`
+- LD: `act0-ld-a0-01-prologue-perspective.png`, `act0-ld-a0-02-creation-perspective.png`, `act0-ld-overview-perspective.png`, `act0-ld-a0-03` … `a0-06`, `act0-ld-a0-09-camp-perspective.png`
+- Scene sets: `act0-sceneset-a0-01-prologue.png`, `act0-sceneset-a0-02-character-creation.png`, `act0-sceneset-a0-03` … `a0-06`, `act0-sceneset-a0-09-camp.png`
+- Legacy mood: `act0-prologue-*`, `act0-a0-02-character-creation.png`, `act0-a0-03` … `act0-a0-09`
+- Opening kits: `act0-prologue-cathedral-kit-concept.png` (A0-01; + Tier 6 throne/Shroud), `act0-appearance-courtyard-kit-concept.png` (A0-02)
 
 ### Tier 2 concept sheets
 
@@ -89,6 +90,7 @@ Story-critical set dressing and interactables for the siege tutorial.
 | `tier2-drawbridge-kit-concept.png` | Bridge panel, posts, chain spool, hinges, moat edge |
 | `tier2-siege-props-kit-concept.png` | Wheelbarrow (both), cart, barricade, sandbags, catapult, pyre, banner, arrows, ladder/scaffold |
 | `tier2-command-clutter-kit-concept.png` | Command table, benches, crate stacks, torches, green shroud pole |
+| `act0-appearance-courtyard-kit-concept.png` | Pedestal dais, class mannequin stand, courtyard wall/tower, weapons rack, workbench, torch, Tessera banner (A0-02 appearanceWorld) |
 
 | Asset | Why | Beat / quest | Kit sheet |
 | --- | --- | --- | --- |
@@ -99,6 +101,7 @@ Story-critical set dressing and interactables for the siege tutorial.
 | Keep door / gate | Entrance beats | A0-04 | castle wall / command |
 | Signal pyre / watchtower fire basket | Hill signal quest | SQ-02 | siege props |
 | Command table / desk | Grenge / ledger prop | A0-05, SQ-03 | command clutter |
+| Pedestal dais + class mannequin stands | Appearance preview stage | A0-02 | appearance courtyard |
 | Barricade / sandbags / spike fence | Road blockers | A0-04 | siege props |
 | Catapult / siege engine (simple) | Approach backdrop | A0-04 | siege props |
 | Arrow bundle / quiver prop | Clutter + combat vibe | | siege props |
@@ -115,7 +118,7 @@ Story-critical set dressing and interactables for the siege tutorial.
 | Asset | Why | Concept sheet | Heraldry |
 | --- | --- | --- | --- |
 | **GoodPlayerModel** (shared body + rig) | Runtime foundation for player + NPC humanoids | Body is the mesh; kits layer on top | — |
-| Starter kit trio | Ashfell mail / Outrider Lodge / Runecaster Guild on GoodPlayerModel | `act0-char-{ashfell-blade,outrider,runecaster}.png` + lineup `act0-char-player-archetypes.png` | Draft lane-org stamps (ash-tree / Lodge antler / Guild rune); not sphere `emblemPath` yet |
+| Starter kit trio | Ashfell mail / Outrider Lodge / Runecaster Guild on GoodPlayerModel — **concepts MVP-locked 2026-08-05**; Blockbench outfits open | `act0-char-{ashfell-blade,outrider,runecaster}.png` + lineup `act0-char-player-archetypes.png` | Draft lane-org stamps (ash-tree / Lodge antler / Guild rune); not sphere `emblemPath` yet |
 | Modular slots / gear language | Hair, helm, hand, belt attach reference | `act0-char-modular-body-slots.png` (read against GoodPlayerModel scale) | Reserve chest / shield / banner UV for stamps |
 | Arkand | Full-plate **kit** on shared body; personality vs armor | `concepts/act0-char-arkand.png` | `kingdom_tessera` |
 | Vanessa | Mage robes kit (Act 1) | (Act 1) | `cristallo` when faction tag applies |
@@ -139,7 +142,7 @@ Story-critical set dressing and interactables for the siege tutorial.
 | Asset | Kit / role |
 | --- | --- |
 | ~~Ashfell arming sword~~ | Ashfell Blade — **Shipped** mesh + Scene Asset + `handAttach` |
-| ~~Outrider shortbow + arrow~~ | Outrider — **Shipped** skinned shortbow (`bow_draw` + handAttach.drawClip) + static arrow Scene Assets |
+| ~~Outrider shortbow + arrow~~ | Outrider — **Shipped** skinned shortbow (`bow_draw` + handAttach.drawClip) + static arrow Scene Assets; inventory icons `outrider_arrow.png` / `crude_arrow.png` (2026-08-05) |
 | ~~Guild rune focus~~ | Runecaster — **Shipped** mesh + Scene Asset + `handAttach` |
 | Knight sword / shield | Arkand |
 | Orc axe / cleaver | Underflow |
@@ -183,14 +186,16 @@ Modular coastal market kit — variants beat unique hero buildings.
 
 Do after Tier 1–3; reserved saturated accents per [theme-palette.md](theme-palette.md).
 
-**Concept sheet:** `tier6-supernatural-kit-concept.png`  
-**LD / scenes:** A0-07/08 + Act 3 `act3-ld-luceran-approach.png`.
+**Concept sheets:** `tier6-supernatural-kit-concept.png`, `act0-prologue-cathedral-kit-concept.png`  
+**LD / scenes:** A0-01 prologue hall + A0-07/08 + Act 3 `act3-ld-luceran-approach.png`.
 
 | Asset | Why |
 | --- | --- |
 | Nefarium crystal shard | Legendary resource, corrupted sites |
 | Nefarium Shroud (worn + floating prop) | Prologue / climax icon |
 | Throne | Prologue Luceran beat |
+| Nave column / vault rib / aisle half-arch / gallery rail | A0-01 cathedral shell (prologue kit) |
+| Blood-glass panel / pew / aisle carpet runner | A0-01 aisle dressing (prologue kit) |
 | Simple shrine / standing stone | Sea of Whispers / Muirthalia / Grakk-Maren sites |
 | Corrupted ground prop (jagged crystal outcrop) | Imperium blight landmarks |
 | Claritas staff head | Cristallo relic accent (sparse) |

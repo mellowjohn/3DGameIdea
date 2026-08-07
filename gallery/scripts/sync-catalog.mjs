@@ -152,6 +152,7 @@ const EXCLUDE_DIR_PARTS = [
 
 const KIT_ROOT_PATTERNS = [
   /^tier\d+-.*\.png$/i,
+  /^act0-.*kit-concept\.png$/i,
   /^oak-.*\.png$/i,
   /^theme-palette-swatches\.png$/i,
   /^engine-app-icon\.png$/i,
