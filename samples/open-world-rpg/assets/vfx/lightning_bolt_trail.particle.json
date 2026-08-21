@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "lightning_bolt_trail",
+  "texture": "assets/vfx/wind_streak_flipbook_4x4.png",
+  "blend": "additive",
+  "aspectRatio": 6.2,
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [1.0, 1.0, 0.85] },
+      { "t": 0.2, "color": [0.75, 0.88, 1.0] },
+      { "t": 0.55, "color": [0.35, 0.5, 1.0] },
+      { "t": 1.0, "color": [0.08, 0.12, 0.35] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.12 },
+      { "t": 0.15, "value": 0.22 },
+      { "t": 1.0, "value": 0.03 }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.02 },
+      { "t": 0.25, "value": 0.18 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.1, "max": 0.22 },
+  "speed": { "min": 1.2, "max": 3.4 },
+  "rate": 0,
+  "spreadAngle": [12, 35],
+  "shape": "sphere",
+  "shapeStyle": "volume",
+  "shapeSize": [0.02, 0.02, 0.02],
+  "orientation": "VelocityParallel",
+  "lightEmission": 0.85,
+  "drag": 0.2,
+  "maxParticles": 24,
+  "enabled": true,
+  "emissionDirection": [0.0, 0.02, -1.0],
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "OneShot",
+  "flipbookFramerate": 36,
+  "flipbookStartRandom": true
+}

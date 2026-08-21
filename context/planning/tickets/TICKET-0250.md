@@ -18,7 +18,7 @@ Authors can change what the sandbox subject has equipped (held items with `world
 
 ## Acceptance criteria
 
-- [x] **Equip UI in Animation mode:** Held-item dropdown from item catalog (`worldMesh` present); `(none)` for empty. Armor / full hotbar strip deferred until modular body slots.
+- [x] **Equip UI in Animation mode:** Held-item dropdown from item catalog (`worldMesh` present); `(none)` for empty. Armor strip: Head / Chest / Legs combos + iron-test set button (studio-session only).
 - [x] **Visual attach:** Equipped mesh appears on the sandbox subject using existing handAttach / bone weld path.
 - [x] **Animation under gear:** Playing / scrubbed clips keep the attachment following joints.
 - [x] **No world inventory mutation:** Studio-session `anim_studio_held_item_id` only; bags untouched.
@@ -29,7 +29,7 @@ Authors can change what the sandbox subject has equipped (held items with `world
 - Full inventory UX / bag management
 - Crafting, loot tables, affinity math
 - Keyframe editing (0253)
-- Armor/equip-strip mesh swap (no modular body slots yet)
+- Armor/equip-strip mesh swap — Animation sandbox now toggles head/chest/legs; character-asset appearance sockets (hair/skin) remain follow-on
 
 ## Dependencies
 

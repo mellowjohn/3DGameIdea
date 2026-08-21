@@ -1,0 +1,66 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.3400000035762787,
+          0.3199999928474426,
+          0.33000001311302185
+        ],
+        "primitive": "cube"
+      },
+      "name": "board",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.25,
+          0.4,
+          46
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2800000011920929,
+          0.25999999046325684,
+          0.27000001072883606
+        ],
+        "primitive": "cube"
+      },
+      "name": "cap",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.15,
+          0.42,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.2,
+          0.08,
+          46
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

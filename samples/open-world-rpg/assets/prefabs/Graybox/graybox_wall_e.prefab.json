@@ -1,0 +1,246 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.45,
+          0.43,
+          0.4
+        ],
+        "primitive": "cube"
+      },
+      "name": "curtain",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          6,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4,
+          12,
+          80
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "buttress_a",
+      "parent": null,
+      "transform": {
+        "position": [
+          -2,
+          5,
+          -20
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          5,
+          10,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "buttress_b",
+      "parent": null,
+      "transform": {
+        "position": [
+          -2,
+          5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          5,
+          10,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "buttress_c",
+      "parent": null,
+      "transform": {
+        "position": [
+          -2,
+          5,
+          20
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          5,
+          10,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.38,
+          0.36,
+          0.33
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_a",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          13,
+          -24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3.5,
+          2.5,
+          3
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.38,
+          0.36,
+          0.33
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_b",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          13,
+          -8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3.5,
+          2.5,
+          3
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.38,
+          0.36,
+          0.33
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_c",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          13,
+          8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3.5,
+          2.5,
+          3
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.38,
+          0.36,
+          0.33
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_d",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          13,
+          24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3.5,
+          2.5,
+          3
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

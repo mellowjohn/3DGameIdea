@@ -1,0 +1,126 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.2800000011920929,
+          0.18000000715255737,
+          0.10999999940395355
+        ],
+        "primitive": "cube"
+      },
+      "name": "camp_barricade_a_part_1",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0.383,
+          0.924
+        ],
+        "scale": [
+          0.22,
+          2.4,
+          0.22
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2800000011920929,
+          0.18000000715255737,
+          0.10999999940395355
+        ],
+        "primitive": "cube"
+      },
+      "name": "camp_barricade_a_part_2",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          -0.383,
+          0.924
+        ],
+        "scale": [
+          0.22,
+          2.4,
+          0.22
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.30000001192092896,
+          0.20000000298023224,
+          0.11999999731779099
+        ],
+        "primitive": "cube"
+      },
+      "name": "camp_barricade_a_part_3",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.9,
+          0.9,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0.3,
+          0.954
+        ],
+        "scale": [
+          0.2,
+          2.2,
+          0.2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.30000001192092896,
+          0.20000000298023224,
+          0.11999999731779099
+        ],
+        "primitive": "cube"
+      },
+      "name": "camp_barricade_a_part_4",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.9,
+          0.9,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          -0.3,
+          0.954
+        ],
+        "scale": [
+          0.2,
+          2.2,
+          0.2
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

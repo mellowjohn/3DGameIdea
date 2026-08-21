@@ -59,6 +59,9 @@ Requires a running editor with MCP connection. Uses the same dispatch path as ga
 | `engine.set_resource(current, max)` / `get_resource()` | Class secondary resource (stamina/magic) |
 | `engine.apply_archetype_hud(archetypeId)` | Seeds stamina vs magic HUD for archetype |
 | `engine.world_ui_upsert(id, table)` / `world_ui_clear(id?)` | World-space billboard chips (prompts / floating bars) |
+| `engine.combat_text(table)` | Floating damage numbers above NPC names ([combat-text.md](combat-text.md)); optional `kind` hit/crit/bleed/poison/burn/heal |
+| `engine.status_apply` / `status_clear` / `status_set_anchor` | DoT apply/clear ([status-effects.md](status-effects.md)) |
+| Optional global `on_update(payload_json)` | Play-test tick; payload `{dt}` seconds. Silent if missing. |
 | `engine.ui_push/show/hide(id)` / `ui_pop()` / `ui_top()` | Canvas stack ([DEC-0025](../decisions/index.md#dec-0025-responsive-ui-canvas-stack-editor--mcp)) |
 | `engine.quest_start(questId)` | Start quest ([DEC-0028](../decisions/index.md#dec-0028-explicit-quest-progression-runtime)) |
 | `engine.start_event_timeline(sequenceId)` | Start authored event sequence ([DEC-0045](../decisions/index.md#dec-0045-json-event-timelines-with-c-sequencer-world-forge-home)) |
@@ -89,7 +92,7 @@ Handlers are global functions called with one JSON string argument.
 
 Interaction payload fields: `type`, `interactionId`, `placementEntityId`, `interactorId`, `volumeIndex`.
 
-Combat hurt payload fields: `attackerId`, `hurtPlacementEntityId`, `hurtCombatId`, `hurtVolumeIndex`.
+Combat hurt payload fields: `attackerId`, `hurtPlacementEntityId`, `hurtCombatId`, `hurtVolumeIndex`. Optional `contactPoint` `{x,y,z}` when the host includes it (melee overlap). Sandbox dummy health chips use authored pad head anchors only (not `contactPoint`, so hits do not move the bar).
 
 Animation event payload fields ([DEC-0031](../decisions/index.md#dec-0031-controller-authored-animation-timeline-events)): `entityId`, `name`, `state`, `layer`, `time`, `payload` (object). Global `on_animation_event` is optional — missing handler is silent.
 

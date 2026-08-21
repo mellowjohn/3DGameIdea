@@ -1,0 +1,246 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.20000000298023224,
+          0.18000000715255737,
+          0.20999999344348907
+        ],
+        "primitive": "cube"
+      },
+      "name": "mass_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -10.5,
+          17.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          17,
+          35,
+          0.9
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.20000000298023224,
+          0.18000000715255737,
+          0.20999999344348907
+        ],
+        "primitive": "cube"
+      },
+      "name": "mass_r",
+      "parent": null,
+      "transform": {
+        "position": [
+          10.5,
+          17.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          17,
+          35,
+          0.9
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.20000000298023224,
+          0.18000000715255737,
+          0.20999999344348907
+        ],
+        "primitive": "cube"
+      },
+      "name": "mass_above",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          21,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4.2,
+          28,
+          0.9
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2199999988079071,
+          0.20000000298023224,
+          0.23000000417232513
+        ],
+        "primitive": "cube"
+      },
+      "name": "jamb_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -2.1,
+          3.2,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.55,
+          6.4,
+          1.3
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2199999988079071,
+          0.20000000298023224,
+          0.23000000417232513
+        ],
+        "primitive": "cube"
+      },
+      "name": "jamb_r",
+      "parent": null,
+      "transform": {
+        "position": [
+          2.1,
+          3.2,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.55,
+          6.4,
+          1.3
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2199999988079071,
+          0.20000000298023224,
+          0.23000000417232513
+        ],
+        "primitive": "cube"
+      },
+      "name": "lintel",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          6.5,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4.8,
+          0.7,
+          1.3
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2800000011920929,
+          0.23999999463558197,
+          0.18000000715255737
+        ],
+        "primitive": "cube"
+      },
+      "name": "top_frieze",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          34.5,
+          0.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          36,
+          0.7,
+          1.1
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3199999928474426,
+          0.2800000011920929,
+          0.23999999463558197
+        ],
+        "primitive": "cube"
+      },
+      "name": "threshold",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.06,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3.2,
+          0.12,
+          0.7
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

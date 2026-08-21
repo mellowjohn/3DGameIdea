@@ -1,0 +1,112 @@
+{
+  "entities": [
+    {
+      "armorAttach": {
+        "localEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "localOffset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "localScale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "displayName": "Iron Test Helmet",
+      "id": "iron_test_helmet",
+      "kind": "armor",
+      "notes": "Skinned to Head; equip in the head armor slot.",
+      "source": "modular_iron_test",
+      "stats": {
+        "modifiers": {
+          "armor": 3,
+          "maxHealth": 8
+        }
+      },
+      "tags": [
+        "head",
+        "test_gear"
+      ],
+      "worldMesh": "assets/models/iron_test_helmet.gltf"
+    },
+    {
+      "armorAttach": {
+        "localEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "localOffset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "localScale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "displayName": "Iron Test Torso Set",
+      "id": "iron_test_chest",
+      "kind": "armor",
+      "notes": "Skinned torso, collar, belt, and sleeves; equip in the chest armor slot.",
+      "source": "modular_iron_test",
+      "stats": {
+        "modifiers": {
+          "armor": 6,
+          "maxHealth": 16
+        }
+      },
+      "tags": [
+        "chest",
+        "test_gear"
+      ],
+      "worldMesh": "assets/models/iron_test_chest.gltf"
+    },
+    {
+      "armorAttach": {
+        "localEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "localOffset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "localScale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "displayName": "Iron Test Greaves",
+      "id": "iron_test_legs",
+      "kind": "armor",
+      "notes": "Skinned trousers and boots; equip in the legs armor slot.",
+      "source": "modular_iron_test",
+      "stats": {
+        "modifiers": {
+          "armor": 4,
+          "maxStamina": 10
+        }
+      },
+      "tags": [
+        "legs",
+        "test_gear"
+      ],
+      "worldMesh": "assets/models/iron_test_legs.gltf"
+    }
+  ],
+  "id": "modular_iron_test_gear",
+  "notes": "Developer equipment test kit. Each skinned mesh shares the GoodPlayerModel 37-joint rig and is intended for the matching armor slot.",
+  "schemaVersion": 1
+}

@@ -1,0 +1,186 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.165,
+          0.157,
+          0.149
+        ],
+        "primitive": "cube"
+      },
+      "name": "body",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          2.4,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.4,
+          4.8,
+          2.4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2,
+          0.19,
+          0.18
+        ],
+        "primitive": "cube"
+      },
+      "name": "cren_n",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          5.1,
+          0.85
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.2,
+          0.9,
+          0.55
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2,
+          0.19,
+          0.18
+        ],
+        "primitive": "cube"
+      },
+      "name": "cren_s",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          5.1,
+          -0.85
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.2,
+          0.9,
+          0.55
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2,
+          0.19,
+          0.18
+        ],
+        "primitive": "cube"
+      },
+      "name": "cren_e",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.85,
+          5.1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.55,
+          0.9,
+          2.2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2,
+          0.19,
+          0.18
+        ],
+        "primitive": "cube"
+      },
+      "name": "cren_w",
+      "parent": null,
+      "transform": {
+        "position": [
+          -0.85,
+          5.1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.55,
+          0.9,
+          2.2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.14,
+          0.13,
+          0.12
+        ],
+        "primitive": "cube"
+      },
+      "name": "niche",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          2.2,
+          1.15
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.2,
+          2.2,
+          0.2
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

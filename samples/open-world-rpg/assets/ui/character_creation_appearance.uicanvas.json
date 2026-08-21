@@ -1,0 +1,390 @@
+{
+  "designResolution": [
+    1920.0,
+    1080.0
+  ],
+  "id": "character_creation_appearance",
+  "schemaVersion": 1,
+  "widgets": [
+    {
+      "anchor": "center",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        255.0
+      ],
+      "id": "cca_underlay",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        2400.0,
+        1400.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "cca_backdrop",
+      "image": "assets/ui/menu/creation/appearance-backdrop.png",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        1920.0,
+        1080.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "cca_panel",
+      "image": "assets/ui/menu/creation/creation-glass-appearance-panel-v2.png",
+      "offset": [
+        560.0,
+        -70.0
+      ],
+      "size": [
+        480.0,
+        740.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "id": "cca_medallion",
+      "image": "assets/ui/menu/creation/glass-icon-ashfell-blade.png",
+      "imageMode": "contain",
+      "offset": [
+        560.0,
+        -350.0
+      ],
+      "size": [
+        110.0,
+        110.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_appearance.title",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 32.0,
+      "id": "cca_title",
+      "offset": [
+        560.0,
+        -210.35037231445313
+      ],
+      "size": [
+        340.0,
+        36.84671401977539
+      ],
+      "text": "Appearance",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_appearance.summary",
+      "color": [
+        180.0,
+        168.0,
+        150.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "cca_summary",
+      "offset": [
+        560.0,
+        -178.65695190429688
+      ],
+      "size": [
+        340.0,
+        30.306568145751953
+      ],
+      "text": "Ashfell Blade  ·  Ashen's Levy",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "label.cca_race_label",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 13.0,
+      "id": "cca_race_label",
+      "offset": [
+        560.0,
+        -150.0
+      ],
+      "size": [
+        340.0,
+        18.0
+      ],
+      "text": "Ancestry",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "label.cca_race",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 18.0,
+      "id": "cca_race",
+      "offset": [
+        560.0,
+        -124.0
+      ],
+      "size": [
+        340.0,
+        24.0
+      ],
+      "text": "Human  ·  Locked",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "label.cca_name_label",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 13.0,
+      "id": "cca_name_label",
+      "offset": [
+        560.0,
+        -86.0
+      ],
+      "size": [
+        340.0,
+        18.0
+      ],
+      "text": "Name",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_appearance.name",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 22.0,
+      "id": "cca_name",
+      "offset": [
+        560.0,
+        -58.0
+      ],
+      "size": [
+        340.0,
+        28.0
+      ],
+      "text": "Ashen Recruit",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_appearance.cycle.hair",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 17.0,
+      "id": "cca_hair",
+      "image": "assets/ui/menu/glass-menu-btn-secondary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        560.0,
+        -2.0
+      ],
+      "padding": [
+        22.0,
+        6.0,
+        22.0,
+        6.0
+      ],
+      "size": [
+        320.0,
+        52.0
+      ],
+      "text": "Hair · Short Brown",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_appearance.cycle.skin",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 17.0,
+      "id": "cca_skin",
+      "image": "assets/ui/menu/glass-menu-btn-secondary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        560.0,
+        56.0
+      ],
+      "padding": [
+        22.0,
+        6.0,
+        22.0,
+        6.0
+      ],
+      "size": [
+        320.0,
+        52.0
+      ],
+      "text": "Skin · Warm Tan",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_appearance.cycle.voice",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 17.0,
+      "id": "cca_voice",
+      "image": "assets/ui/menu/glass-menu-btn-secondary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        560.0,
+        114.0
+      ],
+      "padding": [
+        22.0,
+        6.0,
+        22.0,
+        6.0
+      ],
+      "size": [
+        320.0,
+        52.0
+      ],
+      "text": "Voice · Steady",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_appearance.back",
+      "color": [
+        236.0,
+        234.0,
+        228.0,
+        255.0
+      ],
+      "fontSize": 20.0,
+      "id": "cca_back",
+      "image": "assets/ui/menu/glass-menu-btn-secondary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        430.0,
+        470.0
+      ],
+      "size": [
+        200.0,
+        60.0
+      ],
+      "text": "Back",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_appearance.confirm",
+      "color": [
+        247.0,
+        234.0,
+        208.0,
+        255.0
+      ],
+      "fontSize": 20.0,
+      "id": "cca_confirm",
+      "image": "assets/ui/menu/glass-menu-btn-primary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        650.0,
+        470.0
+      ],
+      "size": [
+        270.0,
+        58.0
+      ],
+      "text": "Begin Landfall",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    }
+  ]
+}

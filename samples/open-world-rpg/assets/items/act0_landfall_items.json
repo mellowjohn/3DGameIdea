@@ -28,6 +28,14 @@
         "one_handed",
         "melee"
       ],
+      "stats": {
+        "damageMin": 16,
+        "damageMax": 22,
+        "attacksPerSecond": 1.1,
+        "modifiers": {
+          "strength": 2
+        }
+      },
       "worldMesh": "assets/models/ashfell_arming_sword.gltf"
     },
     {
@@ -59,6 +67,15 @@
         "two_handed",
         "ranged"
       ],
+      "stats": {
+        "damageMin": 14,
+        "damageMax": 20,
+        "attacksPerSecond": 0.65,
+        "modifiers": {
+          "agility": 2,
+          "maxStamina": 4
+        }
+      },
       "worldMesh": "assets/models/outrider_shortbow.gltf"
     },
     {
@@ -87,16 +104,26 @@
       "source": "starter_runecaster",
       "tags": [
         "one_handed",
-        "magic"
+        "magic",
+        "magic_arcane"
       ],
+      "stats": {
+        "damageMin": 15,
+        "damageMax": 21,
+        "attacksPerSecond": 0.75,
+        "modifiers": {
+          "intellect": 2,
+          "maxHealth": 6
+        }
+      },
       "worldMesh": "assets/models/guild_rune_focus.gltf"
     },
     {
       "displayName": "Outrider Arrow",
-      "icon": "assets/ui/icons/items/outrider_shortbow.png",
+      "icon": "assets/ui/icons/items/outrider_arrow.png",
       "id": "outrider_arrow",
       "kind": "material",
-      "notes": "Uses shortbow concept as temporary ammo icon; stackable ammo slot later.",
+      "notes": "Dedicated inventory icon; world mesh outrider_arrow.gltf. Ammo region stacks in play-test.",
       "source": "ammo_clutter",
       "tags": [
         "ammo"
@@ -105,10 +132,11 @@
     },
     {
       "displayName": "Crude Arrow",
-      "icon": "assets/ui/icons/items/outrider_shortbow.png",
+      "icon": "assets/ui/icons/items/crude_arrow.png",
       "iconOnly": true,
       "id": "crude_arrow",
       "kind": "material",
+      "notes": "Dedicated inventory icon (starter Outrider ammo). Ammo region stacks in play-test.",
       "source": "combat_ammo_drop",
       "tags": [
         "ammo"
@@ -121,6 +149,9 @@
       "id": "field_bandage",
       "kind": "consumable",
       "source": "loot_container",
+      "stats": {
+        "heal": 25
+      },
       "tags": [
         "healing"
       ]
@@ -135,12 +166,15 @@
     },
     {
       "displayName": "Siege Tonic",
-      "icon": "assets/ui/icons/items/field_bandage.png",
+      "icon": "assets/ui/icons/items/siege_tonic.png",
       "iconOnly": true,
       "id": "siege_tonic",
       "kind": "consumable",
-      "notes": "Placeholder icon (field bandage) until dedicated art.",
+      "notes": "Dedicated inventory icon.",
       "source": "loot_container",
+      "stats": {
+        "heal": 40
+      },
       "tags": [
         "healing"
       ]
@@ -151,7 +185,13 @@
       "iconOnly": true,
       "id": "vein_iron_pendant",
       "kind": "trinket",
-      "source": "loot_container_obscure"
+      "source": "loot_container_obscure",
+      "stats": {
+        "modifiers": {
+          "armor": 1,
+          "maxHealth": 12
+        }
+      }
     },
     {
       "displayName": "Arkand's Favor",
@@ -160,7 +200,13 @@
       "id": "arkands_favor",
       "kind": "trinket",
       "notes": "Placeholder icon until dedicated art; story grant preferred over container.",
-      "source": "story_grant"
+      "source": "story_grant",
+      "stats": {
+        "modifiers": {
+          "maxHealth": 8,
+          "maxStamina": 6
+        }
+      }
     },
     {
       "displayName": "Muddied Keep Ring",
@@ -169,7 +215,12 @@
       "id": "muddied_keep_ring",
       "kind": "trinket",
       "notes": "Placeholder icon until dedicated art.",
-      "source": "loot_container"
+      "source": "loot_container",
+      "stats": {
+        "modifiers": {
+          "maxStamina": 10
+        }
+      }
     },
     {
       "displayName": "Imperium Footsoldier Badge",

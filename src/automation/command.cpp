@@ -814,7 +814,14 @@ CommandResponse execute_command(const CommandRequest& request) {
         options.frame_limit = positive_number(argument_value(request, "--frames"),
             (request.name == "run" || request.name == "editor") ? 0u : (request.name == "capture" ? 1u : 120u));
         options.hidden = request.name == "benchmark" || argument_value(request, "--hidden", "false") == "true";
-        options.enable_debug_layer = request.name != "benchmark";
+        // The D3D12 debug layer catches real API misuse, but its own worker
+        // thread faults roughly 40s into an interactive editor session
+        // (TICKET-0279), so the editor opts in rather than out. Short automated
+        // sessions (run / capture) keep validation on by default.
+        options.enable_debug_layer =
+            request.name != "benchmark" &&
+            (request.name == "editor" ? has_argument(request, "--debug-layer")
+                                      : !has_argument(request, "--no-debug-layer"));
         // Benchmark loads the sample world (editor + debug_world) so terrain/foliage/placements are present.
         options.debug_world = has_argument(request, "--debug-world") || request.name == "editor" ||
             request.name == "benchmark";
@@ -828,6 +835,10 @@ CommandResponse execute_command(const CommandRequest& request) {
             if (!world_override.empty()) {
                 const std::filesystem::path override_path(world_override);
                 options.world_path = override_path.is_absolute() ? override_path : (request.project / override_path);
+            } else if (request.name == "benchmark") {
+                // Project defaultWorld is main-menu (preview, no play-test). The
+                // 1440p gate needs a playable open-world slice (TICKET-0139).
+                options.world_path = request.project / "worlds/vertical-slice.world.json";
             } else {
                 options.world_path = world_path;
             }
@@ -896,7 +907,7 @@ std::string command_help() {
            "  --world overrides project.engine.json defaultWorld (relative to project or absolute)\n"
            "Capture/editor: --output <file.ppm|.png> [--viewport scene|sculpt|game|ui|world-forge] [--look-dx N] [--look-dy N]\n"
            "Benchmark: defaults to 120 frames at 2560x1440, hidden editor+debug-world, GPU timestamps required\n"
-           "  engine benchmark --project <path> [--frames 120] [--report out/benchmarks/open-world-1440p.json] [--json]\n"
+           "  engine benchmark --project <path> [--frames 120] [--world worlds/vertical-slice.world.json] [--report out/benchmarks/open-world-1440p.json] [--json]\n"
            "Visual regression (TICKET-0145): Game RT PNGs vs context/testing/baselines/visual-regression/\n"
            "  engine visual-regression --project <path> [--update-baselines] [--threshold 12] [--frames 40] [--json]\n"
            "Test: engine test --project <path> --suite <core|world|...|animator|audio|m5-exit|visual_regression|project_validation> [--dry-run] [--json]\n"

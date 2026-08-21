@@ -1,0 +1,186 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.3199999928474426,
+          0.2199999988079071,
+          0.11999999731779099
+        ],
+        "primitive": "cube"
+      },
+      "name": "camp_lean_to_part_1",
+      "parent": null,
+      "transform": {
+        "position": [
+          -1.2,
+          1,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.18,
+          2,
+          0.18
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3199999928474426,
+          0.2199999988079071,
+          0.11999999731779099
+        ],
+        "primitive": "cube"
+      },
+      "name": "camp_lean_to_part_2",
+      "parent": null,
+      "transform": {
+        "position": [
+          1.2,
+          1,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.18,
+          2,
+          0.18
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3199999928474426,
+          0.2199999988079071,
+          0.11999999731779099
+        ],
+        "primitive": "cube"
+      },
+      "name": "camp_lean_to_part_3",
+      "parent": null,
+      "transform": {
+        "position": [
+          -1.2,
+          1,
+          -1.6
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.18,
+          2,
+          0.18
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3199999928474426,
+          0.2199999988079071,
+          0.11999999731779099
+        ],
+        "primitive": "cube"
+      },
+      "name": "camp_lean_to_part_4",
+      "parent": null,
+      "transform": {
+        "position": [
+          1.2,
+          1,
+          -1.6
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.18,
+          2,
+          0.18
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.2800000011920929,
+          0.1599999964237213
+        ],
+        "primitive": "cube"
+      },
+      "name": "camp_lean_to_part_5",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          2.05,
+          -0.8
+        ],
+        "rotation": [
+          0.1736,
+          0,
+          0,
+          0.9848
+        ],
+        "scale": [
+          2.8,
+          0.12,
+          2.2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2800000011920929,
+          0.18000000715255737,
+          0.10000000149011612
+        ],
+        "primitive": "cube"
+      },
+      "name": "camp_lean_to_part_6",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          1,
+          -1.7
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          2.6,
+          2,
+          0.12
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

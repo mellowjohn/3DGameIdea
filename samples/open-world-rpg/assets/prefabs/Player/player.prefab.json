@@ -49,6 +49,35 @@
       },
       "id": "rigidbody-0",
       "type": "rigidbody"
+    },
+    {
+      "data": {
+        "combatHurt": "body",
+        "layer": "trigger",
+        "radius": 0.85,
+        "shape": "sphere",
+        "transform": {
+          "position": [
+            0,
+            1.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "trigger": true
+      },
+      "id": "collision-hurt",
+      "type": "collider"
     }
   ],
   "entities": [

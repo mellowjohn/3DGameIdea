@@ -1,0 +1,36 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.41999998688697815,
+          0.14000000059604645,
+          0.11999999731779099
+        ],
+        "primitive": "cube"
+      },
+      "name": "strip",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.06,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.18,
+          0.03,
+          28
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

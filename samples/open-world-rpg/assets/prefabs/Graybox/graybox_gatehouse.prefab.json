@@ -1,0 +1,246 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.42,
+          0.4,
+          0.37
+        ],
+        "primitive": "cube"
+      },
+      "name": "pier_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -8,
+          6,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          7,
+          12,
+          14
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.42,
+          0.4,
+          0.37
+        ],
+        "primitive": "cube"
+      },
+      "name": "pier_r",
+      "parent": null,
+      "transform": {
+        "position": [
+          8,
+          6,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          7,
+          12,
+          14
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.38,
+          0.36,
+          0.33
+        ],
+        "primitive": "cube"
+      },
+      "name": "lintel",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          11.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          11,
+          4,
+          14
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.42,
+          0.4,
+          0.37
+        ],
+        "primitive": "cube"
+      },
+      "name": "upper_wall",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          15.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          24,
+          6,
+          12
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.36,
+          0.34,
+          0.31
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -9,
+          19.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4,
+          3.5,
+          10
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.36,
+          0.34,
+          0.31
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_c",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          19.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4,
+          3.5,
+          10
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.36,
+          0.34,
+          0.31
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_r",
+      "parent": null,
+      "transform": {
+        "position": [
+          9,
+          19.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4,
+          3.5,
+          10
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "depth_tunnel",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          5,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          8,
+          10,
+          6
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "frost_bolt_impact",
+  "texture": "assets/vfx/rune_sigil_flipbook_4x4.png",
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [0.95, 1.0, 1.0] },
+      { "t": 0.12, "color": [0.55, 0.85, 1.0] },
+      { "t": 0.4, "color": [0.22, 0.5, 0.9] },
+      { "t": 1.0, "color": [0.06, 0.12, 0.32] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.2 },
+      { "t": 0.15, "value": 0.52 },
+      { "t": 1.0, "value": 0.78 }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.0 },
+      { "t": 0.3, "value": 0.22 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.26, "max": 0.55 },
+  "speed": { "min": 1.4, "max": 5.5 },
+  "rate": 0,
+  "spreadAngle": [30, 90],
+  "shape": "sphere",
+  "shapeStyle": "volume",
+  "shapeSize": [0.12, 0.12, 0.12],
+  "orientation": "FacingCamera",
+  "lightEmission": 1.0,
+  "blend": "additive",
+  "crossedBillboards": true,
+  "acceleration": [0.0, -2.2, 0.0],
+  "drag": 0.4,
+  "maxParticles": 48,
+  "enabled": true,
+  "emissionDirection": [0.0, 1.0, 0.0],
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "OneShot",
+  "flipbookFramerate": 22,
+  "flipbookStartRandom": true,
+  "rotation": { "keypoints": [{ "t": 0.0, "value": 0.0 }, { "t": 1.0, "value": 140.0 }] },
+  "rotationStartRandom": true,
+  "minScreenSize": 14,
+  "softOcclusion": false
+}

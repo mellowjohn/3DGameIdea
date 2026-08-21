@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
+  "shader": "stylized_opaque",
   "baseColor": [
-    0.23899999260902405,
-    0.2709999978542328,
-    0.18799999356269836,
+    0.5642558932304382,
+    0.6693547964096069,
+    0.3967546820640564,
     1.0
   ],
   "roughness": 0.9200000166893005,
@@ -15,6 +16,10 @@
     0.0,
     0.0
   ],
+  "emissivePulseHz": 0.0,
+  "emissivePulseMin": 0.3499999940395355,
+  "albedoMap": "",
+  "emissiveMap": "",
   "doubleSided": false,
   "physics": {
     "friction": 0.8199999928474426,

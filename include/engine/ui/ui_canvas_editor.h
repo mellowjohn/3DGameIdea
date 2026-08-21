@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/assets/ui_canvas_asset.h"
+#include "engine/assets/ui_theme_asset.h"
 #include "engine/core/result.h"
 
 #include <array>
@@ -29,6 +30,7 @@ struct UiCanvasEditorSession {
     /// When true, Save applies this canvas as the play-test HUD; otherwise registers by canvas.id as a modal.
     bool apply_as_hud = true;
     bool show_new_popup = false;
+    bool theme_dirty = false;
     std::array<char, 64> new_canvas_id{{}};
 
     [[nodiscard]] Result<void> load(const std::filesystem::path& absolute_path);
@@ -38,6 +40,7 @@ struct UiCanvasEditorSession {
 
 /// Draw UI Canvas authoring into the active Viewports tab content region.
 void draw_ui_canvas_viewport(UiCanvasEditorSession& session, const std::filesystem::path& project_root,
-    const std::function<void(const std::filesystem::path&)>& on_saved);
+    const std::function<void(const std::filesystem::path&)>& on_saved, UiThemeAsset* theme = nullptr,
+    const std::function<void()>& on_theme_saved = {});
 
 } // namespace engine

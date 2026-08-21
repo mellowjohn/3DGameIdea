@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "shader": "stylized_opaque",
+  "baseColor": [
+    0.11999999731779099,
+    0.23999999463558197,
+    0.07000000029802322,
+    1.0
+  ],
+  "roughness": 1.0,
+  "metallic": 0.0,
+  "opacityMode": "opaque",
+  "opacityCutoff": 0.5,
+  "emissive": [
+    0.019999999552965164,
+    0.04500000178813934,
+    0.00800000037997961
+  ],
+  "emissivePulseHz": 0.0,
+  "emissivePulseMin": 0.3499999940395355,
+  "albedoMap": "",
+  "emissiveMap": "",
+  "doubleSided": false,
+  "physics": {
+    "friction": 0.800000011920929,
+    "restitution": 0.05000000074505806,
+    "density": 1000.0,
+    "surface": "grass"
+  }
+}

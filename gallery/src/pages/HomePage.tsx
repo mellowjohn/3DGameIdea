@@ -76,6 +76,7 @@ export function HomePage() {
           <span className="home-top-label">Art Atlas</span>
         </div>
         <nav className="home-nav">
+          <Link to="/storyboards">Storyboards</Link>
           <Link to="/browse">Browse</Link>
           <button type="button" className="btn btn-ghost" onClick={() => void onLogout()}>
             Log out
@@ -95,6 +96,9 @@ export function HomePage() {
           asset the team is building toward.
         </p>
         <div className="home-cta-row">
+          <Link to="/storyboards" className="btn btn-primary home-cta">
+            Review storyboards
+          </Link>
           <Link to="/browse" className="btn btn-primary home-cta">
             Enter the library
           </Link>
@@ -140,6 +144,14 @@ export function HomePage() {
           Filter by act, layer, and type once you open the library. Everything below is regenerated
           from the repo on each deploy.
         </p>
+        <Link to="/storyboards" className="home-storyboard-card">
+          <div>
+            <p>New review section</p>
+            <h3>Landfall cinematic storyboards</h3>
+            <span>Four visual pieces · six shot beats · D-P0-17e camera locks</span>
+          </div>
+          <strong>Open storyboard review →</strong>
+        </Link>
         <div className="home-cat-grid">
           {CATEGORY_COPY.map((cat) => (
             <Link key={cat.id} to={`/browse?category=${cat.id}`} className="home-cat-card">

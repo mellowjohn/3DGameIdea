@@ -4,43 +4,112 @@
   "texture": "assets/vfx/ember_flipbook_4x4.png",
   "color": {
     "keypoints": [
-      { "t": 0.0, "color": [1.0, 0.98, 0.88] },
-      { "t": 0.2, "color": [0.95, 0.82, 0.42] },
-      { "t": 0.55, "color": [0.55, 0.72, 0.85] },
-      { "t": 1.0, "color": [0.22, 0.28, 0.35] }
+      {
+        "t": 0.0,
+        "color": [
+          1.0,
+          1.0,
+          0.95
+        ]
+      },
+      {
+        "t": 0.18,
+        "color": [
+          1.0,
+          0.88,
+          0.4
+        ]
+      },
+      {
+        "t": 0.5,
+        "color": [
+          0.55,
+          0.75,
+          0.95
+        ]
+      },
+      {
+        "t": 1.0,
+        "color": [
+          0.2,
+          0.28,
+          0.38
+        ]
+      }
     ]
   },
   "size": {
     "keypoints": [
-      { "t": 0.0, "value": 0.07 },
-      { "t": 0.12, "value": 0.13 },
-      { "t": 1.0, "value": 0.02 }
+      {
+        "t": 0.0,
+        "value": 0.14
+      },
+      {
+        "t": 0.12,
+        "value": 0.28
+      },
+      {
+        "t": 1.0,
+        "value": 0.05
+      }
     ]
   },
   "transparency": {
     "keypoints": [
-      { "t": 0.0, "value": 0.05 },
-      { "t": 0.45, "value": 0.22 },
-      { "t": 1.0, "value": 1.0 }
+      {
+        "t": 0.0,
+        "value": 0.0
+      },
+      {
+        "t": 0.4,
+        "value": 0.18
+      },
+      {
+        "t": 1.0,
+        "value": 1.0
+      }
     ]
   },
-  "lifetime": { "min": 0.12, "max": 0.36 },
-  "speed": { "min": 2.2, "max": 7.5 },
+  "lifetime": {
+    "min": 0.2,
+    "max": 0.48
+  },
+  "speed": {
+    "min": 3.5,
+    "max": 11.0
+  },
   "rate": 0,
-  "spreadAngle": [55, 95],
+  "spreadAngle": [
+    45,
+    100
+  ],
   "shape": "sphere",
   "shapeStyle": "volume",
-  "shapeSize": [0.06, 0.06, 0.06],
+  "shapeSize": [
+    0.1,
+    0.1,
+    0.1
+  ],
   "orientation": "FacingCamera",
-  "lightEmission": 0.9,
+  "lightEmission": 1.0,
   "blend": "softLight",
-  "acceleration": [0.0, -5.5, 0.0],
-  "drag": 0.4,
-  "maxParticles": 48,
+  "acceleration": [
+    0.0,
+    -6.5,
+    0.0
+  ],
+  "drag": 0.32,
+  "maxParticles": 64,
   "enabled": true,
-  "emissionDirection": [0.0, 1.0, 0.0],
+  "emissionDirection": [
+    0.0,
+    1.0,
+    0.0
+  ],
   "flipbookLayout": "Grid4x4",
   "flipbookMode": "OneShot",
-  "flipbookFramerate": 26,
-  "flipbookStartRandom": true
+  "flipbookFramerate": 28,
+  "flipbookStartRandom": true,
+  "minScreenSize": 10,
+  "softOcclusion": false
 }

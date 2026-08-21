@@ -1,0 +1,66 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.3199999928474426,
+          0.2199999988079071,
+          0.15000000596046448
+        ],
+        "primitive": "cube"
+      },
+      "name": "Frame",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          4.5,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          3.5,
+          9,
+          3.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2800000011920929,
+          0.20000000298023224,
+          0.12999999523162842
+        ],
+        "primitive": "cube"
+      },
+      "name": "Platform",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          9.2,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          4.5,
+          0.5,
+          4.5
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

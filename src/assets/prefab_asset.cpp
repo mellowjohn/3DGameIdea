@@ -389,12 +389,14 @@ std::vector<std::string> PrefabAsset::required_mesh_keys(const MaterialLookup& l
     std::vector<std::string> keys;
     if (!is_compositional()) {
         if (!mesh.empty()) keys.push_back(normalize_asset_path(mesh));
-        return keys;
+    } else {
+        for (const auto& part : parts) {
+            const auto key = mesh_key_for_part(part, lookup_material);
+            if (!key.empty()) keys.push_back(key);
+        }
     }
-    for (const auto& part : parts) {
-        const auto key = mesh_key_for_part(part, lookup_material);
-        if (!key.empty()) keys.push_back(key);
-    }
+    if (!lod1_mesh.empty()) keys.push_back(normalize_asset_path(lod1_mesh));
+    if (!lod2_mesh.empty()) keys.push_back(normalize_asset_path(lod2_mesh));
     return keys;
 }
 
@@ -443,6 +445,10 @@ Result<PrefabAsset> PrefabAsset::load(const std::filesystem::path& path) {
     PrefabAsset asset;
     asset.schema_version = document.value("schemaVersion", 1);
     if (document.contains("mesh") && document["mesh"].is_string()) asset.mesh = document["mesh"].get<std::string>();
+    if (document.contains("lod1Mesh") && document["lod1Mesh"].is_string())
+        asset.lod1_mesh = document["lod1Mesh"].get<std::string>();
+    if (document.contains("lod2Mesh") && document["lod2Mesh"].is_string())
+        asset.lod2_mesh = document["lod2Mesh"].get<std::string>();
     if (document.contains("light")) {
         const auto light = read_light(document["light"]);
         if (!light) return Result<PrefabAsset>::failure(light.error());
@@ -468,6 +474,40 @@ Result<PrefabAsset> PrefabAsset::load(const std::filesystem::path& path) {
     }
     if (document.contains("characterAsset") && document["characterAsset"].is_string())
         asset.character_asset = document["characterAsset"].get<std::string>();
+    if (document.contains("npcAi") && document["npcAi"].is_object()) {
+        const auto& npc = document["npcAi"];
+        PrefabNpcAi ai;
+        ai.kind = npc.value("kind", std::string{});
+        ai.display_name = npc.value("displayName", npc.value("display_name", std::string{"Hostile"}));
+        ai.held_item_id = npc.value("heldItemId", npc.value("held_item_id", std::string{}));
+        ai.aggro_radius = npc.value("aggroRadius", npc.value("aggro_radius", 16.0f));
+        ai.lose_aggro_radius = npc.value("loseAggroRadius", npc.value("lose_aggro_radius", 22.0f));
+        ai.attack_range = npc.value("attackRange", npc.value("attack_range", 1.9f));
+        ai.attack_cooldown = npc.value("attackCooldown", npc.value("attack_cooldown", 1.35f));
+        ai.move_speed = npc.value("moveSpeed", npc.value("move_speed", 3.5f));
+        ai.patrol_arrive = npc.value("patrolArrive", npc.value("patrol_arrive", 1.25f));
+        const auto waypoints = npc.contains("patrolWaypoints") ? npc["patrolWaypoints"]
+                                                               : (npc.contains("patrol_waypoints") ? npc["patrol_waypoints"]
+                                                                                                   : nlohmann::json{});
+        if (waypoints.is_array()) {
+            for (const auto& point : waypoints) {
+                if (!point.is_object() && !point.is_array()) continue;
+                float x = 0.0f;
+                float z = 0.0f;
+                if (point.is_array() && point.size() >= 2) {
+                    x = point[0].get<float>();
+                    z = point[1].get<float>();
+                } else if (point.is_object()) {
+                    x = point.value("x", 0.0f);
+                    z = point.value("z", 0.0f);
+                } else {
+                    continue;
+                }
+                ai.patrol_waypoints.push_back({x, z});
+            }
+        }
+        asset.npc_ai = std::move(ai);
+    }
     if (document.contains("entities") && document["entities"].is_array()) {
         for (const auto& entity : document["entities"]) {
             if (!entity.contains("mesh")) continue;
@@ -547,6 +587,8 @@ Result<PrefabAsset> PrefabAsset::load(const std::filesystem::path& path) {
         return Result<PrefabAsset>::failure(prefab_error("PREFAB-MESH-MISSING", "Prefab requires a mesh path or parts"));
     }
     if (!asset.mesh.empty()) asset.mesh = normalize_asset_path(asset.mesh);
+    if (!asset.lod1_mesh.empty()) asset.lod1_mesh = normalize_asset_path(asset.lod1_mesh);
+    if (!asset.lod2_mesh.empty()) asset.lod2_mesh = normalize_asset_path(asset.lod2_mesh);
     return Result<PrefabAsset>::success(std::move(asset));
 }
 
@@ -645,6 +687,28 @@ Result<void> PrefabAsset::save(const std::filesystem::path& path) const {
             {"enabled", particle->enabled}};
     }
     if (character_asset) document["characterAsset"] = *character_asset;
+    if (npc_ai) {
+        nlohmann::json npc;
+        if (!npc_ai->kind.empty()) npc["kind"] = npc_ai->kind;
+        if (!npc_ai->display_name.empty()) npc["displayName"] = npc_ai->display_name;
+        if (!npc_ai->held_item_id.empty()) npc["heldItemId"] = npc_ai->held_item_id;
+        npc["aggroRadius"] = npc_ai->aggro_radius;
+        npc["loseAggroRadius"] = npc_ai->lose_aggro_radius;
+        npc["attackRange"] = npc_ai->attack_range;
+        npc["attackCooldown"] = npc_ai->attack_cooldown;
+        npc["moveSpeed"] = npc_ai->move_speed;
+        if (npc_ai->patrol_arrive > 0.0f) npc["patrolArrive"] = npc_ai->patrol_arrive;
+        if (!npc_ai->patrol_waypoints.empty()) {
+            nlohmann::json waypoints = nlohmann::json::array();
+            for (const auto& point : npc_ai->patrol_waypoints) {
+                waypoints.push_back({{"x", point[0]}, {"z", point[1]}});
+            }
+            npc["patrolWaypoints"] = std::move(waypoints);
+        }
+        document["npcAi"] = std::move(npc);
+    }
+    if (!lod1_mesh.empty()) document["lod1Mesh"] = lod1_mesh;
+    if (!lod2_mesh.empty()) document["lod2Mesh"] = lod2_mesh;
     if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
     const auto temporary = path.string() + ".tmp";
     std::ofstream output(temporary, std::ios::trunc);

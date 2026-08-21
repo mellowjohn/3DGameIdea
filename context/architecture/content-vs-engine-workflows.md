@@ -43,8 +43,8 @@ flowchart TD
 
 ## Use game_module (native hot-reload) when
 
-- Native C++ logic must iterate quickly **without** restarting the editor, and the work fits the C ABI (log + blackboard; tick hooks) — see [game-module-hot-reload.md](../features/game-module-hot-reload.md) and [DEC-0053](../decisions/index.md#dec-0053-native-game-module-hot-reload-c-abi).
-- Rebuild target `game_module` only; Diagnostics → Game Module → Reload (or auto-reload). Do **not** use this for D3D/ImGui/Jolt/Lua VM or core RPG runtimes — those stay in `engine_core` (full restart).
+- Native C++ gameplay logic must iterate quickly **without** restarting the editor. Prefer `game_module` before adding gameplay behavior to `engine_core`; use only versioned POD C-ABI capabilities (current log + blackboard; future commands, queries, events, timers, opaque handles, and reload state must each define lifetime and safety) — see [game-module-hot-reload.md](../features/game-module-hot-reload.md), [DEC-0053](../decisions/index.md#dec-0053-native-game-module-hot-reload-c-abi), and [DEC-0055](../decisions/index.md#dec-0055-reloadable-native-gameplay-is-the-default-c-iteration-path).
+- Rebuild target `game_module` only; Diagnostics → Game Module → Reload (or auto-reload). Do **not** use this for D3D/ImGui/Jolt/Lua VM or established core-runtime internals — those stay in `engine_core` (full restart). New gameplay rules may use the module through its safe host API.
 
 Movement and character control (including jump) are engine-owned today. Lua does not expose movement APIs in v1.
 

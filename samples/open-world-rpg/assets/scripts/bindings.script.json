@@ -30,6 +30,16 @@
       "id": "open_supply_chest",
       "handler": "on_open_supply_chest",
       "script": "assets/scripts/loot_container_interaction.lua"
+    },
+    {
+      "id": "open_weapon_crate",
+      "handler": "on_open_weapon_crate",
+      "script": "assets/scripts/weapon_crate_interaction.lua"
+    },
+    {
+      "id": "open_armor_crate",
+      "handler": "on_open_armor_crate",
+      "script": "assets/scripts/armor_crate_interaction.lua"
     }
   ],
   "combatHits": [],
@@ -38,6 +48,16 @@
       "id": "body",
       "handler": "on_body_hit",
       "script": "assets/scripts/combat_hurt.lua"
+    },
+    {
+      "id": "npc_body",
+      "handler": "on_npc_body_hit",
+      "script": "assets/scripts/npc_hurt.lua"
+    },
+    {
+      "id": "dummy_body",
+      "handler": "on_dummy_body_hit",
+      "script": "assets/scripts/dummy_hurt.lua"
     }
   ],
   "uiButtons": [

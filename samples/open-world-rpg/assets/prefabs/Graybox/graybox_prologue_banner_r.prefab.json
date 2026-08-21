@@ -1,0 +1,66 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.28,
+          0.2,
+          0.14
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "pole",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.18,
+          8,
+          0.18
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.42,
+          0.08,
+          0.1
+        ],
+        "primitive": "cube"
+      },
+      "name": "cloth",
+      "parent": null,
+      "transform": {
+        "position": [
+          -0.95,
+          5.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.8,
+          3.5,
+          0.08
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

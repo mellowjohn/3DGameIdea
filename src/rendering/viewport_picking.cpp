@@ -112,7 +112,16 @@ Frustum frustum_from_view_projection(const std::array<float, 16>& view_projectio
     const auto subtract = [](const std::array<float, 4>& x, const std::array<float, 4>& y) {
         return std::array<float, 4>{x[0] - y[0], x[1] - y[1], x[2] - y[2], x[3] - y[3]};
     };
-    const auto to_plane = [](const std::array<float, 4>& v) { return FrustumPlane{v[0], v[1], v[2], v[3]}; };
+    // Unit-normalize so sphere culls (GPU instance cull) compare against
+    // world-meter radii. AABB half-space tests only need the sign, so
+    // normalizing is safe for both callers.
+    const auto to_plane = [](const std::array<float, 4>& v) {
+        const float length = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        if (length < 1.0e-8f)
+            return FrustumPlane{v[0], v[1], v[2], v[3]};
+        const float inverse = 1.0f / length;
+        return FrustumPlane{v[0] * inverse, v[1] * inverse, v[2] * inverse, v[3] * inverse};
+    };
     const auto c0 = column(0), c1 = column(1), c2 = column(2), c3 = column(3);
     Frustum frustum;
     frustum.planes[0] = to_plane(add(c3, c0));      // left

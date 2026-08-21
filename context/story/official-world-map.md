@@ -8,9 +8,9 @@ Related: [DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary
 
 ## Role
 
-This illustration is the **canonical overworld geography** for Tessera (the primary land) and a **huge five-act campaign reference** — not a 1:1 heightmap and not the World Forge Map Canvas underlay for the v1 seamless **4×4 km** playable slice. The slice is authored *inside* Tessera and should eventually be located as a marked window on this map ([DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land)).
+This illustration is the **canonical overworld geography** for Tessera (the primary land) and a **huge five-act campaign reference**. The seamless playable world **is** this map’s window ([DEC-0054](../decisions/index.md#dec-0054-continent-scale-seamless-world--stream-budget)): cartography plate **16000×10667 m** inside a **16×16 km** partition AABB. It is still **not** a 1:1 heightmap — Scene/Sculpt owns terrain meshes; Cartography owns planning alignment.
 
-Use it for story placement, faction theaters, act pacing, World Forge region planning, and travel fantasy. Map Canvas **Cartography** mode can show this PNG as a pan/zoom **backdrop** under markers. When `cartographyPlate` is authored on `map.worldforge.json` (typically **4 km** wide for the v1 slice), the backdrop locks to that world-meter window; otherwise it aspect-fits around authored content. It is still **not** a geo-locked heightmap. **Top-down** mode still uses the terrain underlay for XZ alignment with the playable slice.
+Use it for story placement, faction theaters, act pacing, World Forge region planning, and travel fantasy. Map Canvas **Cartography** mode shows this PNG as a pan/zoom **backdrop** under markers, locked by `cartographyPlate` to playable meters. **Top-down** mode still uses the terrain underlay for XZ alignment with sculpt/terrain.
 
 ## Layout (unlabeled)
 

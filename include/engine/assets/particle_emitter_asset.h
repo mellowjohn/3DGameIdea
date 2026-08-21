@@ -93,6 +93,9 @@ struct ParticleEmitterAsset {
     /// Minimum on-screen height in pixels (0 = off). Scales world size up with distance so
     /// landmarks like campfire flames stay readable far away without growing up close.
     float min_screen_size = 0.0f;
+    /// When true (default), billboards fade against scene depth (soft particles / hide-behind).
+    /// Impact flashes on hurt meshes set this false so the burst is not swallowed by the dummy.
+    bool soft_occlusion = true;
     /// Grid atlas flipbook (Roblox FlipbookLayout). Requires a non-empty `texture`.
     ParticleFlipbookLayout flipbook_layout = ParticleFlipbookLayout::None;
     ParticleFlipbookMode flipbook_mode = ParticleFlipbookMode::Loop;

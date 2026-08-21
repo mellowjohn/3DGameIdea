@@ -13,10 +13,10 @@ The starting-player concept establishes the humanoid character look for v1. It s
 | Player base body back | Orthographic derived from front | `reference/player-base-body-back.png` |
 | Player base body left | Orthographic derived from front | `reference/player-base-body-left.png` |
 | Player base body right | Orthographic derived from front | `reference/player-base-body-right.png` |
-| Ashfell Blade starter concept | Mail / house heraldry kit lock | `concepts/act0-char-ashfell-blade.png` |
-| Outrider Lodge starter concept | Forest-green Lodge scout kit lock | `concepts/act0-char-outrider.png` |
-| Runecaster Guild starter concept | Navy inscribed Guild kit lock | `concepts/act0-char-runecaster.png` |
-| Starter trio lineup | Ashfell / Outrider / Runecaster side-by-side | `concepts/act0-char-player-archetypes.png` |
+| Ashfell Blade starter concept | Mail / house heraldry kit lock — **MVP concept approved 2026-08-05** | `concepts/act0-char-ashfell-blade.png` |
+| Outrider Lodge starter concept | Forest-green Lodge scout kit lock — **MVP concept approved 2026-08-05** | `concepts/act0-char-outrider.png` |
+| Runecaster Guild starter concept | Navy inscribed Guild kit lock — **MVP concept approved 2026-08-05** | `concepts/act0-char-runecaster.png` |
+| Starter trio lineup | Ashfell / Outrider / Runecaster side-by-side — **MVP concept approved 2026-08-05** | `concepts/act0-char-player-archetypes.png` |
 | Starting player turnaround (Ashfell Blade, legacy) | Pre-mail cloth turnaround; provenance only | `reference/starting-player-ashfell-blade-turnaround.png` |
 | Starting player turnaround (Outrider, legacy) | Pre-Lodge-stamp turnaround; silhouette provenance | `reference/starting-player-outrider-turnaround.png` |
 | Starting player turnaround (Runecaster, legacy) | Pre-Guild-stamp turnaround; silhouette provenance | `reference/starting-player-runecaster-turnaround.png` |

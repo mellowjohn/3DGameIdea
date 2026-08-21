@@ -9,18 +9,23 @@
 #include "engine/event/event_timeline_runtime.h"
 #include "engine/quest/quest_runtime.h"
 #include "engine/inventory/inventory_runtime.h"
+#include "engine/assets/item_catalog_asset.h"
 #include "engine/flag/flag_runtime.h"
 #include "engine/standing/standing_runtime.h"
 #include "engine/flag/flag_runtime.h"
 #include "engine/session/game_session.h"
 #include "engine/ui/hud_runtime.h"
 #include "engine/ui/ui_canvas_stack.h"
+#include "engine/assets/ui_theme_asset.h"
+#include "engine/ui/combat_text.h"
+#include "engine/combat/status_effect_runtime.h"
 #include "engine/ui/world_ui_billboard.h"
 #include "engine/world/combat_volumes.h"
 #include "engine/world/interaction_volumes.h"
 
 #include <nlohmann/json.hpp>
 
+#include <cmath>
 #include <cstring>
 #include <cctype>
 #include <fstream>
@@ -43,6 +48,8 @@ struct LuaHost {
     HudRuntime* hud = nullptr;
     UiCanvasStack* ui_stack = nullptr;
     WorldUiBillboardRuntime* world_ui = nullptr;
+    CombatTextRuntime* combat_text = nullptr;
+    StatusEffectRuntime* status_effects = nullptr;
     QuestRuntime* quest = nullptr;
     StandingRuntime* standing = nullptr;
     FlagRuntime* flags = nullptr;
@@ -412,6 +419,9 @@ int engine_world_ui_upsert(lua_State* state) {
         billboard.bar_max = bar_max > 0.0 ? bar_max : 1.0;
         billboard.bar_current = bar_current;
     }
+    lua_getfield(state, 2, "hitJuice");
+    if (lua_isboolean(state, -1)) billboard.request_hit_juice = lua_toboolean(state, -1) != 0;
+    lua_pop(state, 1);
     if (const auto existing = host->world_ui->get(id)) {
         if (!has_bar_current && !has_bar_max) {
             billboard.has_bar = existing->has_bar;
@@ -437,6 +447,124 @@ int engine_world_ui_clear(lua_State* state) {
     } else {
         host->world_ui->clear();
     }
+    return 0;
+}
+
+int engine_combat_text(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->combat_text) return 0;
+    luaL_checktype(state, 1, LUA_TTABLE);
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+    bool crit = false;
+    CombatTextKind kind = CombatTextKind::Hit;
+    lua_getfield(state, 1, "x");
+    if (lua_isnumber(state, -1)) x = static_cast<float>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "y");
+    if (lua_isnumber(state, -1)) y = static_cast<float>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "z");
+    if (lua_isnumber(state, -1)) z = static_cast<float>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "crit");
+    if (lua_isboolean(state, -1)) crit = lua_toboolean(state, -1) != 0;
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "kind");
+    if (lua_isstring(state, -1)) kind = combat_text_kind_from_id(lua_tostring(state, -1));
+    lua_pop(state, 1);
+    if (crit) kind = CombatTextKind::Crit;
+    lua_getfield(state, 1, "text");
+    if (lua_isstring(state, -1)) {
+        host->combat_text->spawn_text(x, y, z, lua_tostring(state, -1), kind);
+        lua_pop(state, 1);
+        return 0;
+    }
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "amount");
+    if (lua_isnumber(state, -1)) {
+        host->combat_text->spawn(x, y, z, lua_tonumber(state, -1), kind);
+    }
+    lua_pop(state, 1);
+    return 0;
+}
+
+int engine_status_apply(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->status_effects) return 0;
+    luaL_checktype(state, 1, LUA_TTABLE);
+    std::string target_id;
+    std::string status = "bleed";
+    float damage = 1.0f;
+    float duration = 6.0f;
+    float interval = 1.0f;
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+    bool has_anchor = false;
+    lua_getfield(state, 1, "targetId");
+    if (lua_isstring(state, -1)) target_id = lua_tostring(state, -1);
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "status");
+    if (lua_isstring(state, -1)) status = lua_tostring(state, -1);
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "damagePerTick");
+    if (lua_isnumber(state, -1)) damage = static_cast<float>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "duration");
+    if (lua_isnumber(state, -1)) duration = static_cast<float>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "tickInterval");
+    if (lua_isnumber(state, -1)) interval = static_cast<float>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "x");
+    if (lua_isnumber(state, -1)) {
+        x = static_cast<float>(lua_tonumber(state, -1));
+        has_anchor = true;
+    }
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "y");
+    if (lua_isnumber(state, -1)) y = static_cast<float>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    lua_getfield(state, 1, "z");
+    if (lua_isnumber(state, -1)) z = static_cast<float>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    if (target_id.empty() || !is_known_status_effect_id(status)) return 0;
+    if (has_anchor) host->status_effects->set_target_anchor(target_id, x, y, z);
+    host->status_effects->apply(target_id, status_effect_kind_from_id(status), damage, duration, interval);
+    return 0;
+}
+
+int engine_status_clear(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->status_effects) return 0;
+    if (lua_gettop(state) >= 1 && lua_isstring(state, 1)) {
+        host->status_effects->clear_target(lua_tostring(state, 1));
+    } else {
+        host->status_effects->clear();
+    }
+    return 0;
+}
+
+int engine_status_set_anchor(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->status_effects) return 0;
+    const char* id = luaL_checkstring(state, 1);
+    luaL_checktype(state, 2, LUA_TTABLE);
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+    lua_getfield(state, 2, "x");
+    if (lua_isnumber(state, -1)) x = static_cast<float>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    lua_getfield(state, 2, "y");
+    if (lua_isnumber(state, -1)) y = static_cast<float>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    lua_getfield(state, 2, "z");
+    if (lua_isnumber(state, -1)) z = static_cast<float>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    host->status_effects->set_target_anchor(id, x, y, z);
     return 0;
 }
 
@@ -526,6 +654,28 @@ int engine_ui_canvas_set_text(lua_State* state) {
     return 0;
 }
 
+int engine_ui_canvas_set_text_typed(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->ui_stack) return 0;
+    const char* canvas_id = luaL_checkstring(state, 1);
+    const char* bind = luaL_checkstring(state, 2);
+    const char* text = luaL_checkstring(state, 3);
+    const float cps = static_cast<float>(luaL_optnumber(state, 4, 42.0));
+    if (auto* canvas = host->ui_stack->find_canvas(canvas_id)) canvas->set_text_typed(bind, text, cps);
+    return 0;
+}
+
+int engine_ui_canvas_skip_typewriter(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->ui_stack) return 0;
+    const char* canvas_id = luaL_checkstring(state, 1);
+    const char* bind = luaL_checkstring(state, 2);
+    bool skipped = false;
+    if (auto* canvas = host->ui_stack->find_canvas(canvas_id)) skipped = canvas->skip_typewriter(bind);
+    lua_pushboolean(state, skipped ? 1 : 0);
+    return 1;
+}
+
 int engine_ui_canvas_set_image(lua_State* state) {
     auto* host = host_from_state(state);
     if (!host || !host->ui_stack) return 0;
@@ -565,6 +715,92 @@ int engine_ui_canvas_clear_color(lua_State* state) {
     const char* canvas_id = luaL_checkstring(state, 1);
     const char* widget_id = luaL_checkstring(state, 2);
     if (auto* canvas = host->ui_stack->find_canvas(canvas_id)) canvas->clear_color(widget_id);
+    return 0;
+}
+
+int engine_ui_theme_set_token(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->ui_stack) return 0;
+    const char* name = luaL_checkstring(state, 1);
+    const float r = static_cast<float>(luaL_checknumber(state, 2));
+    const float g = static_cast<float>(luaL_checknumber(state, 3));
+    const float b = static_cast<float>(luaL_checknumber(state, 4));
+    const float a = static_cast<float>(luaL_optnumber(state, 5, 255.0));
+    host->ui_stack->theme().set_token(name, {r, g, b, a});
+    return 0;
+}
+
+int engine_ui_theme_get_token(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->ui_stack) return 0;
+    const char* name = luaL_checkstring(state, 1);
+    const auto token = host->ui_stack->theme().token(name);
+    if (!token) return 0;
+    lua_pushnumber(state, static_cast<lua_Number>((*token)[0]));
+    lua_pushnumber(state, static_cast<lua_Number>((*token)[1]));
+    lua_pushnumber(state, static_cast<lua_Number>((*token)[2]));
+    lua_pushnumber(state, static_cast<lua_Number>((*token)[3]));
+    return 4;
+}
+
+int engine_ui_theme_set_role(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->ui_stack) return 0;
+    const char* name = luaL_checkstring(state, 1);
+    UiThemeRole role;
+    role.fill = luaL_optstring(state, 2, "");
+    role.text = luaL_optstring(state, 3, "");
+    role.border = luaL_optstring(state, 4, "");
+    host->ui_stack->theme().set_role(name, std::move(role));
+    return 0;
+}
+
+int engine_ui_theme_save(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->ui_stack) return luaL_error(state, "ui canvas stack is not available");
+    const auto saved = host->ui_stack->save_theme();
+    if (!saved) return luaL_error(state, "%s", saved.error().message.c_str());
+    return 0;
+}
+
+int engine_ui_theme_reload(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->ui_stack) return luaL_error(state, "ui canvas stack is not available");
+    const auto path = host->ui_stack->theme_path();
+    const auto loaded = host->ui_stack->load_theme(path);
+    if (!loaded) return luaL_error(state, "%s", loaded.error().message.c_str());
+    return 0;
+}
+
+int engine_ui_canvas_set_offset(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->ui_stack) return 0;
+    const char* canvas_id = luaL_checkstring(state, 1);
+    const char* widget_id = luaL_checkstring(state, 2);
+    const float x = static_cast<float>(luaL_checknumber(state, 3));
+    const float y = static_cast<float>(luaL_checknumber(state, 4));
+    if (auto* canvas = host->ui_stack->find_canvas(canvas_id)) canvas->set_offset(widget_id, x, y);
+    return 0;
+}
+
+int engine_ui_canvas_set_size(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->ui_stack) return 0;
+    const char* canvas_id = luaL_checkstring(state, 1);
+    const char* widget_id = luaL_checkstring(state, 2);
+    const float w = static_cast<float>(luaL_checknumber(state, 3));
+    const float h = static_cast<float>(luaL_checknumber(state, 4));
+    if (auto* canvas = host->ui_stack->find_canvas(canvas_id)) canvas->set_size(widget_id, w, h);
+    return 0;
+}
+
+int engine_ui_canvas_set_opacity(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->ui_stack) return 0;
+    const char* canvas_id = luaL_checkstring(state, 1);
+    const char* widget_id = luaL_checkstring(state, 2);
+    const float opacity = static_cast<float>(luaL_checknumber(state, 3));
+    if (auto* canvas = host->ui_stack->find_canvas(canvas_id)) canvas->set_opacity(widget_id, opacity);
     return 0;
 }
 
@@ -678,8 +914,61 @@ void push_stack_table(lua_State* state, const InventoryStack& stack) {
     lua_setfield(state, -2, "count");
 }
 
+void decorate_item_def_fields(lua_State* state, const ItemDef& def) {
+    lua_pushstring(state, def.display_name.c_str());
+    lua_setfield(state, -2, "displayName");
+    lua_pushstring(state, def.kind.c_str());
+    lua_setfield(state, -2, "kind");
+    lua_pushstring(state, def.icon.c_str());
+    lua_setfield(state, -2, "icon");
+    lua_pushstring(state, def.notes.c_str());
+    lua_setfield(state, -2, "notes");
+    lua_pushstring(state, format_item_stat_text(def).c_str());
+    lua_setfield(state, -2, "statsText");
+    lua_createtable(state, 0, 5);
+    lua_pushnumber(state, static_cast<lua_Number>(def.stats.damage_min));
+    lua_setfield(state, -2, "damageMin");
+    lua_pushnumber(state, static_cast<lua_Number>(def.stats.damage_max));
+    lua_setfield(state, -2, "damageMax");
+    lua_pushnumber(state, static_cast<lua_Number>(def.stats.attacks_per_second));
+    lua_setfield(state, -2, "attacksPerSecond");
+    lua_pushnumber(state, static_cast<lua_Number>(def.stats.dps()));
+    lua_setfield(state, -2, "dps");
+    lua_pushnumber(state, static_cast<lua_Number>(def.stats.heal));
+    lua_setfield(state, -2, "heal");
+    lua_createtable(state, 0, static_cast<int>(def.stats.modifiers.size()));
+    for (const auto& mod : def.stats.modifiers) {
+        lua_pushnumber(state, static_cast<lua_Number>(mod.value));
+        lua_setfield(state, -2, mod.id.c_str());
+    }
+    lua_setfield(state, -2, "modifiers");
+    lua_createtable(state, static_cast<int>(def.stats.on_hit.size()), 0);
+    for (std::size_t i = 0; i < def.stats.on_hit.size(); ++i) {
+        const auto& hit = def.stats.on_hit[i];
+        lua_createtable(state, 0, 4);
+        lua_pushstring(state, hit.status.c_str());
+        lua_setfield(state, -2, "status");
+        lua_pushnumber(state, static_cast<lua_Number>(hit.damage_per_tick));
+        lua_setfield(state, -2, "damagePerTick");
+        lua_pushnumber(state, static_cast<lua_Number>(hit.duration_seconds));
+        lua_setfield(state, -2, "duration");
+        lua_pushnumber(state, static_cast<lua_Number>(hit.tick_interval_seconds));
+        lua_setfield(state, -2, "tickInterval");
+        lua_rawseti(state, -2, static_cast<int>(i) + 1);
+    }
+    lua_setfield(state, -2, "onHit");
+    lua_setfield(state, -2, "stats");
+}
+
+void decorate_stack_if_known(lua_State* state, const ItemCatalogAsset* catalog, const InventoryStack& stack) {
+    if (!catalog || stack.empty()) return;
+    if (const ItemDef* def = catalog->find(stack.item_id)) {
+        decorate_item_def_fields(state, *def);
+    }
+}
+
 void push_inventory_status(lua_State* state, const InventoryStatusSnapshot& snap, const ItemCatalogAsset* catalog) {
-    lua_createtable(state, 0, 10);
+    lua_createtable(state, 0, 14);
     lua_pushinteger(state, snap.bag_capacity);
     lua_setfield(state, -2, "bagCapacity");
     lua_pushinteger(state, snap.selected_hotbar);
@@ -690,18 +979,7 @@ void push_inventory_status(lua_State* state, const InventoryStatusSnapshot& snap
     lua_createtable(state, static_cast<int>(snap.bag.size()), 0);
     for (std::size_t i = 0; i < snap.bag.size(); ++i) {
         push_stack_table(state, snap.bag[i]);
-        if (catalog && !snap.bag[i].empty()) {
-            if (const ItemDef* def = catalog->find(snap.bag[i].item_id)) {
-                lua_pushstring(state, def->display_name.c_str());
-                lua_setfield(state, -2, "displayName");
-                lua_pushstring(state, def->kind.c_str());
-                lua_setfield(state, -2, "kind");
-                lua_pushstring(state, def->icon.c_str());
-                lua_setfield(state, -2, "icon");
-                lua_pushstring(state, def->notes.c_str());
-                lua_setfield(state, -2, "notes");
-            }
-        }
+        decorate_stack_if_known(state, catalog, snap.bag[i]);
         lua_rawseti(state, -2, static_cast<int>(i) + 1);
     }
     lua_setfield(state, -2, "bag");
@@ -709,16 +987,7 @@ void push_inventory_status(lua_State* state, const InventoryStatusSnapshot& snap
     lua_createtable(state, static_cast<int>(snap.hotbar.size()), 0);
     for (std::size_t i = 0; i < snap.hotbar.size(); ++i) {
         push_stack_table(state, snap.hotbar[i]);
-        if (catalog && !snap.hotbar[i].empty()) {
-            if (const ItemDef* def = catalog->find(snap.hotbar[i].item_id)) {
-                lua_pushstring(state, def->display_name.c_str());
-                lua_setfield(state, -2, "displayName");
-                lua_pushstring(state, def->kind.c_str());
-                lua_setfield(state, -2, "kind");
-                lua_pushstring(state, def->icon.c_str());
-                lua_setfield(state, -2, "icon");
-            }
-        }
+        decorate_stack_if_known(state, catalog, snap.hotbar[i]);
         lua_rawseti(state, -2, static_cast<int>(i) + 1);
     }
     lua_setfield(state, -2, "hotbar");
@@ -726,16 +995,7 @@ void push_inventory_status(lua_State* state, const InventoryStatusSnapshot& snap
     lua_createtable(state, 0, 7);
     auto push_equip = [&](const char* key, const InventoryStack& stack) {
         push_stack_table(state, stack);
-        if (catalog && !stack.empty()) {
-            if (const ItemDef* def = catalog->find(stack.item_id)) {
-                lua_pushstring(state, def->display_name.c_str());
-                lua_setfield(state, -2, "displayName");
-                lua_pushstring(state, def->kind.c_str());
-                lua_setfield(state, -2, "kind");
-                lua_pushstring(state, def->icon.c_str());
-                lua_setfield(state, -2, "icon");
-            }
-        }
+        decorate_stack_if_known(state, catalog, stack);
         lua_setfield(state, -2, key);
     };
     push_equip("head", snap.equipped.head);
@@ -750,9 +1010,24 @@ void push_inventory_status(lua_State* state, const InventoryStatusSnapshot& snap
     lua_createtable(state, static_cast<int>(snap.ammo.size()), 0);
     for (std::size_t i = 0; i < snap.ammo.size(); ++i) {
         push_stack_table(state, snap.ammo[i]);
+        decorate_stack_if_known(state, catalog, snap.ammo[i]);
         lua_rawseti(state, -2, static_cast<int>(i) + 1);
     }
     lua_setfield(state, -2, "ammo");
+
+    lua_pushstring(state, snap.container_id.c_str());
+    lua_setfield(state, -2, "containerId");
+    lua_pushinteger(state, snap.container_capacity);
+    lua_setfield(state, -2, "containerCapacity");
+    lua_createtable(state, static_cast<int>(snap.container.size()), 0);
+    for (std::size_t i = 0; i < snap.container.size(); ++i) {
+        push_stack_table(state, snap.container[i]);
+        if (catalog && !snap.container[i].empty()) {
+            decorate_stack_if_known(state, catalog, snap.container[i]);
+        }
+        lua_rawseti(state, -2, static_cast<int>(i) + 1);
+    }
+    lua_setfield(state, -2, "container");
 
     lua_createtable(state, 0, 3);
     lua_pushstring(state, snap.ui_selection.region.c_str());
@@ -762,6 +1037,54 @@ void push_inventory_status(lua_State* state, const InventoryStatusSnapshot& snap
     lua_pushstring(state, snap.ui_selection.equip_slot.c_str());
     lua_setfield(state, -2, "equipSlot");
     lua_setfield(state, -2, "selection");
+
+    const auto& stats = snap.player_stats;
+    lua_createtable(state, 0, 24);
+    lua_pushnumber(state, static_cast<lua_Number>(stats.max_health));
+    lua_setfield(state, -2, "maxHealth");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.max_stamina));
+    lua_setfield(state, -2, "maxStamina");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.max_magicka));
+    lua_setfield(state, -2, "maxMagicka");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.armor));
+    lua_setfield(state, -2, "armor");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.strength));
+    lua_setfield(state, -2, "strength");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.agility));
+    lua_setfield(state, -2, "agility");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.intellect));
+    lua_setfield(state, -2, "intellect");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.magic_resist));
+    lua_setfield(state, -2, "magicResist");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.poison_resist));
+    lua_setfield(state, -2, "poisonResist");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.blight_resist));
+    lua_setfield(state, -2, "blightResist");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.holy_resist));
+    lua_setfield(state, -2, "holyResist");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.shadow_resist));
+    lua_setfield(state, -2, "shadowResist");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.crit_chance));
+    lua_setfield(state, -2, "critChance");
+    lua_pushinteger(state, stats.crit_marbles);
+    lua_setfield(state, -2, "critMarbles");
+    lua_pushinteger(state, stats.hit_marbles);
+    lua_setfield(state, -2, "hitMarbles");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.damage_min));
+    lua_setfield(state, -2, "damageMin");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.damage_max));
+    lua_setfield(state, -2, "damageMax");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.attacks_per_second));
+    lua_setfield(state, -2, "attacksPerSecond");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.dps));
+    lua_setfield(state, -2, "dps");
+    lua_pushnumber(state, static_cast<lua_Number>(stats.damage_multiplier));
+    lua_setfield(state, -2, "damageMultiplier");
+    lua_pushboolean(state, stats.holding_magic_weapon ? 1 : 0);
+    lua_setfield(state, -2, "holdingMagicWeapon");
+    lua_pushstring(state, weapon_school_id(stats.weapon_school));
+    lua_setfield(state, -2, "weaponSchool");
+    lua_setfield(state, -2, "playerStats");
 }
 
 int engine_inventory_grant(lua_State* state) {
@@ -863,6 +1186,48 @@ int engine_inventory_status(lua_State* state) {
     return 1;
 }
 
+int engine_apply_player_stats(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->hud || !host->inventory) return 0;
+    apply_player_stats_to_hud(*host->hud, host->inventory->compute_player_stats());
+    return 0;
+}
+
+int engine_roll_player_attack(lua_State* state) {
+    auto* host = host_from_state(state);
+    int combo_step = 0;
+    if (lua_gettop(state) >= 1 && lua_istable(state, 1)) {
+        lua_getfield(state, 1, "comboStep");
+        if (lua_isnumber(state, -1)) combo_step = static_cast<int>(lua_tointeger(state, -1));
+        lua_pop(state, 1);
+    } else if (lua_gettop(state) >= 1 && lua_isnumber(state, 1)) {
+        combo_step = static_cast<int>(lua_tointeger(state, 1));
+    }
+    if (!host || !host->inventory) {
+        lua_createtable(state, 0, 4);
+        lua_pushnumber(state, 0);
+        lua_setfield(state, -2, "damage");
+        lua_pushboolean(state, 0);
+        lua_setfield(state, -2, "crit");
+        lua_pushstring(state, "none");
+        lua_setfield(state, -2, "school");
+        lua_pushinteger(state, combo_step);
+        lua_setfield(state, -2, "comboStep");
+        return 1;
+    }
+    const auto roll = host->inventory->roll_player_attack(combo_step);
+    lua_createtable(state, 0, 4);
+    lua_pushnumber(state, static_cast<lua_Number>(roll.damage));
+    lua_setfield(state, -2, "damage");
+    lua_pushboolean(state, roll.crit ? 1 : 0);
+    lua_setfield(state, -2, "crit");
+    lua_pushstring(state, weapon_school_id(roll.school));
+    lua_setfield(state, -2, "school");
+    lua_pushinteger(state, roll.combo_step);
+    lua_setfield(state, -2, "comboStep");
+    return 1;
+}
+
 int engine_inventory_def(lua_State* state) {
     auto* host = host_from_state(state);
     if (!host || !host->inventory) return luaL_error(state, "inventory runtime is not available");
@@ -872,20 +1237,39 @@ int engine_inventory_def(lua_State* state) {
         lua_pushnil(state);
         return 1;
     }
-    lua_createtable(state, 0, 6);
+    lua_createtable(state, 0, 8);
     lua_pushstring(state, def->id.c_str());
     lua_setfield(state, -2, "id");
-    lua_pushstring(state, def->display_name.c_str());
-    lua_setfield(state, -2, "displayName");
-    lua_pushstring(state, def->kind.c_str());
-    lua_setfield(state, -2, "kind");
-    lua_pushstring(state, def->icon.c_str());
-    lua_setfield(state, -2, "icon");
-    lua_pushstring(state, def->notes.c_str());
-    lua_setfield(state, -2, "notes");
+    decorate_item_def_fields(state, *def);
     lua_pushboolean(state, def->icon_only ? 1 : 0);
     lua_setfield(state, -2, "iconOnly");
     return 1;
+}
+
+int engine_inventory_open_container(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->inventory) return luaL_error(state, "inventory runtime is not available");
+    const char* container_id = luaL_checkstring(state, 1);
+    const auto result = host->inventory->open_container(container_id ? container_id : "");
+    if (!result) return luaL_error(state, "%s", result.error().message.c_str());
+    return 0;
+}
+
+int engine_inventory_close_container(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->inventory) return luaL_error(state, "inventory runtime is not available");
+    host->inventory->close_container();
+    return 0;
+}
+
+int engine_inventory_grant_container(lua_State* state) {
+    auto* host = host_from_state(state);
+    if (!host || !host->inventory) return luaL_error(state, "inventory runtime is not available");
+    const char* item_id = luaL_checkstring(state, 1);
+    const int count = static_cast<int>(luaL_optinteger(state, 2, 1));
+    const auto result = host->inventory->grant_container(item_id, count);
+    if (!result) return luaL_error(state, "%s", result.error().message.c_str());
+    return 0;
 }
 
 int engine_quest_start(lua_State* state) {
@@ -1291,6 +1675,14 @@ void register_engine_api(lua_State* state, LuaHost* host) {
     lua_setfield(state, -2, "world_ui_upsert");
     lua_pushcfunction(state, engine_world_ui_clear);
     lua_setfield(state, -2, "world_ui_clear");
+    lua_pushcfunction(state, engine_combat_text);
+    lua_setfield(state, -2, "combat_text");
+    lua_pushcfunction(state, engine_status_apply);
+    lua_setfield(state, -2, "status_apply");
+    lua_pushcfunction(state, engine_status_clear);
+    lua_setfield(state, -2, "status_clear");
+    lua_pushcfunction(state, engine_status_set_anchor);
+    lua_setfield(state, -2, "status_set_anchor");
     lua_pushcfunction(state, engine_ui_push);
     lua_setfield(state, -2, "ui_push");
     lua_pushcfunction(state, engine_ui_pop);
@@ -1305,6 +1697,10 @@ void register_engine_api(lua_State* state, LuaHost* host) {
     lua_setfield(state, -2, "ui_canvas_set_enabled");
     lua_pushcfunction(state, engine_ui_canvas_set_text);
     lua_setfield(state, -2, "ui_canvas_set_text");
+    lua_pushcfunction(state, engine_ui_canvas_set_text_typed);
+    lua_setfield(state, -2, "ui_canvas_set_text_typed");
+    lua_pushcfunction(state, engine_ui_canvas_skip_typewriter);
+    lua_setfield(state, -2, "ui_canvas_skip_typewriter");
     lua_pushcfunction(state, engine_ui_canvas_set_image);
     lua_setfield(state, -2, "ui_canvas_set_image");
     lua_pushcfunction(state, engine_ui_canvas_set_visible);
@@ -1313,6 +1709,22 @@ void register_engine_api(lua_State* state, LuaHost* host) {
     lua_setfield(state, -2, "ui_canvas_set_color");
     lua_pushcfunction(state, engine_ui_canvas_clear_color);
     lua_setfield(state, -2, "ui_canvas_clear_color");
+    lua_pushcfunction(state, engine_ui_theme_set_token);
+    lua_setfield(state, -2, "ui_theme_set_token");
+    lua_pushcfunction(state, engine_ui_theme_get_token);
+    lua_setfield(state, -2, "ui_theme_get_token");
+    lua_pushcfunction(state, engine_ui_theme_set_role);
+    lua_setfield(state, -2, "ui_theme_set_role");
+    lua_pushcfunction(state, engine_ui_theme_save);
+    lua_setfield(state, -2, "ui_theme_save");
+    lua_pushcfunction(state, engine_ui_theme_reload);
+    lua_setfield(state, -2, "ui_theme_reload");
+    lua_pushcfunction(state, engine_ui_canvas_set_offset);
+    lua_setfield(state, -2, "ui_canvas_set_offset");
+    lua_pushcfunction(state, engine_ui_canvas_set_size);
+    lua_setfield(state, -2, "ui_canvas_set_size");
+    lua_pushcfunction(state, engine_ui_canvas_set_opacity);
+    lua_setfield(state, -2, "ui_canvas_set_opacity");
     lua_pushcfunction(state, engine_coop_begin_host_lobby);
     lua_setfield(state, -2, "coop_begin_host_lobby");
     lua_pushcfunction(state, engine_coop_mock_guest_join);
@@ -1349,8 +1761,18 @@ void register_engine_api(lua_State* state, LuaHost* host) {
     lua_setfield(state, -2, "inventory_move");
     lua_pushcfunction(state, engine_inventory_status);
     lua_setfield(state, -2, "inventory_status");
+    lua_pushcfunction(state, engine_apply_player_stats);
+    lua_setfield(state, -2, "apply_player_stats");
+    lua_pushcfunction(state, engine_roll_player_attack);
+    lua_setfield(state, -2, "roll_player_attack");
     lua_pushcfunction(state, engine_inventory_def);
     lua_setfield(state, -2, "inventory_def");
+    lua_pushcfunction(state, engine_inventory_open_container);
+    lua_setfield(state, -2, "inventory_open_container");
+    lua_pushcfunction(state, engine_inventory_close_container);
+    lua_setfield(state, -2, "inventory_close_container");
+    lua_pushcfunction(state, engine_inventory_grant_container);
+    lua_setfield(state, -2, "inventory_grant_container");
     lua_pushcfunction(state, engine_quest_start);
     lua_setfield(state, -2, "quest_start");
     lua_pushcfunction(state, engine_quest_complete_objective);
@@ -1564,6 +1986,17 @@ void LuaRuntime::blackboard_clear() {
     if (impl_) impl_->host.blackboard.clear();
 }
 
+void LuaRuntime::blackboard_erase_prefix(const std::string& prefix) {
+    if (!impl_ || prefix.empty()) return;
+    auto& board = impl_->host.blackboard;
+    for (auto it = board.begin(); it != board.end();) {
+        if (it->first.compare(0, prefix.size(), prefix) == 0)
+            it = board.erase(it);
+        else
+            ++it;
+    }
+}
+
 void LuaRuntime::set_hud_runtime(HudRuntime* hud) noexcept {
     if (impl_) impl_->host.hud = hud;
 }
@@ -1574,6 +2007,14 @@ void LuaRuntime::set_ui_canvas_stack(UiCanvasStack* stack) noexcept {
 
 void LuaRuntime::set_world_ui_billboards(WorldUiBillboardRuntime* billboards) noexcept {
     if (impl_) impl_->host.world_ui = billboards;
+}
+
+void LuaRuntime::set_combat_text(CombatTextRuntime* combat_text) noexcept {
+    if (impl_) impl_->host.combat_text = combat_text;
+}
+
+void LuaRuntime::set_status_effects(StatusEffectRuntime* status_effects) noexcept {
+    if (impl_) impl_->host.status_effects = status_effects;
 }
 
 void LuaRuntime::set_quest_runtime(QuestRuntime* quest) noexcept {
@@ -1665,8 +2106,42 @@ void LuaRuntime::dispatch_combat_hit(const CombatContactEvent& event) {
     payload["hurtPlacementEntityId"] = event.hurt_placement_entity_id;
     payload["hurtCombatId"] = event.hurt_combat_id;
     payload["hurtVolumeIndex"] = event.hurt_volume_index;
+    payload["comboStep"] = event.attacker_combo_step;
+    payload["chainHop"] = event.chain_hop;
+    payload["blocked"] = event.blocked;
+    if (event.contact_point) {
+        payload["contactPoint"] = {{"x", event.contact_point->x}, {"y", event.contact_point->y},
+            {"z", event.contact_point->z}};
+    }
+    if (event.hurt_entity_position) {
+        payload["hurtEntityPosition"] = {{"x", event.hurt_entity_position->x},
+            {"y", event.hurt_entity_position->y}, {"z", event.hurt_entity_position->z}};
+    }
     if (const auto result = call_handler(binding->second.handler, payload.dump()); !result)
         recent_errors_.push_back(result.error());
+}
+
+void LuaRuntime::dispatch_status_tick(const StatusTickEvent& event) {
+    if (!impl_ || !impl_->state) return;
+    lua_getglobal(impl_->state, "on_status_tick");
+    if (!lua_isfunction(impl_->state, -1)) {
+        lua_pop(impl_->state, 1);
+        return;
+    }
+    nlohmann::json payload;
+    payload["targetId"] = event.target_id;
+    payload["status"] = status_effect_kind_id(event.kind);
+    payload["amount"] = event.amount;
+    payload["stacks"] = event.stacks;
+    payload["x"] = event.world_x;
+    payload["y"] = event.world_y;
+    payload["z"] = event.world_z;
+    lua_pushstring(impl_->state, payload.dump().c_str());
+    if (lua_pcall(impl_->state, 1, 0, 0) != LUA_OK) {
+        const std::string message = lua_tostring(impl_->state, -1) ? lua_tostring(impl_->state, -1) : "on_status_tick failed";
+        lua_pop(impl_->state, 1);
+        recent_errors_.push_back(lua_error("SCRIPT-HANDLER-FAILED", message, "Fix on_status_tick."));
+    }
 }
 
 void LuaRuntime::dispatch_ui_button(const std::string& bind_id, const std::string& canvas_id,
@@ -1678,6 +2153,11 @@ void LuaRuntime::dispatch_ui_button(const std::string& bind_id, const std::strin
             }
             if (dialogue_advance_continue(impl_->host.ui_stack, impl_->host.dialogue, impl_->host.dialogue_ui)) {
                 return;
+            }
+        }
+        if (bind_id == "prologue.continue") {
+            if (HudRuntime* canvas = impl_->host.ui_stack->find_canvas("prologue")) {
+                if (canvas->skip_typewriter("prologue.body")) return;
             }
         }
         if (bind_id.rfind("dialogue.choice_", 0) == 0 && impl_->host.dialogue) {
@@ -1755,6 +2235,21 @@ void LuaRuntime::dispatch_event_timeline_emit(const EventTimelineEmitEvent& even
         payload["payload"] = nlohmann::json::object();
     }
     if (const auto result = call_handler("on_event_timeline_emit", payload.dump()); !result)
+        recent_errors_.push_back(result.error());
+}
+
+void LuaRuntime::dispatch_update(float dt_seconds) {
+    if (!impl_ || !impl_->state) return;
+    if (!(dt_seconds > 0.0f) || !std::isfinite(dt_seconds)) return;
+    lua_getglobal(impl_->state, "on_update");
+    if (!lua_isfunction(impl_->state, -1)) {
+        lua_pop(impl_->state, 1);
+        return;
+    }
+    lua_pop(impl_->state, 1);
+    nlohmann::json payload;
+    payload["dt"] = dt_seconds;
+    if (const auto result = call_handler("on_update", payload.dump()); !result)
         recent_errors_.push_back(result.error());
 }
 

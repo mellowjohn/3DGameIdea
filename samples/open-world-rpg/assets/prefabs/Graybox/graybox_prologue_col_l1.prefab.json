@@ -1,0 +1,126 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.165,
+          0.157,
+          0.149
+        ],
+        "primitive": "cube"
+      },
+      "name": "shaft",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          8.25,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.6,
+          16.5,
+          1.6
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2,
+          0.19,
+          0.18
+        ],
+        "primitive": "cube"
+      },
+      "name": "base",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.4,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.2,
+          0.8,
+          2.2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2,
+          0.19,
+          0.18
+        ],
+        "primitive": "cube"
+      },
+      "name": "ring_mid",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          8.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2,
+          0.45,
+          2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.22,
+          0.2,
+          0.19
+        ],
+        "primitive": "cube"
+      },
+      "name": "cap",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          16.6,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.4,
+          0.7,
+          2.4
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

@@ -33,7 +33,7 @@ Diagnostics panel toggle **Show collision debug** draws collision bounds in the 
 - Orange wireframes: dynamic bodies (including Rigidbody motion bodies from TICKET-0197)
 - Red crosses: recent contact points (when physics events are available)
 
-Separate Diagnostics toggle **Show event zones** (default on) draws only authored interaction/event volumes in violet with interaction-id labels, without enabling full collision debug.
+Separate Diagnostics toggle **Show event zones** (default off) draws only authored interaction/event volumes in violet with interaction-id labels, without enabling full collision debug. When enabled, the editor caches entities that have interaction volumes and rebuilds that list only on scene edits.
 
 Toggle state is session-local and not persisted. When placement collision is active, the editor steps physics each frame and records recent trigger enter contact points for the overlay. During play/test, `PlacementCollisionTracker` writes Rigidbody motion-body poses back to entity transforms; outside play/test, authored dynamic Rigidbodies spawn as kinematic so they do not fall while editing.
 

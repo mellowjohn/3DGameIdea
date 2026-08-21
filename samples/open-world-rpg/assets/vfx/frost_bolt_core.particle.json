@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "frost_bolt_core",
+  "texture": "assets/vfx/rune_sigil_flipbook_4x4.png",
+  "blend": "additive",
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [0.95, 1.0, 1.0] },
+      { "t": 0.25, "color": [0.55, 0.88, 1.0] },
+      { "t": 0.65, "color": [0.22, 0.55, 0.95] },
+      { "t": 1.0, "color": [0.08, 0.18, 0.4] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.18 },
+      { "t": 0.3, "value": 0.28 },
+      { "t": 1.0, "value": 0.07 }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.04 },
+      { "t": 0.45, "value": 0.2 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.14, "max": 0.24 },
+  "speed": { "min": 0.02, "max": 0.1 },
+  "rate": 0,
+  "spreadAngle": [3, 8],
+  "shape": "sphere",
+  "shapeStyle": "volume",
+  "shapeSize": [0.014, 0.014, 0.014],
+  "orientation": "FacingCamera",
+  "lightEmission": 0.88,
+  "crossedBillboards": true,
+  "drag": 0.1,
+  "maxParticles": 12,
+  "enabled": true,
+  "emissionDirection": [0.0, 0.0, -1.0],
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "Loop",
+  "flipbookFramerate": 16,
+  "flipbookStartRandom": true,
+  "rotationStartRandom": true,
+  "minScreenSize": 6
+}

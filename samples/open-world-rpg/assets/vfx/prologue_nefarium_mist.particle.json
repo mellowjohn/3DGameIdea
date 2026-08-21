@@ -1,0 +1,121 @@
+{
+  "acceleration": [
+    0.0,
+    0.054999999701976776,
+    0.0
+  ],
+  "aspectRatio": 1.4500000476837158,
+  "blend": "alpha",
+  "color": {
+    "keypoints": [
+      {
+        "color": [
+          0.10999999940395355,
+          0.05999999865889549,
+          0.15000000596046448
+        ],
+        "t": 0.0
+      },
+      {
+        "color": [
+          0.17000000178813934,
+          0.09000000357627869,
+          0.20999999344348907
+        ],
+        "t": 0.6000000238418579
+      },
+      {
+        "color": [
+          0.05000000074505806,
+          0.029999999329447746,
+          0.07999999821186066
+        ],
+        "t": 1.0
+      }
+    ]
+  },
+  "crossedBillboards": true,
+  "drag": 0.30000001192092896,
+  "emissionDirection": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "enabled": true,
+  "flipbookFramerate": 5.0,
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "Loop",
+  "flipbookStartRandom": true,
+  "id": "prologue_nefarium_mist",
+  "lifetime": {
+    "max": 11.0,
+    "min": 7.0
+  },
+  "lightEmission": 0.0,
+  "maxParticles": 64,
+  "minScreenSize": 6.0,
+  "orientation": "FacingCameraWorldUp",
+  "rate": 5.0,
+  "rotation": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.0
+      },
+      {
+        "t": 1.0,
+        "value": 42.0
+      }
+    ]
+  },
+  "rotationStartRandom": true,
+  "schemaVersion": 1,
+  "shape": "box",
+  "shapeSize": [
+    5.0,
+    0.699999988079071,
+    3.0
+  ],
+  "shapeStyle": "volume",
+  "size": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 3.200000047683716
+      },
+      {
+        "t": 0.550000011920929,
+        "value": 5.400000095367432
+      },
+      {
+        "t": 1.0,
+        "value": 6.400000095367432
+      }
+    ]
+  },
+  "speed": {
+    "max": 0.3199999928474426,
+    "min": 0.11999999731779099
+  },
+  "spreadAngle": [
+    24.0,
+    24.0
+  ],
+  "texture": "assets/vfx/smoke_flipbook_4x4.png",
+  "transparency": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.7799999713897705
+      },
+      {
+        "t": 0.20000000298023224,
+        "value": 0.699999988079071
+      },
+      {
+        "t": 1.0,
+        "value": 1.0
+      }
+    ]
+  }
+}

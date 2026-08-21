@@ -1,0 +1,66 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.2199999988079071,
+          0.20000000298023224,
+          0.20999999344348907
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "ring",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.08,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          6,
+          0.04,
+          6
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.11999999731779099,
+          0.11999999731779099
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "center",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.1,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          2.2,
+          0.05,
+          2.2
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

@@ -1,0 +1,98 @@
+{
+  "components": [
+    {
+      "data": {
+        "halfHeight": 0.7,
+        "layer": "staticWorld",
+        "radius": 0.38,
+        "shape": "capsule",
+        "transform": {
+          "position": [
+            0,
+            1.08,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "trigger": false
+      },
+      "id": "collision-0",
+      "type": "collider"
+    },
+    {
+      "data": {
+        "combatHurt": "dummy_body",
+        "layer": "trigger",
+        "radius": 0.85,
+        "shape": "sphere",
+        "transform": {
+          "position": [
+            0,
+            1.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "trigger": true
+      },
+      "id": "collision-hurt",
+      "type": "collider"
+    },
+    {
+      "data": {
+        "controller": "assets/animators/target_dummy.animator.json",
+        "defaultState": "idle"
+      },
+      "id": "animator-0",
+      "type": "animator"
+    }
+  ],
+  "entities": [
+    {
+      "mesh": {
+        "asset": "assets/models/target_dummy.gltf"
+      },
+      "name": "TargetDummy",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

@@ -1,5 +1,7 @@
 #include "engine/ui/ui_canvas_stack.h"
 
+#include "engine/assets/ui_theme_asset.h"
+#include "engine/assets/item_catalog_asset.h"
 #include "engine/inventory/inventory_runtime.h"
 #include "engine/scripting/lua_runtime.h"
 #include "engine/ui/game_fonts.h"
@@ -11,6 +13,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cctype>
+#include <filesystem>
+#include <vector>
 
 namespace engine {
 namespace {
@@ -53,10 +57,41 @@ void UiCanvasStack::set_texture_cache(UiTextureCache* cache) {
     }
 }
 
+Result<void> UiCanvasStack::load_theme(const std::filesystem::path& path) {
+    theme_path_ = path;
+    if (path.empty() || !std::filesystem::exists(path)) {
+        theme_ = UiThemeAsset::built_in();
+        hud_.set_theme(&theme_);
+        for (auto& [id, runtime] : canvases_) {
+            (void)id;
+            runtime.set_theme(&theme_);
+        }
+        return Result<void>::success();
+    }
+    auto loaded = UiThemeAsset::load(path);
+    if (!loaded) return Result<void>::failure(loaded.error());
+    theme_ = std::move(loaded.value());
+    hud_.set_theme(&theme_);
+    for (auto& [id, runtime] : canvases_) {
+        (void)id;
+        runtime.set_theme(&theme_);
+    }
+    return Result<void>::success();
+}
+
+Result<void> UiCanvasStack::save_theme() const {
+    if (theme_path_.empty()) {
+        return Result<void>::failure(stack_error("UITHEME-PATH", "No UI theme path is loaded",
+            "Call load_theme with assets/ui/ui-theme.json."));
+    }
+    return theme_.save_atomic(theme_path_);
+}
+
 Result<void> UiCanvasStack::set_hud(const std::filesystem::path& path) {
     const auto loaded = hud_.load(path);
     if (!loaded) return loaded;
     hud_.set_texture_cache(textures_);
+    hud_.set_theme(&theme_);
     paths_["hud"] = path;
     return Result<void>::success();
 }
@@ -74,6 +109,7 @@ Result<void> UiCanvasStack::register_canvas(std::string id, const std::filesyste
     const auto loaded = runtime.load(path);
     if (!loaded) return Result<void>::failure(loaded.error());
     runtime.set_texture_cache(textures_);
+    runtime.set_theme(&theme_);
     paths_[id] = path;
     canvases_[id] = std::move(runtime);
     return Result<void>::success();
@@ -94,6 +130,7 @@ Result<void> UiCanvasStack::ensure_loaded(const std::string& id) {
     const auto loaded = runtime.load(path_it->second);
     if (!loaded) return Result<void>::failure(loaded.error());
     runtime.set_texture_cache(textures_);
+    runtime.set_theme(&theme_);
     canvases_[id] = std::move(runtime);
     return Result<void>::success();
 }
@@ -137,7 +174,9 @@ Result<void> UiCanvasStack::pop() {
         return Result<void>::failure(
             stack_error("UICANVAS-STACK-EMPTY", "No modal canvas to pop", "push/show a canvas first."));
     }
+    const std::string popped = modal_stack_.back();
     modal_stack_.pop_back();
+    if (popped == "inventory" && inventory_) inventory_->close_container();
     clear_drag_state();
     reset_modal_focus();
     return Result<void>::success();
@@ -158,6 +197,7 @@ Result<void> UiCanvasStack::hide(const std::string& id) {
         return Result<void>::failure(
             stack_error("UICANVAS-STACK-MISSING", "Canvas is not on the modal stack: " + id, "push/show it first."));
     }
+    if (id == "inventory" && inventory_) inventory_->close_container();
     reset_modal_focus();
     return Result<void>::success();
 }
@@ -166,6 +206,7 @@ void UiCanvasStack::clear_modals() {
     modal_stack_.clear();
     modal_focus_widget_id_.reset();
     clear_drag_state();
+    if (inventory_) inventory_->close_container();
 }
 
 void UiCanvasStack::clear_drag_state() noexcept {
@@ -236,10 +277,28 @@ bool parse_inventory_select_bind(const std::string& bind, std::string& region, i
         }
         return index >= 0;
     }
+    if (rest.rfind("container.", 0) == 0) {
+        region = "container";
+        try {
+            index = std::stoi(rest.substr(10));
+        } catch (...) {
+            return false;
+        }
+        return index >= 0;
+    }
     if (rest.rfind("equip.", 0) == 0) {
         region = "equip";
         equip_slot = rest.substr(6);
         return !equip_slot.empty();
+    }
+    if (rest.rfind("ammo.", 0) == 0) {
+        region = "ammo";
+        try {
+            index = std::stoi(rest.substr(5));
+        } catch (...) {
+            return false;
+        }
+        return index >= 0;
     }
     return false;
 }
@@ -252,7 +311,7 @@ std::string upper_ascii(std::string value) {
 
 struct TooltipLines {
     std::string title;
-    std::string subtitle;
+    std::vector<std::string> lines;
 };
 
 std::optional<TooltipLines> inventory_tooltip_for_bind(const InventoryRuntime* inventory, const std::string& bind) {
@@ -272,6 +331,14 @@ std::optional<TooltipLines> inventory_tooltip_for_bind(const InventoryRuntime* i
         empty_hint = "Hotbar " + std::to_string(index + 1);
         if (index >= 0 && index < static_cast<int>(snap.hotbar.size()))
             stack = &snap.hotbar[static_cast<std::size_t>(index)];
+    } else if (region == "container") {
+        empty_hint = "Crate slot";
+        if (index >= 0 && index < static_cast<int>(snap.container.size()))
+            stack = &snap.container[static_cast<std::size_t>(index)];
+    } else if (region == "ammo") {
+        empty_hint = "Ammo slot";
+        if (index >= 0 && index < static_cast<int>(snap.ammo.size()))
+            stack = &snap.ammo[static_cast<std::size_t>(index)];
     } else if (region == "equip") {
         empty_hint = "Equip · " + equip_slot;
         if (equip_slot == "head") stack = &snap.equipped.head;
@@ -286,39 +353,50 @@ std::optional<TooltipLines> inventory_tooltip_for_bind(const InventoryRuntime* i
         }
     }
     if (!stack || stack->empty()) {
-        return TooltipLines{empty_hint.empty() ? "Empty" : "Empty", empty_hint};
+        return TooltipLines{"Empty", {empty_hint}};
     }
-    TooltipLines lines;
-    if (const ItemDef* def = inventory->find_def(stack->item_id)) {
-        lines.title = def->display_name.empty() ? def->id : def->display_name;
-        lines.subtitle = upper_ascii(def->kind);
+    TooltipLines tip;
+    const ItemDef* def = inventory->find_def(stack->item_id);
+    if (def) {
+        tip.title = def->display_name.empty() ? def->id : def->display_name;
+        std::string kind_line = upper_ascii(def->kind);
+        if (stack->count > 1) {
+            if (!kind_line.empty()) kind_line += "  ·  ";
+            kind_line += "x" + std::to_string(stack->count);
+        }
+        if (!kind_line.empty()) tip.lines.push_back(std::move(kind_line));
+        const auto stats = format_item_stat_lines(*def);
+        tip.lines.insert(tip.lines.end(), stats.begin(), stats.end());
     } else {
-        lines.title = stack->item_id;
+        tip.title = stack->item_id;
+        if (stack->count > 1) tip.lines.push_back("x" + std::to_string(stack->count));
     }
-    if (stack->count > 1) {
-        if (!lines.subtitle.empty()) lines.subtitle += "  ·  ";
-        lines.subtitle += "x" + std::to_string(stack->count);
-    }
-    return lines;
+    return tip;
 }
 
 void draw_themed_tooltip(ImDrawList* draw_list, const ImVec2& mouse, const ImVec2& clip_min, const ImVec2& clip_max,
-    const TooltipLines& lines) {
-    if (!draw_list || lines.title.empty()) return;
+    const TooltipLines& tip) {
+    if (!draw_list || tip.title.empty()) return;
     ImFont* font = GameFonts::ui() ? GameFonts::ui() : ImGui::GetFont();
     const float title_size = 16.0f;
-    const float sub_size = 13.0f;
+    const float line_size = 13.0f;
     const float pad_x = 12.0f;
     const float pad_y = 10.0f;
-    const float gap = lines.subtitle.empty() ? 0.0f : 4.0f;
     const float wrap = 280.0f;
-    const ImVec2 title_sz = font->CalcTextSizeA(title_size, wrap, wrap, lines.title.c_str());
-    ImVec2 sub_sz{0.0f, 0.0f};
-    if (!lines.subtitle.empty()) {
-        sub_sz = font->CalcTextSizeA(sub_size, wrap, wrap, lines.subtitle.c_str());
+    const ImVec2 title_sz = font->CalcTextSizeA(title_size, wrap, wrap, tip.title.c_str());
+    std::vector<ImVec2> line_sz;
+    line_sz.reserve(tip.lines.size());
+    float lines_h = 0.0f;
+    float lines_w = 0.0f;
+    for (const auto& line : tip.lines) {
+        const ImVec2 sz = font->CalcTextSizeA(line_size, wrap, wrap, line.c_str());
+        line_sz.push_back(sz);
+        lines_w = std::max(lines_w, sz.x);
+        lines_h += sz.y + 3.0f;
     }
-    const float box_w = std::max(title_sz.x, sub_sz.x) + pad_x * 2.0f;
-    const float box_h = title_sz.y + gap + sub_sz.y + pad_y * 2.0f;
+    if (!tip.lines.empty()) lines_h += 2.0f;
+    const float box_w = std::max(title_sz.x, lines_w) + pad_x * 2.0f;
+    const float box_h = title_sz.y + lines_h + pad_y * 2.0f;
     float x = mouse.x + 18.0f;
     float y = mouse.y + 18.0f;
     if (x + box_w > clip_max.x - 4.0f) x = mouse.x - box_w - 12.0f;
@@ -330,10 +408,12 @@ void draw_themed_tooltip(ImDrawList* draw_list, const ImVec2& mouse, const ImVec
     draw_list->AddRectFilled(min, max, IM_COL32(30, 28, 24, 245), 4.0f);
     draw_list->AddRect(min, max, IM_COL32(213, 185, 120, 220), 4.0f, 0, 1.5f);
     const ImVec2 title_pos{min.x + pad_x, min.y + pad_y};
-    draw_list->AddText(font, title_size, title_pos, IM_COL32(241, 238, 232, 255), lines.title.c_str(), nullptr, wrap);
-    if (!lines.subtitle.empty()) {
-        const ImVec2 sub_pos{min.x + pad_x, title_pos.y + title_sz.y + gap};
-        draw_list->AddText(font, sub_size, sub_pos, IM_COL32(213, 185, 120, 230), lines.subtitle.c_str(), nullptr, wrap);
+    draw_list->AddText(font, title_size, title_pos, IM_COL32(241, 238, 232, 255), tip.title.c_str(), nullptr, wrap);
+    float cursor_y = title_pos.y + title_sz.y + (tip.lines.empty() ? 0.0f : 5.0f);
+    for (std::size_t i = 0; i < tip.lines.size(); ++i) {
+        const ImU32 color = (i == 0) ? IM_COL32(213, 185, 120, 230) : IM_COL32(220, 214, 204, 240);
+        draw_list->AddText(font, line_size, ImVec2{min.x + pad_x, cursor_y}, color, tip.lines[i].c_str(), nullptr, wrap);
+        cursor_y += line_sz[i].y + 3.0f;
     }
 }
 
@@ -544,7 +624,7 @@ void UiCanvasStack::tick_typewriters(float delta_seconds) {
 }
 
 void UiCanvasStack::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, const ImVec2& image_max) const {
-    if (hud_.has_widgets()) hud_.draw_overlay(draw_list, image_min, image_max, std::nullopt);
+    if (hud_visible_ && hud_.has_widgets()) hud_.draw_overlay(draw_list, image_min, image_max, std::nullopt);
     for (const auto& id : modal_stack_) {
         const auto it = canvases_.find(id);
         if (it == canvases_.end()) continue;

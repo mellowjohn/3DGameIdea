@@ -9,7 +9,7 @@
     "atlas": "C:\\Users\\johnr\\Documents\\3DGameIdea\\samples\\open-world-rpg\\assets\\models\\player.png",
     "report": "C:\\Users\\johnr\\Documents\\3DGameIdea\\samples\\open-world-rpg\\assets\\models\\player.bake.json"
   },
-  "elapsedSec": 88.641,
+  "elapsedSec": 87.224,
   "bake": {
     "source": "C:\\Users\\johnr\\Documents\\3DGameIdea\\tools\\art\\player\\GoodPlayerModel.gltf",
     "atlasSource": "C:\\Users\\johnr\\Documents\\3DGameIdea\\tools\\art\\player\\GoodPlayerModel.png",
@@ -56,7 +56,7 @@
     ],
     "scale": 1.1238825244101882,
     "targetHeight": 2.75,
-    "authoringSource": "C:\\Users\\johnr\\Documents\\GoodPlayerModel.bbmodel",
+    "authoringSource": "C:\\Users\\johnr\\Documents\\3DGameIdea\\tools\\art\\player\\GoodPlayerModel_rigged.bbmodel",
     "refreshedFromBbmodel": true,
     "animationSyncOnly": true,
     "exportedClips": [
@@ -103,7 +103,7 @@
     {
       "code": "ASSET-BAKE-EMPTY-MESH",
       "ok": true,
-      "detail": "verts=3452 has_indices=True"
+      "detail": "verts=3410 has_indices=True"
     },
     {
       "code": "ASSET-BAKE-GENERATOR",
@@ -158,7 +158,7 @@
     {
       "code": "ASSET-BAKE-CLIP-MISSING",
       "ok": true,
-      "detail": "missing=[] have=['Attack', 'Block', 'Death', 'Dodge', 'DodgeBack', 'DodgeLeft', 'DodgeRight', 'Fall', 'HitReact', 'Idle', 'Interact', 'InteractPickup', 'Jump', 'Land', 'Revive', 'Run', 'Walk']"
+      "detail": "missing=[] gltf=['Attack', 'Block', 'Death', 'Dodge', 'DodgeBack', 'DodgeLeft', 'DodgeRight', 'Fall', 'HitReact', 'Idle', 'Interact', 'InteractPickup', 'Jump', 'Land', 'Revive', 'Run', 'Walk'] overrides=['Attack', 'Attack2', 'Attack3', 'BowAim', 'BowDraw', 'BowRelease', 'BowShoot', 'MagicCast']"
     },
     {
       "code": "ASSET-BAKE-CLIP-EMPTY",
@@ -173,7 +173,7 @@
     {
       "code": "ASSET-BAKE-WINDING-HAND",
       "ok": true,
-      "detail": "hand_tris=288 outward=284 inward=4"
+      "detail": "hand_tris=264 outward=264 inward=0"
     },
     {
       "code": "ASSET-BAKE-CLIP-LOCO-THIN",

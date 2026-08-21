@@ -2,6 +2,7 @@
 
 #include "engine/world/authored_components.h"
 #include "engine/world/components.h"
+#include "engine/world/world_partition.h"
 
 #include "engine/assets/prefab_asset.h"
 
@@ -15,6 +16,22 @@
 #include <vector>
 
 namespace engine {
+
+/// How a `.world.json` is presented at runtime (thin cinematic instances vs open world).
+enum class WorldPresentation : std::uint8_t {
+    OpenWorld = 0,
+    Menu,
+    CinematicInstance,
+};
+
+/// Optional terrain stores owned by a self-contained world presentation.
+/// Paths are project-relative and intentionally keep height, paint, and foliage
+/// independently diffable.
+struct WorldTerrainDataPaths {
+    std::string edits;
+    std::string paint;
+    std::string foliage;
+};
 
 class Scene final {
 public:
@@ -31,7 +48,8 @@ public:
     /**
      * @param bump_edit_revision When false, updates the pose without invalidating placement-collision sync
      * (physics write-back, play-test player visual follow). Editor/gizmo/MCP transforms keep the default so
-     * collision bodies stay in sync.
+     * collision bodies stay in sync. World placements also retag `placement.cell` from the new position so
+     * save/load cannot persist WORLD-PLACEMENT-CELL-MISMATCH after physics follow or End Test restore.
      */
     [[nodiscard]] Result<void> set_transform(const EntityId& id, const TransformComponent& transform,
         bool bump_edit_revision = true);
@@ -68,6 +86,13 @@ public:
     [[nodiscard]] std::vector<EntityId> entity_ids() const;
     [[nodiscard]] std::vector<EngineError> validate() const;
     [[nodiscard]] std::string to_json() const;
+    /** Partition bounds from authored `worldSizeMeters` / `cellSizeMeters` (DEC-0054 defaults when unset). */
+    [[nodiscard]] PartitionConfig partition_config() const;
+    /** Optional `presentation` on the world document; defaults to OpenWorld. */
+    [[nodiscard]] WorldPresentation presentation() const noexcept { return presentation_; }
+    void set_presentation(WorldPresentation presentation) noexcept { presentation_ = presentation; }
+    [[nodiscard]] const std::optional<WorldTerrainDataPaths>& terrain_data_paths() const noexcept { return terrain_data_paths_; }
+    void set_terrain_data_paths(std::optional<WorldTerrainDataPaths> paths) { terrain_data_paths_ = std::move(paths); }
 
     [[nodiscard]] static Result<Scene> from_json(const std::string& json);
     [[nodiscard]] static Result<Scene> load(const std::filesystem::path& path);
@@ -83,6 +108,8 @@ private:
     std::optional<std::string> document_name_;
     std::optional<std::array<double, 2>> world_size_meters_;
     std::optional<double> cell_size_meters_;
+    WorldPresentation presentation_ = WorldPresentation::OpenWorld;
+    std::optional<WorldTerrainDataPaths> terrain_data_paths_;
 };
 
 } // namespace engine

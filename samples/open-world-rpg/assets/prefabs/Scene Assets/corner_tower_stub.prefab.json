@@ -1,0 +1,32 @@
+{
+  "components": [
+    {
+      "data": {
+        "halfExtent": [1.45, 2.7, 2.0],
+        "layer": "staticWorld",
+        "shape": "box",
+        "transform": {
+          "position": [0, 2.7, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "trigger": false
+      },
+      "id": "collision-0",
+      "type": "collider"
+    }
+  ],
+  "entities": [
+    {
+      "mesh": { "asset": "assets/models/corner_tower_stub.gltf" },
+      "name": "CornerTowerStub",
+      "parent": null,
+      "transform": {
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

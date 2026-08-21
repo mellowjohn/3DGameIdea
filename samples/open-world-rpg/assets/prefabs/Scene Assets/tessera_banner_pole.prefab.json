@@ -1,0 +1,33 @@
+{
+  "components": [
+    {
+      "data": {
+        "halfHeight": 1.4,
+        "layer": "staticWorld",
+        "radius": 0.22,
+        "shape": "capsule",
+        "transform": {
+          "position": [0, 1.7, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "trigger": false
+      },
+      "id": "collision-0",
+      "type": "collider"
+    }
+  ],
+  "entities": [
+    {
+      "mesh": { "asset": "assets/models/tessera_banner_pole.gltf" },
+      "name": "TesseraBannerPole",
+      "parent": null,
+      "transform": {
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

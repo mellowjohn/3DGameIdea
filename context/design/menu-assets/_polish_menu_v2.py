@@ -52,6 +52,36 @@ def chroma_key_green(arr: np.ndarray, soft: float = 28.0) -> np.ndarray:
     out[..., 3] = alpha.astype(np.uint8)
     transparent = out[..., 3] == 0
     out[transparent, 0:3] = 0
+    return despill_green_fringe(out)
+
+
+def despill_green_fringe(arr: np.ndarray) -> np.ndarray:
+    """Remove only true green-screen chroma leftovers, not iron/brown metal tones.
+
+    ImGui straight-alpha blending turns leftover chroma-green RGB into halos on the
+    dark menu dim. Do not key mild greenish browns that are intentional chrome.
+    """
+    out = arr.copy()
+    rgb = out[..., :3].astype(np.float32)
+    alpha = out[..., 3].astype(np.float32)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    greenness = g - np.maximum(r, b)
+    # True chroma: high green dominance with low red/blue (not warm iron).
+    chroma = (alpha > 8) & (greenness > 30) & (g > 100) & (r < 120) & (b < 120)
+    alpha[chroma] = 0
+    rgb[chroma] = 0
+    # Soft fringe only when still clearly green-screen-ish.
+    soft = (alpha > 0) & (alpha < 240) & (greenness > 22) & (g > 90) & (r < 110) & (b < 110)
+    if np.any(soft):
+        max_rb = np.maximum(r, b)
+        g2 = g.copy()
+        g2[soft] = np.minimum(g[soft], max_rb[soft] + 3.0)
+        alpha[soft] = alpha[soft] * np.clip(1.0 - (greenness[soft] - 22.0) / 70.0, 0.2, 1.0)
+        rgb[..., 1] = g2
+    out[..., :3] = rgb.astype(np.uint8)
+    out[..., 3] = alpha.astype(np.uint8)
+    transparent = out[..., 3] == 0
+    out[transparent, 0:3] = 0
     return out
 
 
@@ -65,6 +95,14 @@ def trim(arr: np.ndarray, pad: int = 8) -> np.ndarray:
     x0 = max(0, int(xs.min()) - pad)
     x1 = min(arr.shape[1], int(xs.max()) + 1 + pad)
     return arr[y0:y1, x0:x1]
+
+
+MENU_CHROME = (
+    "menu-btn-primary.png",
+    "menu-btn-secondary.png",
+    "menu-panel-frame.png",
+    "menu-title-plate.png",
+)
 
 
 def polish_mapped() -> None:
@@ -86,6 +124,34 @@ def polish_mapped() -> None:
             MATTE_DIR / dest_name, optimize=True
         )
         print(f"{dest_name}: a0={float((arr[..., 3] == 0).mean()):.1%} size={result.size}")
+
+
+def reprocess_existing_chrome() -> None:
+    """Despill already-keyed menu chrome when green-screen source v2 files are gone."""
+    MATTE_DIR.mkdir(parents=True, exist_ok=True)
+    for dest_name in MENU_CHROME:
+        path = ROOT / dest_name
+        if not path.exists():
+            print(f"missing existing {dest_name}")
+            continue
+        arr = despill_green_fringe(np.array(Image.open(path).convert("RGBA")))
+        arr = trim(arr)
+        result = Image.fromarray(arr)
+        result.save(path, optimize=True)
+        matte_color = IRON
+        base = Image.new("RGBA", result.size, matte_color)
+        Image.alpha_composite(base, result).convert("RGB").save(
+            MATTE_DIR / dest_name, optimize=True
+        )
+        opaque_green = (
+            (arr[..., 3] >= 250)
+            & ((arr[..., 1].astype(np.int16) - np.maximum(arr[..., 0], arr[..., 2])) > 28)
+            & (arr[..., 1] > 70)
+        )
+        print(
+            f"reprocessed {dest_name}: size={result.size} "
+            f"opaque_green={int(opaque_green.sum())}"
+        )
 
 
 def composite_title_for_pencil() -> None:
@@ -110,6 +176,11 @@ def composite_title_for_pencil() -> None:
 
 
 def main() -> None:
+    import sys
+
+    if "--reprocess-existing" in sys.argv:
+        reprocess_existing_chrome()
+        return
     polish_mapped()
     composite_title_for_pencil()
 

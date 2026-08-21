@@ -1,0 +1,246 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.2,
+          0.19,
+          0.18
+        ],
+        "primitive": "cube"
+      },
+      "name": "frame",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          5.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3.2,
+          11,
+          0.55
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.75,
+          0.18,
+          0.24
+        ],
+        "primitive": "cube"
+      },
+      "name": "pane",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          5.5,
+          0.12
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.5,
+          9.6,
+          0.12
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.28,
+          0.24,
+          0.22
+        ],
+        "primitive": "cube"
+      },
+      "name": "mullion_v",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          5.5,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.18,
+          9.2,
+          0.15
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.28,
+          0.24,
+          0.22
+        ],
+        "primitive": "cube"
+      },
+      "name": "mullion_h1",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          3.5,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.3,
+          0.16,
+          0.15
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.28,
+          0.24,
+          0.22
+        ],
+        "primitive": "cube"
+      },
+      "name": "mullion_h2",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          5.5,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.3,
+          0.16,
+          0.15
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.28,
+          0.24,
+          0.22
+        ],
+        "primitive": "cube"
+      },
+      "name": "mullion_h3",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          7.5,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.3,
+          0.16,
+          0.15
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2,
+          0.19,
+          0.18
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "apex",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          11.4,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.6,
+          1.4,
+          0.55
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.82,
+          0.2,
+          0.26
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "apex_glass",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          11.1,
+          0.12
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.15,
+          1,
+          0.1
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

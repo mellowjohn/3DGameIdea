@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "opening_fade",
+  "designResolution": [1920, 1080],
+  "scaleMode": "fill_edges",
+  "widgets": [
+    {
+      "id": "fade_black",
+      "type": "panel",
+      "anchor": "center",
+      "offset": [0, 0],
+      "size": [4800, 2700],
+      "color": [0, 0, 0, 255],
+      "opacity": 1.0
+    }
+  ]
+}

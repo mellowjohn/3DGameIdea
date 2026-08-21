@@ -14,6 +14,9 @@ crash-bundles/
 /blog/.env.local
 /blog/.env.*.local
 /tools/windows-computer-use/.venv/
+/tools/audio/stable-audio-3/
+/tools/audio/out/
+/tools/audio/.venv/
 
 .vercel
 .env*

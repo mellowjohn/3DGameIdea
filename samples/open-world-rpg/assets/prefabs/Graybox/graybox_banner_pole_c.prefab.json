@@ -1,0 +1,66 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.4000000059604645,
+          0.3799999952316284,
+          0.36000001430511475
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "Pole",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          4,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.2,
+          8,
+          0.2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.41999998688697815,
+          0.4000000059604645,
+          0.3799999952316284
+        ],
+        "primitive": "cube"
+      },
+      "name": "Flag",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.8,
+          7,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.5,
+          2,
+          0.08
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

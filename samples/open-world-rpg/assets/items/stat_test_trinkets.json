@@ -1,0 +1,21 @@
+{
+  "entities": [
+    {
+      "displayName": "Bloodied Crit Charm",
+      "icon": "assets/ui/icons/items/vein_iron_pendant.png",
+      "iconOnly": true,
+      "id": "bloodied_crit_charm",
+      "kind": "trinket",
+      "notes": "Test trinket: 25% crit (5 crit / 15 hit marbles). Placeholder icon.",
+      "source": "stat_test",
+      "stats": {
+        "modifiers": {
+          "critChance": 25
+        }
+      }
+    }
+  ],
+  "id": "stat_test_trinkets",
+  "notes": "Developer stat-sheet probes (crit / school scaling). Not Act 0 loot.",
+  "schemaVersion": 1
+}

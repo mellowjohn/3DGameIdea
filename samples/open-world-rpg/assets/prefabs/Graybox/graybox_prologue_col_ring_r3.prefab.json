@@ -1,0 +1,96 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.36000001430511475,
+          0.33000001311302185,
+          0.3499999940395355
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "mid",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          5.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.15,
+          0.22,
+          1.15
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3400000035762787,
+          0.3100000023841858,
+          0.33000001311302185
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "upper",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          11.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.05,
+          0.18,
+          1.05
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3400000035762787,
+          0.3100000023841858,
+          0.33000001311302185
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "neck",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          15.8,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.2,
+          0.2,
+          1.2
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

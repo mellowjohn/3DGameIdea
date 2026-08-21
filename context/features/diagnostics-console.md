@@ -20,6 +20,7 @@ Works while play-test is **running or paused**. Inventory state exists for the e
 | `clear` | Clear the history pane |
 | `status` | Bag / hotbar / gold / starter / session state |
 | `give <itemId> [count]` | `InventoryRuntime::grant` (alias `grant`) |
+| `iron_test_set` | Grant and equip the modular iron test helmet, torso, and greaves (alias `iron_test_gear`) |
 | `hotbar <slot> <itemId> [count]` | `set_hotbar` — **slot is 0-based** (`0..7`) |
 | `select <slot>` | `select_hotbar` (`0..7`) |
 | `starter <archetypeId>` | Sets `play_test_starter_archetype_id`, grants starter weapon + bandages on hotbar 0 |
@@ -27,7 +28,7 @@ Works while play-test is **running or paused**. Inventory state exists for the e
 | `flag <id> [true\|false]` | Query / set / clear story flag |
 | `flags` | List flags |
 
-Examples: `give outrider_shortbow`, `hotbar 0 ashfell_arming_sword`, `starter outrider`, `select 0`.
+Examples: `give outrider_shortbow`, `give guild_rune_focus_fire`, `hotbar 0 ashfell_arming_sword`, `starter outrider`, `iron_test_set`.
 
 ## Engineering notes
 

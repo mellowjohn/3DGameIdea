@@ -16,7 +16,7 @@ std::string CellCoord::str() const { return std::to_string(x) + "," + std::to_st
 
 WorldPartition::WorldPartition(PartitionConfig config) : config_(config) {
     if (!(config_.cell_size > 0.0)) config_.cell_size = 128.0;
-    if (!(config_.world_half_extent > 0.0)) config_.world_half_extent = 2000.0;
+    if (!(config_.world_half_extent > 0.0)) config_.world_half_extent = 8000.0;
     if (!(config_.rebase_threshold > 0.0)) config_.rebase_threshold = 512.0;
 }
 

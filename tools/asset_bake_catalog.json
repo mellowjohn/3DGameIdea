@@ -315,6 +315,138 @@
         "atlasMax": 2048,
         "checkUvTransparent": false
       }
+    },
+    {
+      "id": "iron_test_helmet",
+      "kind": "skinned",
+      "baker": "generic_skinned",
+      "defaultSource": "tools/art/modular-iron-test/GoodPlayerModelCopy.bbmodel",
+      "outputs": { "mesh": "assets/models/iron_test_helmet.gltf", "atlas": "assets/models/iron_test_helmet.png" },
+      "generatorContains": "iron test helmet generic skinned bake",
+      "generic": { "generator": "AI RPG Engine iron test helmet generic skinned bake", "cleanBackdrop": false, "requireDedicatedAtlas": true, "atlasPolicy": "dedicated_material", "flatAtlasRgb": [88, 101, 115], "matchPlayerBake": true, "keepMeshes": ["kit_test_iron_helmet_octagonal_rim"] },
+      "verify": { "atlasMin": 16, "atlasMax": 4096, "checkUvTransparent": false, "checkHeight": false, "checkFeet": false, "checkSkin": true }
+    },
+    {
+      "id": "iron_test_chest",
+      "kind": "skinned",
+      "baker": "generic_skinned",
+      "defaultSource": "tools/art/modular-iron-test/GoodPlayerModelCopy.bbmodel",
+      "outputs": { "mesh": "assets/models/iron_test_chest.gltf", "atlas": "assets/models/iron_test_chest.png" },
+      "generatorContains": "iron test chest generic skinned bake",
+      "generic": { "generator": "AI RPG Engine iron test chest generic skinned bake", "cleanBackdrop": false, "requireDedicatedAtlas": true, "atlasPolicy": "dedicated_material", "flatAtlasRgb": [88, 101, 115], "matchPlayerBake": true, "keepMeshes": ["kit_test_tunic_skinned", "kit_test_collar_skinned", "kit_test_sleeves_skinned", "kit_test_belt_skinned"] },
+      "verify": { "atlasMin": 16, "atlasMax": 4096, "checkUvTransparent": false, "checkHeight": false, "checkFeet": false, "checkSkin": true }
+    },
+    {
+      "id": "iron_test_legs",
+      "kind": "skinned",
+      "baker": "generic_skinned",
+      "defaultSource": "tools/art/modular-iron-test/GoodPlayerModelCopy.bbmodel",
+      "outputs": { "mesh": "assets/models/iron_test_legs.gltf", "atlas": "assets/models/iron_test_legs.png" },
+      "generatorContains": "iron test legs generic skinned bake",
+      "generic": { "generator": "AI RPG Engine iron test legs generic skinned bake", "cleanBackdrop": false, "requireDedicatedAtlas": true, "atlasPolicy": "dedicated_material", "flatAtlasRgb": [88, 101, 115], "matchPlayerBake": true, "keepMeshes": ["kit_test_trousers_skinned", "kit_test_boots_skinned"] },
+      "verify": { "atlasMin": 16, "atlasMax": 4096, "checkUvTransparent": false, "checkHeight": false, "checkFeet": false, "checkSkin": true }
+    },
+    {
+      "id": "test_hair_spikes",
+      "kind": "skinned",
+      "baker": "generic_skinned",
+      "defaultSource": "tools/art/modular-iron-test/GoodPlayerModelCopy.bbmodel",
+      "outputs": { "mesh": "assets/models/test_hair_spikes.gltf", "atlas": "assets/models/test_hair_spikes.png" },
+      "generatorContains": "test hair spikes generic skinned bake",
+      "generic": { "generator": "AI RPG Engine test hair spikes generic skinned bake", "cleanBackdrop": false, "requireDedicatedAtlas": true, "atlasPolicy": "dedicated_material", "flatAtlasRgb": [72, 42, 24], "matchPlayerBake": true, "keepMeshes": ["kit_test_hair_spikes"] },
+      "verify": { "atlasMin": 16, "atlasMax": 4096, "checkUvTransparent": false, "checkHeight": false, "checkFeet": false, "checkSkin": true }
+    },
+    {
+      "id": "tessera_banner_pole",
+      "kind": "static",
+      "baker": "script",
+      "script": "tools/bake_appearance_courtyard_kit.py",
+      "scriptArgs": ["tessera_banner_pole"],
+      "defaultSource": "tools/art/tessera-banner-pole/Tessera_Banner_Pole.bbmodel",
+      "outputs": { "mesh": "assets/models/tessera_banner_pole.gltf", "atlas": "assets/models/tessera_banner_pole.png" },
+      "generatorContains": "tessera_banner_pole bake",
+      "verify": {
+        "targetHeight": 3.4,
+        "heightTolerance": 0.2,
+        "feetEpsilon": 0.08,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "corner_tower_stub",
+      "kind": "static",
+      "baker": "script",
+      "script": "tools/bake_appearance_courtyard_kit.py",
+      "scriptArgs": ["corner_tower_stub"],
+      "defaultSource": "tools/art/corner-tower-stub/Corner_Tower_Stub.bbmodel",
+      "outputs": { "mesh": "assets/models/corner_tower_stub.gltf", "atlas": "assets/models/corner_tower_stub.png" },
+      "generatorContains": "corner_tower_stub bake",
+      "verify": {
+        "targetHeight": 5.4,
+        "heightTolerance": 0.25,
+        "feetEpsilon": 0.08,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "weapon_rack",
+      "kind": "static",
+      "baker": "script",
+      "script": "tools/bake_appearance_courtyard_kit.py",
+      "scriptArgs": ["weapon_rack"],
+      "defaultSource": "tools/art/weapon-rack/Weapon_Rack.bbmodel",
+      "outputs": { "mesh": "assets/models/weapon_rack.gltf", "atlas": "assets/models/weapon_rack.png" },
+      "generatorContains": "weapon_rack bake",
+      "verify": {
+        "targetHeight": 2.15,
+        "heightTolerance": 0.15,
+        "feetEpsilon": 0.08,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "workbench_table",
+      "kind": "static",
+      "baker": "script",
+      "script": "tools/bake_appearance_courtyard_kit.py",
+      "scriptArgs": ["workbench_table"],
+      "defaultSource": "tools/art/workbench-table/Workbench_Table.bbmodel",
+      "outputs": { "mesh": "assets/models/workbench_table.gltf", "atlas": "assets/models/workbench_table.png" },
+      "generatorContains": "workbench_table bake",
+      "verify": {
+        "targetHeight": 1.05,
+        "heightTolerance": 0.12,
+        "feetEpsilon": 0.08,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false
+      }
+    },
+    {
+      "id": "target_dummy",
+      "kind": "skinned",
+      "baker": "script",
+      "script": "tools/bake_target_dummy.py",
+      "defaultSource": "tools/art/target-dummy/Target_Dummy.bbmodel",
+      "animator": "assets/animators/target_dummy.animator.json",
+      "outputs": { "mesh": "assets/models/target_dummy.gltf", "atlas": "assets/models/target_dummy.png" },
+      "generatorContains": "target_dummy skinned bake",
+      "verify": {
+        "targetHeight": 2.2,
+        "heightTolerance": 0.15,
+        "feetEpsilon": 0.08,
+        "atlasMin": 16,
+        "atlasMax": 2048,
+        "checkUvTransparent": false,
+        "checkSkin": true,
+        "requiredClips": ["Idle", "HitReact"]
+      }
     }
   ]
 }

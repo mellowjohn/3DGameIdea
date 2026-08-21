@@ -314,6 +314,7 @@
         255.0
       ],
       "id": "hud_hotbar_1_icon",
+      "imageBind": "hud.hotbar.1.icon",
       "imageMode": "contain",
       "offset": [
         750.0,
@@ -323,8 +324,7 @@
         40.0,
         40.0
       ],
-      "type": "panel",
-      "imageBind": "hud.hotbar.1.icon"
+      "type": "panel"
     },
     {
       "anchor": "bottom_left",
@@ -380,6 +380,7 @@
         255.0
       ],
       "id": "hud_hotbar_2_icon",
+      "imageBind": "hud.hotbar.2.icon",
       "imageMode": "contain",
       "offset": [
         826.0,
@@ -389,8 +390,7 @@
         40.0,
         40.0
       ],
-      "type": "panel",
-      "imageBind": "hud.hotbar.2.icon"
+      "type": "panel"
     },
     {
       "anchor": "bottom_left",
@@ -446,6 +446,7 @@
         255.0
       ],
       "id": "hud_hotbar_3_icon",
+      "imageBind": "hud.hotbar.3.icon",
       "imageMode": "contain",
       "offset": [
         902.0,
@@ -455,8 +456,7 @@
         40.0,
         40.0
       ],
-      "type": "panel",
-      "imageBind": "hud.hotbar.3.icon"
+      "type": "panel"
     },
     {
       "anchor": "bottom_left",
@@ -830,6 +830,121 @@
       "textAlign": "center",
       "textVAlign": "middle",
       "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        130.0,
+        170.0,
+        255.0,
+        255.0
+      ],
+      "id": "hud_rune_pip_1",
+      "image": "assets/ui/hud/hud-rune-pip-dim.png",
+      "imageBind": "hud.rune.1.icon",
+      "imageMode": "contain",
+      "offset": [
+        242.0,
+        20.0
+      ],
+      "size": [
+        24.0,
+        24.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        130.0,
+        170.0,
+        255.0,
+        255.0
+      ],
+      "id": "hud_rune_pip_2",
+      "image": "assets/ui/hud/hud-rune-pip-dim.png",
+      "imageBind": "hud.rune.2.icon",
+      "imageMode": "contain",
+      "offset": [
+        272.0,
+        20.0
+      ],
+      "size": [
+        24.0,
+        24.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        130.0,
+        170.0,
+        255.0,
+        255.0
+      ],
+      "id": "hud_rune_pip_3",
+      "image": "assets/ui/hud/hud-rune-pip-dim.png",
+      "imageBind": "hud.rune.3.icon",
+      "imageMode": "contain",
+      "offset": [
+        302.0,
+        20.0
+      ],
+      "size": [
+        24.0,
+        24.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        130.0,
+        170.0,
+        255.0,
+        255.0
+      ],
+      "id": "hud_rune_pip_4",
+      "image": "assets/ui/hud/hud-rune-pip-dim.png",
+      "imageBind": "hud.rune.4.icon",
+      "imageMode": "contain",
+      "offset": [
+        332.0,
+        20.0
+      ],
+      "size": [
+        24.0,
+        24.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        130.0,
+        170.0,
+        255.0,
+        255.0
+      ],
+      "id": "hud_rune_pip_5",
+      "image": "assets/ui/hud/hud-rune-pip-dim.png",
+      "imageBind": "hud.rune.5.icon",
+      "imageMode": "contain",
+      "offset": [
+        362.0,
+        20.0
+      ],
+      "size": [
+        24.0,
+        24.0
+      ],
+      "type": "image",
+      "visible": false
     }
   ]
 }

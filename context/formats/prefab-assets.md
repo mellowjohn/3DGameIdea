@@ -24,6 +24,27 @@ Prefabs may declare which character asset they represent when placed in a level:
 
 When this field is present (or when a character asset's `visualPrefab` matches the prefab path), editor placement tags the scene entity as a **player spawn**. F5 test sessions use that placement instead of spawning a duplicate at the cursor.
 
+### Optional NPC AI (TICKET-0284)
+
+Prefabs may declare a play-test brain. `kind` empty/omitted = none.
+
+```json
+{
+  "npcAi": {
+    "kind": "hostile",
+    "displayName": "Hostile",
+    "heldItemId": "ashfell_arming_sword",
+    "aggroRadius": 16,
+    "loseAggroRadius": 22,
+    "attackRange": 1.9,
+    "attackCooldown": 1.35,
+    "moveSpeed": 3.5
+  }
+}
+```
+
+`hostile` chases the player, fires animator `attack` in range, and raises Block against incoming melee between swings. See [`npc-ai.md`](../features/npc-ai.md). Not an Inspector Add Component type in v1.
+
 ### Optional point light
 
 Prefabs may include a warm local light for landmarks and atmosphere tests:
@@ -83,6 +104,28 @@ Multi-part prefabs extend `entities` so each child can carry its own mesh source
 | `capsule` | Player bodies, character placeholders |
 
 Primitives are project-owned, low-poly, and vertex-colored. Tessellation stays deliberately coarse to match the smooth low-poly art direction.
+
+### Optional distance LOD meshes (TICKET-0277)
+
+Prefabs may declare mid/far mesh swaps used by the placed-prop draw path:
+
+```json
+{
+  "schemaVersion": 2,
+  "lod1Mesh": "assets/models/oak_young.gltf",
+  "lod2Mesh": "assets/models/oak_young.gltf",
+  "entities": [ ... ]
+}
+```
+
+| Field | Distance (approx.) | Behavior |
+| --- | --- | --- |
+| (full mesh) | < 140 m | Draw entity / root mesh |
+| `lod1Mesh` | ≥ 140 m | Swap all expanded parts to this mesh |
+| `lod2Mesh` | ≥ 240 m | Far / landmark stand-in |
+| (cull) | ≥ 360 m | Skip draw (existing far cull) |
+
+Omit either field to keep the full mesh through that band. Paths are project-relative and must be present in the mesh catalog (`required_mesh_keys` includes them).
 
 ### Per-entity mesh descriptor
 
@@ -243,10 +286,20 @@ On placement, `spawn_prefab_collision()` / `PlacementCollisionTracker` use entit
 - `color` is optional RGB in linear space; defaults follow the stylized terrain/prop palette when omitted.
 - Entity transforms must remain finite; zero or negative scale on any axis fails validation.
 
+## Live graybox compositions (MCP)
+
+`engine_scene_apply` `action: stamp_compositions` writes reusable schema-v2 prefabs under
+`assets/prefabs/Graybox/<slug>.prefab.json` from stamp `parts[]`, refreshes the prefab catalog,
+and places the stamps through the same undoable scene batch as `stamp_prefabs`. Prefer this for
+keep walls, gatehouses, banner poles, and other unfinished Dom-owned hero art while kit props
+still use `stamp_prefabs`. Scene undo removes placements only; Graybox prefab files remain as
+project content so later stamps can reuse them.
+
 ## Sample assets
 
 - `assets/prefabs/tree.prefab.json` — v2 compositional tree (cylinder trunk, sphere canopy, branch cylinders)
 - `assets/prefabs/campfire.prefab.json` — v2 compositional campfire (stone cubes, log cylinders, flame pyramid) plus warm point light
+- `assets/prefabs/Graybox/*.prefab.json` — agent/editor-synthesized primitive stacks for unfinished art
 
 ## Implementation status
 

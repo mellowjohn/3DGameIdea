@@ -19,8 +19,14 @@ enum class AnimatorConditionOp : std::uint8_t {
     NotEqual,
     Trigger,
 };
-enum class AnimatorMotionType : std::uint8_t { Clip, BlendTree1D };
+enum class AnimatorMotionType : std::uint8_t { Clip, BlendTree1D, BlendTree2D, None };
 enum class AnimatorLayerBlendMode : std::uint8_t { Override };
+
+/** Optional avatar mask: empty `joints` means the layer writes the whole skeleton. */
+struct AnimatorLayerMask {
+    std::vector<std::string> joints;
+    bool include_children = true;
+};
 
 struct AnimatorParameterDef {
     std::string name;
@@ -46,10 +52,31 @@ struct AnimatorBlendTree1D {
     std::vector<AnimatorBlendTreeChild> children;
 };
 
+struct AnimatorBlendTree2DChild {
+    float position_x = 0.0f;
+    float position_y = 0.0f;
+    AnimatorClipRef clip;
+};
+
+struct AnimatorBlendTree2DTriangle {
+    std::uint32_t i0 = 0;
+    std::uint32_t i1 = 0;
+    std::uint32_t i2 = 0;
+};
+
+struct AnimatorBlendTree2D {
+    std::string parameter_x;
+    std::string parameter_y;
+    std::vector<AnimatorBlendTree2DChild> children;
+    /// Cached Delaunay triangles over children positions (built at parse).
+    std::vector<AnimatorBlendTree2DTriangle> triangles;
+};
+
 struct AnimatorMotion {
     AnimatorMotionType type = AnimatorMotionType::Clip;
     AnimatorClipRef clip;
     AnimatorBlendTree1D blend_tree;
+    AnimatorBlendTree2D blend_tree_2d;
 };
 
 struct AnimatorCondition {
@@ -77,6 +104,8 @@ struct AnimatorLayerDef {
     std::string name;
     std::string default_state;
     AnimatorLayerBlendMode blend_mode = AnimatorLayerBlendMode::Override;
+    float weight = 1.0f;
+    AnimatorLayerMask mask;
     std::vector<AnimatorStateDef> states;
     std::vector<AnimatorTransition> transitions;
 };

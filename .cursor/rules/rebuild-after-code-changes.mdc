@@ -6,6 +6,7 @@ alwaysApply: true
 # Rebuild After Code Changes
 
 - After editing C++ source, headers, CMake files, build configuration, shaders, or editor/runtime code paths, rebuild the affected target before final response.
+- A documented, verified supported hot-reload path is the only alternative. State which path was used; never leave an unbuilt change for the next turn or imply it is ready.
 - **Multi-agent rebuild lease (TICKET-0228):** before starting MSBuild on a shared Windows checkout, acquire (or wait for) the build lease via `engine build-coordination` / MCP `engine_build_coordination` with your `agentId`, claimed `ticketId`, and a short summary. Do not start MSBuild while queued. After kill → rebuild → restart, release with the granted token. See `context/features/agent-build-coordination.md`. Direct manual MSBuild remains a documented bypass (not intercepted).
 - Prefer the existing MSBuild tree when available:
   `C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe` with `build\windows-msvc-debug\AIRpgEngine.sln`.

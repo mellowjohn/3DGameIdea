@@ -1,0 +1,4132 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "0156742f-6e59-4649-8d23-5b6820d9fa0b",
+      "name": "graybox_prologue_banner_l",
+      "transform": {
+        "position": [
+          -4.599999904632568,
+          0.0,
+          12.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_banner_l.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "021c71d9-4b81-4f3d-9f8f-189d6e4fcbd3",
+      "name": "graybox_prologue_extended_nave_shell",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          67.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_extended_nave_shell.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "03b5e49d-f870-423f-95b0-5465e3b6b7ba",
+      "name": "prologue_nefarium_mist_dais_l",
+      "transform": {
+        "position": [
+          14.0,
+          0.0,
+          10.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_mist.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "059237af-429c-4690-8e0a-ed5e9ae6b972",
+      "name": "graybox_prologue_vault_bay_1",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          14.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_vault_bay_1.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "05fb84cd-e9e7-4eda-8bc9-8c28653d8bb1",
+      "name": "graybox_prologue_pew_r_d",
+      "transform": {
+        "position": [
+          26.0,
+          0.0,
+          28.5
+        ],
+        "rotation": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "0cc4849e-d493-4526-b531-6206bc899c36",
+      "name": "nefarium_watcher_l_entry",
+      "transform": {
+        "position": [
+          6.0,
+          0.0,
+          64.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_watcher.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "0f37951b-c552-45cf-992c-6cc544877b75",
+      "name": "graybox_prologue_pew_l_e",
+      "transform": {
+        "position": [
+          14.0,
+          0.0,
+          32.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "112aaa13-e592-4183-9d06-9a3f3f14b3ea",
+      "name": "graybox_prologue_cornice_r",
+      "transform": {
+        "position": [
+          46.5,
+          0.0,
+          28.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_cornice_r.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "13a36eac-ed8a-4fb5-ba6c-4f610941a19a",
+      "name": "graybox_prologue_nefarium_watcher",
+      "transform": {
+        "position": [
+          10.0,
+          0.0,
+          11.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_watcher.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "14f428f5-bd83-4da9-9707-29ede9e98d3c",
+      "name": "prologue_torch_r7",
+      "transform": {
+        "position": [
+          35.79999923706055,
+          5.5,
+          74.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "1515ed88-8fac-4407-8cf3-1947f280cc80",
+      "name": "prologue_torch_l4",
+      "transform": {
+        "position": [
+          4.199999809265137,
+          5.5,
+          44.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "164ea47a-12e1-4b9a-a075-a118bc74942a",
+      "name": "prologue_torch_l7",
+      "transform": {
+        "position": [
+          4.199999809265137,
+          5.5,
+          74.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "17982ace-3aba-4170-84c1-315e06695e67",
+      "name": "graybox_prologue_col_l1",
+      "transform": {
+        "position": [
+          3.5,
+          0.0,
+          14.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_l1.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "1ad2fcbc-27e3-491b-a20f-88823fe56c3a",
+      "name": "prologue_torch_r6",
+      "transform": {
+        "position": [
+          35.79999923706055,
+          5.5,
+          64.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "1d4ea729-4e1b-4385-93ad-e3b0bd89136d",
+      "name": "graybox_prologue_vault_bay_4",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          44.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_vault_bay_4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "1d7a814d-ba38-4f17-bc50-42c80e05b8b3",
+      "name": "graybox_prologue_col_r4",
+      "transform": {
+        "position": [
+          36.5,
+          0.0,
+          44.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_r4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "20292ce8-fb2e-4c18-a35e-299d996c3fde",
+      "name": "graybox_prologue_col_l6",
+      "transform": {
+        "position": [
+          3.5,
+          0.0,
+          64.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_l4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "22844644-eda9-4824-ad68-f480bba4f4dd",
+      "name": "graybox_prologue_wall_r",
+      "transform": {
+        "position": [
+          47.0,
+          0.0,
+          28.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_wall_r.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "235f0947-e117-4a97-b197-ac9a925b15ac",
+      "name": "prologue_nefarium_mist_aisle_l",
+      "transform": {
+        "position": [
+          8.0,
+          0.0,
+          48.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_mist.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "259de528-2bbb-44bb-ba1d-e1b3b0a1d1cb",
+      "name": "graybox_prologue_pew_outer_l_f",
+      "transform": {
+        "position": [
+          10.0,
+          0.0,
+          35.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "289556f3-50cf-4bd5-b051-3b6e00a06438",
+      "name": "graybox_prologue_pew_r_e",
+      "transform": {
+        "position": [
+          26.0,
+          0.0,
+          32.0
+        ],
+        "rotation": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "2c87becd-805b-4ea3-a3fd-8a80229bf88a",
+      "name": "graybox_prologue_baseboard_l",
+      "transform": {
+        "position": [
+          -6.5,
+          0.0,
+          28.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_baseboard_l.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "2ca2b778-ec39-426d-8d5d-c40f5addca9f",
+      "name": "graybox_prologue_floor",
+      "transform": {
+        "position": [
+          20.0,
+          -0.07500000298023224,
+          28.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.2000000476837158,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_floor.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "32a74ea3-c759-40be-b131-005aeb7be285",
+      "name": "nefarium_watcher_l_gallery",
+      "transform": {
+        "position": [
+          1.0,
+          0.0,
+          27.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_watcher.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "33b305c8-ff71-4026-bb90-b59ef19732b9",
+      "name": "graybox_prologue_pew_l_c",
+      "transform": {
+        "position": [
+          14.0,
+          0.0,
+          25.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "3715ae1b-3c3b-49ae-83b3-5845f5e3f92e",
+      "name": "graybox_prologue_vault_bay_2",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          24.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_vault_bay_2.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "37328387-3c3f-4fe1-b345-59c59e84bd53",
+      "name": "graybox_prologue_pew_outer_l_g",
+      "transform": {
+        "position": [
+          10.0,
+          0.0,
+          39.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "37c8b355-d97a-4910-8184-e14954ae83e3",
+      "name": "graybox_prologue_alcove_r",
+      "transform": {
+        "position": [
+          44.0,
+          0.0,
+          20.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_alcove_r.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "3ab013a0-7cfd-436e-8b68-21f032b57e7e",
+      "name": "graybox_prologue_pew_r_b",
+      "transform": {
+        "position": [
+          26.0,
+          0.0,
+          21.5
+        ],
+        "rotation": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "3c0a009d-523b-4022-88c6-7d2a8f748b72",
+      "name": "graybox_prologue_banner_r",
+      "transform": {
+        "position": [
+          44.599998474121094,
+          0.0,
+          12.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_banner_r.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "3f7665a6-808c-4a3a-a618-4c23f8f68805",
+      "name": "graybox_prologue_vault_bay_3",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          34.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_vault_bay_3.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "429f1d6e-5b04-45d2-951a-7442becfddeb",
+      "name": "graybox_prologue_pew_outer_l_d",
+      "transform": {
+        "position": [
+          10.0,
+          0.0,
+          28.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "4301885d-a5e9-4ba7-a0d3-53ed35801407",
+      "name": "prologue_nefarium_mist_entry",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          69.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_mist.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "454a92a2-0d9b-498a-8d52-b5891104a0ac",
+      "name": "graybox_prologue_blood_arch_l",
+      "transform": {
+        "position": [
+          13.5,
+          2.5,
+          4.599999904632568
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_blood_arch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "481f7584-e3bd-4126-9b6f-83ca3eb2a8e6",
+      "name": "graybox_prologue_scale_ruler",
+      "transform": {
+        "position": [
+          25.200000762939453,
+          0.0,
+          22.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_scale_ruler.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "4869fb9b-d716-46ad-b33a-48c6127b363d",
+      "name": "prologue_nefarium_mist_dais_r",
+      "transform": {
+        "position": [
+          26.0,
+          0.0,
+          10.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_mist.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "497cb8c0-2509-44cc-b51e-8838f3924b30",
+      "name": "graybox_prologue_pew_r_c",
+      "transform": {
+        "position": [
+          26.0,
+          0.0,
+          25.0
+        ],
+        "rotation": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "4aa68fb8-e416-4ee9-b8af-c6675a0adc4a",
+      "name": "graybox_prologue_pew_outer_r_d",
+      "transform": {
+        "position": [
+          30.0,
+          0.0,
+          28.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "4cfd92bf-996c-4030-bf47-388bf64eac29",
+      "name": "graybox_prologue_pew_l_g",
+      "transform": {
+        "position": [
+          14.0,
+          0.0,
+          39.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "4e2361ba-ce26-4232-ad31-f6d01722b07a",
+      "name": "nefarium_watcher_r_entry",
+      "transform": {
+        "position": [
+          34.0,
+          0.0,
+          64.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_watcher.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "4e4635cb-8174-44af-a560-8ee09269978c",
+      "name": "graybox_prologue_alcove_l",
+      "transform": {
+        "position": [
+          -4.0,
+          0.0,
+          20.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_alcove_l.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "50ebe73b-479f-46b0-9403-3229261da4fb",
+      "name": "graybox_prologue_dais_wide",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          10.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_dais_wide.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "5172f6d0-31b3-42dd-9848-b566493ab821",
+      "name": "graybox_prologue_vault_bay_6",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          64.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_vault_bay_4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "55357bac-1cef-420d-895d-16aa8b8eda46",
+      "name": "graybox_prologue_pew_l_b",
+      "transform": {
+        "position": [
+          14.0,
+          0.0,
+          21.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "562af6f5-064e-4ca2-876c-7e02a5afbd2a",
+      "name": "graybox_prologue_pew_outer_l_h",
+      "transform": {
+        "position": [
+          10.0,
+          0.0,
+          43.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "56964ad7-ed59-482e-be00-0b033315ef86",
+      "name": "graybox_prologue_pew_outer_l_e",
+      "transform": {
+        "position": [
+          10.0,
+          0.0,
+          32.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "574f21cb-ddad-495d-bcdc-15a83d4aa3bd",
+      "name": "graybox_prologue_pew_outer_r_a",
+      "transform": {
+        "position": [
+          30.0,
+          0.0,
+          18.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "588ac895-e033-4cf5-b98b-765bd4e88541",
+      "name": "graybox_prologue_pew_outer_r_e",
+      "transform": {
+        "position": [
+          30.0,
+          0.0,
+          32.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "6277a296-91df-46ff-941f-4d87e0f364cc",
+      "name": "graybox_prologue_ceiling",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          28.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_ceiling.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "6701e2c2-32a2-4c8c-b0ee-8f88e0c12025",
+      "name": "prologue_nefarium_mist_aisle_r",
+      "transform": {
+        "position": [
+          32.0,
+          0.0,
+          48.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_mist.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "676307b2-049e-4d06-8e85-da63748b6d3c",
+      "name": "graybox_prologue_baseboard_r",
+      "transform": {
+        "position": [
+          46.5,
+          0.0,
+          28.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_baseboard_r.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "6a4efc3a-f10f-4d64-9a61-cc16be190c25",
+      "name": "graybox_prologue_pew_outer_r_f",
+      "transform": {
+        "position": [
+          30.0,
+          0.0,
+          35.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "6b1dedb7-09e9-408f-8ac7-7c4024bf1b95",
+      "name": "graybox_prologue_cornice_l",
+      "transform": {
+        "position": [
+          -6.5,
+          0.0,
+          28.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_cornice_l.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "6e812eb4-2920-40e3-8741-16a1439ce8d1",
+      "name": "graybox_prologue_door_human",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          81.8499984741211
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_door_human.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "70fa442d-9283-4166-8d81-e8b4599da4f6",
+      "name": "graybox_prologue_pew_l_d",
+      "transform": {
+        "position": [
+          14.0,
+          0.0,
+          28.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "7313aa76-fcee-4ef2-88a6-dec110af81c0",
+      "name": "graybox_prologue_pew_r_f",
+      "transform": {
+        "position": [
+          26.0,
+          0.0,
+          35.5
+        ],
+        "rotation": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "738366f2-3f75-4db7-9561-70a20a8daf41",
+      "name": "prologue_torch_r5",
+      "transform": {
+        "position": [
+          35.79999923706055,
+          5.5,
+          54.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "746f5cac-c74a-4c70-ab35-22bfe15d0b89",
+      "name": "nefarium_watcher_r_gallery",
+      "transform": {
+        "position": [
+          39.0,
+          0.0,
+          27.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_watcher.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "74845560-2488-47ad-9c79-b280d00c65ff",
+      "name": "graybox_prologue_gallery_r",
+      "transform": {
+        "position": [
+          42.0,
+          0.0,
+          28.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_gallery_r.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "764541fb-63d4-4ee2-b0e8-2e1f9532b7f6",
+      "name": "graybox_prologue_back_wall",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          3.200000047683716
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_back_wall.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "7b0ebee7-99a1-42c8-9982-1ec95370b112",
+      "name": "graybox_prologue_col_l5",
+      "transform": {
+        "position": [
+          3.5,
+          0.0,
+          54.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_l4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "8296b778-c42e-4b01-a8f9-47281bacff49",
+      "name": "graybox_prologue_col_l3",
+      "transform": {
+        "position": [
+          3.5,
+          0.0,
+          34.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_l3.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "82b578c5-5dc4-4617-a8a1-135e6dac8029",
+      "name": "graybox_prologue_hearth",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          18.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.7999999523162842,
+          1.5,
+          1.7999999523162842
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_hearth.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "85b40eae-6a49-43ac-ab60-b1a98ed4584d",
+      "name": "graybox_prologue_pew_r_a",
+      "transform": {
+        "position": [
+          26.0,
+          0.0,
+          18.0
+        ],
+        "rotation": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "8854f6df-5712-481b-9db3-51c72182c652",
+      "name": "graybox_prologue_col_r7",
+      "transform": {
+        "position": [
+          36.5,
+          0.0,
+          74.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_r4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "89155963-91fa-4653-beef-68797bb5cec3",
+      "name": "graybox_prologue_entry",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          82.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_entry.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "8d234a12-ba4f-413a-adfd-004527abc165",
+      "name": "graybox_prologue_tile_ring",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          26.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_tile_ring.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "8d6e51b0-c31a-456b-bb20-297ef794e157",
+      "name": "prologue_torch_l1",
+      "transform": {
+        "position": [
+          4.199999809265137,
+          5.5,
+          14.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "8e1e4ca1-ec8a-452c-8c2d-c1ddd7fcb06e",
+      "name": "nefarium_watcher_l_dais",
+      "transform": {
+        "position": [
+          10.0,
+          0.0,
+          11.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_watcher.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "8e9b4c16-d0e5-41c4-9abb-95562c8bbb29",
+      "name": "graybox_prologue_vault_bay_5",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          54.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_vault_bay_4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "903d0f04-b7b2-45fb-847b-02f616450d49",
+      "name": "graybox_prologue_aisle_edge_l",
+      "transform": {
+        "position": [
+          17.200000762939453,
+          0.0,
+          30.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_aisle_edge_l.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "90742f70-e4f8-45ac-a2af-6d914fae9da0",
+      "name": "graybox_prologue_pew_outer_r_h",
+      "transform": {
+        "position": [
+          30.0,
+          0.0,
+          43.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "935fd969-115d-4570-af4f-8a1f9c09d822",
+      "name": "graybox_prologue_pew_r_g",
+      "transform": {
+        "position": [
+          26.0,
+          0.0,
+          39.0
+        ],
+        "rotation": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "94e97b56-0178-4540-a3de-755a258b758a",
+      "name": "graybox_prologue_blood_arch_r",
+      "transform": {
+        "position": [
+          26.5,
+          2.5,
+          4.599999904632568
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_blood_arch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "95835c5c-9bd1-4827-bce5-b5d685d88ee5",
+      "name": "graybox_prologue_dais_riser",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          12.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_dais_riser.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "976cb2a1-941a-4d33-9457-1483a6bd3788",
+      "name": "graybox_prologue_col_l7",
+      "transform": {
+        "position": [
+          3.5,
+          0.0,
+          74.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_l4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "989e6f9f-0bcf-4778-be2a-f600c7814f55",
+      "name": "graybox_prologue_col_r5",
+      "transform": {
+        "position": [
+          36.5,
+          0.0,
+          54.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_r4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "9c12b2c4-8660-4fd4-aafe-d0a6be001f15",
+      "name": "nefarium_watcher_r_dais",
+      "transform": {
+        "position": [
+          30.0,
+          0.0,
+          11.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_nefarium_watcher.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "9e83cd72-3068-4baa-89ed-2f5da01dc6bb",
+      "name": "graybox_prologue_pew_outer_r_c",
+      "transform": {
+        "position": [
+          30.0,
+          0.0,
+          25.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000001",
+      "name": "graybox_throne_dais",
+      "transform": {
+        "position": [
+          20.0,
+          0.8999999761581421,
+          10.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          2.200000047683716,
+          1.7999999523162842,
+          2.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_throne_dais.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000002",
+      "name": "graybox_luceran",
+      "transform": {
+        "position": [
+          20.0,
+          1.850000023841858,
+          10.300000190734863
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.600000023841858,
+          1.600000023841858,
+          1.600000023841858
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_luceran_standin.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000003",
+      "name": "prologue_cam_look_target",
+      "transform": {
+        "position": [
+          20.0,
+          3.450000047683716,
+          10.300000190734863
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.019999999552965164,
+          0.019999999552965164,
+          0.019999999552965164
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/camera_marker.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000004",
+      "name": "prologue_cam_establishing",
+      "transform": {
+        "position": [
+          20.0,
+          7.199999809265137,
+          55.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/camera_marker.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000005",
+      "name": "prologue_cam_close",
+      "transform": {
+        "position": [
+          20.0,
+          4.050000190734863,
+          17.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.019999999552965164,
+          0.019999999552965164,
+          0.019999999552965164
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/camera_marker.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000006",
+      "name": "prologue_cam_address",
+      "transform": {
+        "position": [
+          20.0,
+          10.0,
+          68.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/camera_marker.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "a354cb4a-3e0e-4ce4-8b45-7afefcbf08b6",
+      "name": "graybox_prologue_col_r1",
+      "transform": {
+        "position": [
+          36.5,
+          0.0,
+          14.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_r1.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "a628b2a7-00f5-47c3-97b4-b6512c90b890",
+      "name": "graybox_prologue_pew_outer_l_a",
+      "transform": {
+        "position": [
+          10.0,
+          0.0,
+          18.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "a85a4875-d023-4085-9b3a-30955bd94f20",
+      "name": "graybox_prologue_pew_l_f",
+      "transform": {
+        "position": [
+          14.0,
+          0.0,
+          35.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "a979249e-87e4-43a4-840a-20056f0070fe",
+      "name": "prologue_torch_r2",
+      "transform": {
+        "position": [
+          35.79999923706055,
+          5.5,
+          24.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "ac0e0ba1-98ba-4928-b3d0-0d3d3387091c",
+      "name": "graybox_prologue_col_r3",
+      "transform": {
+        "position": [
+          36.5,
+          0.0,
+          34.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_r3.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "ad7ba3bb-0daf-4a8d-9e86-faa8f5ddf92a",
+      "name": "graybox_prologue_col_l2",
+      "transform": {
+        "position": [
+          3.5,
+          0.0,
+          24.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_l2.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "af53ed09-a13e-4304-9a3f-0e1d2decb1ae",
+      "name": "graybox_prologue_vault_bay_7",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          74.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_vault_bay_4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "b1504c67-011c-469b-a015-ed437e34de0c",
+      "name": "graybox_prologue_pew_outer_r_g",
+      "transform": {
+        "position": [
+          30.0,
+          0.0,
+          39.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "b2b62abe-a3a1-4e9d-afd9-887e97ba9060",
+      "name": "graybox_prologue_pew_outer_l_c",
+      "transform": {
+        "position": [
+          10.0,
+          0.0,
+          25.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "b320f1e5-8f26-4b45-9cb8-53e179f11c07",
+      "name": "prologue_torch_l6",
+      "transform": {
+        "position": [
+          4.199999809265137,
+          5.5,
+          64.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "b496c28e-bc66-44a3-a53d-e51c52650b52",
+      "name": "prologue_torch_l5",
+      "transform": {
+        "position": [
+          4.199999809265137,
+          5.5,
+          54.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "bab8f0aa-5f02-4ef5-a519-b284581f84e8",
+      "name": "graybox_prologue_col_r6",
+      "transform": {
+        "position": [
+          36.5,
+          0.0,
+          64.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_r4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "bbda0ee3-d47e-42bc-bd48-fdba3bb7b152",
+      "name": "graybox_prologue_pew_l_a",
+      "transform": {
+        "position": [
+          14.0,
+          0.0,
+          18.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "bd49531e-03aa-4f5d-b377-858a73ad7539",
+      "name": "graybox_prologue_gallery_l",
+      "transform": {
+        "position": [
+          -2.0,
+          0.0,
+          28.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_gallery_l.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "c0cf5886-e835-4402-b44c-429de9049285",
+      "name": "graybox_prologue_brazier_r",
+      "transform": {
+        "position": [
+          26.0,
+          0.8999999761581421,
+          11.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_brazier_r.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "cacbbdb3-6793-46b2-a5a5-f7ed010eb893",
+      "name": "graybox_prologue_brazier_l",
+      "transform": {
+        "position": [
+          14.0,
+          0.8999999761581421,
+          11.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_brazier_l.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "cebb14eb-0489-4c78-8765-a5f2cc8fc403",
+      "name": "graybox_prologue_dais_rail",
+      "transform": {
+        "position": [
+          20.0,
+          0.8999999761581421,
+          12.600000381469727
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_dais_rail.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "d0cf4fd6-d91b-4fa7-a0a7-635d77e1c084",
+      "name": "graybox_prologue_aisle_edge_r",
+      "transform": {
+        "position": [
+          22.799999237060547,
+          0.0,
+          30.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_aisle_edge_r.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "d47cda05-9bb3-48d7-ad7d-7d8c12344c7f",
+      "name": "graybox_prologue_pew_outer_l_b",
+      "transform": {
+        "position": [
+          10.0,
+          0.0,
+          21.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "d6518606-9721-4eed-b1e7-e707b84183e6",
+      "name": "prologue_torch_r1",
+      "transform": {
+        "position": [
+          35.79999923706055,
+          5.5,
+          14.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "d93d5fcb-7be8-4b66-951c-887bad13ec80",
+      "name": "prologue_torch_r3",
+      "transform": {
+        "position": [
+          35.79999923706055,
+          5.5,
+          34.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "da6d55ff-75ec-41c6-a3ef-b96363a3675c",
+      "name": "graybox_prologue_shroud",
+      "transform": {
+        "position": [
+          20.0,
+          0.8999999761581421,
+          11.800000190734863
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_shroud.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "dc9af46f-f6a4-4aa3-9924-3b60176c616a",
+      "name": "prologue_torch_l2",
+      "transform": {
+        "position": [
+          4.199999809265137,
+          5.5,
+          24.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "defbdd89-bcde-4f2b-8053-f41f43ac3bd1",
+      "name": "prologue_torch_r4",
+      "transform": {
+        "position": [
+          35.79999923706055,
+          5.5,
+          44.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "e567577c-4cb1-4ef7-978a-71332ab1b866",
+      "name": "graybox_prologue_pew_outer_r_b",
+      "transform": {
+        "position": [
+          30.0,
+          0.0,
+          21.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_pew_bench.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "ebb1db7d-ca6d-49ca-badf-7a4b30946563",
+      "name": "graybox_prologue_blood_arch_c",
+      "transform": {
+        "position": [
+          20.0,
+          2.5,
+          4.599999904632568
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_blood_arch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "ec495226-0e36-4843-9d2e-6f7b8ca79ab6",
+      "name": "prologue_player_scale_ref",
+      "transform": {
+        "position": [
+          24.5,
+          0.0,
+          22.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/player/player.prefab.json",
+        "cell": [
+          0,
+          0
+        ],
+        "characterAsset": "assets/characters/player.character.json"
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.6000000238418579,
+            "id": "collision-0",
+            "layer": "dynamic",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/player.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        },
+        {
+          "data": {
+            "angularDamping": 0.05000000074505806,
+            "freezeRotation": true,
+            "linearDamping": 0.05000000074505806,
+            "mass": 70.0,
+            "motionType": "dynamic",
+            "useGravity": true
+          },
+          "id": "rigidbody-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "rigidbody"
+        }
+      ]
+    },
+    {
+      "id": "ed8dfa49-c519-4c79-94cb-f47bfd72dcd9",
+      "name": "graybox_prologue_steps_human",
+      "transform": {
+        "position": [
+          20.0,
+          0.0,
+          14.199999809265137
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_steps_human.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "ee04f3b1-b4e2-48f1-8b4f-7b41bcc11994",
+      "name": "graybox_prologue_wall_l",
+      "transform": {
+        "position": [
+          -7.0,
+          0.0,
+          28.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_wall_l.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "f12681b8-e145-4159-acb4-67205e9b4b94",
+      "name": "graybox_prologue_col_l4",
+      "transform": {
+        "position": [
+          3.5,
+          0.0,
+          44.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_l4.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "f8da64a5-ac42-4511-9a12-88a6983a0f80",
+      "name": "graybox_prologue_silhouette",
+      "transform": {
+        "position": [
+          28.0,
+          0.0,
+          14.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_silhouette.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "f8fbf35e-c5f5-4846-b27d-26cc30e6b387",
+      "name": "graybox_prologue_col_r2",
+      "transform": {
+        "position": [
+          36.5,
+          0.0,
+          24.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_prologue_col_r2.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "fc58b02b-4a54-49e5-b99b-76a1dd78cda3",
+      "name": "prologue_torch_l3",
+      "transform": {
+        "position": [
+          4.199999809265137,
+          5.5,
+          34.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    }
+  ],
+  "worldId": "prologue-throne-a0-01",
+  "name": "Prologue Throne",
+  "presentation": "cinematic_instance",
+  "partition": {
+    "worldSizeMeters": [
+      16000.0,
+      16000.0
+    ],
+    "cellSizeMeters": 128.0
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "lightning_bolt_impact_flash",
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [1.0, 1.0, 0.95] },
+      { "t": 0.2, "color": [0.7, 0.85, 1.0] },
+      { "t": 1.0, "color": [0.3, 0.45, 1.0] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.85 },
+      { "t": 0.14, "value": 1.7 },
+      { "t": 1.0, "value": 2.1 }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.0 },
+      { "t": 0.28, "value": 0.22 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.08, "max": 0.16 },
+  "speed": { "min": 0.02, "max": 0.15 },
+  "rate": 0,
+  "spreadAngle": [0, 6],
+  "shape": "sphere",
+  "shapeStyle": "volume",
+  "shapeSize": [0.025, 0.025, 0.025],
+  "orientation": "FacingCamera",
+  "lightEmission": 1.0,
+  "blend": "additive",
+  "crossedBillboards": true,
+  "maxParticles": 12,
+  "enabled": true,
+  "emissionDirection": [0.0, 1.0, 0.0],
+  "minScreenSize": 40,
+  "softOcclusion": false
+}

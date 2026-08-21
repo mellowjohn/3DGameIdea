@@ -7,6 +7,16 @@
 
 New games begin with character customization after the opening cutscene. The player defines a protagonist native to Tessera by choosing a **starting archetype** (base class) and customizing their character.
 
+**Opening handoff (D-P0-17 / D-P0-17b / D-P0-17e):** prologue cinematic → this screen → **Calrenoth continuous-feeling pan** (≥30s; Landfall title on aerial wide) → quest **Landfall**.
+
+## Class select copy (locked — D-P0-17c)
+
+| Archetype | Bubble | Lore |
+| --- | --- | --- |
+| Ashfell Blade | House steel under Asher’s levy—close combat and duty beneath the Ashfell banner. | You were drafted into House Ashfell’s war line, where disciplined fighters and hardened brawlers serve Tessera through blood and obligation. Calrenoth was supposed to hold. You arrive as reinforcement—not yet a hero. |
+| Outrider | A mobile Lodge skirmisher—strike from range and stay ahead of the line. | The Outrider Lodge scouts beyond Tessera’s armies, carrying warnings and harrying enemies before battle begins. Called to reinforce Calrenoth, you approach the siege with bow in hand and danger already at your heels. |
+| Runecaster | A Guild combatant who prepares runes and drafts sigils under pressure. | The Runecaster Guild teaches power that must be inscribed, prepared, and triggered through practiced craft. Sent to Calrenoth as arcane support, you carry a small arsenal of runes into a fortress already beginning to fall. |
+
 The protagonist is not fixed as a single job title. Under [DEC-0044](../decisions/index.md#dec-0044-starting-archetype-lane-orgs-and-rename), the three starting archetypes are **Ashfell Blade**, **Outrider**, and **Runecaster**.
 
 ## Shared Premise

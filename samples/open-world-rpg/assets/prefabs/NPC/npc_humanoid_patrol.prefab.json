@@ -1,0 +1,101 @@
+{
+  "components": [
+    {
+      "data": {
+        "controller": "assets/animators/player.animator.json",
+        "defaultState": "idle"
+      },
+      "id": "animator-0",
+      "type": "animator"
+    },
+    {
+      "data": {
+        "halfHeight": 0.6,
+        "layer": "dynamic",
+        "radius": 0.3,
+        "shape": "capsule",
+        "transform": {
+          "position": [
+            0,
+            0.9,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "trigger": false
+      },
+      "id": "collision-0",
+      "type": "collider"
+    },
+    {
+      "data": {
+        "angularDamping": 0.05,
+        "freezeRotation": true,
+        "linearDamping": 0.05,
+        "mass": 70,
+        "motionType": "dynamic",
+        "useGravity": true
+      },
+      "id": "rigidbody-0",
+      "type": "rigidbody"
+    },
+    {
+      "data": {
+        "combatHurt": "npc_body",
+        "layer": "trigger",
+        "radius": 0.85,
+        "shape": "sphere",
+        "transform": {
+          "position": [0, 1.2, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "trigger": true
+      },
+      "id": "collision-hurt",
+      "type": "collider"
+    }
+  ],
+  "entities": [
+    {
+      "mesh": {
+        "asset": "assets/models/player.gltf"
+      },
+      "name": "Body",
+      "parent": null,
+      "transform": {
+        "position": [0, -0.09, 0],
+        "rotation": [0, 0, 0, 1],
+        "scale": [0.655, 0.655, 0.655]
+      }
+    }
+  ],
+  "npcAi": {
+    "kind": "hostile",
+    "displayName": "Patrol Guard",
+    "heldItemId": "ashfell_arming_sword",
+    "aggroRadius": 8,
+    "loseAggroRadius": 14,
+    "attackRange": 1.9,
+    "attackCooldown": 1.35,
+    "moveSpeed": 2.8,
+    "patrolArrive": 2.5,
+    "patrolWaypoints": [
+      {"x": 0, "z": 0},
+      {"x": 7, "z": 0},
+      {"x": 7, "z": 5},
+      {"x": 0, "z": 5}
+    ]
+  },
+  "schemaVersion": 2
+}

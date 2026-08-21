@@ -1,12 +1,14 @@
 #include "engine/automation/editor_session.h"
 
 #include "engine/automation/water_edit_commands.h"
+#include "engine/world/foliage_density.h"
 #include "engine/world/terrain.h"
 #include "engine/world/water_store.h"
 
 #include <nlohmann/json.hpp>
 
 #include <array>
+#include <algorithm>
 #include <cmath>
 #include <map>
 #include <memory>
@@ -129,6 +131,48 @@ EditorBridgeResponse apply_water_operation(EditorSessionContext& context, const 
         return make_response(ExitCode::Success, "Water stroke applied", {}, {}, {});
     };
 
+    auto densify_polyline = [](const std::vector<std::array<float, 2>>& controls, float step) {
+        std::vector<std::array<float, 2>> pts;
+        if (controls.empty()) return pts;
+        for (std::size_t i = 0; i + 1 < controls.size(); ++i) {
+            const float x0 = controls[i][0];
+            const float z0 = controls[i][1];
+            const float x1 = controls[i + 1][0];
+            const float z1 = controls[i + 1][1];
+            const float seg = std::hypot(x1 - x0, z1 - z0);
+            const int n = std::max(1, static_cast<int>(std::ceil(seg / std::max(0.5f, step))));
+            for (int k = 0; k < n; ++k) {
+                const float t = static_cast<float>(k) / static_cast<float>(n);
+                pts.push_back({x0 + (x1 - x0) * t, z0 + (z1 - z0) * t});
+            }
+        }
+        pts.push_back(controls.back());
+        return pts;
+    };
+
+    auto parse_points = [&](const nlohmann::json& root) -> Result<std::vector<std::array<float, 2>>> {
+        if (!root.contains("points") || !root["points"].is_array() || root["points"].empty()) {
+            return Result<std::vector<std::array<float, 2>>>::failure(
+                session_error("WATER-POINTS-ARGS", "place_along requires points:[{x,z},...].",
+                    "Provide a polyline of world samples."));
+        }
+        std::vector<std::array<float, 2>> controls;
+        for (const auto& point : root["points"]) {
+            if (!point.is_object() || !point.contains("x") || !point.contains("z")) {
+                return Result<std::vector<std::array<float, 2>>>::failure(session_error(
+                    "WATER-POINT-INVALID", "Each point requires x and z.", "Use {x,z} objects."));
+            }
+            const float px = point["x"].get<float>();
+            const float pz = point["z"].get<float>();
+            if (!std::isfinite(px) || !std::isfinite(pz)) {
+                return Result<std::vector<std::array<float, 2>>>::failure(session_error(
+                    "WATER-POINT-FINITE", "Point coordinates must be finite.", "Use finite x/z."));
+            }
+            controls.push_back({px, pz});
+        }
+        return Result<std::vector<std::array<float, 2>>>::success(std::move(controls));
+    };
+
     auto apply_water_op = [&](const nlohmann::json& op) -> Result<std::set<CellCoord>> {
         if (!op.contains("x") || !op.contains("z")) {
             return Result<std::set<CellCoord>>::failure(
@@ -146,6 +190,59 @@ EditorBridgeResponse apply_water_operation(EditorSessionContext& context, const 
         const bool erase = op_action == "erase" || op.value("erase", false);
         if (erase) return context.water_store->apply_erase_brush(x, z, radius, strength);
         return context.water_store->apply_place_brush(x, z, radius, strength);
+    };
+
+    auto apply_place_along_op = [&](const nlohmann::json& op) -> Result<std::set<CellCoord>> {
+        const auto controls = parse_points(op);
+        if (!controls) return Result<std::set<CellCoord>>::failure(controls.error());
+        const float step = std::max(0.5f, op.value("step", 2.5f));
+        const float radius = op.value("radius", 3.8f);
+        const float strength = op.value("strength", 1.0f);
+        const auto pts = densify_polyline(controls.value(), step);
+        std::set<CellCoord> touched_all;
+        for (const auto& p : pts) {
+            const auto touched = context.water_store->apply_place_brush(p[0], p[1], radius, strength);
+            if (!touched) return Result<std::set<CellCoord>>::failure(touched.error());
+            touched_all.insert(touched.value().begin(), touched.value().end());
+        }
+        return Result<std::set<CellCoord>>::success(std::move(touched_all));
+    };
+
+    auto erase_foliage_under_points =
+        [&](const std::vector<std::array<float, 2>>& pts, float radius, float strength) -> std::size_t {
+        if (!params.value("eraseFoliage", true)) return 0;
+        if (!context.foliage_density || !context.foliage_density_history) return 0;
+        if (pts.empty()) return 0;
+        std::set<CellCoord> probe;
+        for (const auto& p : pts) {
+            auto local = probe_cells(p[0], p[1], radius, FoliageDensityStore::k_cell_size);
+            probe.insert(local.begin(), local.end());
+        }
+        std::map<CellCoord, FoliageCellSnapshot> before;
+        for (const auto& cell : probe)
+            before[cell] = context.foliage_density->cell_snapshot_or_empty(cell);
+        std::size_t touched = 0;
+        const std::uint8_t layer_count = context.foliage_layers
+            ? static_cast<std::uint8_t>(std::min<std::size_t>(context.foliage_layers->layers.size(), 8))
+            : static_cast<std::uint8_t>(1);
+        for (const auto& p : pts) {
+            for (std::uint8_t layer = 0; layer < std::max<std::uint8_t>(1, layer_count); ++layer) {
+                const auto result =
+                    context.foliage_density->apply_foliage_brush(p[0], p[1], radius, strength, layer, true);
+                if (result && !result.value().empty()) ++touched;
+            }
+        }
+        if (touched == 0) return 0;
+        std::map<CellCoord, FoliageCellSnapshot> after;
+        for (const auto& cell : probe)
+            after[cell] = context.foliage_density->cell_snapshot_or_empty(cell);
+        const auto committed = context.foliage_density_history->execute(
+            *context.foliage_density,
+            std::make_unique<FoliageDensityBrushStrokeCommand>(std::move(before), std::move(after)));
+        if (!committed) return 0;
+        if (context.foliage_density_dirty) *context.foliage_density_dirty = true;
+        if (context.reload_foliage) context.reload_foliage();
+        return touched;
     };
 
     auto save_water = [&]() -> EditorBridgeResponse {
@@ -167,7 +264,7 @@ EditorBridgeResponse apply_water_operation(EditorSessionContext& context, const 
         if (!params.contains("ops") || !params["ops"].is_array()) {
             return make_response(ExitCode::InvalidArguments, "batch requires ops array", {},
                 {session_error("WATER-BATCH-OPS", "batch requires an ops array.",
-                    "Provide ops:[{action,x,z,...},...]")});
+                    "Provide ops:[{action,x,z,...} or {action:place_along,points:[...]}]")});
         }
         const auto& ops = params["ops"];
         if (ops.empty()) {
@@ -183,28 +280,59 @@ EditorBridgeResponse apply_water_operation(EditorSessionContext& context, const 
         }
 
         std::set<CellCoord> probe;
+        std::vector<std::array<float, 2>> foliage_pts;
+        float foliage_radius = 4.0f;
         for (const auto& op : ops) {
             if (!op.is_object()) continue;
-            const float x = op.value("x", 0.0f);
-            const float z = op.value("z", 0.0f);
+            const auto op_action = op.value("action", std::string{"place"});
             const float radius = op.value("radius", 4.0f);
-            const auto cells = probe_cells(x, z, radius, WaterStore::k_cell_size);
-            probe.insert(cells.begin(), cells.end());
+            foliage_radius = std::max(foliage_radius, radius);
+            if (op_action == "place_along") {
+                const auto controls = parse_points(op);
+                if (!controls)
+                    return make_response(ExitCode::InvalidArguments, controls.error().message, {}, {controls.error()});
+                const auto pts = densify_polyline(controls.value(), op.value("step", 2.5f));
+                for (const auto& p : pts) {
+                    auto local = probe_cells(p[0], p[1], radius, WaterStore::k_cell_size);
+                    probe.insert(local.begin(), local.end());
+                    foliage_pts.push_back(p);
+                }
+            } else {
+                if (!op.contains("x") || !op.contains("z")) {
+                    return make_response(ExitCode::InvalidArguments, "batch water op requires x/z", {},
+                        {session_error("WATER-BRUSH-ARGS", "Water brush requires x and z.", "Provide world x/z.")});
+                }
+                const float x = op["x"].get<float>();
+                const float z = op["z"].get<float>();
+                auto cells = probe_cells(x, z, radius, WaterStore::k_cell_size);
+                probe.insert(cells.begin(), cells.end());
+                if (op_action != "erase" && !op.value("erase", false))
+                    foliage_pts.push_back({x, z});
+            }
         }
         auto before = snapshot_water(probe);
         std::size_t applied = 0;
         for (const auto& op : ops) {
             if (!op.is_object()) continue;
-            const auto touched = apply_water_op(op);
+            const auto op_action = op.value("action", std::string{"place"});
+            Result<std::set<CellCoord>> touched =
+                Result<std::set<CellCoord>>::failure(session_error("WATER-BATCH-ACTION", "bad op", "Check action."));
+            if (op_action == "place_along")
+                touched = apply_place_along_op(op);
+            else
+                touched = apply_water_op(op);
             if (!touched) return make_response(ExitCode::ValidationFailed, touched.error().message, {}, {touched.error()});
             if (!touched.value().empty()) ++applied;
         }
         auto response = commit_water(std::move(before), false);
         if (response.exit_code != ExitCode::Success) return response;
         reload_now();
+        const auto foliage_cleared =
+            erase_foliage_under_points(foliage_pts, foliage_radius, params.value("strength", 1.0f));
         response.summary = "Water batch applied";
         response.metadata["appliedCount"] = std::to_string(applied);
         response.metadata["waterChanged"] = applied > 0 ? "true" : "false";
+        response.metadata["foliageCleared"] = std::to_string(foliage_cleared);
         if (params.value("save", false)) {
             const auto saved = save_water();
             if (saved.exit_code != ExitCode::Success) return saved;
@@ -232,48 +360,23 @@ EditorBridgeResponse apply_water_operation(EditorSessionContext& context, const 
                 changed.push_back(std::to_string(cell.x) + "," + std::to_string(cell.z));
             response.changed_object_ids = std::move(changed);
             if (touched.value().empty()) response.summary = "Water brush touched no samples";
+            if (action == "place") {
+                const auto foliage_cleared = erase_foliage_under_points(
+                    {{x, z}}, radius, params.value("strength", 1.0f));
+                response.metadata["foliageCleared"] = std::to_string(foliage_cleared);
+            }
         }
         return response;
     }
 
     if (action == "place_along") {
         if (auto missing = require_water()) return *missing;
-        if (!params.contains("points") || !params["points"].is_array() || params["points"].empty()) {
-            return make_response(ExitCode::InvalidArguments, "place_along requires points", {},
-                {session_error("WATER-POINTS-ARGS", "place_along requires points:[{x,z},...].",
-                    "Provide a polyline of world samples.")});
-        }
-        std::vector<std::array<float, 2>> controls;
-        for (const auto& point : params["points"]) {
-            if (!point.is_object() || !point.contains("x") || !point.contains("z")) {
-                return make_response(ExitCode::InvalidArguments, "Invalid water point", {},
-                    {session_error("WATER-POINT-INVALID", "Each point requires x and z.", "Use {x,z} objects.")});
-            }
-            const float px = point["x"].get<float>();
-            const float pz = point["z"].get<float>();
-            if (!std::isfinite(px) || !std::isfinite(pz)) {
-                return make_response(ExitCode::InvalidArguments, "Water point must be finite", {},
-                    {session_error("WATER-POINT-FINITE", "Point coordinates must be finite.", "Use finite x/z.")});
-            }
-            controls.push_back({px, pz});
-        }
+        const auto controls = parse_points(params);
+        if (!controls)
+            return make_response(ExitCode::InvalidArguments, controls.error().message, {}, {controls.error()});
         const float step = std::max(0.5f, params.value("step", 2.5f));
         const float radius = params.value("radius", 3.8f);
-        const float strength = params.value("strength", 1.0f);
-        std::vector<std::array<float, 2>> pts;
-        for (std::size_t i = 0; i + 1 < controls.size(); ++i) {
-            const float x0 = controls[i][0];
-            const float z0 = controls[i][1];
-            const float x1 = controls[i + 1][0];
-            const float z1 = controls[i + 1][1];
-            const float seg = std::hypot(x1 - x0, z1 - z0);
-            const int n = std::max(1, static_cast<int>(std::ceil(seg / step)));
-            for (int k = 0; k < n; ++k) {
-                const float t = static_cast<float>(k) / static_cast<float>(n);
-                pts.push_back({x0 + (x1 - x0) * t, z0 + (z1 - z0) * t});
-            }
-        }
-        pts.push_back(controls.back());
+        const auto pts = densify_polyline(controls.value(), step);
 
         std::set<CellCoord> probe;
         for (const auto& p : pts) {
@@ -281,18 +384,16 @@ EditorBridgeResponse apply_water_operation(EditorSessionContext& context, const 
             probe.insert(local.begin(), local.end());
         }
         auto before = snapshot_water(probe);
-        std::set<CellCoord> touched_all;
-        for (const auto& p : pts) {
-            const auto touched = context.water_store->apply_place_brush(p[0], p[1], radius, strength);
-            if (!touched)
-                return make_response(ExitCode::ValidationFailed, touched.error().message, {}, {touched.error()});
-            touched_all.insert(touched.value().begin(), touched.value().end());
-        }
+        const auto touched = apply_place_along_op(params);
+        if (!touched) return make_response(ExitCode::ValidationFailed, touched.error().message, {}, {touched.error()});
         auto response = commit_water(std::move(before), true);
         if (response.exit_code == ExitCode::Success) {
             response.summary = "Water placed along polyline";
-            response.metadata["touchedCells"] = std::to_string(touched_all.size());
+            response.metadata["touchedCells"] = std::to_string(touched.value().size());
             response.metadata["pointCount"] = std::to_string(pts.size());
+            const auto foliage_cleared =
+                erase_foliage_under_points(pts, radius, params.value("strength", 1.0f));
+            response.metadata["foliageCleared"] = std::to_string(foliage_cleared);
             if (params.value("save", false)) {
                 const auto saved = save_water();
                 if (saved.exit_code != ExitCode::Success) return saved;

@@ -1,0 +1,126 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.47999998927116394,
+          0.44999998807907104,
+          0.41999998688697815
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "base",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.18,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          2.1,
+          0.28,
+          2.1
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.5199999809265137,
+          0.49000000953674316,
+          0.46000000834465027
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "mid",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.42,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.75,
+          0.22,
+          1.75
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.5600000023841858,
+          0.5299999713897705,
+          0.5
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "top",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.62,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.45,
+          0.18,
+          1.45
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.6000000238418579,
+          0.5699999928474426,
+          0.5400000214576721
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "lip",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.74,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.55,
+          0.06,
+          1.55
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

@@ -1,0 +1,401 @@
+{
+  "designResolution": [
+    1920.0,
+    1080.0
+  ],
+  "id": "character_creation_difficulty",
+  "schemaVersion": 1,
+  "widgets": [
+    {
+      "anchor": "center",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        255.0
+      ],
+      "id": "ccd_underlay",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        2400.0,
+        1400.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "ccd_backdrop",
+      "image": "assets/ui/menu/creation/difficulty-backdrop.png",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        1920.0,
+        1080.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        8.0,
+        6.0,
+        10.0,
+        100.0
+      ],
+      "id": "ccd_dim",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        1920.0,
+        1080.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "ccd_sel_normal",
+      "image": "assets/ui/menu/creation/creation-glass-card-select-glow.png",
+      "imageMode": "contain",
+      "offset": [
+        -460.0,
+        -230.0
+      ],
+      "size": [
+        311.0,
+        451.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "id": "ccd_sel_hard",
+      "image": "assets/ui/menu/creation/creation-glass-card-select-glow.png",
+      "imageMode": "contain",
+      "offset": [
+        0.0,
+        -230.0
+      ],
+      "size": [
+        311.0,
+        451.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "ccd_sel_nightmare",
+      "image": "assets/ui/menu/creation/creation-glass-card-select-glow.png",
+      "imageMode": "contain",
+      "offset": [
+        460.0,
+        -230.0
+      ],
+      "size": [
+        311.0,
+        451.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "ccd_art_normal",
+      "image": "assets/ui/menu/creation/glass-card-ashens-levy-v3.png",
+      "imageMode": "contain",
+      "offset": [
+        -460.0,
+        -230.0
+      ],
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_difficulty.pick.normal",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "id": "ccd_pick_normal",
+      "offset": [
+        -460.0,
+        -230.0
+      ],
+      "opacity": 0.009999999776482582,
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "id": "ccd_art_hard",
+      "image": "assets/ui/menu/creation/glass-card-calrenoth-breach-v3.png",
+      "imageMode": "contain",
+      "offset": [
+        0.0,
+        -230.0
+      ],
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_difficulty.pick.hard",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "id": "ccd_pick_hard",
+      "offset": [
+        0.0,
+        -230.0
+      ],
+      "opacity": 0.009999999776482582,
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "id": "ccd_art_nightmare",
+      "image": "assets/ui/menu/creation/glass-card-frangiturs-claim-v3.png",
+      "imageMode": "contain",
+      "offset": [
+        460.0,
+        -230.0
+      ],
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_difficulty.pick.nightmare",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "id": "ccd_pick_nightmare",
+      "offset": [
+        460.0,
+        -230.0
+      ],
+      "opacity": 0.009999999776482582,
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "id": "ccd_detail_panel",
+      "image": "assets/ui/menu/creation/prologue-glass-dialogue-plate.png",
+      "offset": [
+        0.0,
+        300.0
+      ],
+      "size": [
+        1040.0,
+        340.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_difficulty.detail.title",
+      "color": [
+        247.0,
+        234.0,
+        208.0,
+        255.0
+      ],
+      "fontSize": 36.0,
+      "id": "ccd_detail_title",
+      "offset": [
+        0.0,
+        255.0
+      ],
+      "size": [
+        900.0,
+        46.0
+      ],
+      "text": "Ashen's Levy",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_difficulty.detail.lane",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 16.0,
+      "id": "ccd_detail_lane",
+      "offset": [
+        0.0,
+        292.0
+      ],
+      "size": [
+        900.0,
+        24.0
+      ],
+      "text": "Normal · War draft · fair steel",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_difficulty.detail.body",
+      "color": [
+        232.0,
+        224.0,
+        212.0,
+        255.0
+      ],
+      "fitText": true,
+      "fontSize": 15.0,
+      "id": "ccd_detail_body",
+      "minFontSize": 12.0,
+      "offset": [
+        0.0,
+        315.0
+      ],
+      "padding": [
+        48.0,
+        6.0,
+        48.0,
+        4.0
+      ],
+      "size": [
+        900.0,
+        50.0
+      ],
+      "text": "A fair war draft — deaths sting, but the levy still reforms you. Tessera answers with discipline, not cruelty. Kit holds, foes press, and free saves keep the campaign moving when steel fails.",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation_difficulty.detail.rules",
+      "color": [
+        196.0,
+        162.0,
+        74.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "ccd_detail_rules",
+      "offset": [
+        0.0,
+        348.0
+      ],
+      "padding": [
+        48.0,
+        2.0,
+        48.0,
+        2.0
+      ],
+      "size": [
+        900.0,
+        36.0
+      ],
+      "text": "Rules · Deaths sting · Levy reforms · Free saves",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "character_creation_difficulty.back",
+      "color": [
+        236.0,
+        234.0,
+        228.0,
+        255.0
+      ],
+      "fontSize": 22.0,
+      "id": "ccd_back",
+      "image": "assets/ui/menu/glass-menu-btn-secondary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        72.0,
+        56.0
+      ],
+      "size": [
+        210.0,
+        62.0
+      ],
+      "text": "Back",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "bottom_right",
+      "bind": "character_creation_difficulty.next",
+      "color": [
+        247.0,
+        234.0,
+        208.0,
+        255.0
+      ],
+      "fontSize": 24.0,
+      "id": "ccd_next",
+      "image": "assets/ui/menu/glass-menu-btn-primary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        -72.0,
+        56.0
+      ],
+      "size": [
+        290.0,
+        68.0
+      ],
+      "text": "Next",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    }
+  ]
+}

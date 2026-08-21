@@ -1,0 +1,121 @@
+{
+  "acceleration": [
+    0.0,
+    0.11999999731779099,
+    0.0
+  ],
+  "aspectRatio": 1.0,
+  "blend": "softLight",
+  "color": {
+    "keypoints": [
+      {
+        "color": [
+          0.550000011920929,
+          0.8500000238418579,
+          1.0
+        ],
+        "t": 0.0
+      },
+      {
+        "color": [
+          0.3499999940395355,
+          0.6499999761581421,
+          1.0
+        ],
+        "t": 0.4000000059604645
+      },
+      {
+        "color": [
+          0.20000000298023224,
+          0.3499999940395355,
+          0.8500000238418579
+        ],
+        "t": 1.0
+      }
+    ]
+  },
+  "crossedBillboards": false,
+  "drag": 0.3499999940395355,
+  "emissionDirection": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "enabled": true,
+  "flipbookFramerate": 16.0,
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "Loop",
+  "flipbookStartRandom": true,
+  "id": "rune_charge_core",
+  "lifetime": {
+    "max": 0.8999999761581421,
+    "min": 0.550000011920929
+  },
+  "lightEmission": 0.550000011920929,
+  "maxParticles": 28,
+  "minScreenSize": 8.0,
+  "orientation": "FacingCamera",
+  "rate": 0.0,
+  "rotation": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.0
+      },
+      {
+        "t": 1.0,
+        "value": 160.0
+      }
+    ]
+  },
+  "rotationStartRandom": true,
+  "schemaVersion": 1,
+  "shape": "sphere",
+  "shapeSize": [
+    0.029999999329447746,
+    0.029999999329447746,
+    0.029999999329447746
+  ],
+  "shapeStyle": "volume",
+  "size": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.2800000011920929
+      },
+      {
+        "t": 0.3499999940395355,
+        "value": 0.47999998927116394
+      },
+      {
+        "t": 1.0,
+        "value": 0.3199999928474426
+      }
+    ]
+  },
+  "speed": {
+    "max": 0.10000000149011612,
+    "min": 0.019999999552965164
+  },
+  "spreadAngle": [
+    12.0,
+    22.0
+  ],
+  "texture": "assets/vfx/rune_sigil_flipbook_4x4.png",
+  "transparency": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.11999999731779099
+      },
+      {
+        "t": 0.44999998807907104,
+        "value": 0.2199999988079071
+      },
+      {
+        "t": 1.0,
+        "value": 1.0
+      }
+    ]
+  }
+}

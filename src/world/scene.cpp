@@ -27,6 +27,31 @@ bool finite(const TransformComponent& value) {
     for (float item : value.scale) if (!std::isfinite(item)) return false;
     return true;
 }
+
+const char* presentation_to_string(WorldPresentation presentation) {
+    switch (presentation) {
+    case WorldPresentation::Menu:
+        return "menu";
+    case WorldPresentation::CinematicInstance:
+        return "cinematic_instance";
+    case WorldPresentation::OpenWorld:
+    default:
+        return "open_world";
+    }
+}
+
+Result<WorldPresentation> presentation_from_string(const std::string& value) {
+    if (value.empty() || value == "open_world")
+        return Result<WorldPresentation>::success(WorldPresentation::OpenWorld);
+    if (value == "menu")
+        return Result<WorldPresentation>::success(WorldPresentation::Menu);
+    if (value == "cinematic_instance")
+        return Result<WorldPresentation>::success(WorldPresentation::CinematicInstance);
+    return Result<WorldPresentation>::failure(world_error(
+        "WORLD-PRESENTATION-INVALID",
+        "Unknown world presentation: " + value,
+        "Use open_world, menu, or cinematic_instance."));
+}
 }
 
 std::optional<entt::entity> Scene::handle(const EntityId& id) const {
@@ -41,8 +66,11 @@ Scene::Scene(Scene&& other) noexcept
     : registry_(std::move(other.registry_)), entities_(std::move(other.entities_)),
       edit_revision_(other.edit_revision_), world_id_(std::move(other.world_id_)),
       document_name_(std::move(other.document_name_)), world_size_meters_(other.world_size_meters_),
-      cell_size_meters_(other.cell_size_meters_) {
+      cell_size_meters_(other.cell_size_meters_), presentation_(other.presentation_),
+      terrain_data_paths_(std::move(other.terrain_data_paths_)) {
     if (!registry_) registry_ = std::make_unique<entt::registry>();
+    other.presentation_ = WorldPresentation::OpenWorld;
+    other.terrain_data_paths_.reset();
 }
 Scene& Scene::operator=(Scene&& other) noexcept {
     if (this != &other) {
@@ -50,6 +78,10 @@ Scene& Scene::operator=(Scene&& other) noexcept {
         entities_ = std::move(other.entities_);
         edit_revision_ = other.edit_revision_;
         world_id_=std::move(other.world_id_);document_name_=std::move(other.document_name_);world_size_meters_=other.world_size_meters_;cell_size_meters_=other.cell_size_meters_;
+        presentation_ = other.presentation_;
+        terrain_data_paths_ = std::move(other.terrain_data_paths_);
+        other.presentation_ = WorldPresentation::OpenWorld;
+        other.terrain_data_paths_.reset();
         if (!registry_) registry_ = std::make_unique<entt::registry>();
     }
     return *this;
@@ -113,6 +145,12 @@ Result<void> Scene::set_transform(const EntityId& id, const TransformComponent& 
     for (const float scale : transform.scale)
         if (std::abs(scale) < 0.000001f) return Result<void>::failure(world_error("WORLD-TRANSFORM-ZERO-SCALE", "Transform scale cannot be zero"));
     registry_->replace<TransformComponent>(*value, transform);
+    if (registry_->all_of<WorldPlacementComponent>(*value)) {
+        WorldPartition partition{partition_config()};
+        if (auto cell = partition.cell_for(
+                {transform.position[0], transform.position[1], transform.position[2]}))
+            registry_->get<WorldPlacementComponent>(*value).cell = cell.value();
+    }
     if (bump_edit_revision) this->bump_edit_revision();
     return Result<void>::success();
 }
@@ -120,7 +158,7 @@ Result<void> Scene::set_transform(const EntityId& id, const TransformComponent& 
 Result<EntityId> Scene::place_world_object(std::string name_value, std::string prefab_asset, const TransformComponent& transform_value, std::optional<EntityId> requested_id, std::optional<std::string> character_asset, const PrefabAsset* seed_prefab) {
     if (prefab_asset.empty() || prefab_asset.rfind("assets/", 0) != 0)
         return Result<EntityId>::failure(world_error("WORLD-PREFAB-PATH-INVALID", "Placed object requires a project-relative assets/ prefab path"));
-    WorldPartition partition;
+    WorldPartition partition{partition_config()};
     auto cell = partition.cell_for({transform_value.position[0], transform_value.position[1], transform_value.position[2]});
     if (!cell) return Result<EntityId>::failure(cell.error());
     auto created = create_entity(std::move(name_value), requested_id);
@@ -343,7 +381,7 @@ Result<void> Scene::move_world_object(const EntityId& id, const TransformCompone
     const auto value = handle(id);
     if (!value || !registry_->all_of<WorldPlacementComponent>(*value))
         return Result<void>::failure(world_error("WORLD-PLACEMENT-NOT-FOUND", "Move target is not a placed world object"));
-    WorldPartition partition;
+    WorldPartition partition{partition_config()};
     auto cell = partition.cell_for({transform_value.position[0], transform_value.position[1], transform_value.position[2]});
     if (!cell) return Result<void>::failure(cell.error());
     auto transformed = set_transform(id, transform_value);
@@ -409,6 +447,16 @@ std::vector<EntityId> Scene::entity_ids() const {
     return ids;
 }
 
+PartitionConfig Scene::partition_config() const {
+    PartitionConfig config;
+    if (cell_size_meters_ && *cell_size_meters_ > 0.0) config.cell_size = *cell_size_meters_;
+    if (world_size_meters_) {
+        const double width = std::max((*world_size_meters_)[0], (*world_size_meters_)[1]);
+        if (width > 0.0) config.world_half_extent = width * 0.5;
+    }
+    return config;
+}
+
 std::vector<EngineError> Scene::validate() const {
     std::vector<EngineError> errors;
     for (const auto& entry : entities_) {
@@ -422,7 +470,8 @@ std::vector<EngineError> Scene::validate() const {
         const auto parent_value = registry_->get<HierarchyComponent>(entity).parent;
         if (registry_->all_of<WorldPlacementComponent>(entity)) {
             const auto& placement = registry_->get<WorldPlacementComponent>(entity);
-            WorldPartition partition; auto expected = partition.cell_for({transform.position[0], transform.position[1], transform.position[2]});
+            WorldPartition partition{partition_config()};
+            auto expected = partition.cell_for({transform.position[0], transform.position[1], transform.position[2]});
             if (placement.prefab_asset.empty() || placement.prefab_asset.rfind("assets/", 0) != 0) errors.push_back(world_error("WORLD-PREFAB-PATH-INVALID", "Placement has an invalid prefab path: " + id.str()));
             if (!expected || expected.value() != placement.cell) errors.push_back(world_error("WORLD-PLACEMENT-CELL-MISMATCH", "Placement cell does not match transform: " + id.str()));
         }
@@ -439,7 +488,15 @@ std::vector<EngineError> Scene::validate() const {
 
 std::string Scene::to_json() const {
     Json root{{"schemaVersion", 1}, {"entities", Json::array()}};
-    if(world_id_)root["worldId"]=*world_id_;if(document_name_)root["name"]=*document_name_;if(world_size_meters_&&cell_size_meters_)root["partition"]={{"worldSizeMeters",*world_size_meters_},{"cellSizeMeters",*cell_size_meters_}};
+    if(world_id_)root["worldId"]=*world_id_;if(document_name_)root["name"]=*document_name_;
+    if (presentation_ != WorldPresentation::OpenWorld)
+        root["presentation"] = presentation_to_string(presentation_);
+    if (terrain_data_paths_) {
+        root["terrainData"] = {{"edits", terrain_data_paths_->edits},
+                               {"paint", terrain_data_paths_->paint},
+                               {"foliage", terrain_data_paths_->foliage}};
+    }
+    if(world_size_meters_&&cell_size_meters_)root["partition"]={{"worldSizeMeters",*world_size_meters_},{"cellSizeMeters",*cell_size_meters_}};
     for (const auto& entry : entities_) {
         const auto entity = entry.second;
         const auto& transform = registry_->get<TransformComponent>(entity);
@@ -472,6 +529,36 @@ Result<Scene> Scene::from_json(const std::string& text) {
             return Result<Scene>::failure(world_error("WORLD-SCHEMA-INVALID", "Scene requires schemaVersion 1 and an entities array"));
         Scene scene;
         if(root.contains("worldId"))scene.world_id_=root.at("worldId").get<std::string>();if(root.contains("name"))scene.document_name_=root.at("name").get<std::string>();if(root.contains("partition")){const auto& partition=root.at("partition");scene.world_size_meters_=partition.at("worldSizeMeters").get<std::array<double,2>>();scene.cell_size_meters_=partition.at("cellSizeMeters").get<double>();}
+        if (root.contains("presentation")) {
+            const auto parsed = presentation_from_string(root.at("presentation").get<std::string>());
+            if (!parsed) return Result<Scene>::failure(parsed.error());
+            scene.presentation_ = parsed.value();
+        }
+        if (root.contains("terrainData")) {
+            const auto& terrain = root.at("terrainData");
+            if (!terrain.is_object() || !terrain.contains("edits") ||
+                !terrain.contains("paint") || !terrain.contains("foliage") ||
+                !terrain.at("edits").is_string() ||
+                !terrain.at("paint").is_string() ||
+                !terrain.at("foliage").is_string())
+                return Result<Scene>::failure(world_error(
+                    "WORLD-TERRAIN-DATA-INVALID",
+                    "terrainData requires string edits, paint, and foliage paths"));
+            const WorldTerrainDataPaths paths{
+                terrain.at("edits").get<std::string>(),
+                terrain.at("paint").get<std::string>(),
+                terrain.at("foliage").get<std::string>()};
+            const auto valid_path = [](const std::string& path) {
+                return path.rfind("assets/terrain/", 0) == 0 &&
+                       path.find("..") == std::string::npos;
+            };
+            if (!valid_path(paths.edits) || !valid_path(paths.paint) ||
+                !valid_path(paths.foliage))
+                return Result<Scene>::failure(world_error(
+                    "WORLD-TERRAIN-DATA-PATH-INVALID",
+                    "terrainData paths must be project-relative under assets/terrain/"));
+            scene.terrain_data_paths_ = paths;
+        }
         struct PendingParent { EntityId child; std::optional<EntityId> parent; };
         std::vector<PendingParent> parents;
         for (const auto& item : root["entities"]) {

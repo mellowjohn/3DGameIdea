@@ -26,7 +26,7 @@ Add an `interaction` string to a prefab `collision` entry (see `context/formats/
 ## Debug integration
 
 - **Debug world**: a `use_campfire` probe sphere spawns near the origin; the character overlap tracker fires enter/exit while walking into it.
-- **Editor**: Diagnostics **Show event zones** draws all authored interaction volumes (violet + labels) without enabling full collision debug. **Show collision debug** still draws interaction volumes in gold among all physics bodies. Physics contact events against registered interaction triggers append to **Recent interactions** in Diagnostics when placement collision is active.
+- **Editor**: Diagnostics **Show event zones** (default off) draws authored interaction volumes (violet + labels) without enabling full collision debug; entities with interactions are cached per scene edit. **Show collision debug** still draws interaction volumes in gold among all physics bodies. Physics contact events against registered interaction triggers append to **Recent interactions** in Diagnostics when placement collision is active.
 
 ## Interaction prompt UX
 
@@ -39,6 +39,7 @@ Volumes that should be discoverable use enter/exit to drive a world-space billbo
 | `event_sandbox` | Press E to investigate | `use` (timeline start) |
 | `open_loot_bag` | Press E to search pouch | `use` (icon-only Landfall find stub → blackboard `loot.*`) |
 | `open_supply_chest` | Press E to open chest | `use` (icon-only Landfall find stub → blackboard `loot.*`) |
+| `open_weapon_crate` | Press E to open crate | `use` (opens inventory with a persistent 8-slot stash; combat sandbox seeds starter weapons) |
 
 ## Limitations
 

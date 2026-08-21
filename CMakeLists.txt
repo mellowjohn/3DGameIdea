@@ -32,6 +32,7 @@ add_library(engine_core
     src/testing/image_diff.cpp
     src/automation/live_automation_control.cpp
     src/automation/mcp_server.cpp
+    src/automation/mcp_job_queue.cpp
     src/automation/world_forge_commands.cpp
     src/automation/project_git_commands.cpp
     src/automation/asset_bake_commands.cpp
@@ -39,6 +40,7 @@ add_library(engine_core
     src/automation/planning_backlog.cpp
     src/automation/build_coordination.cpp
     src/rendering/render_app.cpp
+    src/rendering/gpu_instance_cull.cpp
     src/rendering/viewport_picking.cpp
     src/world/entity_id.cpp
     src/world/scene.cpp
@@ -59,6 +61,8 @@ add_library(engine_core
     src/animation/animator_runtime.cpp
     src/animation/bone_attachment.cpp
     src/animation/cpu_skinning.cpp
+    src/animation/anim_studio_agent_ops.cpp
+    src/animation/anim_studio_clip_history.cpp
     src/audio/audio_engine.cpp
     src/animation/animation_preview.cpp
     src/assets/prefab_asset.cpp
@@ -68,6 +72,7 @@ add_library(engine_core
     src/assets/particle_emitter_asset.cpp
     src/assets/ui_canvas_asset.cpp
     src/assets/ui_canvas_mutate.cpp
+    src/assets/ui_theme_asset.cpp
     src/assets/world_forge_factions_asset.cpp
     src/assets/world_forge_pantheon_asset.cpp
     src/assets/world_forge_archetypes_asset.cpp
@@ -93,6 +98,8 @@ add_library(engine_core
     src/save/rpg_save.cpp
     src/ui/hud_runtime.cpp
     src/ui/world_ui_billboard.cpp
+    src/ui/combat_text.cpp
+    src/combat/status_effect_runtime.cpp
     src/ui/ui_canvas_stack.cpp
     src/ui/ui_canvas_editor.cpp
     src/ui/editor_ui_hotspots.cpp
@@ -118,6 +125,7 @@ add_library(engine_core
     src/world/world_influence.cpp
     src/world/wind_field.cpp
     src/vfx/particle_system.cpp
+    src/vfx/weapon_sweep.cpp
     src/world/terrain_field.cpp
     src/world/transform_utils.cpp
     src/world/prefab_collision.cpp
@@ -128,6 +136,7 @@ add_library(engine_core
     src/physics/collision_world.cpp
     src/physics/character_controller.cpp
     src/physics/rigidbody_locomotion.cpp
+    src/ai/hostile_npc.cpp
     src/rendering/viewport_math.cpp
     src/rendering/debug_camera.cpp
     src/rendering/orbit_camera.cpp
@@ -157,7 +166,10 @@ endif()
 # Keep the developer executable separate from a stale/locked legacy Debug\engine.exe.
 # This also makes it explicit which binary is safe to run during iteration.
 set_target_properties(engine PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/dev-next")
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/dev-next"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/dev-next"
+    RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/RelWithDebInfo"
+    RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_BINARY_DIR}/dev-next")
 
 # Hot-reloadable sample game module (DEC-0053 / TICKET-0257). Lives next to engine.exe.
 add_library(game_module SHARED src/game_module/sample_game_module.cpp)
@@ -169,7 +181,7 @@ endif()
 set_target_properties(game_module PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/dev-next"
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/dev-next"
-    RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/dev-next"
+    RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/RelWithDebInfo"
     RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_BINARY_DIR}/dev-next"
     OUTPUT_NAME "game_module"
     PREFIX "")

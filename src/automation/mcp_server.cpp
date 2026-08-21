@@ -1,18 +1,18 @@
 #include "engine/automation/mcp_server.h"
 
+#include "engine/assets/hud_asset.h"
+#include "engine/assets/prefab_asset.h"
+#include "engine/assets/ui_canvas_asset.h"
+#include "engine/assets/ui_canvas_mutate.h"
+#include "engine/automation/asset_bake_commands.h"
 #include "engine/automation/automation_trace.h"
+#include "engine/automation/build_coordination.h"
 #include "engine/automation/editor_bridge.h"
 #include "engine/automation/editor_session.h"
 #include "engine/automation/live_automation_control.h"
-#include "engine/automation/world_forge_commands.h"
 #include "engine/automation/project_git_commands.h"
-#include "engine/automation/asset_bake_commands.h"
-#include "engine/automation/build_coordination.h"
+#include "engine/automation/world_forge_commands.h"
 #include "engine/core/result.h"
-#include "engine/assets/prefab_asset.h"
-#include "engine/assets/hud_asset.h"
-#include "engine/assets/ui_canvas_asset.h"
-#include "engine/assets/ui_canvas_mutate.h"
 #include "engine/scripting/lua_runtime.h"
 #include "engine/world/terrain_edits.h"
 #include "engine/world/water_store.h"
@@ -27,6 +27,7 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <thread>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -41,160 +42,185 @@ namespace {
 
 void configure_mcp_stdio() {
 #ifdef _WIN32
-    (void)_setmode(_fileno(stdin), _O_BINARY);
-    (void)_setmode(_fileno(stdout), _O_BINARY);
+  (void)_setmode(_fileno(stdin), _O_BINARY);
+  (void)_setmode(_fileno(stdout), _O_BINARY);
 #endif
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-    std::cout.tie(nullptr);
+  std::ios::sync_with_stdio(false);
+  std::cin.tie(nullptr);
+  std::cout.tie(nullptr);
 }
 
-bool read_exact(std::istream& stream, char* buffer, std::size_t size) {
-    std::size_t total = 0;
-    while (total < size) {
-        stream.read(buffer + total, static_cast<std::streamsize>(size - total));
-        const auto read = static_cast<std::size_t>(stream.gcount());
-        if (read == 0) return false;
-        total += read;
-    }
-    return true;
+bool read_exact(std::istream &stream, char *buffer, std::size_t size) {
+  std::size_t total = 0;
+  while (total < size) {
+    stream.read(buffer + total, static_cast<std::streamsize>(size - total));
+    const auto read = static_cast<std::size_t>(stream.gcount());
+    if (read == 0)
+      return false;
+    total += read;
+  }
+  return true;
 }
 
-bool is_content_length_header(const std::string& line) {
-    if (line.size() < 15) return false;
-    for (std::size_t i = 0; i < 15; ++i) {
-        if (std::tolower(static_cast<unsigned char>(line[i])) != "content-length:"[i]) return false;
-    }
-    return true;
+bool is_content_length_header(const std::string &line) {
+  if (line.size() < 15)
+    return false;
+  for (std::size_t i = 0; i < 15; ++i) {
+    if (std::tolower(static_cast<unsigned char>(line[i])) !=
+        "content-length:"[i])
+      return false;
+  }
+  return true;
 }
 
-std::size_t parse_content_length(const std::string& line) {
-    const auto colon = line.find(':');
-    if (colon == std::string::npos) return 0;
-    std::string value = line.substr(colon + 1);
-    while (!value.empty() && (value.front() == ' ' || value.front() == '\t')) value.erase(value.begin());
-    return static_cast<std::size_t>(std::stoul(value));
+std::size_t parse_content_length(const std::string &line) {
+  const auto colon = line.find(':');
+  if (colon == std::string::npos)
+    return 0;
+  std::string value = line.substr(colon + 1);
+  while (!value.empty() && (value.front() == ' ' || value.front() == '\t'))
+    value.erase(value.begin());
+  return static_cast<std::size_t>(std::stoul(value));
 }
 
 bool client_uses_ndjson = false;
 
 std::string read_message() {
-    while (true) {
-        std::string line;
-        if (!std::getline(std::cin, line)) return {};
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty()) continue;
+  while (true) {
+    std::string line;
+    if (!std::getline(std::cin, line))
+      return {};
+    if (!line.empty() && line.back() == '\r')
+      line.pop_back();
+    if (line.empty())
+      continue;
 
-        if (is_content_length_header(line)) {
-            const auto length = parse_content_length(line);
-            std::string blank;
-            if (!std::getline(std::cin, blank)) return {};
-            if (!blank.empty() && blank.back() == '\r') blank.pop_back();
+    if (is_content_length_header(line)) {
+      const auto length = parse_content_length(line);
+      std::string blank;
+      if (!std::getline(std::cin, blank))
+        return {};
+      if (!blank.empty() && blank.back() == '\r')
+        blank.pop_back();
 
-            std::string payload(length, '\0');
-            if (length > 0 && !read_exact(std::cin, payload.data(), length)) return {};
-            return payload;
-        }
-
-        if (line.front() == '{') {
-            client_uses_ndjson = true;
-            AutomationTrace::log(AutomationTraceChannel::Mcp, "frame_ndjson");
-            return line;
-        }
-
-        AutomationTrace::log(AutomationTraceChannel::Mcp, "frame_skip",
-            {{"line", line.substr(0, std::min<std::size_t>(line.size(), 80))}});
+      std::string payload(length, '\0');
+      if (length > 0 && !read_exact(std::cin, payload.data(), length))
+        return {};
+      return payload;
     }
+
+    if (line.front() == '{') {
+      client_uses_ndjson = true;
+      AutomationTrace::log(AutomationTraceChannel::Mcp, "frame_ndjson");
+      return line;
+    }
+
+    AutomationTrace::log(
+        AutomationTraceChannel::Mcp, "frame_skip",
+        {{"line", line.substr(0, std::min<std::size_t>(line.size(), 80))}});
+  }
 }
 
-void write_message(const std::string& payload) {
-    if (client_uses_ndjson) {
-        std::fwrite(payload.data(), 1, payload.size(), stdout);
-        std::fputc('\n', stdout);
-        std::fflush(stdout);
-        return;
-    }
-    const auto header = "Content-Length: " + std::to_string(payload.size()) + "\r\n\r\n";
-    std::fwrite(header.data(), 1, header.size(), stdout);
+void write_message(const std::string &payload) {
+  if (client_uses_ndjson) {
     std::fwrite(payload.data(), 1, payload.size(), stdout);
+    std::fputc('\n', stdout);
     std::fflush(stdout);
+    return;
+  }
+  const auto header =
+      "Content-Length: " + std::to_string(payload.size()) + "\r\n\r\n";
+  std::fwrite(header.data(), 1, header.size(), stdout);
+  std::fwrite(payload.data(), 1, payload.size(), stdout);
+  std::fflush(stdout);
 }
 
-nlohmann::json tool_text_content(const std::string& text) {
-    return nlohmann::json{{"type", "text"}, {"text", text}};
+nlohmann::json tool_text_content(const std::string &text) {
+  return nlohmann::json{{"type", "text"}, {"text", text}};
 }
 
-constexpr const char* k_live_automation_hint =
-    "Call engine_editor_live with action=enable (editor must be running), wait ~1s, then retry. Or enable \"MCP connection\" in Diagnostics.";
+constexpr const char *k_live_automation_hint =
+    "Call engine_editor_live with action=enable (editor must be running), wait "
+    "~1s, then retry. Or enable \"MCP connection\" in Diagnostics.";
 
-nlohmann::json bridge_to_tool_result(const EditorBridgeResponse& response) {
-    nlohmann::json payload;
-    payload["schemaVersion"] = response.schema_version;
-    payload["exitCode"] = static_cast<int>(response.exit_code);
-    payload["summary"] = response.summary;
-    payload["changedObjectIds"] = response.changed_object_ids;
-    payload["metadata"] = response.metadata;
-    nlohmann::json diagnostics = nlohmann::json::array();
-    for (const auto& diagnostic : response.diagnostics) diagnostics.push_back(nlohmann::json::parse(diagnostic.to_json()));
-    payload["diagnostics"] = diagnostics;
-    return {{"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
+nlohmann::json bridge_to_tool_result(const EditorBridgeResponse &response) {
+  nlohmann::json payload;
+  payload["schemaVersion"] = response.schema_version;
+  payload["exitCode"] = static_cast<int>(response.exit_code);
+  payload["summary"] = response.summary;
+  payload["changedObjectIds"] = response.changed_object_ids;
+  payload["metadata"] = response.metadata;
+  nlohmann::json diagnostics = nlohmann::json::array();
+  for (const auto &diagnostic : response.diagnostics)
+    diagnostics.push_back(nlohmann::json::parse(diagnostic.to_json()));
+  payload["diagnostics"] = diagnostics;
+  return {
+      {"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
 }
 
-nlohmann::json command_to_tool_result(const CommandResponse& response) {
-    return {{"content", nlohmann::json::array({tool_text_content(response.to_json())})}};
+nlohmann::json command_to_tool_result(const CommandResponse &response) {
+  return {{"content",
+           nlohmann::json::array({tool_text_content(response.to_json())})}};
 }
 
-EditorBridgeResponse forward_asset_operation(const std::filesystem::path& project_root, const std::string& operation,
-    const nlohmann::json& arguments) {
-    EditorBridgeClient client(project_root);
-    if (client.is_editor_running()) {
-        EditorBridgeRequest request;
-        request.request_id = make_correlation_id();
-        request.operation = operation;
-        request.params_json = arguments.dump();
-        return client.send(request);
-    }
-    AssetRegistry assets;
-    std::map<std::string, PrefabAsset> catalog;
-    EditorSessionContext context;
-    context.project_root = project_root;
-    context.assets = &assets;
-    context.prefab_catalog = &catalog;
-    return execute_editor_operation(context, operation, arguments.dump());
-}
-
-EditorBridgeResponse forward_to_editor(const std::filesystem::path& project_root, const std::string& operation,
-    const nlohmann::json& params) {
-    const auto started = std::chrono::steady_clock::now();
-    EditorBridgeClient client(project_root);
-    const bool editor_running = client.is_editor_running();
-    AutomationTrace::log(AutomationTraceChannel::Mcp, "bridge_probe",
-        {{"operation", operation}, {"editorRunning", editor_running ? "true" : "false"}});
-    if (!editor_running) {
-        EditorBridgeResponse response;
-        response.schema_version = 1;
-        response.request_id = make_correlation_id();
-        response.exit_code = ExitCode::Unavailable;
-        response.summary = "Editor live automation is not connected";
-        return response;
-    }
+EditorBridgeResponse
+forward_asset_operation(const std::filesystem::path &project_root,
+                        const std::string &operation,
+                        const nlohmann::json &arguments) {
+  EditorBridgeClient client(project_root);
+  if (client.is_editor_running()) {
     EditorBridgeRequest request;
     request.request_id = make_correlation_id();
     request.operation = operation;
-    if (!params.is_null()) request.params_json = params.dump();
-    const auto response = client.send(request);
-    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now() - started).count();
-    AutomationTrace::log(AutomationTraceChannel::Mcp, "bridge_response",
-        {{"operation", operation},
-            {"requestId", response.request_id},
-            {"exitCode", std::to_string(static_cast<int>(response.exit_code))},
-            {"summary", response.summary},
-            {"elapsedMs", std::to_string(elapsed_ms)}});
-    return response;
+    request.params_json = arguments.dump();
+    return client.send(request);
+  }
+  AssetRegistry assets;
+  std::map<std::string, PrefabAsset> catalog;
+  EditorSessionContext context;
+  context.project_root = project_root;
+  context.assets = &assets;
+  context.prefab_catalog = &catalog;
+  return execute_editor_operation(context, operation, arguments.dump());
 }
 
-const char* k_tools_list_json =
+EditorBridgeResponse
+forward_to_editor(const std::filesystem::path &project_root,
+                  const std::string &operation, const nlohmann::json &params) {
+  const auto started = std::chrono::steady_clock::now();
+  EditorBridgeClient client(project_root);
+  const bool editor_running = client.is_editor_running();
+  AutomationTrace::log(AutomationTraceChannel::Mcp, "bridge_probe",
+                       {{"operation", operation},
+                        {"editorRunning", editor_running ? "true" : "false"}});
+  if (!editor_running) {
+    EditorBridgeResponse response;
+    response.schema_version = 1;
+    response.request_id = make_correlation_id();
+    response.exit_code = ExitCode::Unavailable;
+    response.summary = "Editor live automation is not connected";
+    return response;
+  }
+  EditorBridgeRequest request;
+  request.request_id = make_correlation_id();
+  request.operation = operation;
+  if (!params.is_null())
+    request.params_json = params.dump();
+  const auto response = client.send(request);
+  const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              std::chrono::steady_clock::now() - started)
+                              .count();
+  AutomationTrace::log(
+      AutomationTraceChannel::Mcp, "bridge_response",
+      {{"operation", operation},
+       {"requestId", response.request_id},
+       {"exitCode", std::to_string(static_cast<int>(response.exit_code))},
+       {"summary", response.summary},
+       {"elapsedMs", std::to_string(elapsed_ms)}});
+  return response;
+}
+
+const char *k_tools_list_json =
     R"([
     {
         "name": "engine_editor_status",
@@ -339,20 +365,50 @@ const char* k_tools_list_json =
     },
     {
         "name": "engine_scene_apply",
-        "description": "Apply live scene edits through the editor command history. Use action batch with ops[] for multi-edit in one undo step. Use snapToTerrain on place/move to align Y with terrain. Use action sample_terrain to query ground height. Component actions: add_component, remove_component, set_component.",
+        "description": "Apply live scene edits through the editor command history. Use place_marker for named camera/graybox markers, stamp_prefabs with stamps[] for compact kit placement, stamp_scatter to densify prefabs in an AABB (minX/maxX/minZ/maxZ or x/z/radius) with count/minSpacing/prefabs[]/namePrefix/seed/clearX/clearZ/clearRadius, stamp_compositions with stamps[].parts[] to synthesize schema-v2 Graybox primitive prefabs (neutral gray default when color omitted) and place them in one undoable batch, list/query for live entity lookup (optional floatGapMin/floatGapMax float audit with terrainY/floatGap), snap_to_terrain for bulk ground snap (namePrefix/names/all + groundOffset/groundOffsets/groundOffsetsByPrefab/usePrefabGroundDefaults; batch up to 512), or batch with ops[]. move/remove/rename accept entityId or unique name (rename-by-name needs newName). Use snapToTerrain on place/move. Component actions: add_component, remove_component, set_component.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "action": { "type": "string" },
                 "prefab": { "type": "string" },
+                "prefabs": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                },
                 "entityId": { "type": "string" },
                 "name": { "type": "string" },
+                "namePrefix": { "type": "string" },
+                "contains": { "type": "string" },
+                "names": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                },
                 "transform": { "type": "object" },
                 "characterAsset": { "type": "string" },
                 "snapToTerrain": { "type": "boolean" },
                 "groundOffset": { "type": "number" },
+                "groundOffsets": { "type": "object" },
+                "groundOffsetsByPrefab": { "type": "object" },
+                "usePrefabGroundDefaults": { "type": "boolean" },
+                "floatGapMin": { "type": "number" },
+                "floatGapMax": { "type": "number" },
+                "limit": { "type": "number" },
+                "count": { "type": "number" },
+                "minSpacing": { "type": "number" },
+                "minX": { "type": "number" },
+                "maxX": { "type": "number" },
+                "minZ": { "type": "number" },
+                "maxZ": { "type": "number" },
+                "scaleMin": { "type": "number" },
+                "scaleMax": { "type": "number" },
+                "yawRandom": { "type": "boolean" },
+                "seed": { "type": "number" },
+                "clearX": { "type": "number" },
+                "clearZ": { "type": "number" },
+                "clearRadius": { "type": "number" },
                 "x": { "type": "number" },
                 "z": { "type": "number" },
+                "radius": { "type": "number" },
                 "label": { "type": "string" },
                 "save": { "type": "boolean" },
                 "componentId": { "type": "string" },
@@ -360,6 +416,10 @@ const char* k_tools_list_json =
                 "component": { "type": "object" },
                 "data": { "type": "object" },
                 "ops": {
+                    "type": "array",
+                    "items": { "type": "object" }
+                },
+                "stamps": {
                     "type": "array",
                     "items": { "type": "object" }
                 }
@@ -413,7 +473,7 @@ const char* k_tools_list_json =
     },
     {
         "name": "engine_asset_apply",
-        "description": "Create or update a prefab, material, or particle (*.particle.json) asset, validate it, and refresh the editor asset browser / particle registry. Use action refresh_catalog to rescan without writing.",
+        "description": "Create or update a prefab, material, particle (*.particle.json), or UI theme (assets/ui/ui-theme.json) asset, validate it, and refresh the editor. Use kind ui_theme to rewrite named chrome tokens/roles. Use action refresh_catalog to rescan without writing.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -466,7 +526,7 @@ const char* k_tools_list_json =
     },
     {
         "name": "engine_ui_canvas_mutate",
-        "description": "Structural edit of a *.uicanvas.json: action=add|remove|move|resize|style. Pass path plus id and fields (offset/delta/size/color/fontSize/opacity/visible/enabled/text/textAlign/textVAlign). Hot-reloads when editor is live; allowed during play test.",
+        "description": "Structural edit of a *.uicanvas.json: action=add|remove|move|resize|style. Pass path plus id and fields (offset/delta/size/color/fontSize/opacity/visible/enabled/text/textAlign/textVAlign/themeRole/colorToken/textColorToken/textColor/clearColor). Hot-reloads when editor is live; allowed during play test.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -487,7 +547,12 @@ const char* k_tools_list_json =
                 "textVAlign": { "type": "string" },
                 "label": { "type": "string" },
                 "bind": { "type": "string" },
-                "anchor": { "type": "string" }
+                "anchor": { "type": "string" },
+                "themeRole": { "type": "string" },
+                "colorToken": { "type": "string" },
+                "textColorToken": { "type": "string" },
+                "textColor": { "type": "array", "items": { "type": "number" } },
+                "clearColor": { "type": "boolean" }
             },
             "required": ["path", "action"]
         }
@@ -538,7 +603,7 @@ const char* k_tools_list_json =
     },
     {
         "name": "engine_inventory_call",
-        "description": "Drive session InventoryRuntime (TICKET-0237 / DEC-0050). kind=status|grant|set_hotbar|set_equip|select_hotbar|select|equip_selected|unequip_selected|move|set_starter_archetype|apply_starter. grant/set_* need itemId; set_hotbar/select_hotbar need slot 0..7; set_equip needs equipSlot (head|chest|legs|trinket0..3); move needs fromRegion/toRegion (+ fromIndex/toIndex/fromEquipSlot/toEquipSlot). set_starter_archetype needs archetypeId (ashfell_blade|outrider|runecaster; apply defaults true in play-test). apply_starter swaps hotbar0 to that archetype weapon. status includes starterArchetypeId/starterWeaponItemId. Requires live editor MCP. Allowed during play test.",
+        "description": "Drive session InventoryRuntime (TICKET-0237 / DEC-0050). kind=status|grant|set_hotbar|set_equip|select_hotbar|select|equip_selected|unequip_selected|move|open_container|close_container|grant_container|set_starter_archetype|apply_starter. grant/set_* need itemId; set_hotbar/select_hotbar need slot 0..7; set_equip needs equipSlot (head|chest|legs|trinket0..3); move needs fromRegion/toRegion (+ fromIndex/toIndex/fromEquipSlot/toEquipSlot). open_container / grant_container need containerId (open) + itemId (grant). set_starter_archetype needs archetypeId (ashfell_blade|outrider|runecaster; apply defaults true in play-test). apply_starter swaps hotbar0 to that archetype weapon. status includes starterArchetypeId/starterWeaponItemId and open container slots. Requires live editor MCP. Allowed during play test.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -551,7 +616,14 @@ const char* k_tools_list_json =
                 "region": { "type": "string" },
                 "index": { "type": "integer" },
                 "apply": { "type": "boolean" },
-                "grantBandages": { "type": "boolean" }
+                "grantBandages": { "type": "boolean" },
+                "fromRegion": { "type": "string" },
+                "toRegion": { "type": "string" },
+                "fromIndex": { "type": "integer" },
+                "toIndex": { "type": "integer" },
+                "fromEquipSlot": { "type": "string" },
+                "toEquipSlot": { "type": "string" },
+                "containerId": { "type": "string" }
             },
             "required": ["kind"]
         }
@@ -602,7 +674,7 @@ const char* k_tools_list_json =
     },
     {
         "name": "engine_animation_call",
-        "description": "Drive Animation Studio + weld authoring agentically (EPIC-0019). kind=status|open|set_subject|set_controller|set_state|play|pause|stop|step|seek|set_joint|list_joints|set_skeleton|set_bone_gizmo|create_clip|create_state|edit_clip|set_duration|upsert_key|upsert_keys|delete_key|copy_keys|paste_keys|save_override|sync_gltf|replace_from_source|list_events|add_event|update_event|remove_event|save_events|set_held|get_weld|set_weld|set_weld_gizmo|save_weld. set_duration/set_clip_duration: duration>0 seconds on open edit clip (trims keys after new end); copy_keys: tracks=true for full T/R/S curve; paste_keys lands at scrub (optional time). Requires live editor MCP.",
+        "description": "Drive Animation Studio + weld authoring agentically (EPIC-0019). kind=status|open|set_subject|set_controller|set_state|play|pause|stop|step|seek|set_joint|list_joints|set_skeleton|set_bone_gizmo|create_clip|create_state|edit_clip|set_duration|upsert_key|upsert_keys|delete_key|delete_keys|copy_keys|paste_keys|undo|redo|list_keys|get_keys|sample_pose|diff_pose|sample_series|tip_series|held_tip_series|onion_skin|seek_times|contact_sheet_status|offset_key|offset_keys|shift_keys|set_pose|copy_pose_at|ease_segment|auto_breakdowns|loop_report|camera_status|camera_set|camera_look_at|camera_orbit|save_override|sync_gltf|replace_from_source|list_events|add_event|update_event|remove_event|save_events|set_held|set_armor|set_appearance|get_weld|inspect_weld|set_weld|set_weld_gizmo|save_weld. Inspect: list_keys/sample_pose/diff_pose/sample_series/held_tip_series/onion_skin. seek_times contact sheet (labelEvents default true; tipTrail stamps tip arc). Camera: camera_orbit presets front|side|back|threequarter|slash_review. Relative: offset_keys/shift_keys/set_pose. Timing: ease_segment + loop_report. Clip edit undo/redo: undo|redo (Ctrl+Z/Y in Studio; status undoSize/redoSize). delete_key/delete_keys accept joint+path (set_joint also takes path). set_armor uses slot=head|chest|legs plus itemId (empty itemId unequips). Requires live editor MCP.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -611,6 +683,22 @@ const char* k_tools_list_json =
                 "controller": { "type": "string" },
                 "state": { "type": "string" },
                 "time": { "type": "number" },
+                "timeA": { "type": "number" },
+                "timeB": { "type": "number" },
+                "fromTime": { "type": "number" },
+                "toTime": { "type": "number" },
+                "refTime": { "type": "number" },
+                "times": { "type": "array", "items": { "type": "number" }, "description": "seek_times / sample_series times, max twelve slots for contact sheet" },
+                "columns": { "type": "integer" },
+                "filename": { "type": "string" },
+                "labelEvents": { "type": "boolean", "description": "seek_times: stamp t=.. | eventName on viewport status; default true" },
+                "tipTrail": { "type": "boolean", "description": "seek_times: stamp cumulative tip arc on each slot + return tipTrail world series" },
+                "tipTrailView": { "type": "string", "description": "seek_times tipTrail ortho map: side|front|top" },
+                "tipLocal": { "type": "array", "items": { "type": "number" }, "description": "held tip offset in weld/mesh local space [x,y,z]" },
+                "includeHeldTip": { "type": "boolean", "description": "sample_series: also return heldTipSeries" },
+                "clear": { "type": "boolean", "description": "onion_skin: clear times and disable" },
+                "trail": { "type": "boolean", "description": "onion_skin trail / seek_times tipTrail alias" },
+                "ghosts": { "type": "boolean", "description": "onion_skin: draw grip→tip blade ghosts" },
                 "play": { "type": "boolean" },
                 "dt": { "type": "number" },
                 "joint": { "type": "string" },
@@ -624,6 +712,8 @@ const char* k_tools_list_json =
                 "clipSource": { "type": "string" },
                 "clipName": { "type": "string" },
                 "cloneFrom": { "type": "string" },
+                "fromClip": { "type": "string" },
+                "referenceClip": { "type": "string" },
                 "duration": { "type": "number" },
                 "loop": { "type": "boolean" },
                 "layer": { "type": "string" },
@@ -635,16 +725,38 @@ const char* k_tools_list_json =
                 "payload": { "type": "string" },
                 "particle": { "type": "string" },
                 "itemId": { "type": "string" },
+                "slot": { "type": "string", "description": "set_armor: head|chest|legs" },
+                "hair": { "type": "string", "description": "set_appearance hair option id or display" },
+                "skin": { "type": "string", "description": "set_appearance skin option id or display" },
+                "eyes": { "type": "string", "description": "set_appearance eye option id or display" },
                 "offset": { "type": "array", "items": { "type": "number" } },
                 "eulerDeg": { "type": "array", "items": { "type": "number" } },
                 "scale": { "type": "array", "items": { "type": "number" } },
                 "joints": { "type": "array", "items": { "type": "string" } },
+                "ease": { "type": "string", "description": "ease_segment preset: linear|easeIn|easeOut|easeInOut" },
+                "count": { "type": "integer" },
+                "samples": { "type": "integer" },
+                "includeEuler": { "type": "boolean" },
+                "includeHeld": { "type": "boolean" },
+                "gripJoint": { "type": "string" },
+                "tipJoint": { "type": "string" },
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "z": { "type": "number" },
+                "yaw": { "type": "number" },
+                "pitch": { "type": "number" },
+                "yawDegrees": { "type": "number" },
+                "pitchDegrees": { "type": "number" },
+                "yawOffsetDegrees": { "type": "number" },
+                "distance": { "type": "number" },
+                "preset": { "type": "string", "description": "camera_orbit: front|back|side|left|right|threequarter|slash_review|melee" },
+                "view": { "type": "string" },
                 "save": { "type": "boolean" },
                 "enableGizmo": { "type": "boolean" },
                 "keys": {
                     "type": "array",
                     "items": { "type": "object" },
-                    "description": "Batch keyframes for upsert_keys: [{joint,path,time,values|eulerDeg},...]"
+                    "description": "Batch keyframes for upsert_keys/offset_keys: [{joint,path,time,values|eulerDeg},...]"
                 },
                 "tracks": {
                     "type": "boolean",
@@ -673,8 +785,49 @@ const char* k_tools_list_json =
         }
     },
     {
+        "name": "engine_pathfinding_call",
+        "description": "Query streamed terrain navigation grid pathfinding for agents (A* on 4m walkability samples). kind=status|find_path|nearest_walkable|line_of_walk. Pass from/to or query as {x,y,z}. Prefer live editor so sculpted terrain edits are active; offline falls back to analytic height. Allowed during play test.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "kind": { "type": "string" },
+                "from": { "type": "object" },
+                "to": { "type": "object" },
+                "start": { "type": "object" },
+                "goal": { "type": "object" },
+                "query": { "type": "object" },
+                "position": { "type": "object" },
+                "radius": { "type": "number" },
+                "maxSearch": { "type": "number" },
+                "snapRadius": { "type": "number" },
+                "simplify": { "type": "boolean" }
+            },
+            "required": ["kind"]
+        }
+    },
+    {
+        "name": "engine_job_call",
+        "description": "Async heavy MCP recipes that survive the 60s bridge timeout. kind=submit|status|wait|cancel|list. submit ops[] with {target:terrain|scene|water, action,...} (same fields as engine_terrain_apply / scene_apply / water_apply). Editor runs ops chunked across frames (opsPerFrame default 1). wait polls until succeeded|failed|cancelled. Use for large graybox terrain polish instead of one giant terrain_apply batch.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "kind": { "type": "string" },
+                "jobId": { "type": "string" },
+                "label": { "type": "string" },
+                "opsPerFrame": { "type": "integer" },
+                "timeoutSeconds": { "type": "number" },
+                "includeOps": { "type": "boolean" },
+                "ops": {
+                    "type": "array",
+                    "items": { "type": "object" }
+                }
+            },
+            "required": ["kind"]
+        }
+    },
+    {
         "name": "engine_terrain_apply",
-        "description": "Apply live terrain height/paint/foliage through the editor sculpt stores. Prefer high-level carve_channel/raise_banks/set_height for rivers, or batch with ops[]. Actions: raise, lower, flatten, set_height, carve_channel, raise_banks, paint, paint_foliage, paint_foliage_mixed, sample, undo, redo, save, batch. set_height sets toward targetHeight in one stroke (strength 0-1 blend). carve_channel/raise_banks take points:[{x,z}] plus halfWidth/bedDepth|bedHeight/bankOffset/bankWidth/bankHeight|bankClearance/step. Mutate/save require editor MCP; sample works offline.",
+        "description": "Apply live terrain height/paint/foliage through the editor sculpt stores. Prefer high-level smart sculpt (gentle_hill/steep_cliff/flatten_pad/smooth_natural/canyon), carve_channel/raise_banks for rivers, set_height_along/grade_along (continuous strip grade with lateral halfWidth + skirtWidth — not circular stamps) for dirt roads, plateau (hard core + soft skirt) for keep islands, paint_along for road materials, or batch with ops[]. Actions: raise, lower, flatten, set_height, plateau, smooth, terrace, gentle_hill, steep_cliff, flatten_pad, smooth_natural, canyon, carve_channel, raise_banks, set_height_along, grade_along, smooth_along, paint, paint_along, paint_foliage, paint_foliage_mixed, sample, undo, redo, save, batch. Batch accepts sample, smart sculpt recipes, carve_channel/raise_banks/set_height_along/smooth_along/paint_along/smooth/terrace/plateau (samplesJson when sampling). Mutate/save require editor MCP; sample works offline.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -684,10 +837,28 @@ const char* k_tools_list_json =
                 "radius": { "type": "number" },
                 "strength": { "type": "number" },
                 "targetHeight": { "type": "number" },
+                "startHeight": {
+                    "type": "number",
+                    "description": "Path start Y for set_height_along/grade_along when points omit height"
+                },
+                "endHeight": {
+                    "type": "number",
+                    "description": "Path end Y for set_height_along/grade_along when points omit height"
+                },
+                "smoothPasses": {
+                    "type": "integer",
+                    "description": "Optional smooth_along passes after set_height_along grade"
+                },
+                "smoothStrength": { "type": "number" },
+                "kernelRadius": { "type": "number" },
                 "points": {
                     "type": "array",
                     "items": { "type": "object" },
-                    "description": "Polyline samples {x,z} for carve_channel / raise_banks"
+                    "description": "Polyline samples {x,z} (optional height/y) for carve_channel / raise_banks / set_height_along / smooth_along / paint_along"
+                },
+                "skirtWidth": {
+                    "type": "number",
+                    "description": "Soft blend outside halfWidth (set_height_along) or plateau core radius"
                 },
                 "halfWidth": { "type": "number" },
                 "bedDepth": { "type": "number" },
@@ -718,7 +889,7 @@ const char* k_tools_list_json =
     },
     {
         "name": "engine_water_apply",
-        "description": "Apply live water surface sculpt through the editor water store. Prefer place_along with points:[{x,z}] for rivers, or batch with ops[]. Actions: place, erase, place_along, sample, undo, redo, save, batch. place/erase accept radius and strength; place_along also accepts step/save. Mutate/save require editor MCP; sample works offline.",
+        "description": "Apply live water surface sculpt through the editor water store. Prefer place_along with points:[{x,z}] for rivers, or batch with ops[] (place/erase/place_along). Actions: place, erase, place_along, sample, undo, redo, save, batch. place/erase accept radius and strength; place_along also accepts step/save. Water place clears foliage under the brush by default (eraseFoliage:false to keep). Mutate/save require editor MCP; sample works offline.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -805,437 +976,634 @@ const char* k_tools_list_json =
     }
 ])";
 
-nlohmann::json handle_tools_call(const std::filesystem::path& project_root, const nlohmann::json& params) {
-    const auto tool_name = params.value("name", std::string{});
-    AutomationTrace::log(AutomationTraceChannel::Mcp, "tool_call", {{"tool", tool_name}});
-    const auto arguments = params.value("arguments", nlohmann::json::object());
-    if (tool_name == "engine_editor_status") {
-        auto response = forward_to_editor(project_root, "editor_status", nlohmann::json::object());
-        if (response.exit_code == ExitCode::Unavailable) {
-            nlohmann::json payload;
-            payload["schemaVersion"] = 1;
-            payload["exitCode"] = 0;
-            payload["summary"] = "Editor live automation is not connected";
-            payload["metadata"] = {{"editorRunning", "false"}, {"liveAutomationEnabled", "false"},
-                {"projectRoot", project_root.generic_string()},
-                {"liveRequestPath", live_automation_request_path(project_root).generic_string()}};
-            payload["recommendation"] = k_live_automation_hint;
-            return {{"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
-        }
-        return bridge_to_tool_result(response);
+nlohmann::json handle_tools_call(const std::filesystem::path &project_root,
+                                 const nlohmann::json &params) {
+  const auto tool_name = params.value("name", std::string{});
+  AutomationTrace::log(AutomationTraceChannel::Mcp, "tool_call",
+                       {{"tool", tool_name}});
+  const auto arguments = params.value("arguments", nlohmann::json::object());
+  if (tool_name == "engine_editor_status") {
+    auto response = forward_to_editor(project_root, "editor_status",
+                                      nlohmann::json::object());
+    if (response.exit_code == ExitCode::Unavailable) {
+      nlohmann::json payload;
+      payload["schemaVersion"] = 1;
+      payload["exitCode"] = 0;
+      payload["summary"] = "Editor live automation is not connected";
+      payload["metadata"] = {
+          {"editorRunning", "false"},
+          {"liveAutomationEnabled", "false"},
+          {"projectRoot", project_root.generic_string()},
+          {"liveRequestPath",
+           live_automation_request_path(project_root).generic_string()}};
+      payload["recommendation"] = k_live_automation_hint;
+      return {{"content",
+               nlohmann::json::array({tool_text_content(payload.dump(2))})}};
     }
-    if (tool_name == "engine_editor_live") {
-        const auto action = arguments.value("action", std::string{});
-        nlohmann::json payload;
-        payload["schemaVersion"] = 1;
-        payload["projectRoot"] = project_root.generic_string();
-        payload["requestPath"] = live_automation_request_path(project_root).generic_string();
-        if (action == "status") {
-            EditorBridgeClient client(project_root);
-            const bool bridge_up = client.is_editor_running();
-            payload["exitCode"] = 0;
-            payload["summary"] = bridge_up ? "Editor live bridge is reachable" : "Editor live bridge is not connected";
-            payload["metadata"] = {{"bridgeReachable", bridge_up ? "true" : "false"},
-                {"liveAutomationEnabled", bridge_up ? "true" : "false"}};
-            if (!bridge_up) payload["recommendation"] = k_live_automation_hint;
-            return {{"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
-        }
-        if (action == "enable" || action == "disable") {
-            const bool enable = action == "enable";
-            std::string error;
-            if (!write_live_automation_request(project_root, enable, &error)) {
-                return {{"isError", true},
-                    {"content", nlohmann::json::array({tool_text_content(error.empty() ? "Failed to write live-automation request" : error)})}};
-            }
-            payload["exitCode"] = 0;
-            payload["summary"] = enable ? "Requested live automation enable; editor will apply on next frame"
-                                        : "Requested live automation disable; editor will apply on next frame";
-            payload["metadata"] = {{"requestedEnabled", enable ? "true" : "false"}};
-            payload["recommendation"] =
-                "Wait ~500ms–1s for the running editor to consume the request, then call engine_editor_status.";
-            return {{"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
-        }
+    return bridge_to_tool_result(response);
+  }
+  if (tool_name == "engine_editor_live") {
+    const auto action = arguments.value("action", std::string{});
+    nlohmann::json payload;
+    payload["schemaVersion"] = 1;
+    payload["projectRoot"] = project_root.generic_string();
+    payload["requestPath"] =
+        live_automation_request_path(project_root).generic_string();
+    if (action == "status") {
+      EditorBridgeClient client(project_root);
+      const bool bridge_up = client.is_editor_running();
+      payload["exitCode"] = 0;
+      payload["summary"] = bridge_up ? "Editor live bridge is reachable"
+                                     : "Editor live bridge is not connected";
+      payload["metadata"] = {
+          {"bridgeReachable", bridge_up ? "true" : "false"},
+          {"liveAutomationEnabled", bridge_up ? "true" : "false"}};
+      if (!bridge_up)
+        payload["recommendation"] = k_live_automation_hint;
+      return {{"content",
+               nlohmann::json::array({tool_text_content(payload.dump(2))})}};
+    }
+    if (action == "enable" || action == "disable") {
+      const bool enable = action == "enable";
+      std::string error;
+      if (!write_live_automation_request(project_root, enable, &error)) {
         return {{"isError", true},
-            {"content", nlohmann::json::array({tool_text_content("action must be enable|disable|status")})}};
+                {"content",
+                 nlohmann::json::array({tool_text_content(
+                     error.empty() ? "Failed to write live-automation request"
+                                   : error)})}};
+      }
+      payload["exitCode"] = 0;
+      payload["summary"] = enable ? "Requested live automation enable; editor "
+                                    "will apply on next frame"
+                                  : "Requested live automation disable; editor "
+                                    "will apply on next frame";
+      payload["metadata"] = {{"requestedEnabled", enable ? "true" : "false"}};
+      payload["recommendation"] =
+          "Wait ~500ms–1s for the running editor to consume the request, then "
+          "call engine_editor_status.";
+      return {{"content",
+               nlohmann::json::array({tool_text_content(payload.dump(2))})}};
     }
-    if (tool_name == "engine_editor_screenshot") {
-        return bridge_to_tool_result(forward_to_editor(project_root, "editor_screenshot", arguments));
+    return {{"isError", true},
+            {"content", nlohmann::json::array({tool_text_content(
+                            "action must be enable|disable|status")})}};
+  }
+  if (tool_name == "engine_editor_screenshot") {
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "editor_screenshot", arguments));
+  }
+  if (tool_name == "engine_editor_input") {
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "editor_input", arguments));
+  }
+  if (tool_name == "engine_editor_session") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content", nlohmann::json::array({tool_text_content(
+                              "engine_editor_session requires a running editor "
+                              "with MCP connection enabled")})}};
     }
-    if (tool_name == "engine_editor_input") {
-        return bridge_to_tool_result(forward_to_editor(project_root, "editor_input", arguments));
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "editor_session", arguments));
+  }
+  if (tool_name == "engine_editor_camera") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content", nlohmann::json::array({tool_text_content(
+                              "engine_editor_camera requires a running editor "
+                              "with MCP connection enabled")})}};
     }
-    if (tool_name == "engine_editor_session") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            return {{"isError", true},
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "editor_camera", arguments));
+  }
+  if (tool_name == "engine_editor_ui_query") {
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "editor_ui_query", arguments));
+  }
+  if (tool_name == "engine_world_forge_map_view") {
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "world_forge_map_view", arguments));
+  }
+  if (tool_name == "engine_scene_plan") {
+    if (arguments.contains("description")) {
+      const auto plan =
+          classify_scene_plan(arguments["description"].get<std::string>(),
+                              arguments.value("targetPath", std::string{}));
+      nlohmann::json payload;
+      payload["summary"] = plan.summary;
+      payload["targetKind"] = plan.target_kind;
+      payload["requiresCompile"] = plan.requires_compile;
+      payload["requiresReload"] = plan.requires_reload;
+      payload["recommendation"] = plan.recommendation;
+      return {{"content",
+               nlohmann::json::array({tool_text_content(payload.dump(2))})}};
+    }
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "scene_plan", arguments));
+  }
+  if (tool_name == "engine_prefab_apply")
+    return bridge_to_tool_result(
+        forward_asset_operation(project_root, "prefab_apply", arguments));
+  if (tool_name == "engine_asset_apply")
+    return bridge_to_tool_result(
+        forward_asset_operation(project_root, "asset_apply", arguments));
+  if (tool_name == "engine_asset_bake") {
+    // Bake always runs offline (Python can take >1 min). Live editor only
+    // queues mesh reload.
+    auto baked = apply_asset_bake_operation(project_root, arguments);
+    if (baked.exit_code == ExitCode::Success &&
+        !baked.changed_object_ids.empty()) {
+      EditorBridgeClient client(project_root);
+      if (client.is_editor_running()) {
+        nlohmann::json reload = {{"action", "reload"},
+                                 {"meshes", baked.changed_object_ids}};
+        const auto notified =
+            forward_to_editor(project_root, "asset_bake", reload);
+        if (notified.exit_code == ExitCode::Success) {
+          baked.metadata["meshReloadQueued"] = "true";
+        } else {
+          baked.metadata["meshReloadQueued"] = "false";
+          baked.metadata["meshReloadNote"] = notified.summary;
+        }
+      }
+    }
+    return bridge_to_tool_result(baked);
+  }
+  if (tool_name == "engine_lua_apply") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      const auto relative = arguments.value("path", std::string{});
+      const auto source = arguments.value("source", std::string{});
+      if (relative.empty() || source.empty()) {
+        return {{"isError", true},
                 {"content", nlohmann::json::array({tool_text_content(
-                    "engine_editor_session requires a running editor with MCP connection enabled")})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "editor_session", arguments));
-    }
-    if (tool_name == "engine_editor_camera") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            return {{"isError", true},
+                                "path and source are required")})}};
+      }
+      const auto written =
+          write_lua_script_atomic(project_root / relative, source);
+      if (!written) {
+        return {{"isError", true},
                 {"content", nlohmann::json::array({tool_text_content(
-                    "engine_editor_camera requires a running editor with MCP connection enabled")})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "editor_camera", arguments));
-    }
-    if (tool_name == "engine_editor_ui_query") {
-        return bridge_to_tool_result(forward_to_editor(project_root, "editor_ui_query", arguments));
-    }
-    if (tool_name == "engine_world_forge_map_view") {
-        return bridge_to_tool_result(forward_to_editor(project_root, "world_forge_map_view", arguments));
-    }
-    if (tool_name == "engine_scene_plan") {
-        if (arguments.contains("description")) {
-            const auto plan = classify_scene_plan(arguments["description"].get<std::string>(),
-                arguments.value("targetPath", std::string{}));
-            nlohmann::json payload;
-            payload["summary"] = plan.summary;
-            payload["targetKind"] = plan.target_kind;
-            payload["requiresCompile"] = plan.requires_compile;
-            payload["requiresReload"] = plan.requires_reload;
-            payload["recommendation"] = plan.recommendation;
-            return {{"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "scene_plan", arguments));
-    }
-    if (tool_name == "engine_prefab_apply")
-        return bridge_to_tool_result(forward_asset_operation(project_root, "prefab_apply", arguments));
-    if (tool_name == "engine_asset_apply")
-        return bridge_to_tool_result(forward_asset_operation(project_root, "asset_apply", arguments));
-    if (tool_name == "engine_asset_bake") {
-        // Bake always runs offline (Python can take >1 min). Live editor only queues mesh reload.
-        auto baked = apply_asset_bake_operation(project_root, arguments);
-        if (baked.exit_code == ExitCode::Success && !baked.changed_object_ids.empty()) {
-            EditorBridgeClient client(project_root);
-            if (client.is_editor_running()) {
-                nlohmann::json reload = {{"action", "reload"}, {"meshes", baked.changed_object_ids}};
-                const auto notified = forward_to_editor(project_root, "asset_bake", reload);
-                if (notified.exit_code == ExitCode::Success) {
-                    baked.metadata["meshReloadQueued"] = "true";
-                } else {
-                    baked.metadata["meshReloadQueued"] = "false";
-                    baked.metadata["meshReloadNote"] = notified.summary;
-                }
-            }
-        }
-        return bridge_to_tool_result(baked);
-    }
-    if (tool_name == "engine_lua_apply") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            const auto relative = arguments.value("path", std::string{});
-            const auto source = arguments.value("source", std::string{});
-            if (relative.empty() || source.empty()) {
-                return {{"isError", true},
-                    {"content", nlohmann::json::array({tool_text_content("path and source are required")})}};
-            }
-            const auto written = write_lua_script_atomic(project_root / relative, source);
-            if (!written) {
-                return {{"isError", true},
-                    {"content", nlohmann::json::array({tool_text_content(written.error().to_json())})}};
-            }
-            LuaRuntime runtime;
-            const auto validated = runtime.validate_script(project_root / relative);
-            if (!validated) {
-                return {{"isError", true},
-                    {"content", nlohmann::json::array({tool_text_content(validated.error().to_json())})}};
-            }
-            nlohmann::json payload;
-            payload["summary"] = "Lua script written offline";
-            payload["scriptPath"] = relative;
-            payload["requiresReload"] = "editor_or_runtime";
-            return {{"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "lua_apply", arguments));
-    }
-    if (tool_name == "engine_hud_apply") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            const auto relative = arguments.value("path", std::string{});
-            const auto source = arguments.value("source", std::string{});
-            if (relative.empty() || source.empty()) {
-                return {{"isError", true},
-                    {"content", nlohmann::json::array({tool_text_content("path and source are required")})}};
-            }
-            std::string lower = relative;
-            std::transform(lower.begin(), lower.end(), lower.begin(),
-                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            const bool is_canvas =
-                lower.find(".uicanvas.json") != std::string::npos || lower.find(".canvas.json") != std::string::npos;
-            const auto written = is_canvas ? write_ui_canvas_json_atomic(project_root / relative, source)
-                                          : write_hud_json_atomic(project_root / relative, source);
-            if (!written) {
-                return {{"isError", true},
-                    {"content", nlohmann::json::array({tool_text_content(written.error().to_json())})}};
-            }
-            nlohmann::json payload;
-            payload["summary"] = is_canvas ? "UI canvas written offline" : "HUD asset written offline";
-            payload["hudPath"] = relative;
-            payload["kind"] = is_canvas ? "ui_canvas" : "hud_asset";
-            payload["requiresReload"] = "editor_or_runtime";
-            return {{"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "hud_apply", arguments));
-    }
-    if (tool_name == "engine_ui_canvas_mutate") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            const auto relative = arguments.value("path", std::string{});
-            const auto action = arguments.value("action", std::string{});
-            if (relative.empty() || action.empty()) {
-                return {{"isError", true},
-                    {"content", nlohmann::json::array({tool_text_content("path and action are required")})}};
-            }
-            nlohmann::json widget_params = arguments;
-            widget_params.erase("path");
-            widget_params.erase("action");
-            const auto mutated = mutate_ui_canvas_file(project_root / relative, action, widget_params.dump());
-            if (!mutated) {
-                return {{"isError", true},
-                    {"content", nlohmann::json::array({tool_text_content(mutated.error().to_json())})}};
-            }
-            nlohmann::json payload;
-            payload["summary"] = "UI canvas mutated offline";
-            payload["canvasPath"] = relative;
-            payload["action"] = action;
-            payload["widgetCount"] = mutated.value().widgets.size();
-            payload["requiresReload"] = "editor_or_runtime";
-            return {{"content", nlohmann::json::array({tool_text_content(payload.dump(2))})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "ui_canvas_mutate", arguments));
-    }
-    if (tool_name == "engine_ui_stack") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            return {{"isError", true},
+                                written.error().to_json())})}};
+      }
+      LuaRuntime runtime;
+      const auto validated = runtime.validate_script(project_root / relative);
+      if (!validated) {
+        return {{"isError", true},
                 {"content", nlohmann::json::array({tool_text_content(
-                    "engine_ui_stack requires a running editor with MCP connection enabled")})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "ui_stack", arguments));
+                                validated.error().to_json())})}};
+      }
+      nlohmann::json payload;
+      payload["summary"] = "Lua script written offline";
+      payload["scriptPath"] = relative;
+      payload["requiresReload"] = "editor_or_runtime";
+      return {{"content",
+               nlohmann::json::array({tool_text_content(payload.dump(2))})}};
     }
-    if (tool_name == "engine_lua_call") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            return {{"isError", true},
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "lua_apply", arguments));
+  }
+  if (tool_name == "engine_hud_apply") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      const auto relative = arguments.value("path", std::string{});
+      const auto source = arguments.value("source", std::string{});
+      if (relative.empty() || source.empty()) {
+        return {{"isError", true},
                 {"content", nlohmann::json::array({tool_text_content(
-                    "engine_lua_call requires a running editor with MCP connection enabled")})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "lua_call", arguments));
-    }
-    if (tool_name == "engine_quest_call") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            return {{"isError", true},
+                                "path and source are required")})}};
+      }
+      std::string lower = relative;
+      std::transform(
+          lower.begin(), lower.end(), lower.begin(),
+          [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+      const bool is_canvas =
+          lower.find(".uicanvas.json") != std::string::npos ||
+          lower.find(".canvas.json") != std::string::npos;
+      const auto written =
+          is_canvas
+              ? write_ui_canvas_json_atomic(project_root / relative, source)
+              : write_hud_json_atomic(project_root / relative, source);
+      if (!written) {
+        return {{"isError", true},
                 {"content", nlohmann::json::array({tool_text_content(
-                    "engine_quest_call requires a running editor with MCP connection enabled")})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "quest_call", arguments));
+                                written.error().to_json())})}};
+      }
+      nlohmann::json payload;
+      payload["summary"] =
+          is_canvas ? "UI canvas written offline" : "HUD asset written offline";
+      payload["hudPath"] = relative;
+      payload["kind"] = is_canvas ? "ui_canvas" : "hud_asset";
+      payload["requiresReload"] = "editor_or_runtime";
+      return {{"content",
+               nlohmann::json::array({tool_text_content(payload.dump(2))})}};
     }
-    if (tool_name == "engine_inventory_call") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            return {{"isError", true},
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "hud_apply", arguments));
+  }
+  if (tool_name == "engine_ui_canvas_mutate") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      const auto relative = arguments.value("path", std::string{});
+      const auto action = arguments.value("action", std::string{});
+      if (relative.empty() || action.empty()) {
+        return {{"isError", true},
                 {"content", nlohmann::json::array({tool_text_content(
-                    "engine_inventory_call requires a running editor with MCP connection enabled")})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "inventory_call", arguments));
-    }
-    if (tool_name == "engine_flag_call") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            return {{"isError", true},
+                                "path and action are required")})}};
+      }
+      nlohmann::json widget_params = arguments;
+      widget_params.erase("path");
+      widget_params.erase("action");
+      const auto mutated = mutate_ui_canvas_file(project_root / relative,
+                                                 action, widget_params.dump());
+      if (!mutated) {
+        return {{"isError", true},
                 {"content", nlohmann::json::array({tool_text_content(
-                    "engine_flag_call requires a running editor with MCP connection enabled")})}};
+                                mutated.error().to_json())})}};
+      }
+      nlohmann::json payload;
+      payload["summary"] = "UI canvas mutated offline";
+      payload["canvasPath"] = relative;
+      payload["action"] = action;
+      payload["widgetCount"] = mutated.value().widgets.size();
+      payload["requiresReload"] = "editor_or_runtime";
+      return {{"content",
+               nlohmann::json::array({tool_text_content(payload.dump(2))})}};
+    }
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "ui_canvas_mutate", arguments));
+  }
+  if (tool_name == "engine_ui_stack") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content", nlohmann::json::array({tool_text_content(
+                              "engine_ui_stack requires a running editor with "
+                              "MCP connection enabled")})}};
+    }
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "ui_stack", arguments));
+  }
+  if (tool_name == "engine_lua_call") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content", nlohmann::json::array({tool_text_content(
+                              "engine_lua_call requires a running editor with "
+                              "MCP connection enabled")})}};
+    }
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "lua_call", arguments));
+  }
+  if (tool_name == "engine_quest_call") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content", nlohmann::json::array({tool_text_content(
+                              "engine_quest_call requires a running editor "
+                              "with MCP connection enabled")})}};
+    }
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "quest_call", arguments));
+  }
+  if (tool_name == "engine_inventory_call") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content", nlohmann::json::array({tool_text_content(
+                              "engine_inventory_call requires a running editor "
+                              "with MCP connection enabled")})}};
+    }
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "inventory_call", arguments));
+  }
+  if (tool_name == "engine_flag_call") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content", nlohmann::json::array({tool_text_content(
+                              "engine_flag_call requires a running editor with "
+                              "MCP connection enabled")})}};
+    }
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "flag_call", arguments));
+  }
+  if (tool_name == "engine_dialogue_call") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content", nlohmann::json::array({tool_text_content(
+                              "engine_dialogue_call requires a running editor "
+                              "with MCP connection enabled")})}};
+    }
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "dialogue_call", arguments));
+  }
+  if (tool_name == "engine_coop_call") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content", nlohmann::json::array({tool_text_content(
+                              "engine_coop_call requires a running editor with "
+                              "MCP connection enabled")})}};
+    }
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "coop_call", arguments));
+  }
+  if (tool_name == "engine_animation_call") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content", nlohmann::json::array({tool_text_content(
+                              "engine_animation_call requires a running editor "
+                              "with MCP connection enabled")})}};
+    }
+    const auto kind = arguments.value("kind", std::string{});
+    auto result = bridge_to_tool_result(
+        forward_to_editor(project_root, "animation_call", arguments));
+    // seek_times starts a multi-frame job; wait here so agents get a single
+    // done response with path.
+    if ((kind == "seek_times" || kind == "contact_sheet") &&
+        arguments.contains("times") && arguments["times"].is_array() &&
+        !arguments["times"].empty() && arguments.value("wait", true)) {
+      const auto deadline =
+          std::chrono::steady_clock::now() + std::chrono::seconds(20);
+      while (std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        nlohmann::json status_args = {{"kind", "contact_sheet_status"}};
+        auto status =
+            forward_to_editor(project_root, "animation_call", status_args);
+        const auto st = status.metadata.count("status")
+                            ? status.metadata.at("status")
+                            : std::string{};
+        if (st == "done" || st == "error" ||
+            status.exit_code != ExitCode::Success) {
+          return bridge_to_tool_result(status);
         }
-        return bridge_to_tool_result(forward_to_editor(project_root, "flag_call", arguments));
+      }
+      return {{"isError", true},
+              {"content",
+               nlohmann::json::array({tool_text_content(
+                   "seek_times timed out waiting for contact sheet (editor may "
+                   "be paused or Animation tab inactive)")})}};
     }
-    if (tool_name == "engine_dialogue_call") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            return {{"isError", true},
-                {"content", nlohmann::json::array({tool_text_content(
-                    "engine_dialogue_call requires a running editor with MCP connection enabled")})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "dialogue_call", arguments));
+    return result;
+  }
+  if (tool_name == "engine_standing_call") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content", nlohmann::json::array({tool_text_content(
+                              "engine_standing_call requires a running editor "
+                              "with MCP connection enabled")})}};
     }
-    if (tool_name == "engine_coop_call") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            return {{"isError", true},
-                {"content", nlohmann::json::array({tool_text_content(
-                    "engine_coop_call requires a running editor with MCP connection enabled")})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "coop_call", arguments));
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "standing_call", arguments));
+  }
+  if (tool_name == "engine_pathfinding_call") {
+    EditorBridgeClient client(project_root);
+    if (client.is_editor_running()) {
+      return bridge_to_tool_result(
+          forward_to_editor(project_root, "pathfinding_call", arguments));
     }
-    if (tool_name == "engine_animation_call") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            return {{"isError", true},
-                {"content", nlohmann::json::array({tool_text_content(
-                    "engine_animation_call requires a running editor with MCP connection enabled")})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "animation_call", arguments));
+    EditorSessionContext offline;
+    offline.project_root = project_root;
+    return bridge_to_tool_result(
+        execute_editor_operation(offline, "pathfinding_call", arguments.dump()));
+  }
+  if (tool_name == "engine_job_call") {
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running()) {
+      return {{"isError", true},
+              {"content",
+               nlohmann::json::array({tool_text_content(
+                   "engine_job_call requires a running editor with MCP "
+                   "connection enabled")})}};
     }
-    if (tool_name == "engine_standing_call") {
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running()) {
-            return {{"isError", true},
-                {"content", nlohmann::json::array({tool_text_content(
-                    "engine_standing_call requires a running editor with MCP connection enabled")})}};
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "standing_call", arguments));
+    const auto kind = arguments.value("kind", std::string{});
+    if (kind == "wait") {
+      nlohmann::json status_args = arguments;
+      status_args["kind"] = "status";
+      const double timeout_seconds =
+          arguments.value("timeoutSeconds", 600.0);
+      const auto deadline =
+          std::chrono::steady_clock::now() +
+          std::chrono::milliseconds(
+              static_cast<std::int64_t>(std::max(1.0, timeout_seconds) * 1000.0));
+      EditorBridgeResponse last;
+      while (std::chrono::steady_clock::now() < deadline) {
+        last = forward_to_editor(project_root, "job_call", status_args);
+        const auto st = last.metadata.count("status")
+                            ? last.metadata.at("status")
+                            : std::string{};
+        if (st == "succeeded" || st == "failed" || st == "cancelled")
+          return bridge_to_tool_result(last);
+        if (last.exit_code == ExitCode::Unavailable ||
+            last.exit_code == ExitCode::InternalError)
+          return bridge_to_tool_result(last);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+      last.summary = "Timed out waiting for MCP job";
+      last.metadata["waitTimedOut"] = "true";
+      return bridge_to_tool_result(last);
     }
-    if (tool_name == "engine_scene_apply")
-        return bridge_to_tool_result(forward_to_editor(project_root, "scene_apply", arguments));
-    if (tool_name == "engine_terrain_apply") {
-        const auto action = arguments.value("action", std::string{});
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running() && (action == "sample" || action == "sample_terrain")) {
-            EditorSessionContext context;
-            context.project_root = project_root;
-            TerrainEditStore offline_edits;
-            if (const auto loaded = TerrainEditStore::load(default_terrain_edits_path(project_root)); loaded)
-                offline_edits = std::move(loaded.value());
-            context.terrain_edits = &offline_edits;
-            const TerrainEditStore* previous = active_terrain_edits();
-            set_active_terrain_edits(&offline_edits);
-            const auto result = execute_editor_operation(context, "terrain_apply", arguments.dump());
-            set_active_terrain_edits(previous);
-            return bridge_to_tool_result(result);
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "terrain_apply", arguments));
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "job_call", arguments));
+  }
+  if (tool_name == "engine_scene_apply")
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "scene_apply", arguments));
+  if (tool_name == "engine_terrain_apply") {
+    const auto action = arguments.value("action", std::string{});
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running() &&
+        (action == "sample" || action == "sample_terrain")) {
+      EditorSessionContext context;
+      context.project_root = project_root;
+      TerrainEditStore offline_edits;
+      if (const auto loaded =
+              TerrainEditStore::load(default_terrain_edits_path(project_root));
+          loaded)
+        offline_edits = std::move(loaded.value());
+      context.terrain_edits = &offline_edits;
+      const TerrainEditStore *previous = active_terrain_edits();
+      set_active_terrain_edits(&offline_edits);
+      const auto result =
+          execute_editor_operation(context, "terrain_apply", arguments.dump());
+      set_active_terrain_edits(previous);
+      return bridge_to_tool_result(result);
     }
-    if (tool_name == "engine_water_apply") {
-        const auto action = arguments.value("action", std::string{});
-        EditorBridgeClient client(project_root);
-        if (!client.is_editor_running() && (action == "sample" || action == "sample_water")) {
-            EditorSessionContext context;
-            context.project_root = project_root;
-            TerrainEditStore offline_edits;
-            if (const auto loaded = TerrainEditStore::load(default_terrain_edits_path(project_root)); loaded)
-                offline_edits = std::move(loaded.value());
-            WaterStore offline_store;
-            if (const auto loaded = WaterStore::load(default_water_surfaces_path(project_root)); loaded)
-                offline_store = std::move(loaded.value());
-            context.terrain_edits = &offline_edits;
-            context.water_store = &offline_store;
-            const TerrainEditStore* previous_edits = active_terrain_edits();
-            const WaterStore* previous = active_water_store();
-            set_active_terrain_edits(&offline_edits);
-            set_active_water_store(&offline_store);
-            const auto result = execute_editor_operation(context, "water_apply", arguments.dump());
-            set_active_water_store(previous);
-            set_active_terrain_edits(previous_edits);
-            return bridge_to_tool_result(result);
-        }
-        return bridge_to_tool_result(forward_to_editor(project_root, "water_apply", arguments));
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "terrain_apply", arguments));
+  }
+  if (tool_name == "engine_water_apply") {
+    const auto action = arguments.value("action", std::string{});
+    EditorBridgeClient client(project_root);
+    if (!client.is_editor_running() &&
+        (action == "sample" || action == "sample_water")) {
+      EditorSessionContext context;
+      context.project_root = project_root;
+      TerrainEditStore offline_edits;
+      if (const auto loaded =
+              TerrainEditStore::load(default_terrain_edits_path(project_root));
+          loaded)
+        offline_edits = std::move(loaded.value());
+      WaterStore offline_store;
+      if (const auto loaded =
+              WaterStore::load(default_water_surfaces_path(project_root));
+          loaded)
+        offline_store = std::move(loaded.value());
+      context.terrain_edits = &offline_edits;
+      context.water_store = &offline_store;
+      const TerrainEditStore *previous_edits = active_terrain_edits();
+      const WaterStore *previous = active_water_store();
+      set_active_terrain_edits(&offline_edits);
+      set_active_water_store(&offline_store);
+      const auto result =
+          execute_editor_operation(context, "water_apply", arguments.dump());
+      set_active_water_store(previous);
+      set_active_terrain_edits(previous_edits);
+      return bridge_to_tool_result(result);
     }
-    if (tool_name == "engine_entity_component_apply")
-        return bridge_to_tool_result(forward_to_editor(project_root, "entity_component_apply", arguments));
-    if (tool_name == "engine_prefab_component_apply")
-        return bridge_to_tool_result(forward_asset_operation(project_root, "prefab_component_apply", arguments));
-    if (tool_name == "engine_world_forge_apply") {
-        EditorBridgeClient client(project_root);
-        if (client.is_editor_running())
-            return bridge_to_tool_result(forward_to_editor(project_root, "world_forge_apply", arguments));
-        return bridge_to_tool_result(apply_world_forge_operation(project_root, arguments));
-    }
-    if (tool_name == "engine_project_git")
-        return bridge_to_tool_result(apply_project_git_operation(project_root, arguments));
-    if (tool_name == "engine_build_coordination")
-        return bridge_to_tool_result(apply_build_coordination_operation(project_root, arguments));
-    if (tool_name == "engine_project_validate") return command_to_tool_result(validate_project_at(project_root));
-    return {{"isError", true}, {"content", nlohmann::json::array({tool_text_content("Unknown tool: " + tool_name)})}};
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "water_apply", arguments));
+  }
+  if (tool_name == "engine_entity_component_apply")
+    return bridge_to_tool_result(
+        forward_to_editor(project_root, "entity_component_apply", arguments));
+  if (tool_name == "engine_prefab_component_apply")
+    return bridge_to_tool_result(forward_asset_operation(
+        project_root, "prefab_component_apply", arguments));
+  if (tool_name == "engine_world_forge_apply") {
+    EditorBridgeClient client(project_root);
+    if (client.is_editor_running())
+      return bridge_to_tool_result(
+          forward_to_editor(project_root, "world_forge_apply", arguments));
+    return bridge_to_tool_result(
+        apply_world_forge_operation(project_root, arguments));
+  }
+  if (tool_name == "engine_project_git")
+    return bridge_to_tool_result(
+        apply_project_git_operation(project_root, arguments));
+  if (tool_name == "engine_build_coordination")
+    return bridge_to_tool_result(
+        apply_build_coordination_operation(project_root, arguments));
+  if (tool_name == "engine_project_validate")
+    return command_to_tool_result(validate_project_at(project_root));
+  return {{"isError", true},
+          {"content", nlohmann::json::array(
+                          {tool_text_content("Unknown tool: " + tool_name)})}};
 }
 
-nlohmann::json handle_request(const std::filesystem::path& project_root, const nlohmann::json& request) {
-    const auto method = request.value("method", std::string{});
-    const auto id = request.contains("id") ? request["id"] : nlohmann::json{};
-    const bool has_id = request.contains("id");
-    if (!method.empty() && method != "notifications/initialized") {
-        AutomationTrace::log(AutomationTraceChannel::Mcp, "request",
-            {{"method", method}, {"hasId", has_id ? "true" : "false"}});
+nlohmann::json handle_request(const std::filesystem::path &project_root,
+                              const nlohmann::json &request) {
+  const auto method = request.value("method", std::string{});
+  const auto id = request.contains("id") ? request["id"] : nlohmann::json{};
+  const bool has_id = request.contains("id");
+  if (!method.empty() && method != "notifications/initialized") {
+    AutomationTrace::log(
+        AutomationTraceChannel::Mcp, "request",
+        {{"method", method}, {"hasId", has_id ? "true" : "false"}});
+  }
+  nlohmann::json response = {{"jsonrpc", "2.0"}};
+  if (has_id)
+    response["id"] = id;
+  try {
+    if (method == "initialize") {
+      const auto protocol =
+          request.contains("params") &&
+                  request["params"].contains("protocolVersion")
+              ? request["params"]["protocolVersion"].get<std::string>()
+              : "2024-11-05";
+      response["result"] = {
+          {"protocolVersion", protocol},
+          {"capabilities",
+           {{"tools", {{"listChanged", false}}},
+            {"resources", nlohmann::json::object()},
+            {"prompts", nlohmann::json::object()}}},
+          {"serverInfo", {{"name", "ai-rpg-engine"}, {"version", "0.2.0"}}}};
+      return response;
     }
-    nlohmann::json response = {{"jsonrpc", "2.0"}};
-    if (has_id) response["id"] = id;
-    try {
-        if (method == "initialize") {
-            const auto protocol =
-                request.contains("params") && request["params"].contains("protocolVersion")
-                    ? request["params"]["protocolVersion"].get<std::string>()
-                    : "2024-11-05";
-            response["result"] = {{"protocolVersion", protocol},
-                {"capabilities", {{"tools", {{"listChanged", false}}}, {"resources", nlohmann::json::object()},
-                    {"prompts", nlohmann::json::object()}}},
-                {"serverInfo", {{"name", "ai-rpg-engine"}, {"version", "0.2.0"}}}};
-            return response;
-        }
-        if (method == "notifications/initialized") return {};
-        if (method == "ping") {
-            response["result"] = nlohmann::json::object();
-            return response;
-        }
-        if (method == "tools/list") {
-            response["result"] = {{"tools", nlohmann::json::parse(k_tools_list_json)}};
-            return response;
-        }
-        if (method == "resources/list") {
-            response["result"] = {{"resources", nlohmann::json::array()}};
-            return response;
-        }
-        if (method == "prompts/list") {
-            response["result"] = {{"prompts", nlohmann::json::array()}};
-            return response;
-        }
-        if (method == "tools/call") {
-            response["result"] = handle_tools_call(project_root, request["params"]);
-            return response;
-        }
-        if (has_id) {
-            response["error"] = {{"code", -32601}, {"message", "Method not found: " + method}};
-            AutomationTrace::log(AutomationTraceChannel::Mcp, "error",
-                {{"method", method}, {"code", "-32601"}, {"message", "Method not found"}});
-            return response;
-        }
-    } catch (const std::exception& exception) {
-        if (has_id) response["error"] = {{"code", -32603}, {"message", exception.what()}};
-        AutomationTrace::log(AutomationTraceChannel::Mcp, "error",
-            {{"method", method}, {"code", "-32603"}, {"message", exception.what()}});
-        return response;
+    if (method == "notifications/initialized")
+      return {};
+    if (method == "ping") {
+      response["result"] = nlohmann::json::object();
+      return response;
     }
-    return {};
+    if (method == "tools/list") {
+      response["result"] = {
+          {"tools", nlohmann::json::parse(k_tools_list_json)}};
+      return response;
+    }
+    if (method == "resources/list") {
+      response["result"] = {{"resources", nlohmann::json::array()}};
+      return response;
+    }
+    if (method == "prompts/list") {
+      response["result"] = {{"prompts", nlohmann::json::array()}};
+      return response;
+    }
+    if (method == "tools/call") {
+      response["result"] = handle_tools_call(project_root, request["params"]);
+      return response;
+    }
+    if (has_id) {
+      response["error"] = {{"code", -32601},
+                           {"message", "Method not found: " + method}};
+      AutomationTrace::log(AutomationTraceChannel::Mcp, "error",
+                           {{"method", method},
+                            {"code", "-32601"},
+                            {"message", "Method not found"}});
+      return response;
+    }
+  } catch (const std::exception &exception) {
+    if (has_id)
+      response["error"] = {{"code", -32603}, {"message", exception.what()}};
+    AutomationTrace::log(AutomationTraceChannel::Mcp, "error",
+                         {{"method", method},
+                          {"code", "-32603"},
+                          {"message", exception.what()}});
+    return response;
+  }
+  return {};
 }
 
 } // namespace
 
-Result<int> run_mcp_server(const std::filesystem::path& project_root) {
-    configure_mcp_stdio();
-    client_uses_ndjson = false;
-    AutomationTrace::log(AutomationTraceChannel::Mcp, "server_start",
-        {{"project", project_root.lexically_normal().generic_string()},
-            {"logPath", AutomationTrace::log_path(AutomationTraceChannel::Mcp).generic_string()}});
-    while (true) {
-        const auto payload = read_message();
-        if (payload.empty()) break;
-        const auto request = nlohmann::json::parse(payload, nullptr, false);
-        if (request.is_discarded()) {
-            AutomationTrace::log(AutomationTraceChannel::Mcp, "parse_error", "invalid JSON payload");
-            continue;
-        }
-        const auto response = handle_request(project_root, request);
-        if (!response.is_null() && !response.empty()) {
-            const auto method = request.value("method", std::string{});
-            AutomationTrace::log(AutomationTraceChannel::Mcp, "response",
-                {{"method", method}, {"hasError", response.contains("error") ? "true" : "false"}});
-            write_message(response.dump());
-        }
+Result<int> run_mcp_server(const std::filesystem::path &project_root) {
+  configure_mcp_stdio();
+  client_uses_ndjson = false;
+  AutomationTrace::log(
+      AutomationTraceChannel::Mcp, "server_start",
+      {{"project", project_root.lexically_normal().generic_string()},
+       {"logPath", AutomationTrace::log_path(AutomationTraceChannel::Mcp)
+                       .generic_string()}});
+  while (true) {
+    const auto payload = read_message();
+    if (payload.empty())
+      break;
+    const auto request = nlohmann::json::parse(payload, nullptr, false);
+    if (request.is_discarded()) {
+      AutomationTrace::log(AutomationTraceChannel::Mcp, "parse_error",
+                           "invalid JSON payload");
+      continue;
     }
-    AutomationTrace::log(AutomationTraceChannel::Mcp, "server_stop", "stdin closed");
-    return Result<int>::success(0);
+    const auto response = handle_request(project_root, request);
+    if (!response.is_null() && !response.empty()) {
+      const auto method = request.value("method", std::string{});
+      AutomationTrace::log(
+          AutomationTraceChannel::Mcp, "response",
+          {{"method", method},
+           {"hasError", response.contains("error") ? "true" : "false"}});
+      write_message(response.dump());
+    }
+  }
+  AutomationTrace::log(AutomationTraceChannel::Mcp, "server_stop",
+                       "stdin closed");
+  return Result<int>::success(0);
 }
 
 } // namespace engine

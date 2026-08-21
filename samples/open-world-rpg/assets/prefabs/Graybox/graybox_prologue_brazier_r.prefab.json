@@ -1,0 +1,96 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.25,
+          0.22,
+          0.2
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "pedestal",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.7,
+          1.8,
+          0.7
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.35,
+          0.2,
+          0.12
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "bowl",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          1.8,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.1,
+          0.35,
+          1.1
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.9,
+          0.4,
+          0.08
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "flame",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          2.15,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.55,
+          1.1,
+          0.55
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

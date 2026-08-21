@@ -1,0 +1,2231 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "007688e6-2436-4ed6-a9b6-9c02027ac849",
+      "name": "camp_weapon_rack",
+      "transform": {
+        "position": [
+          -30.0,
+          3.994901657104492,
+          -2.799999952316284
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/weapon_rack.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              1.2999999523162842,
+              1.0750000476837158,
+              0.44999998807907104
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                1.0750000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "0571daed-4105-45a0-8dbd-bb88caf5290b",
+      "name": "camp_bush_tall",
+      "transform": {
+        "position": [
+          -29.5,
+          3.9936397075653076,
+          -4.800000190734863
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/bush_tall.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.699999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "0657c922-664b-4eca-8490-c3dad93ef6ed",
+      "name": "npc_humanoid",
+      "transform": {
+        "position": [
+          0.0,
+          3.9800000190734863,
+          16.66036605834961
+        ],
+        "rotation": [
+          -0.0,
+          0.0,
+          -0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/npc/npc_humanoid.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.6000000238418579,
+            "id": "collision-0",
+            "layer": "dynamic",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "combatHurt": "npc_body",
+            "id": "collision-hurt",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                1.2000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-hurt",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/player.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        },
+        {
+          "data": {
+            "angularDamping": 0.05000000074505806,
+            "freezeRotation": true,
+            "linearDamping": 0.05000000074505806,
+            "mass": 70.0,
+            "motionType": "dynamic",
+            "useGravity": true
+          },
+          "id": "rigidbody-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "rigidbody"
+        }
+      ]
+    },
+    {
+      "id": "108343e4-5fc7-493c-a161-c6aa60bdd769",
+      "name": "camp_supply_chest",
+      "transform": {
+        "position": [
+          -27.799999237060547,
+          3.996936798095703,
+          2.5
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/supply_chest.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "open_supply_chest",
+            "layer": "trigger",
+            "radius": 1.350000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "13656917-2231-4215-b807-839a10b50197",
+      "name": "player",
+      "transform": {
+        "position": [
+          0.0,
+          3.986502170562744,
+          -8.0
+        ],
+        "rotation": [
+          -0.0,
+          0.0,
+          -0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/player/player.prefab.json",
+        "cell": [
+          0,
+          -1
+        ],
+        "characterAsset": "assets/characters/player.character.json"
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.6000000238418579,
+            "id": "collision-0",
+            "layer": "dynamic",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/player.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        },
+        {
+          "data": {
+            "angularDamping": 0.05000000074505806,
+            "freezeRotation": true,
+            "linearDamping": 0.05000000074505806,
+            "mass": 70.0,
+            "motionType": "dynamic",
+            "useGravity": true
+          },
+          "id": "rigidbody-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "rigidbody"
+        },
+        {
+          "data": {
+            "combatHurt": "body",
+            "id": "collision-hurt",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                1.2000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-hurt",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "14a05e44-035c-4bca-a448-3862c5f949cb",
+      "name": "camp_bush_b",
+      "transform": {
+        "position": [
+          -21.0,
+          3.9999542236328125,
+          5.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/bush.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "206bea29-c800-42bb-ac2a-1fa026313c12",
+      "name": "camp_crate",
+      "transform": {
+        "position": [
+          -27.200000762939453,
+          3.9978203773498535,
+          -2.5999999046325684
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/crate.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "27fd2860-b6db-4379-9dca-614a6dc91666",
+      "name": "camp_barricade_b",
+      "transform": {
+        "position": [
+          -22.0,
+          3.999563694000244,
+          4.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/camp_barricade_b.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "3ad6764b-58e1-4c05-9001-d91e1a31d6e1",
+      "name": "combat_dummy_left",
+      "transform": {
+        "position": [
+          -5.0,
+          3.974858283996582,
+          4.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/target_dummy.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.699999988079071,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.0800000429153442,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "combatHurt": "dummy_body",
+            "id": "collision-hurt",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                1.2000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-hurt",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/target_dummy.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        }
+      ]
+    },
+    {
+      "id": "3d3d7db0-9eba-40a7-b58e-85ef4a5990bd",
+      "name": "camp_lean_to",
+      "transform": {
+        "position": [
+          -30.0,
+          3.9951133728027344,
+          1.0
+        ],
+        "rotation": [
+          0.0,
+          -0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/camp_lean_to.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "4f14951d-fb3c-4cee-8d14-2835c9767061",
+      "name": "camp_hostile_a",
+      "transform": {
+        "position": [
+          -23.5,
+          3.9997148513793945,
+          4.5
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/npc/npc_humanoid.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.6000000238418579,
+            "id": "collision-0",
+            "layer": "dynamic",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "combatHurt": "npc_body",
+            "id": "collision-hurt",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                1.2000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-hurt",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/player.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        },
+        {
+          "data": {
+            "angularDamping": 0.05000000074505806,
+            "freezeRotation": true,
+            "linearDamping": 0.05000000074505806,
+            "mass": 70.0,
+            "motionType": "dynamic",
+            "useGravity": true
+          },
+          "id": "rigidbody-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "rigidbody"
+        }
+      ]
+    },
+    {
+      "id": "51567400-2554-436a-83c6-4112d4fe8639",
+      "name": "camp_log_seat_a",
+      "transform": {
+        "position": [
+          -24.5,
+          3.9985227584838867,
+          -2.5
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/dead_log.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.20000000298023224,
+              0.5799999833106995
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.20000000298023224,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "6b27a250-e615-43b5-bd85-feee64ff29bb",
+      "name": "camp_log_seat_b",
+      "transform": {
+        "position": [
+          -26.200000762939453,
+          3.9996962547302246,
+          3.5
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/dead_log.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.20000000298023224,
+              0.5799999833106995
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.20000000298023224,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "6b64531b-076a-4a32-bed6-725dc27e304f",
+      "name": "combat_dummy_far",
+      "transform": {
+        "position": [
+          0.0,
+          3.998626232147217,
+          11.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/target_dummy.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.699999988079071,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.0800000429153442,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "combatHurt": "dummy_body",
+            "id": "collision-hurt",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                1.2000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-hurt",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/target_dummy.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        }
+      ]
+    },
+    {
+      "id": "7a5d75c0-1a02-4a10-8eaa-69d6da994d5c",
+      "name": "combat_weapon_crate",
+      "transform": {
+        "position": [
+          3.5,
+          3.98172664642334,
+          -6.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/weapon_crate.prefab.json",
+        "cell": [
+          0,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "open_weapon_crate",
+            "layer": "trigger",
+            "radius": 1.350000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "7aaf4fb9-adf5-4e12-8242-4a898c21edb9",
+      "name": "combat_dummy_front",
+      "transform": {
+        "position": [
+          0.0,
+          3.9764726161956787,
+          6.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/target_dummy.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.699999988079071,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.0800000429153442,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "combatHurt": "dummy_body",
+            "id": "collision-hurt",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                1.2000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-hurt",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/target_dummy.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        }
+      ]
+    },
+    {
+      "id": "8c8f0018-40dd-480e-933b-3f0f4be2639c",
+      "name": "camp_hostile_sentry",
+      "transform": {
+        "position": [
+          -20.5,
+          3.999722719192505,
+          1.0
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/npc/npc_humanoid_patrol.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.6000000238418579,
+            "id": "collision-0",
+            "layer": "dynamic",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "combatHurt": "npc_body",
+            "id": "collision-hurt",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                1.2000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-hurt",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/player.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        },
+        {
+          "data": {
+            "angularDamping": 0.05000000074505806,
+            "freezeRotation": true,
+            "linearDamping": 0.05000000074505806,
+            "mass": 70.0,
+            "motionType": "dynamic",
+            "useGravity": true
+          },
+          "id": "rigidbody-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "rigidbody"
+        }
+      ]
+    },
+    {
+      "id": "9cdff1ae-fdad-4450-b897-3dfd0a12735d",
+      "name": "camp_lantern_b",
+      "transform": {
+        "position": [
+          -23.200000762939453,
+          3.9990735054016113,
+          -3.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/lantern.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.18000000715255737,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.2800000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "9ea2f0ff-f01b-4d1f-a1e5-c9f715a42521",
+      "name": "camp_hostile_b",
+      "transform": {
+        "position": [
+          -29.5,
+          3.9938619136810303,
+          5.800000190734863
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/npc/npc_humanoid.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.6000000238418579,
+            "id": "collision-0",
+            "layer": "dynamic",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "combatHurt": "npc_body",
+            "id": "collision-hurt",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                1.2000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-hurt",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/player.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        },
+        {
+          "data": {
+            "angularDamping": 0.05000000074505806,
+            "freezeRotation": true,
+            "linearDamping": 0.05000000074505806,
+            "mass": 70.0,
+            "motionType": "dynamic",
+            "useGravity": true
+          },
+          "id": "rigidbody-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "rigidbody"
+        }
+      ]
+    },
+    {
+      "id": "a8c3e1f2-4b57-4d09-9e1a-2f6d8c0b9147",
+      "name": "combat_armor_crate",
+      "transform": {
+        "position": [
+          5.5,
+          3.98172664642334,
+          -6.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/armor_crate.prefab.json",
+        "cell": [
+          0,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "open_armor_crate",
+            "layer": "trigger",
+            "radius": 1.350000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "b6e05793-f236-4ff4-9d95-84a235d2f63f",
+      "name": "camp_fire",
+      "transform": {
+        "position": [
+          -26.0,
+          3.9991698265075684,
+          1.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/campfire.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-solid",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-solid",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "use_campfire",
+            "layer": "trigger",
+            "radius": 1.0,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.4000000059604645,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "c3f87f65-b7bd-40c5-ae1a-319b2ff7f6bd",
+      "name": "camp_barrel_a",
+      "transform": {
+        "position": [
+          -28.200000762939453,
+          3.9959473609924316,
+          4.800000190734863
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/barrel.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.05000000074505806,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.44999998807907104,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "d156c495-3165-414c-b8f2-a8d755718203",
+      "name": "camp_hostile_c",
+      "transform": {
+        "position": [
+          -26.5,
+          3.9988152980804443,
+          -4.5
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/npc/npc_humanoid.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.6000000238418579,
+            "id": "collision-0",
+            "layer": "dynamic",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "combatHurt": "npc_body",
+            "id": "collision-hurt",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                1.2000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-hurt",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/player.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        },
+        {
+          "data": {
+            "angularDamping": 0.05000000074505806,
+            "freezeRotation": true,
+            "linearDamping": 0.05000000074505806,
+            "mass": 70.0,
+            "motionType": "dynamic",
+            "useGravity": true
+          },
+          "id": "rigidbody-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "rigidbody"
+        }
+      ]
+    },
+    {
+      "id": "d2669f58-2f21-4ba6-b4b8-e4d12c632b66",
+      "name": "camp_stump",
+      "transform": {
+        "position": [
+          -23.200000762939453,
+          3.9991512298583984,
+          0.20000000298023224
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/stump.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.07999999821186066,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.46000000834465027,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "e1f9be57-faef-4de1-b18a-2d11623e7f95",
+      "name": "camp_barricade_a",
+      "transform": {
+        "position": [
+          -22.0,
+          3.9989805221557617,
+          -2.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/camp_barricade_a.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      }
+    },
+    {
+      "id": "e911e9cf-a478-4591-8a3c-8db3ce7503fd",
+      "name": "combat_dummy_right",
+      "transform": {
+        "position": [
+          5.0,
+          3.982089042663574,
+          4.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/target_dummy.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.699999988079071,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.3799999952316284,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.0800000429153442,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "combatHurt": "dummy_body",
+            "id": "collision-hurt",
+            "layer": "trigger",
+            "radius": 0.8500000238418579,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                1.2000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-hurt",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/target_dummy.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        }
+      ]
+    }
+  ],
+  "worldId": "combat-sandbox",
+  "name": "Combat Sandbox",
+  "terrainData": {
+    "edits": "assets/terrain/instances/combat-sandbox/terrain-edits.json",
+    "paint": "assets/terrain/instances/combat-sandbox/terrain-paint.json",
+    "foliage": "assets/terrain/instances/combat-sandbox/foliage-density.json"
+  },
+  "partition": {
+    "worldSizeMeters": [
+      16000.0,
+      16000.0
+    ],
+    "cellSizeMeters": 128.0
+  }
+}

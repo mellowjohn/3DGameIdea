@@ -88,8 +88,9 @@ Uses existing `samples/open-world-rpg` (no sample content change).
 
 ### Leftover risk
 
-- Release/RelWithDebInfo re-capture on target GPU still needed before locking budgets.
-- Hidden-bench hard-exit skips normal atexit (report + CLI summary already emitted).
+- Owner still needs RelWithDebInfo/Release on **RTX 4070-class** before locking budgets (2080 SUPER RelWithDebInfo published 2026-08-06 as intermediate).
+- Benchmark default world is now `vertical-slice` (not main-menu).
+- Hidden hard-exit skips normal atexit and can briefly wedge consecutive DXGI sessions — space retries ~5–30s.
 - CPU bound in Debug editor path; GPU headroom should not be read as “done” for CSM/LOD work.
 
 ## Agent notes

@@ -23,9 +23,9 @@ Arkand is a knight from the Kingdom of Tessera. He acts as a guide and source of
 - Mechanical roles: tank and damage support
 - Creative references: Puck from *Berserk* and Patrick Star-style humor; references are directional, not setting canon
 
-### Act 0 introduction (draft — Twine)
+### Act 0 introduction (established — MVP beat sheet 2026-08-05)
 
-Imported spine: [`sources/wrathful-conquest-act0.twee`](sources/wrathful-conquest-act0.twee) / World Forge tree `dlg_act0_wrathful_conquest`.
+Imported spine: [`sources/wrathful-conquest-act0.twee`](sources/wrathful-conquest-act0.twee) / World Forge tree `dlg_act0_wrathful_conquest`. Beat order: [campaign-beat-sheet.md](campaign-beat-sheet.md) A0-03…A0-09.
 
 - Player finds him trapped under a wheelbarrow on the approach to Calrenoth; he introduces himself as Knight of Tessera, King’s Guard.
 - First-impression branches color his attitude (eager help / rude focus on the keep / combat bravado).
@@ -33,7 +33,7 @@ Imported spine: [`sources/wrathful-conquest-act0.twee`](sources/wrathful-conques
 - **Post–Act 0 camp (D-P1-19):** Arkand is the **tutorial guide** — storage chest, rest for HP, travel from camp — in lore-friendly lines. Companions with pending beats show talk flags; player chooses who to speak to.
 - Grenge jokes about Arkand getting stuck under carts again — seeds SQ-01 “Cart Again” banter later.
 
-Canon status for these beats: **draft** until beat-sheet review.
+Canon status for these beats: **established** (MVP Landfall spine locked 2026-08-05). Playable dialogue polish remains checklist `story_beats_a0_*`.
 
 Vanessa is a mage educated at the enlightened arcane academies in central Tessera. She views the world literally, takes most matters seriously, and prioritizes action over allowing the protagonist to remain stuck in self-pity.
 

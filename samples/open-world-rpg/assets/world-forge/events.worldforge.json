@@ -7,55 +7,231 @@
       "displayName": "Act 0 timeline smoke",
       "canonStatus": "draft",
       "summary": "Headless/play smoke: lock, look_at, wait, emit, dialogue, unlock for Landfall timeline MVP.",
-      "acts": ["act0"],
       "steps": [
-        { "kind": "lock_control" },
-        { "kind": "look_at", "target": [0.0, 2.0, 8.0], "seconds": 0.2, "distance": 12.0, "pitch": 0.25 },
-        { "kind": "wait", "seconds": 0.1 },
-        { "kind": "emit", "name": "vfx_stub", "payload": { "source": "timeline_smoke" } },
-        { "kind": "start_dialogue", "dialogueId": "dlg_act0_meet_arkand" },
-        { "kind": "wait", "seconds": 0.1 },
-        { "kind": "unlock_control" }
+        {
+          "kind": "lock_control"
+        },
+        {
+          "kind": "look_at",
+          "seconds": 0.20000000298023224,
+          "target": [
+            0.0,
+            2.0,
+            8.0
+          ],
+          "distance": 12.0,
+          "pitch": 0.25
+        },
+        {
+          "kind": "wait",
+          "seconds": 0.10000000149011612
+        },
+        {
+          "kind": "emit",
+          "name": "vfx_stub",
+          "payload": {
+            "source": "timeline_smoke"
+          }
+        },
+        {
+          "kind": "start_dialogue",
+          "dialogueId": "dlg_act0_meet_arkand"
+        },
+        {
+          "kind": "wait",
+          "seconds": 0.10000000149011612
+        },
+        {
+          "kind": "unlock_control"
+        }
       ],
-      "tags": ["act0", "smoke"]
+      "acts": [
+        "act0"
+      ],
+      "tags": [
+        "act0",
+        "smoke"
+      ]
     },
     {
       "id": "evt_sandbox_zone_pan",
       "displayName": "Sandbox event zone — cinematic multi-subject pan",
       "canonStatus": "draft",
       "summary": "Standalone cinematic playtest (separate from practice-keeper talk): lock, pan/zoom to NPC then campfire then oak, then dlg_sandbox_event_zone. Orbit pivot leaves the player for each look_at subject. Triggered by event_zone_sandbox (interaction event_sandbox).",
-      "acts": [],
       "steps": [
-        { "kind": "lock_control" },
+        {
+          "kind": "lock_control"
+        },
         {
           "kind": "look_at",
-          "target": [24.0, 4.0, 22.5],
           "seconds": 3.0,
+          "target": [
+            24.0,
+            4.0,
+            22.5
+          ],
           "distance": 7.5,
-          "pitch": 0.2
+          "pitch": 0.20000000298023224
         },
-        { "kind": "wait", "seconds": 1.1 },
+        {
+          "kind": "wait",
+          "seconds": 1.100000023841858
+        },
         {
           "kind": "look_at",
-          "target": [20.0, 4.05, 20.0],
-          "seconds": 2.8,
+          "seconds": 2.799999952316284,
+          "target": [
+            20.0,
+            4.050000190734863,
+            20.0
+          ],
           "distance": 12.0,
-          "pitch": 0.28
+          "pitch": 0.2800000011920929
         },
-        { "kind": "wait", "seconds": 1.0 },
+        {
+          "kind": "wait",
+          "seconds": 1.0
+        },
         {
           "kind": "look_at",
-          "target": [8.0, 2.0, 28.0],
-          "seconds": 3.2,
+          "seconds": 3.200000047683716,
+          "target": [
+            8.0,
+            2.0,
+            28.0
+          ],
           "distance": 16.0,
-          "pitch": 0.15
+          "pitch": 0.15000000596046448
         },
-        { "kind": "wait", "seconds": 1.0 },
-        { "kind": "emit", "name": "sandbox_zone_beat", "payload": { "source": "event_sandbox", "shots": 3 } },
-        { "kind": "start_dialogue", "dialogueId": "dlg_sandbox_event_zone" },
-        { "kind": "unlock_control" }
+        {
+          "kind": "wait",
+          "seconds": 1.0
+        },
+        {
+          "kind": "emit",
+          "name": "sandbox_zone_beat",
+          "payload": {
+            "shots": 3,
+            "source": "event_sandbox"
+          }
+        },
+        {
+          "kind": "start_dialogue",
+          "dialogueId": "dlg_sandbox_event_zone"
+        },
+        {
+          "kind": "unlock_control"
+        }
       ],
-      "tags": ["sandbox", "event_zone", "timeline", "cinematic"]
+      "acts": [],
+      "tags": [
+        "sandbox",
+        "event_zone",
+        "timeline",
+        "cinematic"
+      ]
+    },
+    {
+      "id": "evt_prologue_throne_establish",
+      "displayName": "Prologue beat 1 — cathedral establish",
+      "canonStatus": "draft",
+      "summary": "Click-gated beat 1. Reveals the long cathedral first and holds at the established frame until the player finishes the page and advances.",
+      "steps": [
+        {
+          "kind": "lock_control"
+        },
+        {
+          "kind": "look_at",
+          "seconds": 2.799999952316284,
+          "target": [
+            20.0,
+            3.450000047683716,
+            10.300000190734863
+          ],
+          "distance": 43.0,
+          "pitch": -0.1599999964237213
+        },
+        {
+          "kind": "unlock_control"
+        }
+      ],
+      "acts": [
+        "act0"
+      ],
+      "tags": [
+        "act0",
+        "prologue",
+        "cinematic",
+        "click-gated"
+      ]
+    },
+    {
+      "id": "evt_prologue_throne_luceran",
+      "displayName": "Prologue beat 2 — Luceran focus",
+      "canonStatus": "draft",
+      "summary": "Click-gated beat 2. Begins only after the first completed Continue advances the dialogue, then holds on Luceran for the second page.",
+      "steps": [
+        {
+          "kind": "lock_control"
+        },
+        {
+          "kind": "look_at",
+          "seconds": 2.4000000953674316,
+          "target": [
+            20.0,
+            3.549999952316284,
+            10.350000381469727
+          ],
+          "distance": 9.5,
+          "pitch": -0.07000000029802322
+        },
+        {
+          "kind": "unlock_control"
+        }
+      ],
+      "acts": [
+        "act0"
+      ],
+      "tags": [
+        "act0",
+        "prologue",
+        "cinematic",
+        "click-gated"
+      ]
+    },
+    {
+      "id": "evt_prologue_throne_reveal",
+      "displayName": "Prologue beat 3 — Nefarium pullback",
+      "canonStatus": "draft",
+      "summary": "Click-gated beat 3. Begins only after the second completed Continue advances the dialogue, then reveals the full nave and Nefarium dressing.",
+      "steps": [
+        {
+          "kind": "lock_control"
+        },
+        {
+          "kind": "look_at",
+          "seconds": 3.200000047683716,
+          "target": [
+            20.0,
+            3.299999952316284,
+            11.0
+          ],
+          "distance": 48.0,
+          "pitch": -0.17000000178813934
+        },
+        {
+          "kind": "unlock_control"
+        }
+      ],
+      "acts": [
+        "act0"
+      ],
+      "tags": [
+        "act0",
+        "prologue",
+        "cinematic",
+        "click-gated"
+      ]
     }
   ]
 }

@@ -16,9 +16,12 @@ struct InteractionEvent;
 struct CombatContactEvent;
 struct AnimatorFiredEvent;
 struct EventTimelineEmitEvent;
+struct StatusTickEvent;
 class HudRuntime;
 class UiCanvasStack;
 class WorldUiBillboardRuntime;
+class CombatTextRuntime;
+class StatusEffectRuntime;
 class QuestRuntime;
 class StandingRuntime;
 class FlagRuntime;
@@ -62,9 +65,12 @@ public:
     /// Explicit interact (e.g. Press E) for a currently prompted interaction id.
     void dispatch_interaction_use(const std::string& interaction_id);
     void dispatch_combat_hit(const CombatContactEvent& event);
+    void dispatch_status_tick(const StatusTickEvent& event);
     void dispatch_ui_button(const std::string& bind_id, const std::string& canvas_id, const std::string& widget_id);
     void dispatch_animation_event(const AnimatorFiredEvent& event);
     void dispatch_event_timeline_emit(const EventTimelineEmitEvent& event);
+    /// Optional global `on_update` during play-test (silent if missing).
+    void dispatch_update(float dt_seconds);
 
     [[nodiscard]] Result<void> call_handler(const std::string& handler_name, const std::string& payload_json);
 
@@ -72,10 +78,14 @@ public:
     void blackboard_set_bool(const std::string& key, bool value);
     void blackboard_set_number(const std::string& key, double value);
     void blackboard_clear();
+    /// Drop keys that start with `prefix` (e.g. `"combat."` on F5). Leaves other keys.
+    void blackboard_erase_prefix(const std::string& prefix);
 
     void set_hud_runtime(HudRuntime* hud) noexcept;
     void set_ui_canvas_stack(UiCanvasStack* stack) noexcept;
     void set_world_ui_billboards(WorldUiBillboardRuntime* billboards) noexcept;
+    void set_combat_text(CombatTextRuntime* combat_text) noexcept;
+    void set_status_effects(StatusEffectRuntime* status_effects) noexcept;
     void set_quest_runtime(QuestRuntime* quest) noexcept;
     void set_standing_runtime(StandingRuntime* standing) noexcept;
     void set_flag_runtime(FlagRuntime* flags) noexcept;

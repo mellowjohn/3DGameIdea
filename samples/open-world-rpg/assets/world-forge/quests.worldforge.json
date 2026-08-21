@@ -5,9 +5,9 @@
     {
       "id": "mq_act0_calrenoth",
       "kind": "main",
-      "displayName": "Act 0 — Calrenoth Fall",
+      "displayName": "Landfall",
       "canonStatus": "draft",
-      "summary": "Main-quest Act 0 spine: siege of Calrenoth, drawbridge retreat, Creotar vision. Dialogue imported from Twine Harlowe source.",
+      "summary": "Act 0 Landfall tutorial spine: Calrenoth siege, drawbridge retreat, Creotar vision. Dialogue imported from Twine Harlowe source.",
       "storyRef": "context/story/sources/wrathful-conquest-act0.twee",
       "consequential": true,
       "regionId": "tessera_overland",

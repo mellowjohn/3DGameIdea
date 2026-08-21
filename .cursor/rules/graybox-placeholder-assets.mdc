@@ -1,0 +1,42 @@
+---
+description: Unfinished art uses graybox primitives / kit stand-ins — never block scene progress waiting for final assets
+alwaysApply: true
+---
+
+# Graybox Placeholders For Unfinished Assets
+
+When an asset Dom still needs to author (keep walls, siege towers, banners, final characters, unique props, etc.) is **missing or not ready**, ship the beat with **graybox placeholders**. Do not stall layout, cameras, quests, or UI on final art.
+
+## Prefer
+
+- Built-in prefab primitives from [DEC-0008](../../context/decisions/index.md#dec-0008-compositional-prefab-meshes-from-primitives): `cube`, `pyramid`, `cylinder`, `sphere` (compose multi-part prefabs when silhouette needs more than one block)
+- Named markers: `assets/prefabs/Scene Assets/camera_marker.prefab.json` (or `engine_scene_apply` `place_marker`)
+- Existing kit stand-ins already in the sample: `stones`, `crate`, `barrel`, `bush` / `bush_tall`, oaks/trees, `wall_torch`, `lantern`, `dead_log`, `supply_chest`, `stylized_flame`
+- Terrain height + material paint + water for landform / moat / approach (graybox geography)
+
+## Banned habits
+
+- Blocking a playable draft because “the real keep / drawbridge / banner isn’t imported yet”
+- Inventing one-off final art in Blockbench when Dom owns that asset and it is still open
+- Leaving empty space where a landmark should read — place a primitive stack or kit stand-in with a clear name (`menu_keep_stones_*`, `graybox_gate_*`)
+
+## Rules
+
+1. **Missing final asset → graybox first.** Match concept silhouette and scale with primitives or kit props; name entities so replacement is obvious.
+2. **Do not invent Dom-owned hero art** as a substitute path. Graybox buys playable cameras/routes; final mesh comes later via Blockbench / bake when Dom is ready.
+3. **Keep placeholders findable.** Prefer stable names / tags (`graybox_*`, beat ids) over anonymous “Placed Object”.
+4. **Replace in place later.** When the real prefab lands, swap the same transform/name rather than redesigning the beat around a void.
+5. Still respect other always-on art rules (`bush`/`bush_tall` not `bush_wide`; grass foliage only on grass terrain; MCP for live scene/UI).
+
+## Examples
+
+```text
+❌ BAD: Skip main-menu / Landfall establishing shot until a full Calrenoth keep glTF exists
+✅ GOOD: Raise stone plateau + stones/crate stacks + torches; camera_marker for menu_cam_establishing
+
+❌ BAD: Wait on a siege-tower Blockbench before stamping approach clutter
+✅ GOOD: Scaled crates / dead_log / supply_chest as temporary siege clutter
+
+❌ BAD: Hand-author a “final” banner mesh because Dom hasn’t drawn it yet
+✅ GOOD: Thin cylinder or cube pole as graybox_banner_*; note owner art still needed
+```

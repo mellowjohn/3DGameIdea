@@ -1,6 +1,7 @@
 #include "engine/ui/hud_runtime.h"
 
 #include "engine/assets/hud_asset.h"
+#include "engine/assets/ui_theme_asset.h"
 #include "engine/ui/game_fonts.h"
 #include "engine/ui/ui_texture_cache.h"
 
@@ -10,8 +11,11 @@
 #include <array>
 #include <cctype>
 #include <cmath>
+#include <cstring>
 #include <filesystem>
 #include <sstream>
+#include <utility>
+#include <vector>
 
 namespace engine {
 namespace {
@@ -37,6 +41,19 @@ bool is_focusable_type(HudWidgetType type) {
     return type == HudWidgetType::Button || type == HudWidgetType::Toggle || type == HudWidgetType::Slider;
 }
 
+/// Near-invisible, image-less buttons used only as click catchers (e.g. prologue dialogue plate).
+/// Keep them hittable, but skip keyboard focus lists and rectangular focus rings.
+/// Theme-role / token chrome and labeled buttons are never ghosts — missing `color`
+/// alpha would otherwise hide gold plates (inventory EQUIP/BAG).
+bool is_ghost_hit_button(const HudWidget& widget) {
+    if (widget.type != HudWidgetType::Button) return false;
+    if (!widget.image.empty()) return false;
+    if (!widget.theme_role.empty() || !widget.color_token.empty()) return false;
+    if (!widget.text.empty()) return false;
+    const float alpha = std::clamp(widget.opacity, 0.0f, 1.0f) * (widget.color[3] / 255.0f);
+    return alpha <= 0.05f;
+}
+
 float ease_out_cubic(float t) {
     t = std::clamp(t, 0.0f, 1.0f);
     const float u = 1.0f - t;
@@ -47,6 +64,22 @@ float approach(float current, float target, float dt, float duration_seconds) {
     const float dur = std::max(0.01f, duration_seconds);
     const float step = std::clamp(dt / dur, 0.0f, 1.0f);
     return current + (target - current) * step;
+}
+
+/// Click juice: brief squash → overshoot → settle. Returns uniform scale (1 = rest).
+float card_click_bounce_scale(float t) {
+    t = std::clamp(t, 0.0f, 1.0f);
+    if (t <= 0.0f) return 1.0f;
+    if (t < 0.14f) {
+        const float u = t / 0.14f;
+        return 1.0f + (0.90f - 1.0f) * ease_out_cubic(u);
+    }
+    if (t < 0.42f) {
+        const float u = (t - 0.14f) / 0.28f;
+        return 0.90f + (1.12f - 0.90f) * ease_out_cubic(u);
+    }
+    const float u = (t - 0.42f) / 0.58f;
+    return 1.12f + (1.0f - 1.12f) * ease_out_cubic(u);
 }
 
 ImU32 brighten_fill(ImU32 fill, float amount) {
@@ -93,12 +126,49 @@ std::string image_stem_label(const std::string& image_path) {
     return std::filesystem::path(image_path).stem().generic_string();
 }
 
+// Invalid leading bytes are treated as one display unit so malformed external text
+// can still progress without reading past the string.
+std::size_t utf8_codepoint_width(const std::string& text, std::size_t offset) {
+    const unsigned char lead = static_cast<unsigned char>(text[offset]);
+    if (lead >= 0xC2 && lead <= 0xDF && offset + 1 < text.size() &&
+        (static_cast<unsigned char>(text[offset + 1]) & 0xC0) == 0x80)
+        return 2;
+    if (lead >= 0xE0 && lead <= 0xEF && offset + 2 < text.size() &&
+        (static_cast<unsigned char>(text[offset + 1]) & 0xC0) == 0x80 &&
+        (static_cast<unsigned char>(text[offset + 2]) & 0xC0) == 0x80)
+        return 3;
+    if (lead >= 0xF0 && lead <= 0xF4 && offset + 3 < text.size() &&
+        (static_cast<unsigned char>(text[offset + 1]) & 0xC0) == 0x80 &&
+        (static_cast<unsigned char>(text[offset + 2]) & 0xC0) == 0x80 &&
+        (static_cast<unsigned char>(text[offset + 3]) & 0xC0) == 0x80)
+        return 4;
+    return 1;
+}
+
+// Return the byte offset immediately after `codepoint_count` UTF-8 code points.
+std::size_t utf8_prefix_bytes(const std::string& text, std::size_t codepoint_count) {
+    std::size_t offset = 0;
+    for (std::size_t revealed = 0; offset < text.size() && revealed < codepoint_count; ++revealed)
+        offset += utf8_codepoint_width(text, offset);
+    return offset;
+}
+
+std::size_t utf8_codepoint_count(const std::string& text) {
+    std::size_t count = 0;
+    for (std::size_t offset = 0; offset < text.size(); ++count)
+        offset += utf8_codepoint_width(text, offset);
+    return count;
+}
+
 } // namespace
 
 void HudRuntime::reset_widget_flags_from_asset() {
     visibility_.clear();
     enabled_.clear();
     color_overrides_.clear();
+    offset_overrides_.clear();
+    size_overrides_.clear();
+    opacity_overrides_.clear();
     for (const auto& widget : asset_.widgets) {
         visibility_[widget.id] = widget.visible;
         enabled_[widget.id] = widget.enabled;
@@ -154,7 +224,12 @@ void HudRuntime::clear() {
     visibility_.clear();
     enabled_.clear();
     color_overrides_.clear();
+    offset_overrides_.clear();
+    size_overrides_.clear();
+    opacity_overrides_.clear();
     button_hover_t_.clear();
+    button_bounce_t_.clear();
+    button_card_fx_frame_.clear();
 }
 
 void HudRuntime::reset_player_health(double current, double max) {
@@ -172,25 +247,83 @@ void HudRuntime::set_resource(double current, double max) {
     set_text("player.resourceText", text.str());
 }
 
+void HudRuntime::set_magicka(double current, double max) {
+    if (!(max > 0.0) || !std::isfinite(max)) max = 1.0;
+    if (!std::isfinite(current)) current = 0.0;
+    current = std::clamp(current, 0.0, max);
+    set_number("player.magicka", current);
+    set_number("player.magickaMax", max);
+    std::ostringstream text;
+    text << static_cast<int>(std::lround(current)) << "/" << static_cast<int>(std::lround(max));
+    set_text("player.magickaText", text.str());
+    set_text("player.magickaLabel", "Magicka");
+}
+
+void HudRuntime::set_rune_charges(int current, int max) {
+    if (max < 0) max = 0;
+    if (max > 5) max = 5;
+    if (current < 0) current = 0;
+    if (current > max) current = max;
+    set_number("player.runeCharges", static_cast<double>(current));
+    set_number("player.runeChargesMax", static_cast<double>(max));
+    set_bool("player.hasRuneCharges", max > 0);
+    std::ostringstream text;
+    text << current << "/" << max;
+    set_text("player.runeChargesText", text.str());
+    for (int i = 1; i <= 5; ++i) {
+        const std::string widget_id = "hud_rune_pip_" + std::to_string(i);
+        const std::string bind = "hud.rune." + std::to_string(i) + ".icon";
+        if (i > max) {
+            set_visible(widget_id, false);
+            set_image(bind, "");
+            continue;
+        }
+        set_visible(widget_id, true);
+        if (i <= current) {
+            set_image(bind, "assets/ui/hud/hud-rune-pip-ready.png");
+            set_enabled(widget_id, true);
+            set_color(widget_id, 130.0f, 170.0f, 255.0f, 255.0f);
+        } else {
+            set_image(bind, "assets/ui/hud/hud-rune-pip-dim.png");
+            set_enabled(widget_id, false);
+            set_color(widget_id, 70.0f, 78.0f, 110.0f, 180.0f);
+        }
+    }
+}
+
+int HudRuntime::rune_charges() const {
+    return static_cast<int>(std::lround(get_number("player.runeCharges").value_or(0.0)));
+}
+
+int HudRuntime::rune_charges_max() const {
+    return static_cast<int>(std::lround(get_number("player.runeChargesMax").value_or(0.0)));
+}
+
 void HudRuntime::apply_archetype_hud(const std::string& archetype_id) {
     std::string id = archetype_id;
     std::transform(id.begin(), id.end(), id.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    const bool magic = id == "runecaster" || id.find("magic") != std::string::npos;
-    const char* kind = magic ? "magic" : "stamina";
-    const char* label = magic ? "Magic" : "Stamina";
+    const bool runecaster = id == "runecaster" || id.find("magic") != std::string::npos;
     set_text("player.archetypeId", archetype_id.empty() ? "ashfell_blade" : archetype_id);
-    set_text("player.resourceKind", kind);
-    set_text("player.resourceLabel", label);
+    // Stamina is shared (dodge + Ashfell swings). Rune pips are the magicka/focus
+    // meter: apply_player_stats_to_hud shows them while a magic weapon is held.
+    set_text("player.resourceKind", "stamina");
+    set_text("player.resourceLabel", "Stamina");
     set_resource(100.0, 100.0);
     set_visible("player_resource", true);
     set_visible("player_resource_text", true);
     set_visible("player_resource_label", true);
-    if (magic) {
-        set_color("player_resource", 70.0f, 90.0f, 160.0f, 255.0f);
+    set_visible("player_resource_frame", true);
+    // Gold stamina rail — matches combat HUD chrome (player-hud.pen)
+    set_color("player_resource", 196.0f, 162.0f, 74.0f, 255.0f);
+    set_visible("player_magicka", false);
+    set_visible("player_magicka_text", false);
+    set_visible("player_magicka_label", false);
+    set_visible("player_magicka_frame", false);
+    if (runecaster) {
+        set_rune_charges(5, 5);
     } else {
-        // Gold stamina rail — matches combat HUD chrome (player-hud.pen)
-        set_color("player_resource", 196.0f, 162.0f, 74.0f, 255.0f);
+        set_rune_charges(0, 0);
     }
 }
 
@@ -243,9 +376,10 @@ void HudRuntime::tick_typewriter(float delta_seconds) {
     for (auto& [bind, full] : typed_full_) {
         auto& revealed = typed_chars_[bind];
         const float cps = typed_cps_.count(bind) ? typed_cps_[bind] : 48.0f;
-        revealed = std::min(static_cast<float>(full.size()), revealed + cps * delta_seconds);
+        const auto codepoint_count = utf8_codepoint_count(full);
+        revealed = std::min(static_cast<float>(codepoint_count), revealed + cps * delta_seconds);
         const auto count = static_cast<std::size_t>(revealed);
-        texts_[bind] = full.substr(0, count);
+        texts_[bind] = full.substr(0, utf8_prefix_bytes(full, count));
     }
 }
 
@@ -254,14 +388,14 @@ bool HudRuntime::typewriter_complete(const std::string& bind) const {
     if (full == typed_full_.end()) return true;
     const auto chars = typed_chars_.find(bind);
     if (chars == typed_chars_.end()) return false;
-    return chars->second + 0.001f >= static_cast<float>(full->second.size());
+    return chars->second + 0.001f >= static_cast<float>(utf8_codepoint_count(full->second));
 }
 
 bool HudRuntime::skip_typewriter(const std::string& bind) {
     const auto full = typed_full_.find(bind);
     if (full == typed_full_.end()) return false;
     if (typewriter_complete(bind)) return false;
-    typed_chars_[bind] = static_cast<float>(full->second.size());
+    typed_chars_[bind] = static_cast<float>(utf8_codepoint_count(full->second));
     texts_[bind] = full->second;
     return true;
 }
@@ -289,6 +423,36 @@ void HudRuntime::set_color(const std::string& widget_id, float r, float g, float
 void HudRuntime::clear_color(const std::string& widget_id) {
     if (widget_id.empty()) return;
     color_overrides_.erase(widget_id);
+}
+
+void HudRuntime::set_offset(const std::string& widget_id, float x, float y) {
+    if (widget_id.empty()) return;
+    offset_overrides_[widget_id] = {x, y};
+}
+
+void HudRuntime::clear_offset(const std::string& widget_id) {
+    if (widget_id.empty()) return;
+    offset_overrides_.erase(widget_id);
+}
+
+void HudRuntime::set_size(const std::string& widget_id, float w, float h) {
+    if (widget_id.empty()) return;
+    size_overrides_[widget_id] = {std::max(1.0f, w), std::max(1.0f, h)};
+}
+
+void HudRuntime::clear_size(const std::string& widget_id) {
+    if (widget_id.empty()) return;
+    size_overrides_.erase(widget_id);
+}
+
+void HudRuntime::set_opacity(const std::string& widget_id, float opacity01) {
+    if (widget_id.empty()) return;
+    opacity_overrides_[widget_id] = std::clamp(opacity01, 0.0f, 1.0f);
+}
+
+void HudRuntime::clear_opacity(const std::string& widget_id) {
+    if (widget_id.empty()) return;
+    opacity_overrides_.erase(widget_id);
 }
 
 void HudRuntime::set_health(double current, double max) {
@@ -379,16 +543,44 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
             static_cast<int>(std::clamp(rgba[2], 0.0f, 255.0f)),
             static_cast<int>(std::clamp(rgba[3], 0.0f, 255.0f)));
     };
-    const auto widget_rgba = [&](const HudWidget& widget) -> std::array<float, 4> {
+    const auto color_override_ptr = [&](const HudWidget& widget) -> const std::array<float, 4>* {
         const auto it = color_overrides_.find(widget.id);
-        if (it != color_overrides_.end()) return it->second;
-        return widget.color;
+        if (it == color_overrides_.end()) return nullptr;
+        return &it->second;
+    };
+    const auto widget_fill = [&](const HudWidget& widget) {
+        return ui_theme_resolve_fill(widget, theme_, color_override_ptr(widget));
+    };
+    const auto widget_text = [&](const HudWidget& widget, const std::array<float, 4>& fill) {
+        return ui_theme_resolve_text(widget, theme_, fill, color_override_ptr(widget));
+    };
+    const auto widget_rgba = [&](const HudWidget& widget) -> std::array<float, 4> {
+        if (widget.type == HudWidgetType::Text || widget.type == HudWidgetType::Toggle)
+            return widget_text(widget, widget_fill(widget));
+        return widget_fill(widget);
     };
 
     ImFont* font = GameFonts::ui() ? GameFonts::ui() : ImGui::GetFont();
     const auto readable_font_size = [scale](float design_px) {
         // Prefer near 1:1 with atlas size to avoid soft upscaling of Cinzel.
         return std::max(14.0f, design_px * scale);
+    };
+    const auto fit_font_to_box = [](ImFont* use_font, float screen_font, float min_screen, float wrap_w,
+                                      float max_h, const char* text) {
+        if (!use_font || !text || !*text || !(max_h > 1.0f) || !(wrap_w > 1.0f)) return screen_font;
+        min_screen = std::clamp(min_screen, 8.0f, screen_font);
+        auto measure_h = [&](float fs) {
+            return use_font->CalcTextSizeA(fs, FLT_MAX, wrap_w, text).y;
+        };
+        if (measure_h(screen_font) <= max_h) return screen_font;
+        float lo = min_screen;
+        float hi = screen_font;
+        for (int i = 0; i < 14; ++i) {
+            const float mid = (lo + hi) * 0.5f;
+            if (measure_h(mid) <= max_h) lo = mid;
+            else hi = mid;
+        }
+        return lo;
     };
     const auto draw_text = [&](const ImVec2& pos, float font_size, ImU32 color, const char* text, float design_px,
                                 float wrap_width = 0.0f) {
@@ -430,23 +622,99 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
         }
         return ImVec2{x, y};
     };
+    const auto draw_nine_slice = [&](ImTextureID tex_id, const ImVec2& origin, const ImVec2& max, float tex_w,
+                                       float tex_h, const std::array<float, 4>& slice, ImU32 tint) {
+        const float box_w = max.x - origin.x;
+        const float box_h = max.y - origin.y;
+        if (!(box_w > 0.0f) || !(box_h > 0.0f) || !(tex_w > 0.0f) || !(tex_h > 0.0f)) return;
+        float left = std::clamp(slice[0], 0.0f, tex_w);
+        float top = std::clamp(slice[1], 0.0f, tex_h);
+        float right = std::clamp(slice[2], 0.0f, tex_w);
+        float bottom = std::clamp(slice[3], 0.0f, tex_h);
+        if (left + right > tex_w) {
+            const float scale_x = tex_w / (left + right);
+            left *= scale_x;
+            right *= scale_x;
+        }
+        if (top + bottom > tex_h) {
+            const float scale_y = tex_h / (top + bottom);
+            top *= scale_y;
+            bottom *= scale_y;
+        }
+        // Insets are authored in design pixels, so borders follow the canvas scale instead of
+        // going hairline on large windows. They still may not overflow the destination box.
+        float out_l = left * scale;
+        float out_t = top * scale;
+        float out_r = right * scale;
+        float out_b = bottom * scale;
+        if (out_l + out_r > box_w) {
+            const float scale_x = box_w / (out_l + out_r);
+            out_l *= scale_x;
+            out_r *= scale_x;
+        }
+        if (out_t + out_b > box_h) {
+            const float scale_y = box_h / (out_t + out_b);
+            out_t *= scale_y;
+            out_b *= scale_y;
+        }
+        const float u0 = 0.0f;
+        const float u1 = left / tex_w;
+        const float u2 = 1.0f - right / tex_w;
+        const float u3 = 1.0f;
+        const float v0 = 0.0f;
+        const float v1 = top / tex_h;
+        const float v2 = 1.0f - bottom / tex_h;
+        const float v3 = 1.0f;
+        const float x0 = origin.x;
+        const float x1 = origin.x + out_l;
+        const float x2 = max.x - out_r;
+        const float x3 = max.x;
+        const float y0 = origin.y;
+        const float y1 = origin.y + out_t;
+        const float y2 = max.y - out_b;
+        const float y3 = max.y;
+        const float xs[4] = {x0, x1, x2, x3};
+        const float ys[4] = {y0, y1, y2, y3};
+        const float us[4] = {u0, u1, u2, u3};
+        const float vs[4] = {v0, v1, v2, v3};
+        for (int row = 0; row < 3; ++row) {
+            for (int col = 0; col < 3; ++col) {
+                if (!(xs[col + 1] > xs[col]) || !(ys[row + 1] > ys[row])) continue;
+                if (!(us[col + 1] > us[col] + 1e-6f) && col == 1) continue;
+                if (!(vs[row + 1] > vs[row] + 1e-6f) && row == 1) continue;
+                draw_list->AddImage(tex_id, ImVec2{xs[col], ys[row]}, ImVec2{xs[col + 1], ys[row + 1]},
+                    ImVec2{us[col], vs[row]}, ImVec2{us[col + 1], vs[row + 1]}, tint);
+            }
+        }
+    };
     const auto draw_widget_image = [&](const ImVec2& origin, const ImVec2& max, float rounding, float opacity,
-        const std::string& image_path, HudImageMode image_mode, ImU32 fallback_fill,
-        ImU32 image_tint = IM_COL32(255, 255, 255, 255)) -> bool {
+        const std::string& image_path, HudImageMode image_mode, const std::array<float, 4>& image_slice,
+        ImU32 fallback_fill, ImU32 image_tint = IM_COL32(255, 255, 255, 255)) -> bool {
         if (image_path.empty()) {
             draw_list->AddRectFilled(origin, max, with_opacity(fallback_fill, opacity), rounding);
             return true;
         }
         if (textures_) {
-            if (const auto tex = textures_->get_or_load(image_path)) {
-                float draw_min_x = origin.x, draw_min_y = origin.y, draw_max_x = max.x, draw_max_y = max.y;
-                hud_image_fit_rect(origin.x, origin.y, max.x, max.y, static_cast<float>(tex->width),
-                    static_cast<float>(tex->height), image_mode, draw_min_x, draw_min_y, draw_max_x, draw_max_y);
+            const auto box_pixels = [](float lo, float hi) {
+                return static_cast<unsigned>(std::max(0L, std::lround(std::max(0.0f, hi - lo))));
+            };
+            if (const auto tex = textures_->get_or_load(
+                    image_path, box_pixels(origin.x, max.x), box_pixels(origin.y, max.y))) {
                 const int base_a = static_cast<int>((image_tint >> IM_COL32_A_SHIFT) & 0xFF);
                 const int alpha = static_cast<int>(
                     std::lround(std::clamp(opacity, 0.0f, 1.0f) * static_cast<float>(base_a)));
                 const ImU32 tint = (image_tint & ~IM_COL32_A_MASK) |
                     (static_cast<ImU32>(std::clamp(alpha, 0, 255)) << IM_COL32_A_SHIFT);
+                if (image_mode == HudImageMode::NineSlice &&
+                    (image_slice[0] > 0.0f || image_slice[1] > 0.0f || image_slice[2] > 0.0f ||
+                        image_slice[3] > 0.0f)) {
+                    draw_nine_slice(static_cast<ImTextureID>(tex->imgui_tex_id), origin, max,
+                        static_cast<float>(tex->width), static_cast<float>(tex->height), image_slice, tint);
+                    return true;
+                }
+                float draw_min_x = origin.x, draw_min_y = origin.y, draw_max_x = max.x, draw_max_y = max.y;
+                hud_image_fit_rect(origin.x, origin.y, max.x, max.y, static_cast<float>(tex->width),
+                    static_cast<float>(tex->height), image_mode, draw_min_x, draw_min_y, draw_max_x, draw_max_y);
                 draw_list->AddImageRounded(static_cast<ImTextureID>(tex->imgui_tex_id), ImVec2{draw_min_x, draw_min_y},
                     ImVec2{draw_max_x, draw_max_y}, ImVec2{0.0f, 0.0f}, ImVec2{1.0f, 1.0f}, tint, rounding);
                 return true;
@@ -482,16 +750,40 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
 
     for (const auto& widget : asset_.widgets) {
         if (!is_visible(widget.id)) continue;
-        const float opacity =
-            std::clamp(widget.opacity, 0.0f, 1.0f) * (is_enabled(widget.id) ? 1.0f : 0.45f);
+        float opacity = std::clamp(widget.opacity, 0.0f, 1.0f) * (is_enabled(widget.id) ? 1.0f : 0.45f);
+        if (const auto op = opacity_overrides_.find(widget.id); op != opacity_overrides_.end()) {
+            opacity *= std::clamp(op->second, 0.0f, 1.0f);
+        }
         if (opacity <= 0.001f) continue;
 
-        const float width = widget.size[0] * scale;
-        const float height = widget.size[1] * scale;
-        const float ox = widget.offset[0] * scale;
-        const float oy = widget.offset[1] * scale;
+        float size_w = widget.size[0];
+        float size_h = widget.size[1];
+        if (const auto sz = size_overrides_.find(widget.id); sz != size_overrides_.end()) {
+            size_w = sz->second[0];
+            size_h = sz->second[1];
+        }
+        const float width = size_w * scale;
+        const float height = size_h * scale;
+        float ox = widget.offset[0];
+        float oy = widget.offset[1];
+        if (const auto off = offset_overrides_.find(widget.id); off != offset_overrides_.end()) {
+            ox = off->second[0];
+            oy = off->second[1];
+        }
+        ox *= scale;
+        oy *= scale;
         const ImVec2 origin = anchored_origin(widget.anchor, content_min, content_max, width, height, ox, oy);
         const ImVec2 max{origin.x + width, origin.y + height};
+        const float pad_l = std::max(0.0f, widget.padding[0]) * scale;
+        const float pad_t = std::max(0.0f, widget.padding[1]) * scale;
+        const float pad_r = std::max(0.0f, widget.padding[2]) * scale;
+        const float pad_b = std::max(0.0f, widget.padding[3]) * scale;
+        ImVec2 content_origin{origin.x + pad_l, origin.y + pad_t};
+        ImVec2 content_max_pt{max.x - pad_r, max.y - pad_b};
+        if (content_max_pt.x < content_origin.x + 1.0f) content_max_pt.x = content_origin.x + 1.0f;
+        if (content_max_pt.y < content_origin.y + 1.0f) content_max_pt.y = content_origin.y + 1.0f;
+        const float content_w = content_max_pt.x - content_origin.x;
+        const float content_h = content_max_pt.y - content_origin.y;
         const float rounding = 3.0f * scale;
 
         if (widget.type == HudWidgetType::Panel) {
@@ -506,8 +798,8 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
             const std::string panel_image = resolve_widget_image(widget);
             if (!panel_image.empty()) {
                 const ImU32 tint = to_col(widget_rgba(widget), IM_COL32(255, 255, 255, 255));
-                draw_widget_image(origin, max, rounding, opacity, panel_image, widget.image_mode, panel_col_default,
-                    tint);
+                draw_widget_image(origin, max, rounding, opacity, panel_image, widget.image_mode, widget.image_slice,
+                    panel_col_default, tint);
                 if (hotbar_slot) {
                     // Selection: Lua sets hud.hotbar.N.selected for the active equip slot.
                     bool selected = false;
@@ -556,8 +848,62 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
         }
 
         if (widget.type == HudWidgetType::Image) {
-            draw_widget_image(origin, max, rounding, opacity, resolve_widget_image(widget), widget.image_mode,
-                panel_col_default);
+            // Glass class/difficulty cards: hover expand + click bounce on the art (sel rim tracks scale).
+            const char* pick_id = nullptr;
+            const bool is_card_art = widget.id.rfind("cc_card_", 0) == 0 || widget.id.rfind("ccd_art_", 0) == 0;
+            const bool is_sel_rim = widget.id.rfind("cc_sel_", 0) == 0 || widget.id.rfind("ccd_sel_", 0) == 0;
+            if (widget.id == "cc_card_ashfell_art" || widget.id == "cc_sel_ashfell")
+                pick_id = "cc_pick_ashfell_blade";
+            else if (widget.id == "cc_card_outrider_art" || widget.id == "cc_sel_outrider")
+                pick_id = "cc_pick_outrider";
+            else if (widget.id == "cc_card_runecaster_art" || widget.id == "cc_sel_runecaster")
+                pick_id = "cc_pick_runecaster";
+            else if (widget.id == "ccd_art_normal" || widget.id == "ccd_sel_normal")
+                pick_id = "ccd_pick_normal";
+            else if (widget.id == "ccd_art_hard" || widget.id == "ccd_sel_hard")
+                pick_id = "ccd_pick_hard";
+            else if (widget.id == "ccd_art_nightmare" || widget.id == "ccd_sel_nightmare")
+                pick_id = "ccd_pick_nightmare";
+
+            ImVec2 img_origin = origin;
+            ImVec2 img_max = max;
+            ImU32 img_tint = IM_COL32(255, 255, 255, 255);
+            if (pick_id != nullptr && (is_card_art || is_sel_rim)) {
+                const float dt = ImGui::GetIO().DeltaTime;
+                const int frame = ImGui::GetFrameCount();
+                float& hover_t = button_hover_t_[pick_id];
+                float& bounce_t = button_bounce_t_[pick_id];
+                int& fx_frame = button_card_fx_frame_[pick_id];
+                // Sel often draws before art — advance hover/bounce once per pick per frame.
+                if (fx_frame != frame) {
+                    fx_frame = frame;
+                    const ImVec2 mouse = ImGui::GetIO().MousePos;
+                    const bool over_card = mouse.x >= origin.x && mouse.x <= max.x && mouse.y >= origin.y &&
+                        mouse.y <= max.y;
+                    hover_t = approach(hover_t, over_card ? 1.0f : 0.0f, dt, 0.12f);
+                    if (over_card && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) bounce_t = 0.0001f;
+                    if (bounce_t > 0.0f) {
+                        bounce_t += dt / 0.38f;
+                        if (bounce_t >= 1.0f) bounce_t = 0.0f;
+                    }
+                }
+                const float hover_e = ease_out_cubic(hover_t);
+                const float bounce_s = card_click_bounce_scale(bounce_t);
+
+                const float hover_grow = (width + height) * 0.0275f * hover_e;
+                const float bounce_gx = width * 0.5f * (bounce_s - 1.0f);
+                const float bounce_gy = height * 0.5f * (bounce_s - 1.0f);
+                img_origin = ImVec2{origin.x - hover_grow - bounce_gx, origin.y - hover_grow - bounce_gy};
+                img_max = ImVec2{max.x + hover_grow + bounce_gx, max.y + hover_grow + bounce_gy};
+
+                if (is_card_art) {
+                    const int g = std::min(255, 255 - static_cast<int>(10.0f * hover_e));
+                    const int b = std::min(255, 255 - static_cast<int>(28.0f * hover_e));
+                    img_tint = IM_COL32(255, g, b, 255);
+                }
+            }
+            draw_widget_image(img_origin, img_max, rounding, opacity, resolve_widget_image(widget), widget.image_mode,
+                widget.image_slice, panel_col_default, img_tint);
             continue;
         }
 
@@ -599,13 +945,16 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
                 const float design_px = widget.font_size > 0.0f ? widget.font_size
                                                               : (widget.size[1] > 0.0f ? widget.size[1] : 28.0f);
                 const bool dialogue_body = widget.bind == "dialogue.body";
+                const bool stats_sheet = widget.bind == "inventory.statsBody";
+                const bool scrollable_text = dialogue_body || stats_sheet;
                 const bool dialogue_speaker = widget.bind == "dialogue.speaker";
                 const bool hud_vital_text = widget.bind == "player.name" ||
                     widget.bind == "hud.healthLabel" || widget.bind == "player.healthText" ||
                     widget.bind == "player.resourceLabel" || widget.bind == "player.resourceText" ||
+                    widget.bind == "player.magickaLabel" || widget.bind == "player.magickaText" ||
                     widget.bind == "quest.objectiveText";
                 const bool hud_value_text = widget.bind == "player.healthText" ||
-                    widget.bind == "player.resourceText";
+                    widget.bind == "player.resourceText" || widget.bind == "player.magickaText";
                 const bool hotbar_key = widget.id.rfind("hud_hotbar_", 0) == 0 &&
                     widget.id.size() > 4 && widget.id.compare(widget.id.size() - 4, 4, "_key") == 0;
                 const bool dialogue_chip = widget.bind.rfind("dialogue.choice_", 0) == 0 &&
@@ -624,22 +973,33 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
                     : (GameFonts::ui() ? GameFonts::ui() : font);
                 if (widget.bind == "dialogue.speaker" && GameFonts::display()) use_font = GameFonts::display();
                 if (widget.bind == "player.name" && GameFonts::display()) use_font = GameFonts::display();
-                const float scroll_gutter = dialogue_body ? 18.0f * scale : 0.0f;
+                const float scroll_gutter = scrollable_text ? 18.0f * scale : 0.0f;
                 // Numeric vital values must stay on one line: wrapping a final digit is
                 // visually indistinguishable from clipping in a compact HUD.
-                const float wrap_w = hud_value_text ? 0.0f : std::max(8.0f, width - scroll_gutter);
+                const float wrap_w = hud_value_text ? 0.0f : std::max(8.0f, content_w - scroll_gutter);
+                if (widget.fit_text && !hud_value_text) {
+                    const float min_design = widget.min_font_size > 0.0f ? widget.min_font_size : 11.0f;
+                    // Allow below the usual readable floor so plate copy can settle into chrome.
+                    const float min_screen = std::max(10.0f, min_design * scale);
+                    screen_font = fit_font_to_box(use_font, screen_font, min_screen, wrap_w, content_h,
+                        content.c_str());
+                }
                 const ImVec2 text_size = use_font->CalcTextSizeA(screen_font, FLT_MAX, wrap_w, content.c_str());
                 float& scroll = text_scroll_y_[widget.id];
-                const float max_scroll = std::max(0.0f, text_size.y - height);
-                const ImVec2 hit_max{max.x - scroll_gutter, max.y};
-                if (ImGui::IsMouseHoveringRect(origin, hit_max) ||
-                    (scroll_gutter > 0.0f && ImGui::IsMouseHoveringRect(ImVec2{max.x - scroll_gutter, origin.y}, max))) {
+                const float max_scroll = std::max(0.0f, text_size.y - content_h);
+                const ImVec2 hit_max{content_max_pt.x - scroll_gutter, content_max_pt.y};
+                if (ImGui::IsMouseHoveringRect(content_origin, hit_max) ||
+                    (scroll_gutter > 0.0f &&
+                        ImGui::IsMouseHoveringRect(ImVec2{content_max_pt.x - scroll_gutter, content_origin.y},
+                            content_max_pt))) {
                     scroll -= ImGui::GetIO().MouseWheel * 28.0f;
                 }
                 if (scroll_gutter > 0.0f && max_scroll > 0.0f && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
-                    ImGui::IsMouseHoveringRect(ImVec2{max.x - scroll_gutter, origin.y}, max)) {
-                    const float track_h = height;
-                    const float rel = std::clamp((ImGui::GetIO().MousePos.y - origin.y) / std::max(1.0f, track_h), 0.0f, 1.0f);
+                    ImGui::IsMouseHoveringRect(ImVec2{content_max_pt.x - scroll_gutter, content_origin.y},
+                        content_max_pt)) {
+                    const float track_h = content_h;
+                    const float rel =
+                        std::clamp((ImGui::GetIO().MousePos.y - content_origin.y) / std::max(1.0f, track_h), 0.0f, 1.0f);
                     scroll = rel * max_scroll;
                 }
                 scroll = std::clamp(scroll, 0.0f, max_scroll);
@@ -649,16 +1009,69 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
                     : 0.0f;
                 const ImVec2 align_max{hit_max.x - align_pad, hit_max.y};
                 ImVec2 text_pos =
-                    aligned_text_pos(origin, align_max, screen_font, design_px, widget.text_align, widget.text_v_align,
-                        content.c_str(), wrap_w);
-                if (widget.text_v_align == HudTextVAlign::Top) text_pos.y = origin.y - scroll;
+                    aligned_text_pos(content_origin, align_max, screen_font, design_px, widget.text_align,
+                        widget.text_v_align, content.c_str(), wrap_w);
+                if (widget.text_v_align == HudTextVAlign::Top) text_pos.y = content_origin.y - scroll;
                 const float clip_pad = std::max(2.0f, screen_font * 0.08f);
-                draw_list->PushClipRect(ImVec2{origin.x - clip_pad, origin.y - clip_pad},
+                draw_list->PushClipRect(ImVec2{content_origin.x - clip_pad, content_origin.y - clip_pad},
                     ImVec2{hit_max.x + clip_pad, hit_max.y + clip_pad}, true);
                 const ImU32 authored = to_col(widget_rgba(widget), text_col_default);
                 const ImU32 text_col = dialogue_body
                     ? with_opacity(IM_COL32(72, 62, 48, 255), opacity) // softer ink — less muddy than near-black
                     : with_opacity(authored, opacity);
+                const auto draw_line = [&](const ImVec2& pos, ImU32 col, const char* begin, const char* end) {
+                    draw_list->AddText(use_font, screen_font, pos, col, begin, end);
+                };
+                // Center-aligned wrapped / multi-line copy: center each line (ImGui wrap is left-flush).
+                const bool center_lines = widget.text_align == HudTextAlign::Center && wrap_w > 8.0f;
+                if (center_lines) {
+                    std::vector<std::pair<const char*, const char*>> lines;
+                    const char* cursor = content.c_str();
+                    const char* text_end = cursor + content.size();
+                    const float wrap_scale = use_font->FontSize > 0.0f ? (screen_font / use_font->FontSize) : 1.0f;
+                    while (cursor < text_end) {
+                        const char* line_start = cursor;
+                        const char* newline = static_cast<const char*>(memchr(cursor, '\n', static_cast<size_t>(text_end - cursor)));
+                        const char* segment_end = newline ? newline : text_end;
+                        while (line_start < segment_end) {
+                            const char* wrap_end =
+                                use_font->CalcWordWrapPositionA(wrap_scale, line_start, segment_end, wrap_w);
+                            if (wrap_end <= line_start) wrap_end = segment_end;
+                            lines.emplace_back(line_start, wrap_end);
+                            line_start = wrap_end;
+                            while (line_start < segment_end && (*line_start == ' ' || *line_start == '\t')) ++line_start;
+                        }
+                        cursor = newline ? newline + 1 : text_end;
+                    }
+                    float block_h = 0.0f;
+                    for (const auto& line : lines) {
+                        (void)line;
+                        block_h += screen_font;
+                    }
+                    float y = content_origin.y - scroll;
+                    if (widget.text_v_align == HudTextVAlign::Middle)
+                        y = content_origin.y + (content_h - block_h) * 0.5f - scroll;
+                    else if (widget.text_v_align == HudTextVAlign::Bottom)
+                        y = content_max_pt.y - block_h - scroll;
+                    const float outline = dialogue_chip ? 0.0f
+                        : (dialogue_body ? std::max(0.6f, screen_font * 0.03f)
+                                         : std::max(0.5f, screen_font * 0.025f));
+                    const ImU32 outline_col = dialogue_body ? IM_COL32(201, 184, 150, 180)
+                                                           : IM_COL32(201, 184, 150, 120);
+                    for (const auto& line : lines) {
+                        const ImVec2 line_size = use_font->CalcTextSizeA(screen_font, FLT_MAX, 0.0f, line.first, line.second);
+                        const float x = content_origin.x + (content_w - line_size.x) * 0.5f;
+                        if (outline > 0.0f) {
+                            for (int axis = 0; axis < 4; ++axis) {
+                                const float dx = (axis == 0) ? -outline : (axis == 1) ? outline : 0.0f;
+                                const float dy = (axis == 2) ? -outline : (axis == 3) ? outline : 0.0f;
+                                draw_line(ImVec2{x + dx, y + dy}, outline_col, line.first, line.second);
+                            }
+                        }
+                        draw_line(ImVec2{x, y}, text_col, line.first, line.second);
+                        y += screen_font;
+                    }
+                } else {
                 // Body: light 4-dir outline. Chips/labels: none (outline made chips unreadable).
                 if (dialogue_body) {
                     const float outline = std::max(0.6f, screen_font * 0.03f);
@@ -684,18 +1097,25 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
                     }
                 }
                 draw_list->AddText(use_font, screen_font, text_pos, text_col, content.c_str(), nullptr, wrap_w);
+                }
                 draw_list->PopClipRect();
 
-                if (scroll_gutter > 0.0f && max_scroll > 0.001f) {
+                if (scroll_gutter > 0.0f && (max_scroll > 0.001f || stats_sheet)) {
                     const float track_x0 = max.x - scroll_gutter + 4.0f * scale;
                     const float track_x1 = max.x - 2.0f * scale;
                     draw_list->AddRectFilled(ImVec2{track_x0, origin.y}, ImVec2{track_x1, max.y},
-                        with_opacity(IM_COL32(90, 78, 62, 90), opacity), 3.0f * scale);
-                    const float thumb_h = std::max(24.0f * scale, height * (height / (height + max_scroll)));
-                    const float thumb_t = (max_scroll > 0.0f) ? (scroll / max_scroll) : 0.0f;
-                    const float thumb_y0 = origin.y + (height - thumb_h) * thumb_t;
-                    draw_list->AddRectFilled(ImVec2{track_x0, thumb_y0}, ImVec2{track_x1, thumb_y0 + thumb_h},
-                        with_opacity(IM_COL32(60, 48, 36, 220), opacity), 3.0f * scale);
+                        with_opacity(IM_COL32(90, 78, 62, 140), opacity), 3.0f * scale);
+                    if (max_scroll > 0.001f) {
+                        const float thumb_h = std::max(24.0f * scale, height * (height / (height + max_scroll)));
+                        const float thumb_t = (max_scroll > 0.0f) ? (scroll / max_scroll) : 0.0f;
+                        const float thumb_y0 = origin.y + (height - thumb_h) * thumb_t;
+                        draw_list->AddRectFilled(ImVec2{track_x0, thumb_y0}, ImVec2{track_x1, thumb_y0 + thumb_h},
+                            with_opacity(IM_COL32(60, 48, 36, 230), opacity), 3.0f * scale);
+                    } else {
+                        draw_list->AddRectFilled(ImVec2{track_x0, origin.y},
+                            ImVec2{track_x1, origin.y + std::min(height, 48.0f * scale)},
+                            with_opacity(IM_COL32(60, 48, 36, 200), opacity), 3.0f * scale);
+                    }
                 }
             }
             continue;
@@ -706,24 +1126,35 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
             const ImVec2 mouse = ImGui::GetIO().MousePos;
             const bool hovered = is_enabled(widget.id) && mouse.x >= origin.x && mouse.x <= max.x && mouse.y >= origin.y &&
                 mouse.y <= max.y;
+            const bool card_pick = widget.bind.rfind("character_creation.pick.", 0) == 0 ||
+                widget.bind.rfind("character_creation_difficulty.pick.", 0) == 0;
+            const bool ghost_hit = is_ghost_hit_button(widget);
             float& hover_t = button_hover_t_[widget.id];
-            hover_t = approach(hover_t, hovered ? 1.0f : 0.0f, ImGui::GetIO().DeltaTime, 0.12f);
+            // Glass cards: card art owns hover/bounce easing; invisible pick only hits.
+            if (!card_pick && !ghost_hit) {
+                hover_t = approach(hover_t, hovered ? 1.0f : 0.0f, ImGui::GetIO().DeltaTime, 0.12f);
+            }
             const float hover_e = ease_out_cubic(hover_t);
-            const float grow = 2.0f * scale * hover_e;
+            const float grow = (card_pick || ghost_hit) ? 0.0f : (2.0f * scale * hover_e);
             const ImVec2 draw_min{origin.x - grow, origin.y - grow};
             const ImVec2 draw_max{max.x + grow, max.y + grow};
+            // Class / difficulty picks: selection is the arched silhouette glow widgets
+            // (cc_sel_* / ccd_sel_*), not rectangular button chrome / hover-glow plates.
             const std::string button_image = resolve_widget_image(widget);
             if (!button_image.empty()) {
                 draw_widget_image(draw_min, draw_max, rounding, opacity, button_image, widget.image_mode,
-                    button_col_default);
-            } else {
-                const ImU32 base_fill = to_col(widget_rgba(widget), button_col_default);
+                    widget.image_slice, button_col_default);
+            } else if (!card_pick && !ghost_hit) {
+                const ImU32 base_fill = to_col(widget_fill(widget), button_col_default);
                 const ImU32 fill = with_opacity(brighten_fill(base_fill, hover_e), opacity);
                 const ImU32 border = with_opacity(button_border_default, opacity);
                 draw_list->AddRectFilled(draw_min, draw_max, fill, rounding);
                 draw_list->AddRect(draw_min, draw_max, border, rounding, 0, std::max(1.0f, scale));
             }
-            if (focused) draw_focus_ring(draw_min, draw_max, rounding);
+            // Selection chrome for these picks is the arched silhouette glow widget
+            // (cc_sel_* / ccd_sel_*), not a rectangular focus ring. Ghost plate catchers
+            // (prologue_continue) stay clickable without a bounding-box ring.
+            if (focused && !card_pick && !ghost_hit) draw_focus_ring(draw_min, draw_max, rounding);
             const std::string label = widget_display_label(widget);
             if (!label.empty()) {
                 const float design_px = widget.font_size > 0.0f ? widget.font_size
@@ -734,24 +1165,38 @@ void HudRuntime::draw_overlay(ImDrawList* draw_list, const ImVec2& image_min, co
                 if (dialogue_choice) screen_font = std::max(screen_font, 16.0f);
                 const float pad = 16.0f * scale;
                 // Keycap on the left; tone/standing tags reserved on the right with chip gap + edge margin.
-                const float left_pad = dialogue_choice ? (12.0f + 32.0f + 12.0f) * scale : pad;
-                const float right_pad = dialogue_choice ? (16.0f + 168.0f + 12.0f + 100.0f) * scale : pad;
-                const float wrap_w = std::max(8.0f, (draw_max.x - draw_min.x) - left_pad - right_pad);
+                // Authored `padding` insets the label box; dialogue choices keep their chip gutters on top.
+                const float left_pad = dialogue_choice ? (12.0f + 32.0f + 12.0f) * scale : 0.0f;
+                const float right_pad = dialogue_choice ? (16.0f + 168.0f + 12.0f + 100.0f) * scale : 0.0f;
+                const float fallback_pad = (pad_l + pad_r + pad_t + pad_b) <= 0.0f ? pad : 0.0f;
+                const ImVec2 label_min{content_origin.x + left_pad + fallback_pad,
+                    content_origin.y + (dialogue_choice ? 0.0f : 0.0f)};
+                const ImVec2 label_max{content_max_pt.x - right_pad - fallback_pad, content_max_pt.y};
+                const float wrap_w = std::max(8.0f, label_max.x - label_min.x);
                 ImFont* btn_font = dialogue_choice && GameFonts::ui() ? GameFonts::ui()
                     : (GameFonts::for_design_size(design_px) ? GameFonts::for_design_size(design_px) : font);
+                if (widget.fit_text) {
+                    const float min_design = widget.min_font_size > 0.0f ? widget.min_font_size : 11.0f;
+                    const float label_h = std::max(1.0f, label_max.y - label_min.y);
+                    const float min_screen = std::max(10.0f, min_design * scale);
+                    screen_font = fit_font_to_box(btn_font, screen_font, min_screen, wrap_w, label_h,
+                        label.c_str());
+                }
                 const ImVec2 text_size = btn_font->CalcTextSizeA(screen_font, FLT_MAX, wrap_w, label.c_str());
                 (void)text_size;
-                const ImVec2 text_pos = aligned_text_pos(ImVec2{draw_min.x + left_pad, draw_min.y},
-                    ImVec2{draw_max.x - right_pad, draw_max.y}, screen_font, design_px, widget.text_align,
+                const ImVec2 text_pos = aligned_text_pos(label_min, label_max, screen_font, design_px, widget.text_align,
                     dialogue_choice ? HudTextVAlign::Middle : widget.text_v_align, label.c_str(), wrap_w);
-                const ImU32 fill = to_col(widget_rgba(widget), button_col_default);
+                const auto fill_rgba = widget_fill(widget);
+                const ImU32 fill = to_col(fill_rgba, button_col_default);
                 const int lum = static_cast<int>((fill >> IM_COL32_R_SHIFT) & 0xFF) +
                     static_cast<int>((fill >> IM_COL32_G_SHIFT) & 0xFF) +
                     static_cast<int>((fill >> IM_COL32_B_SHIFT) & 0xFF);
+                (void)lum;
                 // Softer ink on choice rows — near-black + outline looked bold/muddy.
-                // Image buttons use ink on light plates (authored gold/parchment chrome).
+                // Button labels never reuse fill: gold plates get ink, iron plates get chrome.
                 const ImU32 btn_text = dialogue_choice ? IM_COL32(74, 64, 50, 255)
-                    : (!button_image.empty() || lum > 420 ? text_col_default : chrome_text_col);
+                    : to_col(widget_text(widget, fill_rgba),
+                        (!button_image.empty() || lum > 420 ? text_col_default : chrome_text_col));
                 draw_list->AddText(btn_font, screen_font, text_pos, with_opacity(btn_text, opacity), label.c_str(),
                     nullptr, wrap_w);
             }
@@ -844,6 +1289,7 @@ std::vector<std::string> HudRuntime::focusable_widget_ids() const {
     for (const auto& widget : asset_.widgets) {
         if (!is_focusable_type(widget.type)) continue;
         if (!is_visible(widget.id) || !is_enabled(widget.id)) continue;
+        if (is_ghost_hit_button(widget)) continue;
         ids.push_back(widget.id);
     }
     return ids;
@@ -862,10 +1308,22 @@ std::optional<std::string> HudRuntime::hit_test_widget(const ImVec2& image_min, 
     for (auto it = asset_.widgets.rbegin(); it != asset_.widgets.rend(); ++it) {
         if (!is_focusable_type(it->type)) continue;
         if (!is_visible(it->id) || !is_enabled(it->id)) continue;
-        const float width = it->size[0] * scale;
-        const float height = it->size[1] * scale;
-        const ImVec2 origin = anchored_origin(it->anchor, content_min, content_max, width, height,
-            it->offset[0] * scale, it->offset[1] * scale);
+        float size_w = it->size[0];
+        float size_h = it->size[1];
+        if (const auto sz = size_overrides_.find(it->id); sz != size_overrides_.end()) {
+            size_w = sz->second[0];
+            size_h = sz->second[1];
+        }
+        const float width = size_w * scale;
+        const float height = size_h * scale;
+        float ox = it->offset[0];
+        float oy = it->offset[1];
+        if (const auto off = offset_overrides_.find(it->id); off != offset_overrides_.end()) {
+            ox = off->second[0];
+            oy = off->second[1];
+        }
+        const ImVec2 origin = anchored_origin(it->anchor, content_min, content_max, width, height, ox * scale,
+            oy * scale);
         const ImVec2 max{origin.x + width, origin.y + height};
         if (mouse_pos.x >= origin.x && mouse_pos.x <= max.x && mouse_pos.y >= origin.y && mouse_pos.y <= max.y)
             return it->id;

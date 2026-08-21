@@ -6,7 +6,7 @@ Status: active (TICKET-0257 / DEC-0053)
 
 `engine.exe` can load a thin Windows **`game_module.dll`** at runtime, tick it each frame, and **reload** it from Diagnostics without restarting the process. Rebuild only the `game_module` CMake target, then Reload (or enable auto-reload on DLL write).
 
-Lua handlers, UI canvases, scenes, prefabs, and assets remain the **primary** hot-reload path ([DEC-0023](../decisions/index.md#dec-0023-live-lua-host-api-agent-iteration-path)). This path is for **native C++** that must live outside Lua but should not require a full editor restart.
+Lua handlers, UI canvases, scenes, prefabs, and assets remain the **primary** hot-reload path ([DEC-0023](../decisions/index.md#dec-0023-live-lua-host-api-agent-iteration-path)). When game work must be native C++, `game_module` is the default iteration path rather than `engine_core` ([DEC-0055](../decisions/index.md#dec-0055-reloadable-native-gameplay-is-the-default-c-iteration-path)).
 
 ## Architecture
 
@@ -19,7 +19,7 @@ Lua handlers, UI canvases, scenes, prefabs, and assets remain the **primary** ho
 
 Host owns: D3D12, ImGui, Jolt, EnTT, `LuaRuntime`, editor/MCP, RPG runtimes.
 
-Module must **not** link `engine_core`, imgui, Jolt, or Lua.
+Module must **not** link `engine_core`, imgui, Jolt, or Lua. It receives only versioned POD C-ABI capabilities. Future gameplay API slices may add commands, read-only queries, events, timers, opaque handles, and reload-state serialization, with explicit ownership/lifetime/threading rules.
 
 ## ABI v1
 
@@ -48,11 +48,12 @@ Optional Lua: after a successful load/reload, host calls `on_game_module_reloade
 - Suite: `game_module` (`engine_suite_tests --suite game_module`)
 - Checks load, tick, blackboard mirror, reload generation bump, ABI mismatch reject (`game_module_abi_mismatch.dll`), missing path fail-closed.
 
-## Non-goals
+## Boundaries
 
 - Hot-reloading `engine_core` / the whole engine
 - Marketplace / arbitrary C++ component plugins
-- Moving `GameSession`, quest, inventory, or renderer into the DLL
+- Passing STL, C++ classes, raw engine pointers, or engine-owned allocator objects across the ABI
+- Moving existing first-class core runtimes solely to avoid a rebuild; core capability, schema, editor, rendering, physics, and lifecycle work remains `engine_core`
 - Registering `lua_CFunction`s from the DLL in v1
 
 ## Related

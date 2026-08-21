@@ -1,104 +1,245 @@
 {
-  "schemaVersion": 1,
+  "designResolution": [
+    1920.0,
+    1080.0
+  ],
   "id": "main_menu",
-  "designResolution": [1920, 1080],
+  "schemaVersion": 1,
   "widgets": [
     {
-      "id": "menu_dim",
-      "type": "panel",
-      "anchor": "center",
-      "offset": [0, 0],
-      "size": [1920, 1080],
-      "opacity": 0.72,
-      "color": [21, 23, 25, 255]
+      "anchor": "top_left",
+      "id": "menu_title_logo",
+      "image": "assets/ui/menu/wrathful-conquest-title-logo.png",
+      "imageMode": "contain",
+      "offset": [
+        56.0,
+        44.0
+      ],
+      "size": [
+        620.0,
+        260.0
+      ],
+      "type": "image"
     },
     {
-      "id": "menu_panel",
-      "type": "panel",
       "anchor": "center",
-      "offset": [0, 0],
-      "size": [480, 520],
-      "color": [45, 41, 35, 250]
+      "id": "menu_panel_frame",
+      "image": "assets/ui/menu/glass-menu-panel-frame.png",
+      "offset": [
+        480.0,
+        40.0
+      ],
+      "size": [
+        560.0,
+        780.0
+      ],
+      "type": "image"
     },
     {
-      "id": "menu_title",
-      "type": "text",
       "anchor": "center",
-      "offset": [0, -200],
-      "size": [420, 72],
+      "id": "menu_title_plate",
+      "image": "assets/ui/menu/glass-menu-title-plate.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        20.0,
+        64.0,
+        20.0
+      ],
+      "offset": [
+        480.0,
+        -262.0
+      ],
+      "size": [
+        430.0,
+        88.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
       "bind": "main_menu.title",
-      "text": "Main Menu",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 30.0,
+      "id": "menu_title",
+      "offset": [
+        480.0,
+        -262.0
+      ],
+      "size": [
+        360.0,
+        48.0
+      ],
+      "text": "MAIN MENU",
       "textAlign": "center",
       "textVAlign": "middle",
-      "fontSize": 52,
-      "color": [241, 238, 232, 255]
+      "type": "text"
     },
     {
-      "id": "menu_new_game",
-      "type": "button",
       "anchor": "center",
-      "offset": [0, -110],
-      "size": [360, 48],
       "bind": "main_menu.new_game",
-      "text": "New Game",
-      "image": "assets/ui/textures/btn_new_game.png",
+      "color": [
+        247.0,
+        234.0,
+        208.0,
+        255.0
+      ],
+      "fontSize": 27.0,
+      "id": "menu_new_game",
+      "image": "assets/ui/menu/glass-menu-btn-primary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        480.0,
+        -146.0
+      ],
+      "size": [
+        420.0,
+        96.0
+      ],
+      "text": "NEW GAME",
       "textAlign": "center",
       "textVAlign": "middle",
-      "fontSize": 32,
-      "color": [213, 185, 120, 255]
+      "type": "button"
     },
     {
-      "id": "menu_coop",
-      "type": "button",
       "anchor": "center",
-      "offset": [0, -50],
-      "size": [360, 48],
       "bind": "main_menu.coop",
-      "text": "Co-op",
+      "color": [
+        236.0,
+        234.0,
+        228.0,
+        255.0
+      ],
+      "fontSize": 25.0,
+      "id": "menu_coop",
+      "image": "assets/ui/menu/glass-menu-btn-secondary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        480.0,
+        -34.0
+      ],
+      "size": [
+        420.0,
+        96.0
+      ],
+      "text": "CO-OP",
       "textAlign": "center",
       "textVAlign": "middle",
-      "fontSize": 32,
-      "color": [213, 185, 120, 255]
+      "type": "button"
     },
     {
-      "id": "menu_continue",
-      "type": "button",
       "anchor": "center",
-      "offset": [0, 10],
-      "size": [360, 48],
       "bind": "main_menu.continue",
-      "text": "Continue",
+      "color": [
+        150.0,
+        157.0,
+        162.0,
+        255.0
+      ],
+      "enabled": false,
+      "fontSize": 25.0,
+      "id": "menu_continue",
+      "image": "assets/ui/menu/glass-menu-btn-secondary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        480.0,
+        78.0
+      ],
+      "size": [
+        420.0,
+        96.0
+      ],
+      "text": "CONTINUE",
       "textAlign": "center",
       "textVAlign": "middle",
-      "fontSize": 32,
-      "color": [213, 185, 120, 255],
-      "enabled": false
+      "type": "button"
     },
     {
-      "id": "menu_settings",
-      "type": "button",
       "anchor": "center",
-      "offset": [0, 70],
-      "size": [360, 48],
       "bind": "main_menu.settings",
-      "text": "Settings",
+      "color": [
+        236.0,
+        234.0,
+        228.0,
+        255.0
+      ],
+      "fontSize": 25.0,
+      "id": "menu_settings",
+      "image": "assets/ui/menu/glass-menu-btn-secondary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        480.0,
+        190.0
+      ],
+      "size": [
+        420.0,
+        96.0
+      ],
+      "text": "SETTINGS",
       "textAlign": "center",
       "textVAlign": "middle",
-      "fontSize": 32,
-      "color": [41, 45, 48, 255]
+      "type": "button"
     },
     {
-      "id": "menu_quit",
-      "type": "button",
       "anchor": "center",
-      "offset": [0, 130],
-      "size": [360, 48],
       "bind": "main_menu.quit",
-      "text": "Quit",
+      "color": [
+        236.0,
+        234.0,
+        228.0,
+        255.0
+      ],
+      "fontSize": 25.0,
+      "id": "menu_quit",
+      "image": "assets/ui/menu/glass-menu-btn-secondary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        480.0,
+        302.0
+      ],
+      "size": [
+        420.0,
+        96.0
+      ],
+      "text": "QUIT",
       "textAlign": "center",
       "textVAlign": "middle",
-      "fontSize": 32,
-      "color": [41, 45, 48, 255]
+      "type": "button"
     }
   ]
 }

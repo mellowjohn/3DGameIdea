@@ -1,0 +1,110 @@
+{
+  "acceleration": [
+    0.0,
+    0.25,
+    0.0
+  ],
+  "aspectRatio": 1.0,
+  "blend": "additive",
+  "color": {
+    "keypoints": [
+      {
+        "color": [
+          1.0,
+          0.949999988079071,
+          1.0
+        ],
+        "t": 0.0
+      },
+      {
+        "color": [
+          0.949999988079071,
+          0.550000011920929,
+          1.0
+        ],
+        "t": 0.3499999940395355
+      },
+      {
+        "color": [
+          0.4000000059604645,
+          0.15000000596046448,
+          0.800000011920929
+        ],
+        "t": 1.0
+      }
+    ]
+  },
+  "crossedBillboards": false,
+  "drag": 0.4000000059604645,
+  "emissionDirection": [
+    0.0,
+    0.1961161494255066,
+    -0.9805806875228882
+  ],
+  "enabled": true,
+  "flipbookFramerate": 22.0,
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "OneShot",
+  "flipbookStartRandom": true,
+  "id": "arcane_bolt_embers",
+  "lifetime": {
+    "max": 0.44999998807907104,
+    "min": 0.20000000298023224
+  },
+  "lightEmission": 0.699999988079071,
+  "maxParticles": 16,
+  "minScreenSize": 0.0,
+  "orientation": "FacingCamera",
+  "rate": 0.0,
+  "rotation": 0.0,
+  "rotationStartRandom": true,
+  "schemaVersion": 1,
+  "shape": "sphere",
+  "shapeSize": [
+    0.03999999910593033,
+    0.03999999910593033,
+    0.03999999910593033
+  ],
+  "shapeStyle": "volume",
+  "size": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.04500000178813934
+      },
+      {
+        "t": 0.20000000298023224,
+        "value": 0.07999999821186066
+      },
+      {
+        "t": 1.0,
+        "value": 0.014999999664723873
+      }
+    ]
+  },
+  "speed": {
+    "max": 1.7999999523162842,
+    "min": 0.5
+  },
+  "spreadAngle": [
+    35.0,
+    80.0
+  ],
+  "texture": "assets/vfx/ember_flipbook_4x4.png",
+  "transparency": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.07999999821186066
+      },
+      {
+        "t": 0.44999998807907104,
+        "value": 0.2800000011920929
+      },
+      {
+        "t": 1.0,
+        "value": 1.0
+      }
+    ]
+  }
+}

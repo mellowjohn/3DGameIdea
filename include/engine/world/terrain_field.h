@@ -7,6 +7,7 @@
 #include "engine/world/terrain_paint.h"
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <future>
 #include <limits>
@@ -28,9 +29,9 @@ struct TerrainRenderVertex {
 
 /** Streaming knobs for hitch reduction (amortized loads + optional view bias). */
 struct TerrainStreamParams {
-    std::uint32_t radius = 2;
+    std::uint32_t radius = 4;
     /** Full disc kept under each focus for collision. Loaded before unload; may be amortized when overlapping. */
-    std::uint32_t support_radius = 1;
+    std::uint32_t support_radius = 2;
     /** Cap newly generated *outer-ring* cells per update.
      *  Use 0 to block outer loads (look-gate). Use SIZE_MAX for uncapped — do not treat 0 as unlimited. */
     std::size_t max_new_cells = std::numeric_limits<std::size_t>::max();
@@ -78,13 +79,24 @@ class StreamedTerrainField final {
 public:
     static constexpr std::uint32_t k_resolution = k_default_terrain_resolution;
     static constexpr float k_cell_size = k_default_terrain_cell_size;
-    static constexpr std::uint32_t k_default_radius = 2;
+    static constexpr std::uint32_t k_default_radius = 4;
+    /**
+     * Scene/Sculpt edit + main-menu preview: full disc out to ~240 m (40 m cells × 6)
+     * so establishing shots and distant graybox landmarks stay continuous. Play keeps
+     * `k_default_radius` with view bias for the open-world hitch budget (DEC-0054).
+     */
+    static constexpr std::uint32_t k_editor_view_radius = 6;
+    static constexpr std::uint32_t k_editor_support_radius = 3;
     /** Runtime hitch budget: generate at most this many outer-ring cells per frame. */
     static constexpr std::size_t k_default_max_new_cells_per_update = 2;
     /** Runtime hitch budget: generate at most this many support fringe cells per walk frame. */
     static constexpr std::size_t k_default_max_new_support_cells_per_update = 1;
     /** Runtime hitch budget: commit at most one completed async cell per frame. */
     static constexpr std::size_t k_default_max_ready_commits_per_update = 1;
+    /** Faster catch-up when framing / menu preview loads a wide neighborhood. */
+    static constexpr std::size_t k_editor_max_new_cells_per_update = 8;
+    static constexpr std::size_t k_editor_max_new_support_cells_per_update = 4;
+    static constexpr std::size_t k_editor_max_ready_commits_per_update = 4;
 
     [[nodiscard]] Result<void> update(CollisionWorld& world, const std::array<float, 3>& camera_position,
         const PhysicalMaterialProperties& physics, std::uint32_t radius = k_default_radius,
@@ -104,6 +116,24 @@ public:
         const TerrainPaintStore* paint = nullptr, const TerrainPaintMaterialLookup& lookup_material = {});
     [[nodiscard]] Result<void> reload_cell_meshes(const std::set<CellCoord>& cells, const TerrainEditStore* edits = nullptr,
         const TerrainPaintStore* paint = nullptr, const TerrainPaintMaterialLookup& lookup_material = {});
+    /// Replace Jolt heightfields from already regenerated cell meshes. This lets
+    /// Sculpt diagnostics distinguish mesh work from collision work.
+    [[nodiscard]] Result<void> reload_collision_cells(CollisionWorld& world, const std::set<CellCoord>& cells,
+        const PhysicalMaterialProperties& physics);
+    /// Updates contact material on resident terrain bodies without replacing heightfields.
+    [[nodiscard]] Result<void> update_collision_materials(CollisionWorld& world, const std::set<CellCoord>& cells,
+        const PhysicalMaterialProperties& physics);
+    /** Queue regenerated resident terrain meshes on worker threads after a Sculpt stroke. */
+    [[nodiscard]] Result<void> queue_reload_cells(const std::set<CellCoord>& cells,
+        const TerrainEditStore* edits = nullptr, const TerrainPaintStore* paint = nullptr,
+        const TerrainPaintMaterialLookup& lookup_material = {});
+    /** Commit at most max_cells completed Sculpt reloads on the main thread. */
+    [[nodiscard]] Result<std::size_t> commit_ready_reloads(CollisionWorld& world,
+        const PhysicalMaterialProperties& physics, std::size_t max_cells = 1);
+    [[nodiscard]] std::size_t pending_reload_count() const noexcept { return pending_reloads_.size(); }
+    [[nodiscard]] double last_reload_generation_ms() const noexcept { return last_reload_generation_ms_; }
+    [[nodiscard]] double last_reload_collision_ms() const noexcept { return last_reload_collision_ms_; }
+    [[nodiscard]] double last_reload_queue_wait_ms() const noexcept { return last_reload_queue_wait_ms_; }
     [[nodiscard]] std::vector<TerrainRenderVertex> build_render_vertices(
         const std::array<float, 4>& base_color) const;
     [[nodiscard]] std::vector<TerrainRenderVertex> build_cell_render_vertices(CellCoord cell,
@@ -142,6 +172,7 @@ private:
     struct AsyncTerrainMesh {
         std::optional<TerrainMesh> mesh;
         std::optional<EngineError> error;
+        double build_ms = 0.0;
     };
 
     [[nodiscard]] Result<void> load_cell(CollisionWorld& world, CellCoord cell,
@@ -160,8 +191,13 @@ private:
     std::map<CellCoord, LoadedCell> cells_;
     struct PendingGeneration {
         std::future<AsyncTerrainMesh> future;
+        std::chrono::steady_clock::time_point queued_at{};
     };
     std::map<CellCoord, PendingGeneration> pending_generations_;
+    std::map<CellCoord, PendingGeneration> pending_reloads_;
+    double last_reload_generation_ms_ = 0.0;
+    double last_reload_collision_ms_ = 0.0;
+    double last_reload_queue_wait_ms_ = 0.0;
     std::set<CellCoord> desired_;
     std::set<CellCoord> pending_cells_;
     std::set<CellCoord> render_dirty_cells_;

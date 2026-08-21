@@ -481,6 +481,8 @@ Result<ParticleEmitterAsset> ParticleEmitterAsset::parse(const std::string& text
         }
         if (asset.min_screen_size > 256.0f) asset.min_screen_size = 256.0f;
     }
+    if (document.contains("softOcclusion"))
+        asset.soft_occlusion = document["softOcclusion"].get<bool>();
     if (document.contains("flipbookLayout")) {
         auto layout = parse_flipbook_layout(document["flipbookLayout"].get<std::string>());
         if (!layout) return Result<ParticleEmitterAsset>::failure(layout.error());
@@ -557,6 +559,7 @@ std::string ParticleEmitterAsset::to_json() const {
         {"emissionDirection", write_vec3(emission_direction)}, {"aspectRatio", aspect_ratio},
         {"rotation", write_number_sequence(rotation)}, {"rotationStartRandom", rotation_start_random},
         {"crossedBillboards", crossed_billboards}, {"minScreenSize", min_screen_size},
+        {"softOcclusion", soft_occlusion},
         {"flipbookLayout", flipbook_layout_name(flipbook_layout)},
         {"flipbookMode", flipbook_mode_name(flipbook_mode)}, {"flipbookFramerate", flipbook_framerate},
         {"flipbookStartRandom", flipbook_start_random}};

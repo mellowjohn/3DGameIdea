@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "npc_humanoid",
+  "displayName": "NPC Humanoid",
+  "visualPrefab": "assets/prefabs/NPC/npc_humanoid.prefab.json",
+  "rig": "assets/characters/player.rig.json",
+  "capsuleRadius": 0.3,
+  "capsuleHalfHeight": 0.6,
+  "maxSlopeRatio": 0.45,
+  "stepHeight": 0.35,
+  "maxSpeed": 4.0,
+  "gravity": 9.81,
+  "jumpVelocity": 5.0
+}

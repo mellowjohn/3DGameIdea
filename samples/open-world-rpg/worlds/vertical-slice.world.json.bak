@@ -2,6 +2,73 @@
   "schemaVersion": 1,
   "entities": [
     {
+      "id": "028a0cd6-8b13-41d7-8b29-e91509b1b072",
+      "name": "menu_approach_log",
+      "transform": {
+        "position": [
+          212.0,
+          4.123000621795654,
+          138.0
+        ],
+        "rotation": [
+          0.0,
+          0.30000001192092896,
+          0.0,
+          0.949999988079071
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/dead_log.prefab.json",
+        "cell": [
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.2199999988079071,
+              0.20000000298023224,
+              0.5799999833106995
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.20000000298023224,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "02b172e4-734c-444f-aff7-25693570139b",
       "name": "Forest Tree 5,-4",
       "transform": {
@@ -1290,6 +1357,69 @@
       ]
     },
     {
+      "id": "240aa5ed-f2ed-4b47-ba4b-63fcafb0e01e",
+      "name": "menu_lantern",
+      "transform": {
+        "position": [
+          220.0,
+          -0.7378790378570557,
+          145.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/lantern.prefab.json",
+        "cell": [
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.18000000715255737,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.2800000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "24668ef0-a371-4c0f-9867-f676f1c3cc9d",
       "name": "Forest Tree -2,-6",
       "transform": {
@@ -1999,6 +2129,73 @@
       ]
     },
     {
+      "id": "37148317-08ba-4d7c-bfc8-2e7313ca3ea7",
+      "name": "menu_keep_torch_b",
+      "transform": {
+        "position": [
+          282.0,
+          11.789361953735352,
+          212.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/wall_torch.prefab.json",
+        "cell": [
+          2,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "3956c8b7-7c91-469d-a7ab-db6e08b21912",
       "name": "Forest Stones 13",
       "transform": {
@@ -2325,6 +2522,133 @@
       ]
     },
     {
+      "id": "42fb798a-d937-4817-ae48-3a5a361dba29",
+      "name": "menu_oak_l3",
+      "transform": {
+        "position": [
+          190.0,
+          7.600564956665039,
+          110.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/tree.prefab.json",
+        "cell": [
+          1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "44006652-c39c-4ea9-b278-400c57551d7d",
+      "name": "menu_keep_flame",
+      "transform": {
+        "position": [
+          279.0,
+          13.311429977416992,
+          210.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.5,
+          2.0,
+          1.5
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/stylized_flame.prefab.json",
+        "cell": [
+          2,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-solid",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-solid",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "444be8f3-74b0-4843-ad1b-2f61ae7a02ef",
       "name": "Forest Bush -1,1",
       "transform": {
@@ -2364,6 +2688,69 @@
               "position": [
                 0.0,
                 0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "44aa3a3a-edfc-4f71-aa94-969b440bab71",
+      "name": "menu_bush_l1",
+      "transform": {
+        "position": [
+          188.0,
+          5.390311241149902,
+          125.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.399999976158142,
+          1.2999999523162842
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/bush_tall.prefab.json",
+        "cell": [
+          1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.699999988079071,
                 0.0
               ],
               "rotation": [
@@ -2428,6 +2815,140 @@
               "position": [
                 0.0,
                 1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "49732399-53e7-49f3-b66e-64ec8e17f03f",
+      "name": "menu_mid_stones",
+      "transform": {
+        "position": [
+          238.0,
+          1.7696036100387573,
+          170.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.399999976158142,
+          1.2000000476837158,
+          1.399999976158142
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/stones.prefab.json",
+        "cell": [
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "4a9f9ee9-72d2-4000-9434-a4737af81e5a",
+      "name": "menu_approach_crate_1",
+      "transform": {
+        "position": [
+          218.0,
+          -0.4237821102142334,
+          148.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/crate.prefab.json",
+        "cell": [
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
                 0.0
               ],
               "rotation": [
@@ -3612,6 +4133,134 @@
       ]
     },
     {
+      "id": "5ffe202a-cf8b-422b-8afc-4f3f70bb3d09",
+      "name": "menu_oak_l1",
+      "transform": {
+        "position": [
+          185.0,
+          3.5725250244140625,
+          130.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.2000000476837158,
+          1.2999999523162842,
+          1.2000000476837158
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_tall.prefab.json",
+        "cell": [
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.5,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.4000000059604645,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.899999976158142,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "601e4bf9-75e7-4ab3-8f48-c5e2f5a4a3a8",
+      "name": "menu_cam_establishing",
+      "transform": {
+        "position": [
+          198.0,
+          22.0,
+          105.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/talk_marker.prefab.json",
+        "cell": [
+          1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "interaction": "talk_act0",
+            "layer": "trigger",
+            "radius": 1.399999976158142,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "604b02db-ee2f-4a8a-bfe3-c3523062d7be",
       "name": "Camp Tree S",
       "transform": {
@@ -4172,6 +4821,73 @@
               "position": [
                 0.0,
                 1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "693ee78d-5434-43dc-8ae9-b7cc606aa431",
+      "name": "menu_keep_torch_a",
+      "transform": {
+        "position": [
+          275.0,
+          9.956012725830078,
+          205.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/wall_torch.prefab.json",
+        "cell": [
+          2,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
                 0.0
               ],
               "rotation": [
@@ -5058,6 +5774,73 @@
           "overridden": false,
           "source": "prefab",
           "type": "rigidbody"
+        }
+      ]
+    },
+    {
+      "id": "74ec918c-3ec7-488b-aa2d-785f955c3145",
+      "name": "menu_keep_stones_d",
+      "transform": {
+        "position": [
+          288.0,
+          5.360134601593018,
+          202.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.7999999523162842,
+          2.4000000953674316,
+          1.7999999523162842
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/stones.prefab.json",
+        "cell": [
+          2,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
         }
       ]
     },
@@ -6384,6 +7167,73 @@
       ]
     },
     {
+      "id": "8a7b6f2f-7de3-467f-9a4d-e47ae94084fd",
+      "name": "menu_gate_crate_stack",
+      "transform": {
+        "position": [
+          262.0,
+          9.526104927062988,
+          198.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.399999976158142,
+          1.600000023841858,
+          1.399999976158142
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/crate.prefab.json",
+        "cell": [
+          2,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "8b6c46ac-812f-4800-88d8-2c74b7da91d2",
       "name": "Forest Tree 6,1",
       "transform": {
@@ -7534,6 +8384,70 @@
               "position": [
                 0.0,
                 1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "a0714cba-e59f-4044-a43d-4c4d4bc8ac67",
+      "name": "menu_approach_barrel",
+      "transform": {
+        "position": [
+          224.0,
+          -1.6223981380462646,
+          146.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/barrel.prefab.json",
+        "cell": [
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.05000000074505806,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.44999998807907104,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
                 0.0
               ],
               "rotation": [
@@ -9042,6 +9956,70 @@
       ]
     },
     {
+      "id": "b77f38a4-5457-46a6-ab25-d8c63eecffce",
+      "name": "menu_oak_r1",
+      "transform": {
+        "position": [
+          235.0,
+          -2.602288007736206,
+          125.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_wide.prefab.json",
+        "cell": [
+          1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.399999976158142,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.9500000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "b9864597-7650-4d6a-bd9b-235a06a34143",
       "name": "Stump",
       "transform": {
@@ -9620,6 +10598,73 @@
       ]
     },
     {
+      "id": "c4b58b4e-38f6-4e32-938a-188df8371d57",
+      "name": "menu_keep_stones_c",
+      "transform": {
+        "position": [
+          272.0,
+          6.641195297241211,
+          218.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          2.0,
+          2.799999952316284,
+          2.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/stones.prefab.json",
+        "cell": [
+          2,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "c54c628d-be12-4760-b8ed-682c8ece6980",
       "name": "Forest Tree -6,-3",
       "transform": {
@@ -10108,6 +11153,73 @@
               "position": [
                 0.0,
                 1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "cafb6e2b-97af-4c61-aadf-5b9a3ba921b2",
+      "name": "menu_mid_crate",
+      "transform": {
+        "position": [
+          242.0,
+          1.2828879356384277,
+          168.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/crate.prefab.json",
+        "cell": [
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
                 0.0
               ],
               "rotation": [
@@ -10656,6 +11768,105 @@
       ]
     },
     {
+      "id": "daab427c-eb5d-4d28-b6f2-bdf4c28b0fd3",
+      "name": "menu_supply",
+      "transform": {
+        "position": [
+          216.0,
+          -1.1554811000823975,
+          155.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/supply_chest.prefab.json",
+        "cell": [
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "open_supply_chest",
+            "layer": "trigger",
+            "radius": 1.350000023841858,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "dcf82a90-8c68-4131-96c5-6a06c21b2bc5",
       "name": "Forest Tree -2,3",
       "transform": {
@@ -10910,6 +12121,133 @@
       ]
     },
     {
+      "id": "e6225a3f-089e-4d13-b0e0-db7ffc11e568",
+      "name": "menu_oak_l2",
+      "transform": {
+        "position": [
+          178.0,
+          3.949002265930176,
+          122.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_lean.prefab.json",
+        "cell": [
+          1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.41999998688697815,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.7699999809265137,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "e77d8bab-7358-40d2-8169-adb05c475eb3",
+      "name": "menu_bush_r1",
+      "transform": {
+        "position": [
+          230.0,
+          -3.105475425720215,
+          130.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/bush_tall.prefab.json",
+        "cell": [
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.699999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "e884a527-f2da-47c5-8f07-b1c9384019f0",
       "name": "Forest Tree -1,-5",
       "transform": {
@@ -11014,6 +12352,73 @@
               "position": [
                 0.0,
                 1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "ea6fc803-24b3-4ecc-bb23-8b5abc2e2543",
+      "name": "menu_keep_stones_a",
+      "transform": {
+        "position": [
+          278.0,
+          11.986353874206543,
+          208.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          2.200000047683716,
+          2.5,
+          2.200000047683716
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/stones.prefab.json",
+        "cell": [
+          2,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
                 0.0
               ],
               "rotation": [
@@ -11233,6 +12638,69 @@
       ]
     },
     {
+      "id": "f09a62d6-2d11-4cc0-913c-52500dbc37ae",
+      "name": "menu_bush_l2",
+      "transform": {
+        "position": [
+          192.0,
+          8.071866989135742,
+          118.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/bush.prefab.json",
+        "cell": [
+          1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
       "id": "f24678ad-d759-4981-90db-fb62940a8c0c",
       "name": "River Stones 7",
       "transform": {
@@ -11340,6 +12808,73 @@
               "position": [
                 0.0,
                 1.75,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "f302e45e-f489-46a3-908b-17ec8a6af497",
+      "name": "menu_keep_stones_b",
+      "transform": {
+        "position": [
+          285.0,
+          8.670540809631348,
+          215.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          2.799999952316284,
+          3.200000047683716,
+          2.799999952316284
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/stones.prefab.json",
+        "cell": [
+          2,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.699999988079071,
+              0.2199999988079071,
+              0.75
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
                 0.0
               ],
               "rotation": [
@@ -11795,6 +13330,73 @@
               "position": [
                 0.0,
                 0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "fd26f9ec-404a-437f-b6e1-9028bd6fca3c",
+      "name": "menu_approach_crate_2",
+      "transform": {
+        "position": [
+          222.0,
+          -0.04048442840576172,
+          152.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/crate.prefab.json",
+        "cell": [
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
                 0.0
               ],
               "rotation": [

@@ -1,0 +1,572 @@
+{
+  "collision": [
+    {
+      "halfExtent": [
+        9.5,
+        6,
+        2
+      ],
+      "id": "south_w",
+      "layer": "staticWorld",
+      "shape": "box",
+      "transform": {
+        "position": [
+          -45.5,
+          6,
+          -54
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    },
+    {
+      "halfExtent": [
+        39.5,
+        6,
+        2
+      ],
+      "id": "south_e",
+      "layer": "staticWorld",
+      "shape": "box",
+      "transform": {
+        "position": [
+          15.5,
+          6,
+          -54
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    },
+    {
+      "halfExtent": [
+        55,
+        6,
+        2
+      ],
+      "id": "north",
+      "layer": "staticWorld",
+      "shape": "box",
+      "transform": {
+        "position": [
+          0,
+          6,
+          55
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    },
+    {
+      "halfExtent": [
+        2,
+        6,
+        55
+      ],
+      "id": "west",
+      "layer": "staticWorld",
+      "shape": "box",
+      "transform": {
+        "position": [
+          -55,
+          6,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    },
+    {
+      "halfExtent": [
+        2,
+        6,
+        55
+      ],
+      "id": "east",
+      "layer": "staticWorld",
+      "shape": "box",
+      "transform": {
+        "position": [
+          55,
+          6,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    }
+  ],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.34,
+          0.33,
+          0.3
+        ],
+        "primitive": "cube"
+      },
+      "name": "south_curtain_w",
+      "parent": null,
+      "transform": {
+        "position": [
+          -45.5,
+          6,
+          -54
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          19,
+          12,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.34,
+          0.33,
+          0.3
+        ],
+        "primitive": "cube"
+      },
+      "name": "south_curtain_e",
+      "parent": null,
+      "transform": {
+        "position": [
+          15.5,
+          6,
+          -54
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          79,
+          12,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.37,
+          0.36,
+          0.33
+        ],
+        "primitive": "cube"
+      },
+      "name": "north_curtain",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          6,
+          55
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          110,
+          12,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.35,
+          0.34,
+          0.31
+        ],
+        "primitive": "cube"
+      },
+      "name": "west_curtain",
+      "parent": null,
+      "transform": {
+        "position": [
+          -55,
+          6,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4,
+          12,
+          110
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.35,
+          0.34,
+          0.31
+        ],
+        "primitive": "cube"
+      },
+      "name": "east_curtain",
+      "parent": null,
+      "transform": {
+        "position": [
+          55,
+          6,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4,
+          12,
+          110
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.42,
+          0.4,
+          0.36
+        ],
+        "primitive": "cube"
+      },
+      "name": "gate_lintel",
+      "parent": null,
+      "transform": {
+        "position": [
+          -30,
+          10,
+          -54
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          10,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3,
+          0.29,
+          0.27
+        ],
+        "primitive": "cube"
+      },
+      "name": "tower_sw",
+      "parent": null,
+      "transform": {
+        "position": [
+          -55,
+          12,
+          -54
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          14,
+          24,
+          14
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3,
+          0.29,
+          0.27
+        ],
+        "primitive": "cube"
+      },
+      "name": "tower_se",
+      "parent": null,
+      "transform": {
+        "position": [
+          55,
+          12,
+          -54
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          14,
+          24,
+          14
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.31,
+          0.3,
+          0.28
+        ],
+        "primitive": "cube"
+      },
+      "name": "tower_nw",
+      "parent": null,
+      "transform": {
+        "position": [
+          -55,
+          12,
+          55
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          14,
+          24,
+          14
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.31,
+          0.3,
+          0.28
+        ],
+        "primitive": "cube"
+      },
+      "name": "tower_ne",
+      "parent": null,
+      "transform": {
+        "position": [
+          55,
+          12,
+          55
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          14,
+          24,
+          14
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.16,
+          0.15,
+          0.14
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "tower_cap_sw",
+      "parent": null,
+      "transform": {
+        "position": [
+          -55,
+          26,
+          -54
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          14,
+          5,
+          14
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.16,
+          0.15,
+          0.14
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "tower_cap_se",
+      "parent": null,
+      "transform": {
+        "position": [
+          55,
+          26,
+          -54
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          14,
+          5,
+          14
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.16,
+          0.15,
+          0.14
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "tower_cap_nw",
+      "parent": null,
+      "transform": {
+        "position": [
+          -55,
+          26,
+          55
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          14,
+          5,
+          14
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.16,
+          0.15,
+          0.14
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "tower_cap_ne",
+      "parent": null,
+      "transform": {
+        "position": [
+          55,
+          26,
+          55
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          14,
+          5,
+          14
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

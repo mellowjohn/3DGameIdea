@@ -356,6 +356,95 @@ Result<void> StreamedTerrainField::reload_cell_meshes(const std::set<CellCoord>&
     return Result<void>::success();
 }
 
+Result<void> StreamedTerrainField::reload_collision_cells(
+    CollisionWorld& world, const std::set<CellCoord>& cells,
+    const PhysicalMaterialProperties& physics) {
+    for (const auto& cell : cells) {
+        const auto found = cells_.find(cell);
+        if (found == cells_.end()) continue;
+        (void)world.remove(found->second.body);
+        const auto body = world.add_heightfield(found->second.mesh, physics, cell);
+        if (!body) return Result<void>::failure(body.error());
+        found->second.body = body.value();
+    }
+    return Result<void>::success();
+}
+
+Result<void> StreamedTerrainField::update_collision_materials(
+    CollisionWorld& world, const std::set<CellCoord>& cells,
+    const PhysicalMaterialProperties& physics) {
+    for (const auto& cell : cells) {
+        const auto found = cells_.find(cell);
+        if (found == cells_.end()) continue;
+        const auto updated = world.set_material(found->second.body, physics);
+        if (!updated) return updated;
+    }
+    return Result<void>::success();
+}
+
+Result<void> StreamedTerrainField::queue_reload_cells(
+    const std::set<CellCoord>& cells, const TerrainEditStore* edits,
+    const TerrainPaintStore* paint, const TerrainPaintMaterialLookup& lookup_material) {
+    for (const auto& cell : cells) {
+        if (cells_.find(cell) == cells_.end() || pending_reloads_.find(cell) != pending_reloads_.end()) continue;
+        const auto edits_snapshot = edits ? std::make_shared<TerrainEditStore>(*edits) : nullptr;
+        const auto paint_snapshot = paint ? std::make_shared<TerrainPaintStore>(*paint) : nullptr;
+        auto materials_snapshot = std::make_shared<std::map<std::string, MaterialAsset>>();
+        if (paint && lookup_material) {
+            for (const auto& path : paint->materials()) {
+                if (const MaterialAsset* material = lookup_material(path)) materials_snapshot->emplace(path, *material);
+            }
+        }
+        pending_reloads_.emplace(cell, PendingGeneration{std::async(std::launch::async,
+            [cell, edits_snapshot, paint_snapshot, materials_snapshot]() {
+                const auto started = std::chrono::steady_clock::now();
+                const TerrainPaintMaterialLookup lookup = [materials_snapshot](const std::string& path) {
+                    const auto found = materials_snapshot->find(path);
+                    return found == materials_snapshot->end() ? nullptr : &found->second;
+                };
+                AsyncTerrainMesh output;
+                auto terrain = generate_stylized_terrain(cell, k_resolution, k_cell_size, edits_snapshot.get(),
+                    paint_snapshot.get(), lookup);
+                if (terrain) output.mesh = std::move(terrain.value());
+                else output.error = terrain.error();
+                output.build_ms = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - started).count();
+                return output;
+            }), std::chrono::steady_clock::now()});
+    }
+    return Result<void>::success();
+}
+
+Result<std::size_t> StreamedTerrainField::commit_ready_reloads(
+    CollisionWorld& world, const PhysicalMaterialProperties& physics, std::size_t max_cells) {
+    std::size_t committed = 0;
+    for (auto it = pending_reloads_.begin(); it != pending_reloads_.end() && committed < max_cells;) {
+        if (it->second.future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) { ++it; continue; }
+        auto generated = it->second.future.get();
+        last_reload_queue_wait_ms_ = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - it->second.queued_at).count() - generated.build_ms;
+        const CellCoord cell = it->first;
+        it = pending_reloads_.erase(it);
+        if (generated.error) return Result<std::size_t>::failure(*generated.error);
+        if (!generated.mesh) return Result<std::size_t>::failure(EngineError{"TERRAIN-RELOAD-RESULT-MISSING", Severity::Error,
+            ErrorCategory::Validation, "terrain", "Sculpt terrain regeneration returned no mesh"});
+        const auto found = cells_.find(cell);
+        if (found == cells_.end()) continue;
+        const auto collision_started = std::chrono::steady_clock::now();
+        (void)world.remove(found->second.body);
+        const auto body = world.add_heightfield(*generated.mesh, physics, cell);
+        if (!body) return Result<std::size_t>::failure(body.error());
+        found->second.mesh = std::move(*generated.mesh);
+        found->second.body = body.value();
+        render_dirty_cells_.insert(cell);
+        last_reload_generation_ms_ = generated.build_ms;
+        last_reload_collision_ms_ = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - collision_started).count();
+        ++committed;
+    }
+    return Result<std::size_t>::success(committed);
+}
+
 std::vector<TerrainRenderVertex> StreamedTerrainField::build_cell_render_vertices(CellCoord cell,
     const std::array<float, 4>& base_color) const {
     std::vector<TerrainRenderVertex> vertices;

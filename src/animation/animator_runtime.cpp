@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace engine {
 namespace {
@@ -93,10 +94,12 @@ Result<void> AnimatorRuntime::attach(const std::string& entity_id, const std::st
         instance.params[param.name] = value;
     }
 
-    for (const auto& layer_def : instance.controller.layers) {
+    for (std::size_t layer_index = 0; layer_index < instance.controller.layers.size(); ++layer_index) {
+        const auto& layer_def = instance.controller.layers[layer_index];
         LayerRuntime layer;
         layer.name = layer_def.name;
-        layer.current_state = default_state_override.empty() ? layer_def.default_state : default_state_override;
+        const bool apply_override = layer_index == 0 && !default_state_override.empty();
+        layer.current_state = apply_override ? default_state_override : layer_def.default_state;
         if (!find_state(layer_def, layer.current_state)) {
             auto error = animator_error("ANIM-ATTACH-STATE",
                 "default state '" + layer.current_state + "' missing on layer '" + layer.name + "'", entity_id);
@@ -244,6 +247,7 @@ std::vector<AnimatorClipWeight> AnimatorRuntime::sample_motion(Instance& instanc
     float state_time, float weight_scale) {
     std::vector<AnimatorClipWeight> weights;
     if (!(weight_scale > 0.0f)) return weights;
+    if (motion.type == AnimatorMotionType::None) return weights;
 
     if (motion.type == AnimatorMotionType::Clip) {
         const AnimationClip* clip = nullptr;
@@ -258,6 +262,126 @@ std::vector<AnimatorClipWeight> AnimatorRuntime::sample_motion(Instance& instanc
         weight.loop = motion.clip.loop;
         weight.time_seconds = wrap_time(state_time * motion.clip.speed, clip->duration_seconds, motion.clip.loop);
         weights.push_back(std::move(weight));
+        return weights;
+    }
+
+    if (motion.type == AnimatorMotionType::BlendTree2D) {
+        const auto& tree = motion.blend_tree_2d;
+        const auto x_it = instance.params.find(tree.parameter_x);
+        const auto y_it = instance.params.find(tree.parameter_y);
+        if (x_it == instance.params.end() || y_it == instance.params.end() || tree.children.empty()) {
+            push_error(animator_error("ANIM-BLEND-PARAM",
+                "blendTree2D parameter unavailable: " + tree.parameter_x + "/" + tree.parameter_y,
+                instance.entity_id));
+            return weights;
+        }
+        const float px = x_it->second.float_value;
+        const float py = y_it->second.float_value;
+
+        auto push_child = [&](std::size_t index, float w) {
+            if (!(w > 1e-6f) || index >= tree.children.size()) return;
+            const auto& child = tree.children[index];
+            const AnimationClip* clip = nullptr;
+            if (const auto resolved = resolve_clip(child.clip, instance.entity_id, &clip); !resolved) {
+                push_error(resolved.error());
+                return;
+            }
+            AnimatorClipWeight entry;
+            entry.clip_source = child.clip.clip_source;
+            entry.clip = child.clip.clip;
+            entry.weight = weight_scale * w;
+            entry.loop = child.clip.loop;
+            entry.time_seconds = wrap_time(state_time * child.clip.speed, clip->duration_seconds, child.clip.loop);
+            weights.push_back(std::move(entry));
+        };
+
+        auto barycentric = [&](std::size_t i0, std::size_t i1, std::size_t i2, float& w0, float& w1, float& w2) {
+            const float ax = tree.children[i0].position_x;
+            const float ay = tree.children[i0].position_y;
+            const float bx = tree.children[i1].position_x;
+            const float by = tree.children[i1].position_y;
+            const float cx = tree.children[i2].position_x;
+            const float cy = tree.children[i2].position_y;
+            const float denom = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+            if (std::fabs(denom) < 1e-12f) {
+                w0 = w1 = w2 = -1.0f;
+                return false;
+            }
+            w0 = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / denom;
+            w1 = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / denom;
+            w2 = 1.0f - w0 - w1;
+            return true;
+        };
+
+        for (const auto& tri : tree.triangles) {
+            float w0 = 0.0f;
+            float w1 = 0.0f;
+            float w2 = 0.0f;
+            if (!barycentric(tri.i0, tri.i1, tri.i2, w0, w1, w2)) continue;
+            constexpr float k_eps = -1e-4f;
+            if (w0 >= k_eps && w1 >= k_eps && w2 >= k_eps) {
+                const float sum = std::max(w0, 0.0f) + std::max(w1, 0.0f) + std::max(w2, 0.0f);
+                if (sum > 1e-6f) {
+                    push_child(tri.i0, std::max(w0, 0.0f) / sum);
+                    push_child(tri.i1, std::max(w1, 0.0f) / sum);
+                    push_child(tri.i2, std::max(w2, 0.0f) / sum);
+                    return weights;
+                }
+            }
+        }
+
+        float best_dist = std::numeric_limits<float>::max();
+        std::size_t best_a = 0;
+        std::size_t best_b = 0;
+        float best_t = 0.0f;
+        bool found_edge = false;
+        auto consider_edge = [&](std::size_t a, std::size_t b) {
+            if (a > b) std::swap(a, b);
+            const float ax = tree.children[a].position_x;
+            const float ay = tree.children[a].position_y;
+            const float bx = tree.children[b].position_x;
+            const float by = tree.children[b].position_y;
+            const float abx = bx - ax;
+            const float aby = by - ay;
+            const float ab2 = abx * abx + aby * aby;
+            float t = 0.0f;
+            if (ab2 > 1e-12f) {
+                t = ((px - ax) * abx + (py - ay) * aby) / ab2;
+                t = std::clamp(t, 0.0f, 1.0f);
+            }
+            const float qx = ax + abx * t;
+            const float qy = ay + aby * t;
+            const float dist = (px - qx) * (px - qx) + (py - qy) * (py - qy);
+            if (dist < best_dist) {
+                best_dist = dist;
+                best_a = a;
+                best_b = b;
+                best_t = t;
+                found_edge = true;
+            }
+        };
+        for (const auto& tri : tree.triangles) {
+            consider_edge(tri.i0, tri.i1);
+            consider_edge(tri.i1, tri.i2);
+            consider_edge(tri.i2, tri.i0);
+        }
+        if (found_edge) {
+            push_child(best_a, 1.0f - best_t);
+            push_child(best_b, best_t);
+            return weights;
+        }
+        float nearest = std::numeric_limits<float>::max();
+        std::size_t nearest_i = 0;
+        for (std::size_t i = 0; i < tree.children.size(); ++i) {
+            const float dx = px - tree.children[i].position_x;
+            const float dy = py - tree.children[i].position_y;
+            const float d2 = dx * dx + dy * dy;
+            if (d2 < nearest) {
+                nearest = d2;
+                nearest_i = i;
+            }
+        }
+        push_child(nearest_i, 1.0f);
         return weights;
     }
 
@@ -360,6 +484,7 @@ void AnimatorRuntime::advance_layer(Instance& instance, LayerRuntime& layer, con
 }
 
 float AnimatorRuntime::motion_duration(Instance& instance, const AnimatorMotion& motion) {
+    if (motion.type == AnimatorMotionType::None) return 0.0f;
     if (motion.type == AnimatorMotionType::Clip) {
         const AnimationClip* clip = nullptr;
         if (!resolve_clip(motion.clip, instance.entity_id, &clip) || !clip) return 0.0f;
@@ -367,6 +492,15 @@ float AnimatorRuntime::motion_duration(Instance& instance, const AnimatorMotion&
         return clip->duration_seconds / speed;
     }
     float max_duration = 0.0f;
+    if (motion.type == AnimatorMotionType::BlendTree2D) {
+        for (const auto& child : motion.blend_tree_2d.children) {
+            const AnimationClip* clip = nullptr;
+            if (!resolve_clip(child.clip, instance.entity_id, &clip) || !clip) continue;
+            const float speed = child.clip.speed > 0.0f ? child.clip.speed : 1.0f;
+            max_duration = std::max(max_duration, clip->duration_seconds / speed);
+        }
+        return max_duration;
+    }
     for (const auto& child : motion.blend_tree.children) {
         const AnimationClip* clip = nullptr;
         if (!resolve_clip(child.clip, instance.entity_id, &clip) || !clip) continue;
@@ -377,7 +511,14 @@ float AnimatorRuntime::motion_duration(Instance& instance, const AnimatorMotion&
 }
 
 bool AnimatorRuntime::motion_loops(const AnimatorMotion& motion) const {
+    if (motion.type == AnimatorMotionType::None) return true;
     if (motion.type == AnimatorMotionType::Clip) return motion.clip.loop;
+    if (motion.type == AnimatorMotionType::BlendTree2D) {
+        for (const auto& child : motion.blend_tree_2d.children) {
+            if (child.clip.loop) return true;
+        }
+        return false;
+    }
     for (const auto& child : motion.blend_tree.children) {
         if (child.clip.loop) return true;
     }
@@ -475,7 +616,7 @@ void AnimatorRuntime::accumulate_root_motion(Instance& instance, float dt) {
             sum[2] += extracted.value().translation[2] * weight;
             return;
         }
-        // blendTree1D: sample children with same weight split as sample_motion
+        // blendTree1D/2D: sample children with same weight split as sample_motion
         const auto clips = sample_motion(instance, motion, state_time, weight);
         for (const auto& entry : clips) {
             AnimatorClipRef ref;
@@ -490,10 +631,19 @@ void AnimatorRuntime::accumulate_root_motion(Instance& instance, float dt) {
             }
             // entry.time_seconds is already wrapped absolute time; advance by dt (speed baked into tree children)
             float child_speed = 1.0f;
-            for (const auto& child : motion.blend_tree.children) {
-                if (child.clip.clip == entry.clip && child.clip.clip_source == entry.clip_source) {
-                    child_speed = child.clip.speed;
-                    break;
+            if (motion.type == AnimatorMotionType::BlendTree2D) {
+                for (const auto& child : motion.blend_tree_2d.children) {
+                    if (child.clip.clip == entry.clip && child.clip.clip_source == entry.clip_source) {
+                        child_speed = child.clip.speed;
+                        break;
+                    }
+                }
+            } else {
+                for (const auto& child : motion.blend_tree.children) {
+                    if (child.clip.clip == entry.clip && child.clip.clip_source == entry.clip_source) {
+                        child_speed = child.clip.speed;
+                        break;
+                    }
                 }
             }
             const float from = entry.time_seconds;
@@ -510,6 +660,7 @@ void AnimatorRuntime::accumulate_root_motion(Instance& instance, float dt) {
     for (std::size_t i = 0; i < instance.layers.size() && i < instance.controller.layers.size(); ++i) {
         const auto& layer = instance.layers[i];
         const auto& layer_def = instance.controller.layers[i];
+        if (!layer_def.mask.joints.empty()) continue;
         const auto* current = find_state(layer_def, layer.current_state);
         if (!current) continue;
         if (!layer.in_transition) {
@@ -661,16 +812,24 @@ Result<void> AnimatorRuntime::crossfade(const std::string& entity_id, const std:
 
     LayerRuntime* layer = nullptr;
     const AnimatorLayerDef* layer_def = nullptr;
+    auto bind_layer = [&](std::size_t index) {
+        layer = &instance->layers[index];
+        layer_def = &instance->controller.layers[index];
+    };
     if (layer_name.empty()) {
         if (instance->layers.empty() || instance->controller.layers.empty())
             return Result<void>::failure(animator_error("ANIM-CROSSFADE-LAYER", "controller has no layers", entity_id));
-        layer = &instance->layers.front();
-        layer_def = &instance->controller.layers.front();
+        for (std::size_t i = 0; i < instance->layers.size() && i < instance->controller.layers.size(); ++i) {
+            if (find_state(instance->controller.layers[i], state_name)) {
+                bind_layer(i);
+                break;
+            }
+        }
+        if (!layer) bind_layer(0);
     } else {
         for (std::size_t i = 0; i < instance->layers.size(); ++i) {
             if (instance->layers[i].name == layer_name) {
-                layer = &instance->layers[i];
-                layer_def = &instance->controller.layers[i];
+                bind_layer(i);
                 break;
             }
         }
@@ -722,6 +881,14 @@ Result<AnimatorInstanceStatus> AnimatorRuntime::status(const std::string& entity
     auto status = build_status(*instance);
     // Sample active clips via mutable temporary path.
     AnimatorRuntime* self = const_cast<AnimatorRuntime*>(this);
+    auto stamp = [](std::vector<AnimatorClipWeight>& clips, const AnimatorLayerDef& layer_def) {
+        for (auto& clip : clips) {
+            clip.layer = layer_def.name;
+            clip.mask_joints = layer_def.mask.joints;
+            clip.mask_include_children = layer_def.mask.include_children;
+            clip.weight *= layer_def.weight;
+        }
+    };
     for (std::size_t i = 0; i < instance->layers.size() && i < instance->controller.layers.size(); ++i) {
         const auto& layer = instance->layers[i];
         const auto& layer_def = instance->controller.layers[i];
@@ -729,6 +896,7 @@ Result<AnimatorInstanceStatus> AnimatorRuntime::status(const std::string& entity
         if (!current) continue;
         if (!layer.in_transition) {
             auto clips = self->sample_motion(*const_cast<Instance*>(instance), current->motion, layer.state_time, 1.0f);
+            stamp(clips, layer_def);
             status.active_clips.insert(status.active_clips.end(), clips.begin(), clips.end());
             continue;
         }
@@ -738,9 +906,11 @@ Result<AnimatorInstanceStatus> AnimatorRuntime::status(const std::string& entity
                                              : 1.0f;
         auto from_clips =
             self->sample_motion(*const_cast<Instance*>(instance), current->motion, layer.state_time, 1.0f - alpha);
+        stamp(from_clips, layer_def);
         status.active_clips.insert(status.active_clips.end(), from_clips.begin(), from_clips.end());
         if (next) {
             auto to_clips = self->sample_motion(*const_cast<Instance*>(instance), next->motion, 0.0f, alpha);
+            stamp(to_clips, layer_def);
             status.active_clips.insert(status.active_clips.end(), to_clips.begin(), to_clips.end());
         }
     }

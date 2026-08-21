@@ -20,8 +20,8 @@ struct FoliageInstance {
 struct FoliageScatterConfig {
     static constexpr std::uint32_t k_max_instances_per_cell = 2048;
     static constexpr std::uint8_t k_min_density = 8;
-    float distance_falloff_start = 120.0f;
-    float distance_falloff_end = 220.0f;
+    float distance_falloff_start = 200.0f;
+    float distance_falloff_end = 340.0f;
 };
 
 [[nodiscard]] std::vector<FoliageInstance> scatter_foliage_cell(CellCoord cell, const FoliageDensityStore& density,

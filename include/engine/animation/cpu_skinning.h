@@ -44,6 +44,14 @@ struct JointLocalPose {
     const std::string& joint_name);
 
 /**
+ * Copy `src_locals` onto `dst` by joint name. Missing names keep `dst` rest locals.
+ * Used so modular armor can share the player's animated pose while keeping its own IBMs.
+ */
+[[nodiscard]] std::vector<JointLocalPose> remap_joint_local_poses_by_name(
+    const ImportedSkin& dst, const ImportedSkin& src,
+    const std::vector<JointLocalPose>& src_locals);
+
+/**
  * Sagittal counterpart of a joint / channel name (`RightUpperArm` <-> `LeftUpperArm`).
  * Spine and unpaired names are unchanged. Used by player RH→LH clip sampling and Animation Studio
  * key writes so viewport labels and authored channels match visual left/right.

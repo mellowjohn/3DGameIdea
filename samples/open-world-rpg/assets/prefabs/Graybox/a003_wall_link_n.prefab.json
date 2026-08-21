@@ -1,0 +1,156 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.44999998807907104,
+          0.4300000071525574,
+          0.4000000059604645
+        ],
+        "primitive": "cube"
+      },
+      "name": "a003_wall_link_n_part_1",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.0,
+          6.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          80.0,
+          12.0,
+          4.0
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.36000001430511475,
+          0.33000001311302185
+        ],
+        "primitive": "cube"
+      },
+      "name": "a003_wall_link_n_part_2",
+      "parent": null,
+      "transform": {
+        "position": [
+          -24.0,
+          13.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          3.0,
+          2.5,
+          3.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.36000001430511475,
+          0.33000001311302185
+        ],
+        "primitive": "cube"
+      },
+      "name": "a003_wall_link_n_part_3",
+      "parent": null,
+      "transform": {
+        "position": [
+          -8.0,
+          13.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          3.0,
+          2.5,
+          3.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.36000001430511475,
+          0.33000001311302185
+        ],
+        "primitive": "cube"
+      },
+      "name": "a003_wall_link_n_part_4",
+      "parent": null,
+      "transform": {
+        "position": [
+          8.0,
+          13.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          3.0,
+          2.5,
+          3.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.36000001430511475,
+          0.33000001311302185
+        ],
+        "primitive": "cube"
+      },
+      "name": "a003_wall_link_n_part_5",
+      "parent": null,
+      "transform": {
+        "position": [
+          24.0,
+          13.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          3.0,
+          2.5,
+          3.5
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

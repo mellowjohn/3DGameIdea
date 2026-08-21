@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "id": "sword_impact_flash",
+  "color": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "color": [
+          1.0,
+          1.0,
+          0.98
+        ]
+      },
+      {
+        "t": 0.3,
+        "color": [
+          1.0,
+          0.9,
+          0.4
+        ]
+      },
+      {
+        "t": 1.0,
+        "color": [
+          1.0,
+          0.4,
+          0.08
+        ]
+      }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.55
+      },
+      {
+        "t": 0.18,
+        "value": 1.15
+      },
+      {
+        "t": 1.0,
+        "value": 1.55
+      }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.0
+      },
+      {
+        "t": 0.35,
+        "value": 0.25
+      },
+      {
+        "t": 1.0,
+        "value": 1.0
+      }
+    ]
+  },
+  "lifetime": {
+    "min": 0.12,
+    "max": 0.22
+  },
+  "speed": {
+    "min": 0.02,
+    "max": 0.15
+  },
+  "rate": 0,
+  "spreadAngle": [
+    0,
+    8
+  ],
+  "shape": "sphere",
+  "shapeStyle": "volume",
+  "shapeSize": [
+    0.02,
+    0.02,
+    0.02
+  ],
+  "orientation": "FacingCamera",
+  "lightEmission": 1.0,
+  "blend": "additive",
+  "acceleration": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "drag": 0.1,
+  "maxParticles": 12,
+  "enabled": true,
+  "emissionDirection": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "minScreenSize": 28,
+  "softOcclusion": false
+}

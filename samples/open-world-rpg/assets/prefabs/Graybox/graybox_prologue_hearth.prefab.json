@@ -1,0 +1,96 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.25,
+          0.22,
+          0.2
+        ],
+        "primitive": "cube"
+      },
+      "name": "base",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.25,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.4,
+          0.5,
+          1.6
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.7,
+          0.25,
+          0.08
+        ],
+        "primitive": "cube"
+      },
+      "name": "embers",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.55,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.6,
+          0.2,
+          1
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.9,
+          0.45,
+          0.1
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "flame",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.65,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.7,
+          1,
+          0.5
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

@@ -788,6 +788,8 @@ void ParticleSystem::rebuild_draw_list(const std::array<float, 3>& /*camera_posi
 
             instance.flipbook_blend = 0.0f;
 
+            instance.soft_occlusion = asset->soft_occlusion ? 1.0f : 0.0f;
+
             if (asset->flipbook_layout != ParticleFlipbookLayout::None && instance.texture_index != 0) {
 
                 const auto cols = std::max(asset->flipbook_columns(), 1u);

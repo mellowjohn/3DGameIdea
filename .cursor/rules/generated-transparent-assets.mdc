@@ -1,0 +1,44 @@
+---
+description: Generated images meant to be transparent must ship with real alpha, not baked mattes
+alwaysApply: true
+---
+
+# Generated Transparent Assets
+
+When generating UI chrome, glass plates, frames, glows, logos, icons, or any overlay meant to sit on top of other art, **ship true RGBA transparency**. Do not leave studio mattes or fake transparency in the pixels.
+
+## Prefer
+
+1. **Regenerate** on pure chroma-key green `#00FF00` (or true alpha if the generator supports it)
+2. **Green-screen key** only that green → RGBA (`context/design/menu-assets/_chroma_key_regen_glass.py`)
+3. Verify corner alpha ≈ 0 and subject mid alpha high before wiring into a canvas
+
+## Banned habits
+
+- Morphological / flood-fill “punches” through black or checkerboard on stained-glass art (dark leading tunnels into the silhouette — overpunch)
+- Leaving AI checkerboard **drawn into RGB**
+- Shipping opaque RGB plates / glow overlays that hide cards underneath
+- Treating Pencil/Image-gen preview transparency as good enough for engine assets
+
+## Rules
+
+1. Overlays that composite over backdrops get **regen + chroma key** (or native alpha), not matte flood-fill.
+2. Prompt for flat `#00FF00` outside the silhouette; solid dark fills inside dialogue/caption wells when “glass” should not show a grid.
+3. Hover/glow: green outside **and** inside the rim so only the glow remains after keying.
+4. Spot-check: no green left in RGB; no repeating gray/white checker left.
+
+## Examples
+
+```text
+❌ BAD: Flood-fill black corners on Outrider → eats the arch through dark leading
+✅ GOOD: Regen Outrider on #00FF00 → chroma key → clean RGBA arch
+
+❌ BAD: dialogue plate with baked checkerboard “transparency”
+✅ GOOD: regen plate with solid #1A1510 well + #00FF00 outside → key green only
+```
+
+## Related
+
+- Chroma key regen: `context/design/menu-assets/_chroma_key_regen_glass.py`
+- Legacy green polish: `context/design/menu-assets/_polish_menu_v2.py`
+- Title logo punch: `context/design/menu-assets/_punch_title_logo.py`

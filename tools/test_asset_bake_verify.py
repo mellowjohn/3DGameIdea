@@ -131,6 +131,31 @@ def main() -> int:
         codes = {g["code"]: g["ok"] for g in gates}
         assert codes.get("ASSET-BAKE-CLIP-MISSING") is False, codes
         assert codes.get("ASSET-BAKE-CLIP-REGRESS") is False, codes
+
+        # DEC-0052 override-only clips are runtime-valid and satisfy animator references.
+        for clip in ("Walk", "Run", "Fall"):
+            (models / f"player.{clip}.anim.json").write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "kind": "animationClipOverride",
+                        "clipSource": "assets/models/player.gltf",
+                        "clipName": clip,
+                        "durationSeconds": 1.0,
+                        "channels": [{"times": [0.0, 1.0], "values": [0.0, 1.0]}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+        gates = verify.verify_bake(
+            project_root=root,
+            target=target,
+            source_gltf=src,
+            baked_mesh=mesh,
+            baked_atlas=atlas,
+        )
+        codes = {g["code"]: g["ok"] for g in gates}
+        assert codes.get("ASSET-BAKE-CLIP-MISSING") is True, codes
         print("test_asset_bake_verify: ok")
     return 0
 

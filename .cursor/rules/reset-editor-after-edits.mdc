@@ -7,18 +7,29 @@ alwaysApply: true
 
 When changing editor or runtime code that affects a running `engine.exe` (including MCP `engine.exe mcp --project ...`), do not leave a stale process:
 
+**Two processes (do not confuse them):**
+
+| Process | Role |
+| --- | --- |
+| `engine.exe editor --project …` | Editor window + named-pipe **bridge server**. Required for live tools. |
+| `engine.exe mcp --project …` | Windowless Cursor MCP **stdio proxy**. Forwards to the editor bridge. |
+
+Live tools (`engine_animation_call`, screenshots, scene apply, …) need the **editor** running with MCP connection / live automation on. Restarting only `mcp` leaves `editorRunning: false`.
+
 1. **Acquire** the shared rebuild lease first when other agents may be rebuilding (`engine build-coordination` / `engine_build_coordination` — see `rebuild-after-code-changes.mdc` and `context/features/agent-build-coordination.md`). Do not start MSBuild while queued.
-2. **Kill** any running `engine.exe` that locks the build output (`build/windows-msvc-debug/dev-next/engine.exe` or legacy `Debug/`).
+2. **Kill** any running `engine.exe` that locks the build output (`build/windows-msvc-debug/dev-next/engine.exe` or legacy `Debug/`). Use `Get-Process engine` with no window-title filter (MCP is windowless).
 3. **Rebuild** the `engine` target (see `rebuild-after-code-changes.mdc`).
-4. **Reload** by restarting the same command that was running — typically:
-   `build/windows-msvc-debug/dev-next/engine.exe mcp --project samples/open-world-rpg`
-   (or the editor launch command if that was the active session).
+4. **Reload both halves:**
+   - Launch the **editor**: `build/windows-msvc-debug/dev-next/engine.exe editor --project samples/open-world-rpg` (add `--world …` if that was the session).
+   - Ensure **MCP** is up: Cursor usually respawns `engine.exe mcp` on the next tool call; if status is “Not connected”, use the host reconnect / `mcp_auth`, then `engine_editor_live` `enable` if needed.
+   - Confirm `engine_editor_status` reports `editorRunning: true` before continuing live work.
 5. **Release** the rebuild lease with the granted token.
-6. Prefer this acquire → kill → rebuild → restart → release loop over asking the user to close the editor, unless the process cannot be identified safely.
-7. Mention in the final response that the editor/MCP process was reset (and that the lease was released).
+6. Prefer this acquire → kill → rebuild → restart editor+MCP → release loop over asking the user to close the editor, unless the process cannot be identified safely.
+7. Mention in the final response that the editor and MCP were reset (and that the lease was released).
 
 ```text
 ❌ BAD: Leave LNK1168 / locked engine.exe and ask the user to close it
 ❌ BAD: Start MSBuild while another agent holds the build lease
-✅ GOOD: acquire lease → Stop-Process engine → MSBuild engine → relaunch mcp/editor → release lease
+❌ BAD: Kill engine → rebuild → relaunch only `mcp` → wonder why animation/screenshot say not connected
+✅ GOOD: acquire lease → Stop-Process engine → MSBuild engine → relaunch editor + MCP → status live → release lease
 ```

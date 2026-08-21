@@ -1,0 +1,66 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.30000001192092896,
+          0.2800000011920929,
+          0.25999999046325684
+        ],
+        "primitive": "cube"
+      },
+      "name": "platform",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.45,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          14,
+          0.9,
+          8
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2199999988079071,
+          0.20000000298023224,
+          0.1899999976158142
+        ],
+        "primitive": "cube"
+      },
+      "name": "lip",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.95,
+          3.8
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          14.2,
+          0.2,
+          0.35
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

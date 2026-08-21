@@ -1,0 +1,36 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.36000001430511475,
+          0.3400000035762787,
+          0.3499999940395355
+        ],
+        "primitive": "cube"
+      },
+      "name": "ledge",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          33.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.55,
+          0.45,
+          48
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

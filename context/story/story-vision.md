@@ -55,13 +55,13 @@ Historical imported outline (kept for provenance):
 7. Retreat to a camp after the Great Evil drives the party from the tutorial area.
 8. Reach the first village or town and unlock the wider campaign structure.
 
-Act 0 — **Landfall** working spine (Twine-backed, **draft**): Calrenoth siege with Arkand → Commander Grenge → drawbridge → Luceran collapse → Creotar vision. Prefer open-world Calrenoth; rare instances only when needed. See [campaign-beat-sheet.md](campaign-beat-sheet.md).
+Act 0 — **Landfall** spine (**established** MVP 2026-08-05): Calrenoth siege with Arkand → Commander Grenge → drawbridge → Luceran collapse → Creotar vision → camp handoff. Prefer open-world Calrenoth; rare instances only when needed. See [campaign-beat-sheet.md](campaign-beat-sheet.md).
 
 ## World and Locations
 
 **Tessera** is the world’s primary land — the Middle-earth-scale geography of the campaign ([DEC-0034](../decisions/index.md#dec-0034-tessera-is-the-worlds-primary-land)). The **Kingdom of Tessera** is one polity within that land, not the land itself.
 
-**Official map:** [`official-world-map.md`](official-world-map.md) / [`official-world-map.png`](official-world-map.png) — unlabeled overworld art (continents around an interior sea, central + northeastern islands). The v1 seamless 4×4 km slice is authored inside this land, not as a replacement for the map.
+**Official map:** [`official-world-map.md`](official-world-map.md) / [`official-world-map.png`](official-world-map.png) — unlabeled overworld art (continents around an interior sea, central + northeastern islands). The seamless playable world **is** that map window ([DEC-0054](../decisions/index.md#dec-0054-continent-scale-seamless-world--stream-budget)).
 
 Tessera includes high mountains, prairie, farmland, woods, and chaotic regions warped by supernatural forces. Candidate location types include towns, castles, cities, villages, groves, markets, islands, docks, plazas, bazaars, battlefields, forests, hills, and mountains.
 
@@ -77,5 +77,5 @@ The source material proposes “softcore” and “hardcore” modes that can al
 - The exact morality scale, archetype thresholds, faction lock-in rules, and ending branches remain undefined.
 - “Softcore” and “hardcore” need final names and explicit narrative differences.
 - The source material mentions male and female versions of each character; whether that means player options, character variants, or the full cast remains unclear.
-- ~~Creotar (Twine vision guide) vs Creo/Frangitur identity~~ — **resolved 2026-07-20:** Creotar = Creo (short); Frangitur = fallen form ([frangitur-the-great-evil.md](frangitur-the-great-evil.md)). Destroy-Shroud honesty/irony still open.
+- ~~Creotar (Twine vision guide) vs Creo/Frangitur identity~~ — **resolved 2026-07-20:** Creotar = Creo (short); Frangitur = fallen form ([frangitur-the-great-evil.md](frangitur-the-great-evil.md)). ~~Destroy-Shroud honesty/irony~~ — **partially true** (D-P2-14); writer vs vision framing locked in A0-08 (2026-08-05).
 - ~~Wild God revival opening vs Calrenoth Act 0 chronology~~ — **resolved** for default spine: Calrenoth / **Landfall** (Wild God remains alternate).

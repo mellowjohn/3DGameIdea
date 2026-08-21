@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "lightning_charge_rings",
+  "texture": "assets/vfx/wind_streak_flipbook_4x4.png",
+  "blend": "additive",
+  "aspectRatio": 1.4,
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [1.0, 0.98, 0.75] },
+      { "t": 0.35, "color": [0.65, 0.8, 1.0] },
+      { "t": 1.0, "color": [0.25, 0.4, 1.0] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.18 },
+      { "t": 0.4, "value": 0.65 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.08 },
+      { "t": 0.4, "value": 0.28 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.4, "max": 0.75 },
+  "speed": { "min": 0.35, "max": 0.9 },
+  "rate": 0,
+  "spreadAngle": [70, 130],
+  "shape": "disc",
+  "shapeStyle": "surface",
+  "shapeSize": [0.12, 0.02, 0.12],
+  "orientation": "FacingCamera",
+  "lightEmission": 0.7,
+  "drag": 0.15,
+  "maxParticles": 36,
+  "enabled": true,
+  "emissionDirection": [0.0, 1.0, 0.0],
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "Loop",
+  "flipbookFramerate": 22,
+  "flipbookStartRandom": true,
+  "rotation": { "keypoints": [{ "t": 0.0, "value": 0.0 }, { "t": 1.0, "value": -320.0 }] },
+  "rotationStartRandom": true,
+  "minScreenSize": 6
+}

@@ -17,7 +17,7 @@ Do not remake these first. Refine only when a higher-tier kit needs a shared bas
 | Stone cluster | `tools/art/stones/Stones.bbmodel` | `assets/models/stones.gltf` |
 | Player body v2 (legacy skinned + Idle/Run/Fall; superseded by GoodPlayerModel) | `tools/art/player/Player_V2_rigged.bbmodel` / `.gltf` | kept for reference; runtime uses GoodPlayerModel bake |
 | Player body v3 (WIP — bald Ashfell kit T-pose palms-down; no textures/rig; 2026-07-29) | `tools/art/player/Player_V3.bbmodel` (+ `build_player_v3_ashfell.py`) | — (not baked) |
-| GoodPlayerModel (runtime player — skinned 37-bone + Idle/Run/Fall; bake 2026-07-30b) | `tools/art/player/GoodPlayerModel.gltf` / `_rigged.bbmodel` (+ `Documents/Models/GoodPlayerModel.gltf`) | `assets/models/player.gltf` (+ `player.png`); animator `assets/animators/player.animator.json`; NPC test prefab `assets/prefabs/NPC/npc_test.prefab.json` |
+| GoodPlayerModel (runtime player — skinned 37-bone; art refresh 2026-08-10 08:24) | `tools/art/player/GoodPlayerModel.gltf` / `_rigged.bbmodel` | `assets/models/player.gltf` (+ 2048×2048 `player.png`); wrist-seam helper meshes removed in latest body revision; 17 Blockbench clips + DEC-0052 editor overrides; animator `assets/animators/player.animator.json`; AI-ready NPC clone `assets/prefabs/NPC/npc_humanoid.prefab.json`; talk stand-in `assets/prefabs/NPC/npc_test.prefab.json` |
 | Dead tree | — | `assets/models/dead-tree.gltf` |
 | Dead log | `tools/art/dead-log/DeadLog.bbmodel` | `assets/models/dead_log.gltf` |
 | Stump | `tools/art/stump/Stump.bbmodel` | `assets/models/stump.gltf` |
@@ -33,8 +33,13 @@ Do not remake these first. Refine only when a higher-tier kit needs a shared bas
 | Outrider arrow | `tools/art/outrider-arrow/Outrider_Arrow.gltf` | `assets/models/outrider_arrow.gltf` + Scene Asset `outrider_arrow.prefab.json` |
 | Guild rune focus | `tools/art/guild-rune-focus/Guild_Rune_Focus.gltf` | `assets/models/guild_rune_focus.gltf` + Scene Asset `guild_rune_focus.prefab.json` |
 | Loot bag (generic) | `tools/art/loot-bag/Loot_Bag.gltf` (+ `.bbmodel`) | `assets/models/loot_bag.gltf` + Scene Asset `loot_bag.prefab.json` |
+| Tessera banner pole (A0-02) | `tools/art/tessera-banner-pole/Tessera_Banner_Pole.bbmodel` | `assets/models/tessera_banner_pole.gltf` + Scene Asset `tessera_banner_pole.prefab.json` |
+| Corner tower stub (A0-02) | `tools/art/corner-tower-stub/Corner_Tower_Stub.bbmodel` | `assets/models/corner_tower_stub.gltf` + Scene Asset `corner_tower_stub.prefab.json` |
+| Weapon rack (A0-02) | `tools/art/weapon-rack/Weapon_Rack.bbmodel` | `assets/models/weapon_rack.gltf` + Scene Asset `weapon_rack.prefab.json` |
+| Workbench table (A0-02) | `tools/art/workbench-table/Workbench_Table.bbmodel` | `assets/models/workbench_table.gltf` + Scene Asset `workbench_table.prefab.json` |
+| Target dummy (combat sandbox) | `tools/art/target-dummy/Target_Dummy.bbmodel` | `assets/models/target_dummy.gltf` + Scene Asset `target_dummy.prefab.json` (`combatHurt: dummy_body`, animator `target_dummy.animator.json`); world `worlds/combat-sandbox.world.json` |
 
-Still primitive-composed (candidate to replace): `bush_wide` only. Rebake Tier 1 props with `python tools/bake_tier1_props_gltf.py` (optional name filter, e.g. `barrel lantern wall_torch ashfell_arming_sword outrider_shortbow outrider_arrow guild_rune_focus loot_bag`). Legacy bbmodel loot bake: `python tools/bake_loot_bag_gltf.py` (prefer glTF Tier-1 bake going forward).
+Still primitive-composed (candidate to replace): `bush_wide` only. Appearance courtyard pedestal / mannequin / wall segments remain graybox until those kit meshes land. Rebake Tier 1 props with `python tools/bake_tier1_props_gltf.py` (optional name filter, e.g. `barrel lantern wall_torch ashfell_arming_sword outrider_shortbow outrider_arrow guild_rune_focus loot_bag`). Legacy bbmodel loot bake: `python tools/bake_loot_bag_gltf.py` (prefer glTF Tier-1 bake going forward).
 
 ## Suggested work order
 
@@ -101,7 +106,11 @@ Story-critical set dressing and interactables for the siege tutorial.
 | Keep door / gate | Entrance beats | A0-04 | castle wall / command |
 | Signal pyre / watchtower fire basket | Hill signal quest | SQ-02 | siege props |
 | Command table / desk | Grenge / ledger prop | A0-05, SQ-03 | command clutter |
-| Pedestal dais + class mannequin stands | Appearance preview stage | A0-02 | appearance courtyard |
+| Pedestal dais + class mannequin stands | Appearance preview stage | A0-02 | appearance courtyard (graybox until meshes) |
+| ~~Corner tower stub~~ | Courtyard corners | A0-02 | **Shipped** (`appearance_tower_{sw,se,nw,ne}` in `appearance-courtyard`); ~5.4 m |
+| ~~Weapons rack~~ | Class-select clutter | A0-02 | **Shipped** (`appearance_weapon_rack`); ~2.15 m |
+| ~~Workbench table~~ | Craft clutter | A0-02 | **Shipped** (`appearance_workbench`); ~1.05 m |
+| ~~Tessera banner pole~~ | Kingdom banner | A0-02 | **Shipped** (`appearance_banner_{ashfell,outrider,runecaster}` — one Tessera mesh); ~3.4 m; double-sided cloth |
 | Barricade / sandbags / spike fence | Road blockers | A0-04 | siege props |
 | Catapult / siege engine (simple) | Approach backdrop | A0-04 | siege props |
 | Arrow bundle / quiver prop | Clutter + combat vibe | | siege props |
@@ -204,6 +213,7 @@ Do after Tier 1–3; reserved saturated accents per [theme-palette.md](theme-pal
 
 ## Production rules
 
+- **Modular player gear test kit:** combined authoring source `tools/art/modular-iron-test/GoodPlayerModelCopy.bbmodel` (body + kit shells + shared 37-joint armature). Named bakes extract slot meshes via `keepMeshes` into `assets/models/iron_test_*.gltf`. Item ids live in `assets/items/modular_iron_test_gear.json`. Preview/equip in Animation → Armor slots. Split `iron_test_helmet.bbmodel` / `_chest` / `_legs` remain as older per-slot copies.
 - Keep pieces **modular** (wall segments, clothing kits, attachable weapons) so they fit compositional prefabs ([DEC-0008](../decisions/index.md#dec-0008-compositional-prefab-meshes-from-primitives)).
 - **Blockbench authoring:** for curved / organic / tapered weapons and props, prefer **mesh** elements over stacked cubes; grow connected shapes with **extrude** then **move vertices/faces/edges** (see `.cursor/rules/blockbench-prefer-meshes.mdc`). Cubes remain fine for boxy props and explicit graybox passes.
 - Prefer **palette / vertex color / small atlases** over photoreal textures.

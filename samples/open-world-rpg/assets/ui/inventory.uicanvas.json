@@ -39,7 +39,7 @@
         -10.0
       ],
       "size": [
-        1520.0,
+        1840.0,
         900.0
       ],
       "type": "panel"
@@ -47,98 +47,86 @@
     {
       "anchor": "center",
       "bind": "inventory.title",
-      "color": [
-        241.0,
-        238.0,
-        232.0,
-        255.0
-      ],
+      "fitText": true,
       "fontSize": 28.0,
       "id": "inventory_title",
+      "minFontSize": 18.0,
       "offset": [
-        -640.0,
-        -420.0
+        -596.0,
+        -418.0
+      ],
+      "padding": [
+        6.0,
+        2.0,
+        6.0,
+        2.0
       ],
       "size": [
-        320.0,
+        272.0,
         36.0
       ],
       "text": "Inventory",
       "textVAlign": "middle",
+      "themeRole": "title",
       "type": "text"
     },
     {
       "anchor": "center",
       "bind": "inventory.tab_bag",
-      "color": [
-        213.0,
-        185.0,
-        120.0,
-        255.0
-      ],
-      "fontSize": 15.0,
+      "fontSize": 18.0,
       "id": "inventory_tab_bag",
       "offset": [
         0.0,
         -420.0
       ],
       "size": [
-        100.0,
-        32.0
+        110.0,
+        36.0
       ],
       "text": "BAG",
       "textAlign": "center",
       "textVAlign": "middle",
+      "themeRole": "primaryButton",
       "tooltip": "Bag and equipment",
       "type": "button"
     },
     {
       "anchor": "center",
       "bind": "inventory.tab_craft",
-      "color": [
-        90.0,
-        78.0,
-        62.0,
-        255.0
-      ],
-      "fontSize": 15.0,
+      "fontSize": 18.0,
       "id": "inventory_tab_craft",
       "offset": [
-        110.0,
+        120.0,
         -420.0
       ],
       "size": [
-        100.0,
-        32.0
+        110.0,
+        36.0
       ],
       "text": "CRAFT",
       "textAlign": "center",
       "textVAlign": "middle",
+      "themeRole": "secondaryButton",
       "tooltip": "Crafting (coming later)",
       "type": "button"
     },
     {
       "anchor": "center",
       "bind": "inventory.close",
-      "color": [
-        213.0,
-        185.0,
-        120.0,
-        255.0
-      ],
-      "fontSize": 16.0,
+      "fontSize": 18.0,
       "id": "inventory_close",
       "offset": [
-        680.0,
+        840.0,
         -420.0
       ],
       "size": [
-        36.0,
-        32.0
+        40.0,
+        36.0
       ],
       "text": "X",
       "textAlign": "center",
       "textVAlign": "middle",
+      "themeRole": "primaryButton",
       "tooltip": "Close (I / Esc)",
       "type": "button"
     },
@@ -153,11 +141,11 @@
       "id": "inventory_equip_col",
       "offset": [
         -560.0,
-        -40.0
+        -6.0
       ],
       "size": [
         300.0,
-        580.0
+        648.0
       ],
       "type": "panel"
     },
@@ -190,11 +178,11 @@
       ],
       "id": "inventory_props_panel",
       "offset": [
-        540.0,
+        400.0,
         -40.0
       ],
       "size": [
-        300.0,
+        280.0,
         580.0
       ],
       "type": "panel"
@@ -659,7 +647,7 @@
       "id": "inventory_bags_label",
       "offset": [
         -560.0,
-        160.0
+        124.0
       ],
       "size": [
         240.0,
@@ -681,7 +669,7 @@
       "id": "inventory_bag_equip_0_bg",
       "offset": [
         -628.0,
-        210.0
+        162.0
       ],
       "size": [
         56.0,
@@ -696,7 +684,7 @@
       "imageMode": "contain",
       "offset": [
         -628.0,
-        210.0
+        162.0
       ],
       "size": [
         48.0,
@@ -717,7 +705,7 @@
       "id": "inventory_bag_equip_0_btn",
       "offset": [
         -628.0,
-        210.0
+        162.0
       ],
       "size": [
         56.0,
@@ -739,7 +727,7 @@
       "id": "inventory_bag_equip_1_bg",
       "offset": [
         -560.0,
-        210.0
+        162.0
       ],
       "size": [
         56.0,
@@ -754,7 +742,7 @@
       "imageMode": "contain",
       "offset": [
         -560.0,
-        210.0
+        162.0
       ],
       "size": [
         48.0,
@@ -775,7 +763,7 @@
       "id": "inventory_bag_equip_1_btn",
       "offset": [
         -560.0,
-        210.0
+        162.0
       ],
       "size": [
         56.0,
@@ -797,7 +785,7 @@
       "id": "inventory_bag_equip_2_bg",
       "offset": [
         -492.0,
-        210.0
+        162.0
       ],
       "size": [
         56.0,
@@ -812,7 +800,7 @@
       "imageMode": "contain",
       "offset": [
         -492.0,
-        210.0
+        162.0
       ],
       "size": [
         48.0,
@@ -833,7 +821,7 @@
       "id": "inventory_bag_equip_2_btn",
       "offset": [
         -492.0,
-        210.0
+        162.0
       ],
       "size": [
         56.0,
@@ -893,13 +881,7 @@
     {
       "anchor": "center",
       "bind": "inventory.sort",
-      "color": [
-        90.0,
-        78.0,
-        62.0,
-        255.0
-      ],
-      "fontSize": 13.0,
+      "fontSize": 16.0,
       "id": "inventory_sort",
       "offset": [
         130.0,
@@ -907,11 +889,12 @@
       ],
       "size": [
         120.0,
-        28.0
+        32.0
       ],
       "text": "SORT",
       "textAlign": "center",
       "textVAlign": "middle",
+      "themeRole": "secondaryButton",
       "tooltip": "Cycle sort: name / kind / newest",
       "type": "button"
     },
@@ -2569,14 +2552,16 @@
         120.0,
         255.0
       ],
+      "fitText": true,
       "fontSize": 12.0,
       "id": "inventory_props_kind",
+      "minFontSize": 10.0,
       "offset": [
-        540.0,
+        400.0,
         -290.0
       ],
       "size": [
-        260.0,
+        268.0,
         18.0
       ],
       "textAlign": "center",
@@ -2592,15 +2577,23 @@
         232.0,
         255.0
       ],
+      "fitText": true,
       "fontSize": 20.0,
       "id": "inventory_props_name",
+      "minFontSize": 14.0,
       "offset": [
-        540.0,
+        400.0,
         -258.0
       ],
+      "padding": [
+        8.0,
+        2.0,
+        8.0,
+        2.0
+      ],
       "size": [
-        260.0,
-        40.0
+        268.0,
+        44.0
       ],
       "text": "—",
       "textAlign": "center",
@@ -2617,7 +2610,7 @@
       ],
       "id": "inventory_props_icon_bg",
       "offset": [
-        540.0,
+        400.0,
         -170.0
       ],
       "size": [
@@ -2632,7 +2625,7 @@
       "imageBind": "inventory.props.icon",
       "imageMode": "contain",
       "offset": [
-        540.0,
+        400.0,
         -170.0
       ],
       "size": [
@@ -2650,66 +2643,63 @@
         232.0,
         255.0
       ],
+      "fitText": true,
       "fontSize": 14.0,
       "id": "inventory_props_desc",
+      "minFontSize": 11.0,
       "offset": [
-        540.0,
-        -30.0
+        400.0,
+        -8.0
+      ],
+      "padding": [
+        12.0,
+        6.0,
+        12.0,
+        6.0
       ],
       "size": [
-        260.0,
-        140.0
+        268.0,
+        176.0
       ],
-      "textAlign": "center",
       "type": "text"
     },
     {
       "anchor": "center",
       "bind": "inventory.equip",
-      "color": [
-        213.0,
-        185.0,
-        120.0,
-        255.0
-      ],
-      "fontSize": 16.0,
+      "fontSize": 18.0,
       "id": "inventory_equip_btn",
       "offset": [
-        540.0,
+        400.0,
         150.0
       ],
       "size": [
         240.0,
-        40.0
+        44.0
       ],
       "text": "EQUIP",
       "textAlign": "center",
       "textVAlign": "middle",
+      "themeRole": "primaryButton",
       "tooltip": "Equip selected item",
       "type": "button"
     },
     {
       "anchor": "center",
       "bind": "inventory.unequip",
-      "color": [
-        90.0,
-        78.0,
-        62.0,
-        255.0
-      ],
-      "fontSize": 15.0,
+      "fontSize": 16.0,
       "id": "inventory_unequip_btn",
       "offset": [
-        540.0,
+        400.0,
         202.0
       ],
       "size": [
         240.0,
-        36.0
+        40.0
       ],
       "text": "UNEQUIP",
       "textAlign": "center",
       "textVAlign": "middle",
+      "themeRole": "secondaryButton",
       "tooltip": "Unequip selected item",
       "type": "button"
     },
@@ -2727,7 +2717,7 @@
         380.0
       ],
       "size": [
-        1440.0,
+        1760.0,
         100.0
       ],
       "type": "panel"
@@ -3416,6 +3406,1213 @@
         14.0
       ],
       "text": "8",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.ammoLabel",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 13.0,
+      "id": "inventory_ammo_label",
+      "offset": [
+        -560.0,
+        206.0
+      ],
+      "size": [
+        240.0,
+        20.0
+      ],
+      "text": "Ammo",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_ammo_0_bg",
+      "offset": [
+        -628.0,
+        248.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_ammo_0_icon",
+      "imageBind": "inventory.ammo.0.icon",
+      "imageMode": "contain",
+      "offset": [
+        -628.0,
+        248.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.ammo.0.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_ammo_0_count",
+      "offset": [
+        -622.0,
+        264.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_ammo_1_bg",
+      "offset": [
+        -560.0,
+        248.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_ammo_1_icon",
+      "imageBind": "inventory.ammo.1.icon",
+      "imageMode": "contain",
+      "offset": [
+        -560.0,
+        248.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.ammo.1.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_ammo_1_count",
+      "offset": [
+        -554.0,
+        264.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_ammo_2_bg",
+      "offset": [
+        -492.0,
+        248.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_ammo_2_icon",
+      "imageBind": "inventory.ammo.2.icon",
+      "imageMode": "contain",
+      "offset": [
+        -492.0,
+        248.0
+      ],
+      "size": [
+        48.0,
+        48.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.ammo.2.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_ammo_2_count",
+      "offset": [
+        -486.0,
+        264.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.ammo.0",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_ammo_0_btn",
+      "offset": [
+        -628.0,
+        248.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.ammo.1",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_ammo_1_btn",
+      "offset": [
+        -560.0,
+        248.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.ammo.2",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_ammo_2_btn",
+      "offset": [
+        -492.0,
+        248.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.crateLabel",
+      "fontSize": 16.0,
+      "id": "inventory_crate_label",
+      "offset": [
+        400.0,
+        -290.0
+      ],
+      "size": [
+        240.0,
+        24.0
+      ],
+      "text": "Crate",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "themeRole": "goldLabel",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_crate_0_bg",
+      "offset": [
+        348.0,
+        -200.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_crate_0_icon",
+      "imageBind": "inventory.container.0.icon",
+      "imageMode": "contain",
+      "offset": [
+        348.0,
+        -200.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.container.0",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_crate_0_btn",
+      "offset": [
+        348.0,
+        -200.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.container.0.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_crate_0_count",
+      "offset": [
+        356.0,
+        -182.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_crate_1_bg",
+      "offset": [
+        452.0,
+        -200.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_crate_1_icon",
+      "imageBind": "inventory.container.1.icon",
+      "imageMode": "contain",
+      "offset": [
+        452.0,
+        -200.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.container.1",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_crate_1_btn",
+      "offset": [
+        452.0,
+        -200.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.container.1.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_crate_1_count",
+      "offset": [
+        460.0,
+        -182.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_crate_2_bg",
+      "offset": [
+        348.0,
+        -124.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_crate_2_icon",
+      "imageBind": "inventory.container.2.icon",
+      "imageMode": "contain",
+      "offset": [
+        348.0,
+        -124.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.container.2",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_crate_2_btn",
+      "offset": [
+        348.0,
+        -124.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.container.2.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_crate_2_count",
+      "offset": [
+        356.0,
+        -106.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_crate_3_bg",
+      "offset": [
+        452.0,
+        -124.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_crate_3_icon",
+      "imageBind": "inventory.container.3.icon",
+      "imageMode": "contain",
+      "offset": [
+        452.0,
+        -124.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.container.3",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_crate_3_btn",
+      "offset": [
+        452.0,
+        -124.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.container.3.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_crate_3_count",
+      "offset": [
+        460.0,
+        -106.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_crate_4_bg",
+      "offset": [
+        348.0,
+        -48.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_crate_4_icon",
+      "imageBind": "inventory.container.4.icon",
+      "imageMode": "contain",
+      "offset": [
+        348.0,
+        -48.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.container.4",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_crate_4_btn",
+      "offset": [
+        348.0,
+        -48.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.container.4.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_crate_4_count",
+      "offset": [
+        356.0,
+        -30.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_crate_5_bg",
+      "offset": [
+        452.0,
+        -48.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_crate_5_icon",
+      "imageBind": "inventory.container.5.icon",
+      "imageMode": "contain",
+      "offset": [
+        452.0,
+        -48.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.container.5",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_crate_5_btn",
+      "offset": [
+        452.0,
+        -48.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.container.5.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_crate_5_count",
+      "offset": [
+        460.0,
+        -30.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_crate_6_bg",
+      "offset": [
+        348.0,
+        28.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_crate_6_icon",
+      "imageBind": "inventory.container.6.icon",
+      "imageMode": "contain",
+      "offset": [
+        348.0,
+        28.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.container.6",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_crate_6_btn",
+      "offset": [
+        348.0,
+        28.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.container.6.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_crate_6_count",
+      "offset": [
+        356.0,
+        46.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        58.0,
+        52.0,
+        44.0,
+        255.0
+      ],
+      "id": "inventory_crate_7_bg",
+      "offset": [
+        452.0,
+        28.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "inventory_crate_7_icon",
+      "imageBind": "inventory.container.7.icon",
+      "imageMode": "contain",
+      "offset": [
+        452.0,
+        28.0
+      ],
+      "size": [
+        56.0,
+        56.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.select.container.7",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fontSize": 1.0,
+      "id": "inventory_crate_7_btn",
+      "offset": [
+        452.0,
+        28.0
+      ],
+      "size": [
+        64.0,
+        64.0
+      ],
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.container.7.count",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 12.0,
+      "id": "inventory_crate_7_count",
+      "offset": [
+        460.0,
+        46.0
+      ],
+      "size": [
+        40.0,
+        16.0
+      ],
+      "textAlign": "right",
+      "textVAlign": "bottom",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        32.0,
+        30.0,
+        28.0,
+        255.0
+      ],
+      "id": "inventory_stats_well",
+      "offset": [
+        540.0,
+        -236.0
+      ],
+      "size": [
+        276.0,
+        128.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.statsHealth",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fitText": true,
+      "fontSize": 13.0,
+      "id": "inventory_stats_health",
+      "minFontSize": 11.0,
+      "offset": [
+        540.0,
+        -262.0
+      ],
+      "padding": [
+        14.0,
+        0.0,
+        10.0,
+        0.0
+      ],
+      "size": [
+        248.0,
+        18.0
+      ],
+      "text": "Health     100 / 100",
+      "textVAlign": "middle",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.statsStamina",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fitText": true,
+      "fontSize": 13.0,
+      "id": "inventory_stats_stamina",
+      "minFontSize": 11.0,
+      "offset": [
+        540.0,
+        -244.0
+      ],
+      "padding": [
+        14.0,
+        0.0,
+        10.0,
+        0.0
+      ],
+      "size": [
+        248.0,
+        18.0
+      ],
+      "text": "Stamina    100 / 100",
+      "textVAlign": "middle",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.statsArmor",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fitText": true,
+      "fontSize": 13.0,
+      "id": "inventory_stats_armor",
+      "minFontSize": 11.0,
+      "offset": [
+        540.0,
+        -226.0
+      ],
+      "padding": [
+        14.0,
+        0.0,
+        10.0,
+        0.0
+      ],
+      "size": [
+        248.0,
+        18.0
+      ],
+      "text": "Armor      0",
+      "textVAlign": "middle",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.statsStrength",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fitText": true,
+      "fontSize": 13.0,
+      "id": "inventory_stats_strength",
+      "minFontSize": 11.0,
+      "offset": [
+        540.0,
+        -208.0
+      ],
+      "padding": [
+        14.0,
+        0.0,
+        10.0,
+        0.0
+      ],
+      "size": [
+        248.0,
+        18.0
+      ],
+      "text": "Strength   0",
+      "textVAlign": "middle",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.statsWeapon",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fitText": true,
+      "fontSize": 13.0,
+      "id": "inventory_stats_weapon",
+      "minFontSize": 10.0,
+      "offset": [
+        540.0,
+        -190.0
+      ],
+      "padding": [
+        14.0,
+        0.0,
+        10.0,
+        0.0
+      ],
+      "size": [
+        248.0,
+        18.0
+      ],
+      "text": "Weapon     —",
+      "textVAlign": "middle",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        255.0
+      ],
+      "id": "inventory_char_col",
+      "offset": [
+        720.0,
+        -6.0
+      ],
+      "size": [
+        300.0,
+        648.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.statsBody",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 13.0,
+      "id": "inventory_stats_body",
+      "offset": [
+        720.0,
+        16.0
+      ],
+      "padding": [
+        14.0,
+        10.0,
+        22.0,
+        10.0
+      ],
+      "size": [
+        276.0,
+        420.0
+      ],
+      "text": "CORE",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "inventory.statsLabel",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 16.0,
+      "id": "inventory_stats_label",
+      "offset": [
+        720.0,
+        -300.0
+      ],
+      "size": [
+        260.0,
+        24.0
+      ],
+      "text": "Character",
+      "textAlign": "center",
       "textVAlign": "middle",
       "type": "text"
     }

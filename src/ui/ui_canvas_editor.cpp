@@ -1,6 +1,7 @@
 #include "engine/ui/ui_canvas_editor.h"
 
 #include "engine/assets/ui_canvas_mutate.h"
+#include "engine/assets/ui_theme_asset.h"
 #include "engine/ui/hud_runtime.h"
 
 #include <imgui.h>
@@ -309,7 +310,65 @@ void draw_widget_outliner(UiCanvasEditorSession& session) {
     ImGui::EndChild();
 }
 
-void draw_inspector(UiCanvasEditorSession& session) {
+bool draw_optional_name_combo(const char* label, std::string& value, const std::vector<std::string>& names) {
+    std::vector<std::string> labels;
+    labels.reserve(names.size() + 2);
+    labels.emplace_back("(none)");
+    int index = 0;
+    bool found = value.empty();
+    for (std::size_t i = 0; i < names.size(); ++i) {
+        labels.push_back(names[i]);
+        if (names[i] == value) {
+            index = static_cast<int>(i) + 1;
+            found = true;
+        }
+    }
+    if (!found && !value.empty()) {
+        labels.push_back(value);
+        index = static_cast<int>(labels.size()) - 1;
+    }
+    std::vector<const char*> items;
+    items.reserve(labels.size());
+    for (const auto& entry : labels) items.push_back(entry.c_str());
+    if (ImGui::Combo(label, &index, items.data(), static_cast<int>(items.size()))) {
+        if (index <= 0) value.clear();
+        else value = labels[static_cast<std::size_t>(index)];
+        return true;
+    }
+    return false;
+}
+
+void draw_theme_panel(UiCanvasEditorSession& session, UiThemeAsset* theme, const std::function<void()>& on_theme_saved) {
+    if (!theme) {
+        ImGui::TextDisabled("UI theme not loaded");
+        return;
+    }
+    if (ImGui::CollapsingHeader("UI theme", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextDisabled("tokens + roles in assets/ui/ui-theme.json");
+        if (session.theme_dirty) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.35f, 1.0f), "unsaved");
+        }
+        if (ImGui::Button("Save theme")) {
+            if (on_theme_saved) on_theme_saved();
+            session.theme_dirty = false;
+        }
+        for (auto& [name, rgba] : theme->tokens) {
+            float color[4] = {rgba[0] / 255.0f, rgba[1] / 255.0f, rgba[2] / 255.0f, rgba[3] / 255.0f};
+            if (ImGui::ColorEdit4(name.c_str(), color, ImGuiColorEditFlags_AlphaBar)) {
+                rgba[0] = color[0] * 255.0f;
+                rgba[1] = color[1] * 255.0f;
+                rgba[2] = color[2] * 255.0f;
+                rgba[3] = color[3] * 255.0f;
+                session.theme_dirty = true;
+            }
+        }
+    }
+}
+
+void draw_inspector(UiCanvasEditorSession& session, UiThemeAsset* theme, const std::function<void()>& on_theme_saved) {
+    draw_theme_panel(session, theme, on_theme_saved);
+    ImGui::Separator();
     draw_widget_outliner(session);
     ImGui::Separator();
     ImGui::TextUnformatted("Inspector");
@@ -348,6 +407,29 @@ void draw_inspector(UiCanvasEditorSession& session) {
         widget->color[2] = color[2] * 255.0f;
         widget->color[3] = color[3] * 255.0f;
         session.dirty = true;
+    }
+    float text_color[4] = {
+        widget->has_text_color() ? widget->text_color[0] / 255.0f : 0.95f,
+        widget->has_text_color() ? widget->text_color[1] / 255.0f : 0.93f,
+        widget->has_text_color() ? widget->text_color[2] / 255.0f : 0.91f,
+        widget->has_text_color() ? widget->text_color[3] / 255.0f : 1.0f,
+    };
+    if (ImGui::ColorEdit4("textColor", text_color)) {
+        widget->text_color[0] = text_color[0] * 255.0f;
+        widget->text_color[1] = text_color[1] * 255.0f;
+        widget->text_color[2] = text_color[2] * 255.0f;
+        widget->text_color[3] = text_color[3] * 255.0f;
+        session.dirty = true;
+    }
+    if (theme) {
+        if (draw_optional_name_combo("themeRole", widget->theme_role, theme->role_names())) session.dirty = true;
+        if (draw_optional_name_combo("colorToken", widget->color_token, theme->token_names())) session.dirty = true;
+        if (draw_optional_name_combo("textColorToken", widget->text_color_token, theme->token_names()))
+            session.dirty = true;
+        if (ImGui::Button("Clear color (use theme)")) {
+            widget->color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+            session.dirty = true;
+        }
     }
     float opacity = widget->opacity;
     if (ImGui::SliderFloat("opacity", &opacity, 0.0f, 1.0f, "%.2f")) {
@@ -678,7 +760,8 @@ Result<void> UiCanvasEditorSession::create_new(const std::filesystem::path& proj
 }
 
 void draw_ui_canvas_viewport(UiCanvasEditorSession& session, const std::filesystem::path& project_root,
-    const std::function<void(const std::filesystem::path&)>& on_saved) {
+    const std::function<void(const std::filesystem::path&)>& on_saved, UiThemeAsset* theme,
+    const std::function<void()>& on_theme_saved) {
     if (session.path.empty() && !project_root.empty()) {
         (void)session.load(default_player_ui_canvas_path(project_root));
     }
@@ -715,6 +798,7 @@ void draw_ui_canvas_viewport(UiCanvasEditorSession& session, const std::filesyst
 
         HudRuntime preview;
         (void)preview.load_from_json(session.canvas.to_json(), "ui-canvas-preview");
+        preview.set_theme(theme);
         preview.reset_player_health(72.0, 100.0);
         // Re-apply authored text each frame so inspector edits preview immediately.
         for (const auto& widget : session.canvas.widgets) {
@@ -849,7 +933,7 @@ void draw_ui_canvas_viewport(UiCanvasEditorSession& session, const std::filesyst
 
     ImGui::SameLine();
     ImGui::BeginChild("UICanvasInspector", ImVec2(inspector_w, avail.y), true);
-    draw_inspector(session);
+    draw_inspector(session, theme, on_theme_saved);
     ImGui::EndChild();
 }
 

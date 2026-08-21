@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "kind": "animatorController",
+  "id": "target_dummy",
+  "applyRootMotion": false,
+  "parameters": [
+    { "name": "hit", "type": "trigger" }
+  ],
+  "layers": [
+    {
+      "name": "base",
+      "defaultState": "idle",
+      "blendMode": "override",
+      "states": [
+        {
+          "name": "idle",
+          "motion": {
+            "type": "clip",
+            "clipSource": "assets/models/target_dummy.gltf",
+            "clip": "Idle",
+            "loop": true,
+            "speed": 1.0
+          }
+        },
+        {
+          "name": "hitReact",
+          "motion": {
+            "type": "clip",
+            "clipSource": "assets/models/target_dummy.gltf",
+            "clip": "HitReact",
+            "loop": false,
+            "speed": 1.0
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "from": "*",
+          "to": "hitReact",
+          "duration": 0.06,
+          "hasExitTime": false,
+          "exitTime": 1.0,
+          "conditions": [{ "parameter": "hit", "op": "trigger" }]
+        },
+        {
+          "from": "hitReact",
+          "to": "idle",
+          "duration": 0.12,
+          "hasExitTime": true,
+          "exitTime": 0.9,
+          "conditions": []
+        }
+      ]
+    }
+  ]
+}

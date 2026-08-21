@@ -19,6 +19,7 @@ Dark-fantasy iron furniture over readable parchment or chrome text. Faceted ring
 | World quest marks | Floating **`?`** (available) / **`!`** (active turn-in), light bob — PNGs in [`../design/quest-assets/`](../design/quest-assets/) | Gold glyph on iron well |
 | Minimap / map pins | Kind-tinted pins + dots + offscreen chevron + player arrow ([DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux) / TICKET-0062) | Main / side / faction / archetype tints |
 | World billboards (Press E) | Small parchment chip, soft ink | Ink on parchment |
+| Combat floating damage | Bare Cinzel number above NPC name (no plate); chrome fill, dark outline | Chrome `#F1EEE8`; crit gold `#FFE08A` |
 | Cartography | Separate map language — [cartography-design.md](cartography-design.md) | Do not merge map parchment into combat HUD |
 
 ## Token table (RGBA 0–255)
@@ -85,6 +86,7 @@ Tone chips (persuade / intimidate / etc.) keep distinct hues for gameplay readab
 | Pencil mocks | `context/design/player-hud.pen`, `dialogue-ui.pen`, `quest-ui.pen`, `inventory-ui.pen`, `rpg-engine-ui.pen` |
 | Concept PNGs (HUD) | `context/design/hud-assets/` → `assets/ui/hud/` |
 | Concept PNGs (dialogue) | `context/design/dialogue-assets/` → `assets/ui/dialogue/` |
+| Runtime theme | `samples/open-world-rpg/assets/ui/ui-theme.json` |
 | Runtime draw defaults | `src/ui/hud_runtime.cpp` |
 
 ## Production status

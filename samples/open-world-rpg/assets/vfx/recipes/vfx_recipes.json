@@ -34,7 +34,17 @@
       "title": "Hit spark burst",
       "summary": "Short bright sparks for weapon hits / impacts.",
       "emitters": ["assets/vfx/hit_spark.particle.json"],
-      "notes": "Low lifetime, high spread, softLight; attach as brief rate pulse."
+      "notes": "Low lifetime, high spread, softLight; attach as brief rate pulse. Prefer sword_impact / arrow_impact / arcane_bolt_impact for play-test weapon contacts."
+    },
+    {
+      "id": "sword_impact",
+      "title": "Ashfell sword impact",
+      "summary": "Readable melee contact: additive white-amber flash + hot metal spark spray.",
+      "emitters": [
+        "assets/vfx/sword_impact_flash.particle.json",
+        "assets/vfx/sword_impact.particle.json"
+      ],
+      "notes": "Spawn via ParticleSystem::spawn_burst on hitFrame combat contacts; not a prefab attachment."
     },
     {
       "id": "dodge_dust",
@@ -60,9 +70,96 @@
     {
       "id": "arrow_impact",
       "title": "Bow arrow impact burst",
-      "summary": "Short gold/cyan sparks when a play-test arrow hits geometry, terrain, or expires.",
-      "emitters": ["assets/vfx/arrow_impact.particle.json"],
-      "notes": "Spawn via ParticleSystem::spawn_burst on impact (optional footstep_dust companion puff); not a prefab attachment."
+      "summary": "Gold flash + bright spark spray when a play-test arrow hits geometry, terrain, or a hurt volume.",
+      "emitters": [
+        "assets/vfx/arrow_impact_flash.particle.json",
+        "assets/vfx/arrow_impact.particle.json"
+      ],
+      "notes": "Spawn via ParticleSystem::spawn_burst on impact (footstep_dust companion puff on non-magic projectiles); not a prefab attachment."
+    },
+    {
+      "id": "rune_charge",
+      "title": "Runecaster cast charge",
+      "summary": "Cyan–gold sigil core + expanding rings at the focus tip, plus a ground swirl of runes under the caster's feet while charging MagicCast.",
+      "emitters": [
+        "assets/vfx/rune_charge_core.particle.json",
+        "assets/vfx/rune_charge_rings.particle.json",
+        "assets/vfx/rune_charge_embers.particle.json",
+        "assets/vfx/rune_cast_swirl.particle.json",
+        "assets/vfx/rune_cast_swirl_embers.particle.json"
+      ],
+      "notes": "Play-test bursts from castCharge until castRelease; keep burst rate low (spawn_burst allocates a full emitter pool). Atlas assets/vfx/rune_sigil_flipbook_4x4.png."
+    },
+    {
+      "id": "arcane_bolt",
+      "title": "Runecaster arcane bolt",
+      "summary": "Magenta helical bolt inspired by a hot pink-violet spiral projectile: additive core head, long violet streak wake, dark twist helix, shedding embers, bloom impact. Aims like bow.",
+      "emitters": [
+        "assets/vfx/arcane_bolt_core.particle.json",
+        "assets/vfx/arcane_bolt_trail.particle.json",
+        "assets/vfx/arcane_bolt_helix.particle.json",
+        "assets/vfx/arcane_bolt_embers.particle.json",
+        "assets/vfx/arcane_bolt_impact_flash.particle.json",
+        "assets/vfx/arcane_bolt_impact.particle.json"
+      ],
+      "notes": "Spawn on castRelease from focus tip; denser distance-throttled trail + per-frame head flash in play-test. Impact uses magenta flash + sigil spray. Ref: context/art/concepts/arcane-bolt-spiral-inspiration.png"
+    },
+    {
+      "id": "fire_bolt",
+      "title": "Runecaster fire bolt",
+      "summary": "Orange fireball: fire-flipbook core and trail, smoke helix, rising embers, bloom impact. Held tag magic_fire.",
+      "emitters": [
+        "assets/vfx/fire_bolt_core.particle.json",
+        "assets/vfx/fire_bolt_trail.particle.json",
+        "assets/vfx/fire_bolt_helix.particle.json",
+        "assets/vfx/fire_bolt_embers.particle.json",
+        "assets/vfx/fire_bolt_impact_flash.particle.json",
+        "assets/vfx/fire_bolt_impact.particle.json",
+        "assets/vfx/fire_charge_core.particle.json",
+        "assets/vfx/fire_charge_rings.particle.json",
+        "assets/vfx/fire_charge_embers.particle.json",
+        "assets/vfx/fire_cast_swirl.particle.json",
+        "assets/vfx/fire_cast_swirl_embers.particle.json"
+      ],
+      "notes": "guild_rune_focus_fire. Slightly slower arcing projectile."
+    },
+    {
+      "id": "frost_bolt",
+      "title": "Runecaster frost bolt",
+      "summary": "Ice-blue shard: rune core, cool wind trail, mist helix, falling crystals, frost impact. Held tag magic_frost.",
+      "emitters": [
+        "assets/vfx/frost_bolt_core.particle.json",
+        "assets/vfx/frost_bolt_trail.particle.json",
+        "assets/vfx/frost_bolt_helix.particle.json",
+        "assets/vfx/frost_bolt_embers.particle.json",
+        "assets/vfx/frost_bolt_impact_flash.particle.json",
+        "assets/vfx/frost_bolt_impact.particle.json",
+        "assets/vfx/frost_charge_core.particle.json",
+        "assets/vfx/frost_charge_rings.particle.json",
+        "assets/vfx/frost_charge_embers.particle.json",
+        "assets/vfx/frost_cast_swirl.particle.json",
+        "assets/vfx/frost_cast_swirl_embers.particle.json"
+      ],
+      "notes": "guild_rune_focus_frost. Floatier, slower projectile."
+    },
+    {
+      "id": "lightning_bolt",
+      "title": "Runecaster lightning bolt",
+      "summary": "White-gold crack: additive core, long jagged streaks, bright flash impact. Held tag magic_lightning.",
+      "emitters": [
+        "assets/vfx/lightning_bolt_core.particle.json",
+        "assets/vfx/lightning_bolt_trail.particle.json",
+        "assets/vfx/lightning_bolt_helix.particle.json",
+        "assets/vfx/lightning_bolt_embers.particle.json",
+        "assets/vfx/lightning_bolt_impact_flash.particle.json",
+        "assets/vfx/lightning_bolt_impact.particle.json",
+        "assets/vfx/lightning_charge_core.particle.json",
+        "assets/vfx/lightning_charge_rings.particle.json",
+        "assets/vfx/lightning_charge_embers.particle.json",
+        "assets/vfx/lightning_cast_swirl.particle.json",
+        "assets/vfx/lightning_cast_swirl_embers.particle.json"
+      ],
+      "notes": "guild_rune_focus_lightning. Faster, nearly straight projectile."
     },
     {
       "id": "corrupt_aura",

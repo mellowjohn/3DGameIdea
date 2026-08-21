@@ -177,7 +177,7 @@ int main() {
     auto negative_cell = partition.cell_for({-0.01, 0.0, -128.0});
     check(zero_cell && zero_cell.value() == CellCoord{0, 0}, "Origin maps to cell zero");
     check(negative_cell && negative_cell.value() == CellCoord{-1, -1}, "Negative cell coordinates use floor semantics");
-    check(!partition.cell_for({2000.01, 0.0, 0.0}), "Out-of-bounds world position is rejected");
+    check(!partition.cell_for({8000.01, 0.0, 0.0}), "Out-of-bounds world position is rejected");
     check(!partition.rebase_if_needed({100.0, 0.0, 100.0}), "Nearby focus does not rebase origin");
     check(partition.rebase_if_needed({600.0, 12.0, 0.0}), "Distant focus rebases origin");
     const auto local = partition.to_local({600.0, 12.0, 0.0});

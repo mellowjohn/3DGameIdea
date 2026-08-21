@@ -1,0 +1,306 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.45,
+          0.43,
+          0.4
+        ],
+        "primitive": "cube"
+      },
+      "name": "curtain_sw",
+      "parent": null,
+      "transform": {
+        "position": [
+          -40,
+          6,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          24,
+          12,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.45,
+          0.43,
+          0.4
+        ],
+        "primitive": "cube"
+      },
+      "name": "curtain_se",
+      "parent": null,
+      "transform": {
+        "position": [
+          12,
+          6,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          56,
+          12,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.42,
+          0.4,
+          0.37
+        ],
+        "primitive": "cube"
+      },
+      "name": "gate_lintel",
+      "parent": null,
+      "transform": {
+        "position": [
+          -24,
+          10.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          10,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "pier_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -29,
+          7,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4,
+          14,
+          5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "pier_r",
+      "parent": null,
+      "transform": {
+        "position": [
+          -19,
+          7,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4,
+          14,
+          5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_a",
+      "parent": null,
+      "transform": {
+        "position": [
+          -44,
+          13,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3,
+          2.5,
+          3.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_b",
+      "parent": null,
+      "transform": {
+        "position": [
+          -36,
+          13,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3,
+          2.5,
+          3.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_c",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          13,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3,
+          2.5,
+          3.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_d",
+      "parent": null,
+      "transform": {
+        "position": [
+          16,
+          13,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3,
+          2.5,
+          3.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_e",
+      "parent": null,
+      "transform": {
+        "position": [
+          32,
+          13,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3,
+          2.5,
+          3.5
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

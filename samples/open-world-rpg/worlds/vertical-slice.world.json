@@ -11890,8 +11890,8 @@
   "name": "Vertical Slice",
   "partition": {
     "worldSizeMeters": [
-      4000.0,
-      4000.0
+      16000.0,
+      16000.0
     ],
     "cellSizeMeters": 128.0
   }

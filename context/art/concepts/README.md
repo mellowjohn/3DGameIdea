@@ -167,3 +167,5 @@ Imperium palette family locks in [character-direction.md § Chaotic Imperium uni
 4. Bake kits / reimport GoodPlayerModel via **Import Model…** into `samples/open-world-rpg`.
 
 Geography locks: western peninsular Calrenoth, landlocked entrance, moat-scale drawbridge to land spur, Act 1 hub **Ledgeport**, ferry to **Porto Lucente**.
+
+**A0-03 graybox world:** [`../act0-landfall-approach-graybox.md`](../act0-landfall-approach-graybox.md) — `worlds/landfall-approach.world.json` from `act0-ld-a0-03-approach-perspective.png`.

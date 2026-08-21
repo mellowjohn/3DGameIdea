@@ -88,7 +88,7 @@ Result<CameraAsset> CameraAsset::from_json(const std::string& text) {
         value.zoom_sensitivity = root.value("zoomSensitivity", 1.5f);
         value.vertical_fov_radians = root.value("verticalFovRadians", 1.134464f);
         value.near_plane = root.value("nearPlane", 0.1f);
-        value.far_plane = root.value("farPlane", 2000.0f);
+        value.far_plane = root.value("farPlane", 8000.0f);
         if (const auto valid = value.validate(); !valid) return Result<CameraAsset>::failure(valid.error());
         return Result<CameraAsset>::success(std::move(value));
     } catch (const std::exception& exception) {

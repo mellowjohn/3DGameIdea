@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "fire_bolt_helix",
+  "texture": "assets/vfx/smoke_flipbook_4x4.png",
+  "blend": "softLight",
+  "aspectRatio": 2.1,
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [0.55, 0.18, 0.06] },
+      { "t": 0.4, "color": [0.22, 0.07, 0.03] },
+      { "t": 1.0, "color": [0.05, 0.02, 0.01] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.12 },
+      { "t": 0.25, "value": 0.22 },
+      { "t": 1.0, "value": 0.06 }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.22 },
+      { "t": 0.45, "value": 0.5 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.22, "max": 0.45 },
+  "speed": { "min": 0.3, "max": 1.2 },
+  "rate": 0,
+  "spreadAngle": [40, 80],
+  "shape": "disc",
+  "shapeStyle": "surface",
+  "shapeSize": [0.13, 0.03, 0.13],
+  "orientation": "VelocityParallel",
+  "lightEmission": 0.28,
+  "acceleration": [0.0, 0.25, 0.0],
+  "drag": 0.55,
+  "maxParticles": 16,
+  "enabled": true,
+  "emissionDirection": [0.0, 0.1, -1.0],
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "OneShot",
+  "flipbookFramerate": 16,
+  "flipbookStartRandom": true,
+  "rotation": { "keypoints": [{ "t": 0.0, "value": 0.0 }, { "t": 1.0, "value": 160.0 }] },
+  "rotationStartRandom": true
+}

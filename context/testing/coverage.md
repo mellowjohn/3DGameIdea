@@ -20,7 +20,7 @@
 | World Forge Scene markers | active (manual) | Diagnostics **Show World Forge map markers** draws poles/labels in Scene/Sculpt; focus button; no automated GUI test |
 | World partition/streaming | tested | `streaming`, `regression_all` |
 | Terrain metadata/cell persistence | tested | `terrain`, `regression_all` |
-| Low-poly terrain generation and collision | active | `terrain` validates topology, determinism, invalid inputs, seamless borders, cell addressing, material regions, neighborhood loading, 16 km² stress bounds, and streamed collision ownership; `collision` validates heightfield ray hits and cell unloading; `debug_world_smoke` validates GPU integration |
+| Low-poly terrain generation and collision | active | `terrain` validates topology, determinism, invalid inputs, seamless borders, cell addressing, material regions, neighborhood loading, **256 km²** stress bounds, and streamed collision ownership; `collision` validates heightfield ray hits and cell unloading; `debug_world_smoke` validates GPU integration |
 | Direct3D 12 walking skeleton | smoke tested on real GPU | `renderer_smoke` |
 | Jolt collision integration | active | `collision` validates shapes, bodies, ray/overlap/sweep queries, prefab triggers, streamed ownership, unloading, and step bounds |
 | Prefab collision and editor debug | active | `collision` and `world` cover authored volumes; editor steps physics for placement collision and drains trigger contact points into the collision debug overlay |
@@ -28,7 +28,8 @@
 | Character controller | active | `character` validates capsule creation, terrain landing/walking, slope limits, streamed terrain coexistence, cell ownership, and debug body metadata; `debug_world_smoke` exercises GPU integration |
 | Interaction volumes | active | `interaction` validates overlap enter/exit, prefab-authored bindings, and placement spawn integration |
 | Dialogue play pipeline + sandbox | active | `automation` covers `dialogue_call` + `talk_act0` + `flag_call` / `resolve_fork`; sandbox world + MCP Scenarios A–D in `dialogue-sandbox-mcp.md`; CLI `--world` override |
-| Combat hit/hurt volumes | active | `combat` validates hurt overlap queries, hit-body queries, prefab-authored bindings, and placement spawn integration |
+| Combat hit/hurt volumes | active | `combat` validates hurt overlap queries, hit-body queries, prefab-authored bindings, placement spawn integration, and projectile segment probes |
+| Combat sandbox pad | active | `worlds/combat-sandbox.world.json` + isolated `terrainData`; Target Dummy prefab `combatHurt: dummy_body` (`dummy_hurt.lua`); weapon crate stash (`open_weapon_crate`); launch in `combat-sandbox.md` |
 | Viewport mesh picking | active | `world` validates ray/AABB picking helpers and compositional prefab part bounds |
 | Physics visual bridge | active | `debug_world_smoke` steps Jolt and feeds live body transforms into D3D12 |
 | Free debug camera and 3D bridge | tested and visually captured | `camera` validates free and orbit cameras; `debug_world_smoke` validates depth-buffered D3D12/Jolt integration |

@@ -161,8 +161,8 @@ std::optional<WorldForgeCartographyPlate> read_cartography_plate(const nlohmann:
     WorldForgeCartographyPlate plate;
     plate.center_x = node.value("centerX", 0.0f);
     plate.center_z = node.value("centerZ", 0.0f);
-    plate.width_meters = node.value("widthMeters", 4000.0f);
-    plate.height_meters = node.value("heightMeters", 4000.0f);
+    plate.width_meters = node.value("widthMeters", 16000.0f);
+    plate.height_meters = node.value("heightMeters", 10666.667f);
     if (!cartography_plate_valid(plate)) return std::nullopt;
     return plate;
 }
@@ -249,7 +249,7 @@ void scale_map_xz_about(WorldForgeMapAsset& asset, float center_x, float center_
 
 float apply_cartography_plate_and_rescale(WorldForgeMapAsset& asset, float width_meters, float map_aspect,
     float pad) {
-    if (!(width_meters > 1e-3f) || !std::isfinite(width_meters)) width_meters = 4000.0f;
+    if (!(width_meters > 1e-3f) || !std::isfinite(width_meters)) width_meters = 16000.0f;
     if (!(map_aspect > 1e-3f) || !std::isfinite(map_aspect)) map_aspect = 16.0f / 9.0f;
     if (!(pad > 1e-3f) || !std::isfinite(pad)) pad = 1.35f;
 
@@ -378,7 +378,7 @@ Result<void> WorldForgeMapAsset::validate() const {
     if (cartography_plate && !cartography_plate_valid(*cartography_plate)) {
         return Result<void>::failure(map_error("WORLD-FORGE-MAP-PLATE", ErrorCategory::Validation,
             "cartographyPlate requires finite positive widthMeters and heightMeters",
-            "Set widthMeters/heightMeters > 0 (typically 4000 for the v1 slice)."));
+            "Set widthMeters/heightMeters > 0 (typically 16000×10667 for the continent plate)."));
     }
     std::unordered_set<std::string> region_ids;
     region_ids.reserve(regions.size());

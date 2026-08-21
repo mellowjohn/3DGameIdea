@@ -77,7 +77,7 @@ Optional `anchor: { "x", "y", "z" }` on regions/POIs when a world-space hint exi
 
 ### `cartographyPlate` (optional)
 
-Locks Cartography’s official Tessera backdrop to a fixed world-meter AABB instead of fitting around marker content. Typical v1 values match the playable **4×4 km** slice (`widthMeters: 4000`); `heightMeters` follows map aspect (often 16:9 under the framed stage).
+Locks Cartography’s official Tessera backdrop to a fixed world-meter AABB instead of fitting around marker content. Typical values match the playable continent plate (`widthMeters: 16000`, `heightMeters: ~10667` for map aspect ~1.5) inside the **16×16 km** partition ([DEC-0054](../decisions/index.md#dec-0054-continent-scale-seamless-world--stream-budget)).
 
 | Field | Type | Notes |
 | --- | --- | --- |

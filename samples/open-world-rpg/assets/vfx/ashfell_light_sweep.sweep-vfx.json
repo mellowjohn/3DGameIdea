@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "ashfell_light_sweep",
+  "texture": "assets/vfx/generated/sword_sweep_brush.png",
+  "color": [0.48, 0.18, 1.0, 1.0],
+  "coreColor": [1.0, 0.92, 0.70, 1.0],
+  "innerRadius": 0.12,
+  "outerRadius": 2.15,
+  "coreInnerRadius": 0.62,
+  "coreOuterRadius": 1.62,
+  "lightEmission": 1.0,
+  "trailSeconds": 0.20,
+  "maxSamples": 18
+}

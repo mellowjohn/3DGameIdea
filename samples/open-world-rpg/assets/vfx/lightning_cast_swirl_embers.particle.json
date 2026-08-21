@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "id": "lightning_cast_swirl_embers",
+  "texture": "assets/vfx/ember_flipbook_4x4.png",
+  "blend": "additive",
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [1.0, 1.0, 0.85] },
+      { "t": 0.5, "color": [0.55, 0.75, 1.0] },
+      { "t": 1.0, "color": [0.2, 0.32, 0.8] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.03 },
+      { "t": 0.2, "value": 0.065 },
+      { "t": 1.0, "value": 0.012 }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.05 },
+      { "t": 0.45, "value": 0.28 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.2, "max": 0.42 },
+  "speed": { "min": 0.7, "max": 2.0 },
+  "rate": 0,
+  "spreadAngle": [20, 55],
+  "shape": "disc",
+  "shapeStyle": "volume",
+  "shapeSize": [0.4, 0.05, 0.4],
+  "orientation": "FacingCamera",
+  "lightEmission": 0.85,
+  "drag": 0.25,
+  "maxParticles": 16,
+  "enabled": true,
+  "emissionDirection": [0.0, 1.0, 0.0],
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "OneShot",
+  "flipbookFramerate": 24,
+  "flipbookStartRandom": true,
+  "rotationStartRandom": true
+}

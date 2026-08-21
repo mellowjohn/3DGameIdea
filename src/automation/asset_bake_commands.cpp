@@ -186,6 +186,16 @@ std::string find_python() {
 #if defined(_WIN32)
     const auto py = run_process({}, {"py", "-3", "--version"});
     if (py.exit_code == 0) return "py";
+    // GUI/editor processes can inherit a reduced PATH that omits the Windows
+    // directory, even though the system Python launcher is installed there.
+    // Probe its absolute path before declaring the asset pipeline unavailable.
+    wchar_t windows_directory[MAX_PATH]{};
+    const UINT length = GetWindowsDirectoryW(windows_directory, MAX_PATH);
+    if (length > 0 && length < MAX_PATH) {
+        const auto launcher = std::filesystem::path(windows_directory) / "py.exe";
+        const auto absolute_py = run_process({}, {launcher.string(), "-3", "--version"});
+        if (absolute_py.exit_code == 0) return launcher.string();
+    }
 #endif
     const auto python = run_process({}, {"python", "--version"});
     if (python.exit_code == 0) return "python";
@@ -251,7 +261,7 @@ ProcessResult invoke_asset_bake(const std::filesystem::path& project_root, const
     std::vector<std::string> args;
     args.push_back(python);
 #if defined(_WIN32)
-    if (python == "py") args.push_back("-3");
+    if (python == "py" || std::filesystem::path(python).filename() == "py.exe") args.push_back("-3");
 #endif
     args.push_back(script.string());
     args.push_back("--project");

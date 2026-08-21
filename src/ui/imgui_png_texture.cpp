@@ -1,6 +1,7 @@
 #include "engine/ui/imgui_png_texture.h"
 
 #include "engine/core/error.h"
+#include "engine/ui/ui_texture_cache.h"
 
 #include <d3d12.h>
 #include <wincodec.h>
@@ -32,7 +33,8 @@ EngineError png_hr_error(std::string code, std::string message, HRESULT hr) {
 
 Result<std::uint64_t> load_png_imgui_srv(ID3D12Device* device, ID3D12CommandQueue* queue,
     ID3D12DescriptorHeap* srv_heap, unsigned srv_stride, unsigned srv_index, const std::filesystem::path& path,
-    ID3D12Resource** out_resource, const std::function<void()>& wait_for_gpu) {
+    ID3D12Resource** out_resource, const std::function<void()>& wait_for_gpu, unsigned desired_width,
+    unsigned desired_height, PngSourceSize* out_source) {
     if (!device || !queue || !srv_heap || !out_resource || !wait_for_gpu)
         return Result<std::uint64_t>::failure(png_error("PNG-ARGS", "Missing D3D12 arguments for PNG upload"));
     if (!std::filesystem::exists(path))
@@ -74,12 +76,30 @@ Result<std::uint64_t> load_png_imgui_srv(ID3D12Device* device, ID3D12CommandQueu
     if (FAILED(hr) || width == 0 || height == 0)
         return Result<std::uint64_t>::failure(png_hr_error("PNG-SIZE", "Invalid PNG dimensions", hr));
 
-    const UINT stride = width * 4;
+    UINT stride = width * 4;
     const UINT image_size = stride * height;
     std::vector<std::uint8_t> pixels(image_size);
     hr = converter->CopyPixels(nullptr, stride, image_size, pixels.data());
     if (FAILED(hr))
         return Result<std::uint64_t>::failure(png_hr_error("PNG-PIXELS", "Could not copy PNG pixels", hr));
+
+    if (out_source) {
+        out_source->width = width;
+        out_source->height = height;
+    }
+
+    unsigned prefilter_w = width;
+    unsigned prefilter_h = height;
+    ui_texture_prefilter_size(width, height, desired_width, desired_height, prefilter_w, prefilter_h);
+    if (prefilter_w != width || prefilter_h != height) {
+        auto filtered = resample_rgba_area(pixels.data(), width, height, prefilter_w, prefilter_h);
+        if (filtered.pixels.empty())
+            return Result<std::uint64_t>::failure(png_error("PNG-PREFILTER", "Could not pre-filter UI PNG"));
+        pixels = std::move(filtered.pixels);
+        width = filtered.width;
+        height = filtered.height;
+        stride = width * 4;
+    }
 
     D3D12_RESOURCE_DESC tex_desc{};
     tex_desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;

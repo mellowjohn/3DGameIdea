@@ -85,6 +85,9 @@ def bake_bbmodel(
     atlas_uri: str = "tree.png",
     target_height: float = DEFAULT_HEIGHT,
     mesh_name: str = "Tree",
+    mat_name: str = "TreeAtlas",
+    double_sided: bool = False,
+    generator: str | None = None,
 ) -> None:
     model = json.loads(src.read_text(encoding="utf-8"))
     res = model.get("resolution") or {"width": 16, "height": 16}
@@ -137,6 +140,8 @@ def bake_bbmodel(
                     colors.append(sample_uv(tex, u, v))
                     tri.append(len(positions) - 1)
                 indices.extend(tri)
+                if double_sided:
+                    indices.extend((tri[0], tri[2], tri[1]))
 
     if not positions:
         raise RuntimeError(f"no mesh geometry exported from {src.name}")
@@ -181,7 +186,7 @@ def bake_bbmodel(
     out = {
         "asset": {
             "version": "2.0",
-            "generator": f"AI RPG Engine tree bake from {src.name}",
+            "generator": generator or f"AI RPG Engine tree bake from {src.name}",
         },
         "scenes": [{"nodes": [0], "name": mesh_name}],
         "scene": 0,
@@ -201,7 +206,7 @@ def bake_bbmodel(
         ],
         "materials": [
             {
-                "name": "TreeAtlas",
+                "name": mat_name,
                 "pbrMetallicRoughness": {
                     "baseColorTexture": {"index": 0},
                     "metallicFactor": 0.0,
@@ -209,8 +214,8 @@ def bake_bbmodel(
                 },
             }
         ],
-        "textures": [{"name": "TreeAtlas", "source": 0, "sampler": 0}],
-        "images": [{"name": "TreeAtlas", "uri": atlas_uri}],
+        "textures": [{"name": mat_name, "source": 0, "sampler": 0}],
+        "images": [{"name": mat_name, "uri": atlas_uri}],
         "samplers": [{"magFilter": 9728, "minFilter": 9728, "wrapS": 33071, "wrapT": 33071}],
         "accessors": [
             {
@@ -270,6 +275,8 @@ def main() -> None:
     parser.add_argument("--atlas-uri", default="tree.png")
     parser.add_argument("--height", type=float, default=DEFAULT_HEIGHT)
     parser.add_argument("--name", default="Tree")
+    parser.add_argument("--mat-name", default="TreeAtlas")
+    parser.add_argument("--double-sided", action="store_true")
     parser.add_argument("--no-write-atlas", action="store_true")
     args = parser.parse_args()
     bake_bbmodel(
@@ -280,6 +287,8 @@ def main() -> None:
         atlas_uri=args.atlas_uri,
         target_height=args.height,
         mesh_name=args.name,
+        mat_name=args.mat_name,
+        double_sided=args.double_sided,
     )
 
 

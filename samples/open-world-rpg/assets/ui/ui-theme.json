@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "open_world_rpg_ui",
+  "tokens": {
+    "ironDeep": [30, 28, 24, 255],
+    "ironPanel": [45, 41, 35, 255],
+    "ironCharcoal": [42, 40, 38, 255],
+    "bronzeMid": [58, 52, 44, 255],
+    "bronzeFace": [92, 78, 58, 255],
+    "parchment": [201, 184, 150, 255],
+    "parchmentChoice": [232, 220, 198, 255],
+    "goldAccent": [213, 185, 120, 255],
+    "goldStamina": [196, 162, 74, 255],
+    "chromeText": [241, 238, 232, 255],
+    "mutedSteel": [155, 163, 167, 255],
+    "ink": [72, 62, 48, 255],
+    "inkMuted": [96, 84, 68, 255],
+    "dimScrim": [21, 23, 25, 180],
+    "healthCrimson": [139, 46, 46, 255],
+    "magicBlue": [70, 90, 160, 255]
+  },
+  "roles": {
+    "primaryButton": { "fill": "goldAccent", "text": "ink", "border": "goldAccent" },
+    "secondaryButton": { "fill": "bronzeMid", "text": "chromeText" },
+    "panel": { "fill": "ironPanel", "text": "chromeText" },
+    "panelDeep": { "fill": "ironDeep", "text": "chromeText" },
+    "title": { "text": "chromeText" },
+    "label": { "text": "chromeText" },
+    "muted": { "text": "mutedSteel" },
+    "goldLabel": { "text": "goldAccent" },
+    "dim": { "fill": "dimScrim" }
+  }
+}

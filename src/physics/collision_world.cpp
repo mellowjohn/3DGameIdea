@@ -430,6 +430,19 @@ Result<void> CollisionWorld::set_transform(CollisionBody body, WorldPosition pos
         Quat(rotation[0], rotation[1], rotation[2], rotation[3]), EActivation::Activate);
     return Result<void>::success();
 }
+Result<void> CollisionWorld::set_material(CollisionBody body,
+    const PhysicalMaterialProperties& material) {
+    if (!body.valid() || !impl_->bodies.count(body.value))
+        return Result<void>::failure(error("COLLISION-BODY-NOT-FOUND", "Body does not exist"));
+    if (!std::isfinite(material.friction) || material.friction < 0 || material.friction > 2 ||
+        !std::isfinite(material.restitution) || material.restitution < 0 || material.restitution > 1)
+        return Result<void>::failure(error("COLLISION-MATERIAL-INVALID", "Friction or restitution is outside its supported range"));
+    auto& bi = impl_->physics.GetBodyInterface();
+    const BodyID id(body.value);
+    bi.SetFriction(id, material.friction);
+    bi.SetRestitution(id, material.restitution);
+    return Result<void>::success();
+}
 void CollisionWorld::unload_cell(CellCoord cell) {
     auto found = impl_->cells.find(cell);
     if (found == impl_->cells.end()) return;
@@ -455,16 +468,24 @@ Result<void> CollisionWorld::step(float seconds) {
         return Result<void>::failure(error("PHYSICS-UPDATE-FAILED", "Jolt reported an update error"));
     return Result<void>::success();
 }
-Result<std::optional<RayHit>> CollisionWorld::ray_cast(WorldPosition o, LocalPosition d) const {
+Result<std::optional<RayHit>> CollisionWorld::ray_cast(WorldPosition o, LocalPosition d,
+    const CollisionQueryFilter& filter) const {
     const float length = std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
     if (!(length > 0)) return Result<std::optional<RayHit>>::failure(error("COLLISION-RAY-INVALID", "Ray direction must be non-zero"));
     RRayCast ray(RVec3(static_cast<Real>(o.x), static_cast<Real>(o.y), static_cast<Real>(o.z)), Vec3(d.x, d.y, d.z));
     RayCastResult hit;
-    if (!impl_->physics.GetNarrowPhaseQuery().CastRay(ray, hit))
+    QueryObjectLayerFilter layer_filter(filter.layer);
+    if (!impl_->physics.GetNarrowPhaseQuery().CastRay(ray, hit, {}, layer_filter))
+        return Result<std::optional<RayHit>>::success(std::nullopt);
+    const auto token = hit.mBodyID.GetIndexAndSequenceNumber();
+    if (!impl_->bodies.count(token)) return Result<std::optional<RayHit>>::success(std::nullopt);
+    const auto* info = impl_->info_for(token);
+    const CollisionLayer hit_layer = info ? info->layer : CollisionLayer::StaticWorld;
+    if (filter.layer && hit_layer != *filter.layer)
         return Result<std::optional<RayHit>>::success(std::nullopt);
     auto point = ray.GetPointOnRay(hit.mFraction);
     return Result<std::optional<RayHit>>::success(
-        RayHit{{hit.mBodyID.GetIndexAndSequenceNumber()}, hit.mFraction, {point.GetX(), point.GetY(), point.GetZ()}});
+        RayHit{{token}, hit.mFraction, {point.GetX(), point.GetY(), point.GetZ()}});
 }
 Result<std::vector<OverlapHit>> CollisionWorld::overlap_sphere(WorldPosition center, float radius,
     const CollisionQueryFilter& filter) const {

@@ -5,7 +5,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
+#include <limits>
+#include <queue>
 #include <set>
+#include <unordered_map>
 
 namespace engine {
 namespace {
@@ -231,6 +235,25 @@ bool StreamedNavigationField::is_walkable_at(float world_x, float world_z) const
     return grid.is_walkable(x, z);
 }
 
+std::optional<float> StreamedNavigationField::height_at(float world_x, float world_z) const {
+    WorldPartition partition;
+    const auto cell = partition.cell_for({world_x, 0.0, world_z});
+    if (!cell) return std::nullopt;
+    const auto found = grids_.find(cell.value());
+    if (found == grids_.end()) return std::nullopt;
+    const auto& grid = found->second;
+    float gx = world_x - static_cast<float>(grid.partition_cell.x) * grid.cell_size;
+    float gz = world_z - static_cast<float>(grid.partition_cell.z) * grid.cell_size;
+    std::uint32_t x = 0;
+    std::uint32_t z = 0;
+    if (!grid_to_sample(grid, gx, gz, x, z)) {
+        const float step = grid.cell_size / static_cast<float>(grid.resolution - 1);
+        x = static_cast<std::uint32_t>(std::clamp(gx / step, 0.0f, static_cast<float>(grid.resolution - 1)));
+        z = static_cast<std::uint32_t>(std::clamp(gz / step, 0.0f, static_cast<float>(grid.resolution - 1)));
+    }
+    return grid.height_at_sample(x, z);
+}
+
 std::optional<WorldPosition> StreamedNavigationField::nearest_walkable_point(WorldPosition query,
     float max_search) const {
     if (!(max_search > 0.0f)) return std::nullopt;
@@ -272,6 +295,205 @@ Result<bool> StreamedNavigationField::line_of_walk(WorldPosition from, WorldPosi
     (void)from_cell;
     (void)to_cell;
     return Result<bool>::success(true);
+}
+
+Result<void> StreamedNavigationField::ensure_loaded_for_query(WorldPosition from, WorldPosition to,
+    float margin_meters) {
+    const float min_x = static_cast<float>(std::min(from.x, to.x)) - std::max(0.0f, margin_meters);
+    const float max_x = static_cast<float>(std::max(from.x, to.x)) + std::max(0.0f, margin_meters);
+    const float min_z = static_cast<float>(std::min(from.z, to.z)) - std::max(0.0f, margin_meters);
+    const float max_z = static_cast<float>(std::max(from.z, to.z)) + std::max(0.0f, margin_meters);
+    const float mid_x = 0.5f * (min_x + max_x);
+    const float mid_z = 0.5f * (min_z + max_z);
+    const float half = 0.5f * std::max(max_x - min_x, max_z - min_z);
+    const std::uint32_t radius =
+        static_cast<std::uint32_t>(std::clamp(static_cast<int>(std::ceil(half / k_cell_size)) + 1, 1, 8));
+    return update({mid_x, 0.0f, mid_z}, radius);
+}
+
+namespace {
+
+struct NavSampleKey {
+    int x = 0;
+    int z = 0;
+    bool operator==(const NavSampleKey& other) const noexcept { return x == other.x && z == other.z; }
+};
+
+struct NavSampleKeyHash {
+    std::size_t operator()(const NavSampleKey& key) const noexcept {
+        return (static_cast<std::size_t>(static_cast<std::uint32_t>(key.x)) << 32) ^
+               static_cast<std::uint32_t>(key.z);
+    }
+};
+
+NavSampleKey world_to_sample_key(float world_x, float world_z) {
+    return {static_cast<int>(std::lround(world_x / StreamedNavigationField::k_sample_step)),
+            static_cast<int>(std::lround(world_z / StreamedNavigationField::k_sample_step))};
+}
+
+WorldPosition sample_key_to_world(const NavSampleKey& key, float height) {
+    return {static_cast<double>(key.x) * StreamedNavigationField::k_sample_step, static_cast<double>(height),
+            static_cast<double>(key.z) * StreamedNavigationField::k_sample_step};
+}
+
+} // namespace
+
+Result<NavigationPath> StreamedNavigationField::find_path(WorldPosition from, WorldPosition to, float snap_radius,
+    bool simplify) const {
+    WorldPartition partition;
+    if (!partition.cell_for(from) || !partition.cell_for(to))
+        return Result<NavigationPath>::failure(
+            navigation_error("NAV-QUERY-OUTSIDE", "Path query is outside world bounds"));
+
+    const auto start_opt = nearest_walkable_point(from, snap_radius);
+    const auto goal_opt = nearest_walkable_point(to, snap_radius);
+    if (!start_opt || !goal_opt) {
+        NavigationPath empty;
+        empty.found = false;
+        return Result<NavigationPath>::success(std::move(empty));
+    }
+
+    const NavSampleKey start = world_to_sample_key(static_cast<float>(start_opt->x), static_cast<float>(start_opt->z));
+    const NavSampleKey goal = world_to_sample_key(static_cast<float>(goal_opt->x), static_cast<float>(goal_opt->z));
+    if (!is_walkable_at(static_cast<float>(start_opt->x), static_cast<float>(start_opt->z)) ||
+        !is_walkable_at(static_cast<float>(goal_opt->x), static_cast<float>(goal_opt->z))) {
+        NavigationPath empty;
+        empty.found = false;
+        return Result<NavigationPath>::success(std::move(empty));
+    }
+
+    if (start == goal) {
+        NavigationPath path;
+        path.found = true;
+        path.points.push_back(*start_opt);
+        if (std::hypot(goal_opt->x - start_opt->x, goal_opt->z - start_opt->z) > 1.0e-3)
+            path.points.push_back(*goal_opt);
+        return Result<NavigationPath>::success(std::move(path));
+    }
+
+    struct OpenNode {
+        float f = 0.0f;
+        float g = 0.0f;
+        NavSampleKey key{};
+        bool operator>(const OpenNode& other) const noexcept { return f > other.f; }
+    };
+
+    auto heuristic = [&](const NavSampleKey& a, const NavSampleKey& b) {
+        const float dx = static_cast<float>(a.x - b.x);
+        const float dz = static_cast<float>(a.z - b.z);
+        return std::hypot(dx, dz) * k_sample_step;
+    };
+
+    auto sample_loaded_walkable = [&](const NavSampleKey& key) -> bool {
+        const float wx = static_cast<float>(key.x) * k_sample_step;
+        const float wz = static_cast<float>(key.z) * k_sample_step;
+        const auto cell = partition.cell_for({wx, 0.0, wz});
+        if (!cell || !contains(cell.value())) return false;
+        return is_walkable_at(wx, wz);
+    };
+
+    std::priority_queue<OpenNode, std::vector<OpenNode>, std::greater<OpenNode>> open;
+    std::unordered_map<NavSampleKey, float, NavSampleKeyHash> g_score;
+    std::unordered_map<NavSampleKey, NavSampleKey, NavSampleKeyHash> came_from;
+    g_score[start] = 0.0f;
+    open.push({heuristic(start, goal), 0.0f, start});
+
+    constexpr int k_max_expansions = 20000;
+    int expansions = 0;
+    bool reached = false;
+    while (!open.empty() && expansions < k_max_expansions) {
+        const OpenNode current = open.top();
+        open.pop();
+        const auto g_it = g_score.find(current.key);
+        if (g_it == g_score.end() || current.g > g_it->second + 1.0e-3f) continue;
+        ++expansions;
+        if (current.key == goal) {
+            reached = true;
+            break;
+        }
+
+        static constexpr int k_dx[8] = {1, -1, 0, 0, 1, 1, -1, -1};
+        static constexpr int k_dz[8] = {0, 0, 1, -1, 1, -1, 1, -1};
+        for (int i = 0; i < 8; ++i) {
+            const NavSampleKey next{current.key.x + k_dx[i], current.key.z + k_dz[i]};
+            if (!sample_loaded_walkable(next)) continue;
+            if (i >= 4) {
+                const NavSampleKey orth_a{current.key.x + k_dx[i], current.key.z};
+                const NavSampleKey orth_b{current.key.x, current.key.z + k_dz[i]};
+                if (!sample_loaded_walkable(orth_a) || !sample_loaded_walkable(orth_b)) continue;
+            }
+            const float step_cost = (i < 4) ? k_sample_step : (k_sample_step * 1.41421356f);
+            const float tentative = current.g + step_cost;
+            const auto existing = g_score.find(next);
+            if (existing != g_score.end() && tentative + 1.0e-3f >= existing->second) continue;
+            g_score[next] = tentative;
+            came_from[next] = current.key;
+            open.push({tentative + heuristic(next, goal), tentative, next});
+        }
+    }
+
+    NavigationPath path;
+    if (!reached) {
+        path.found = false;
+        return Result<NavigationPath>::success(std::move(path));
+    }
+
+    std::vector<NavSampleKey> keys;
+    for (NavSampleKey at = goal;;) {
+        keys.push_back(at);
+        if (at == start) break;
+        const auto parent = came_from.find(at);
+        if (parent == came_from.end()) {
+            path.found = false;
+            return Result<NavigationPath>::success(std::move(path));
+        }
+        at = parent->second;
+    }
+    std::reverse(keys.begin(), keys.end());
+
+    auto point_for = [&](const NavSampleKey& key) {
+        const float wx = static_cast<float>(key.x) * k_sample_step;
+        const float wz = static_cast<float>(key.z) * k_sample_step;
+        const float height = height_at(wx, wz).value_or(static_cast<float>(sample_terrain_height(wx, wz)));
+        return sample_key_to_world(key, height);
+    };
+
+    std::vector<WorldPosition> raw;
+    raw.reserve(keys.size());
+    for (const auto& key : keys) raw.push_back(point_for(key));
+    if (!raw.empty()) {
+        raw.front() = *start_opt;
+        raw.back() = *goal_opt;
+    }
+
+    if (simplify && raw.size() > 2) {
+        std::vector<WorldPosition> pulled;
+        pulled.push_back(raw.front());
+        std::size_t anchor = 0;
+        while (anchor + 1 < raw.size()) {
+            std::size_t farthest = anchor + 1;
+            for (std::size_t i = raw.size() - 1; i > anchor; --i) {
+                const auto los = line_of_walk(raw[anchor], raw[i]);
+                if (los && los.value()) {
+                    farthest = i;
+                    break;
+                }
+            }
+            pulled.push_back(raw[farthest]);
+            if (farthest <= anchor) break;
+            anchor = farthest;
+        }
+        path.points = std::move(pulled);
+    } else {
+        path.points = std::move(raw);
+    }
+
+    path.found = true;
+    for (std::size_t i = 1; i < path.points.size(); ++i) {
+        path.length_xz += static_cast<float>(
+            std::hypot(path.points[i].x - path.points[i - 1].x, path.points[i].z - path.points[i - 1].z));
+    }
+    return Result<NavigationPath>::success(std::move(path));
 }
 
 } // namespace engine

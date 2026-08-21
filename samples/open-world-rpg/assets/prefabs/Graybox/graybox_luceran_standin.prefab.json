@@ -1,0 +1,156 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.12,
+          0.1,
+          0.14
+        ],
+        "primitive": "cube"
+      },
+      "name": "torso",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          1.35,
+          0.05
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.65,
+          0.85,
+          0.45
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.14,
+          0.12,
+          0.16
+        ],
+        "primitive": "cube"
+      },
+      "name": "legs",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.55,
+          0.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.6,
+          0.7,
+          0.7
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.55,
+          0.45,
+          0.4
+        ],
+        "primitive": "sphere"
+      },
+      "name": "head",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          2.05,
+          0.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.38,
+          0.42,
+          0.38
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.05,
+          0.05,
+          0.07
+        ],
+        "primitive": "cube"
+      },
+      "name": "cloak",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          1.4,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.85,
+          1.5,
+          0.18
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.35,
+          0.3,
+          0.2
+        ],
+        "primitive": "cube"
+      },
+      "name": "crown",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          2.35,
+          0.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.42,
+          0.18,
+          0.35
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

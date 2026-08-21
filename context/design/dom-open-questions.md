@@ -2,7 +2,7 @@
 
 Status: active questionnaire for Dom (world designer)  
 Audience: Dom + owner review sessions  
-Last refreshed: 2026-08-03 (LD + character concepts review; camp DEC reopen + art leftovers)
+Last refreshed: 2026-08-05 (D-P0-17…17e locked; leftovers = coords + faces + Act 1)
 
 This is the **design tab** of story questions Dom should still answer. Engine/product opens stay in [`../interviews/open-questions.md`](../interviews/open-questions.md). Full faction essays stay in [`../story/factions.md`](../story/factions.md). Finished locks: [`dom-answered-questions.md`](dom-answered-questions.md). Beat sheet / side quests: [`../story/campaign-beat-sheet.md`](../story/campaign-beat-sheet.md), [`../story/side-quest-catalog.md`](../story/side-quest-catalog.md).
 
@@ -16,7 +16,9 @@ This is the **design tab** of story questions Dom should still answer. Engine/pr
 | **P1** | Needed for Act 1 coastal politics, Ledgeport hub, dual-path intro, succession |
 | **P2** | Important lore / mid-campaign; can wait until Act 2+ authoring |
 
-**Session note (2026-07-29 evening):** Dom + owner recording *Act Zero Decisions and Faction Interactions* answered most **P0 — Act 0 Landfall** rows — see [`dom-answered-questions.md`](dom-answered-questions.md). Leftovers below: world coords (level design), lane-org **faces**, and Act 1 coastal. *Quest UI + progression* then *Archetype Quests and Power Progression* → **[DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux)** (no XP, journal tabs, track ≤3, `?`/`!`, standing on complete). Act 0 boss presence still open.
+**Session note (2026-07-29 evening):** Dom + owner recording *Act Zero Decisions and Faction Interactions* answered most **P0 — Act 0 Landfall** rows — see [`dom-answered-questions.md`](dom-answered-questions.md). Leftovers below: world coords (level design), lane-org **faces**, and Act 1 coastal. *Quest UI + progression* then *Archetype Quests and Power Progression* → **[DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux)** (no XP, journal tabs, track ≤3, `?`/`!`, standing on complete).
+
+**Session note (2026-08-05):** Owner MVP lock of Act 0 beat sheet A0-01…A0-09 — [`campaign-beat-sheet.md`](../story/campaign-beat-sheet.md); checklist `story_beat_sheet_lock_act0` → done. Also locked: **no named Act 0 chapter boss** (Luceran A0-07 theatrical; first main-story boss = Pneumyra). Dom **D-P0-17 / D-P0-17b / D-P0-17c**: opening flow; Frangitur inside Shroud as narration with syllable/intonation VO on provided lines; quest title **Landfall**; WoW-style long-take Calrenoth pan; class bubble+lore approved. **D-P0-17d:** pan shot list accepted (Art Atlas `/storyboards`); Arkand = keep Twine. **D-P0-17e:** pan camera locks (discover Arkand after control; concealed blends; road+front gate; ≥30s; Landfall title on aerial wide; backing track + ambients) — [`recording_a0_01_03_copy_lock_2026-08-05.md`](recording_a0_01_03_copy_lock_2026-08-05.md), draft §3.
 
 **Session note (2026-08-03):** *Level Design + Character Concepts* — art/camp lean locks moved to answered archive (D-P1-20/24/25, D-P2-18–21). New opens: **D-P1-23** (camp model vs DEC-0033), **D-P2-16** (Act 3 red ice vs Nefarium black), **D-P2-17** (Creotar VFX params). Work items: TICKET-0254–0256. Provenance: [`recording_ld_character_concepts_2026-08-03.md`](recording_ld_character_concepts_2026-08-03.md).
 
@@ -24,7 +26,7 @@ This is the **design tab** of story questions Dom should still answer. Engine/pr
 
 ## P0 — Act 0 Landfall leftovers
 
-Most Landfall questionnaire rows moved to the answered archive (2026-07-29). Beat sheet spine remains **draft** (Twine-backed). Fill these leftovers when ready.
+Most Landfall questionnaire rows moved to the answered archive (2026-07-29). **Act 0 beat spine A0-01…A0-09 is MVP-locked** (2026-08-05). Fill these leftovers when ready — they do **not** reopen the spine.
 
 | ID | Question | Why it matters | Current draft / constraint | Answer |
 | --- | --- | --- | --- | --- |
@@ -160,6 +162,8 @@ Work Dom + writers should queue **after** (or interleaved with) the naming quest
 
 1. **D-P2-08** — Calrenoth / Ledgeport / Porto Lucente world coords (level design pass)
 2. **D-P1-21b** / **D-P1-22** — House Ashfell + Lodge / Guild first faces (Act 1 OK)
+
+~~Act 0 beat sheet review~~ — **done** 2026-08-05. ~~Act 0 named chapter boss~~ — **none** (same lock).
 
 **Then Act 1 coastal:**
 

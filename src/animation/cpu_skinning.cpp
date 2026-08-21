@@ -47,6 +47,53 @@ std::array<float, 4> slerp_quat(std::array<float, 4> a, std::array<float, 4> b, 
     });
 }
 
+std::array<float, 3> lerp3(const std::array<float, 3>& a, const std::array<float, 3>& b, float t) {
+    return {a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t};
+}
+
+JointLocalPose lerp_pose(const JointLocalPose& a, const JointLocalPose& b, float t) {
+    t = std::clamp(t, 0.0f, 1.0f);
+    JointLocalPose out;
+    out.translation = lerp3(a.translation, b.translation, t);
+    out.scale = lerp3(a.scale, b.scale, t);
+    out.rotation = slerp_quat(a.rotation, b.rotation, t);
+    return out;
+}
+
+std::vector<std::uint8_t> expand_joint_mask(const ImportedSkin& skin, const std::vector<std::string>& joints,
+    bool include_children) {
+    const std::size_t n = skin.joint_names.size();
+    std::vector<std::uint8_t> mask(n, 0);
+    if (joints.empty()) {
+        std::fill(mask.begin(), mask.end(), std::uint8_t{1});
+        return mask;
+    }
+    for (std::size_t j = 0; j < n; ++j) {
+        for (const auto& name : joints) {
+            if (skin.joint_names[j] == name) {
+                mask[j] = 1;
+                break;
+            }
+        }
+    }
+    if (include_children) {
+        bool changed = true;
+        while (changed) {
+            changed = false;
+            for (std::size_t j = 0; j < n; ++j) {
+                if (mask[j]) continue;
+                const std::int32_t parent =
+                    j < skin.joint_rest_locals.size() ? skin.joint_rest_locals[j].parent_joint : -1;
+                if (parent >= 0 && static_cast<std::size_t>(parent) < n && mask[static_cast<std::size_t>(parent)]) {
+                    mask[j] = 1;
+                    changed = true;
+                }
+            }
+        }
+    }
+    return mask;
+}
+
 std::array<float, 16> trs_to_matrix(const JointLocalPose& pose) {
     const auto q = normalize_quat(pose.rotation);
     const float x = q[0], y = q[1], z = q[2], w = q[3];
@@ -189,63 +236,116 @@ Result<std::vector<JointLocalPose>> sample_skinned_local_poses(const ImportedSki
     }
 
     const std::size_t joint_count = skin.joint_node_indices.size();
-    std::vector<JointLocalPose> out(joint_count);
-    for (std::size_t j = 0; j < joint_count; ++j) out[j] = rest_pose_for(skin, j);
+    std::vector<JointLocalPose> rest(joint_count);
+    for (std::size_t j = 0; j < joint_count; ++j) rest[j] = rest_pose_for(skin, j);
 
     if (active.empty() || !(total_weight > 0.0f)) {
-        return Result<std::vector<JointLocalPose>>::success(std::move(out));
+        return Result<std::vector<JointLocalPose>>::success(std::move(rest));
     }
 
-    if (active.size() == 1) {
-        auto clip = find_clip(library, project_root, active[0]);
-        if (!clip) return Result<std::vector<JointLocalPose>>::failure(clip.error());
-        for (std::size_t j = 0; j < joint_count; ++j) {
-            auto sampled = sample_clip_pose_for_joint(*clip.value(), active[0].time_seconds,
-                skin.joint_names[j], out[j], apply_sagittal_handedness);
-            if (!sampled) return Result<std::vector<JointLocalPose>>::failure(sampled.error());
-            out[j] = sampled.value();
+    auto blend_group = [&](const std::vector<AnimatorClipWeight>& group) -> Result<std::vector<JointLocalPose>> {
+        std::vector<JointLocalPose> blended = rest;
+        float group_weight = 0.0f;
+        for (const auto& clip : group) group_weight += clip.weight;
+        if (group.empty() || !(group_weight > 0.0f))
+            return Result<std::vector<JointLocalPose>>::success(std::move(blended));
+
+        if (group.size() == 1) {
+            auto clip = find_clip(library, project_root, group[0]);
+            if (!clip) return Result<std::vector<JointLocalPose>>::failure(clip.error());
+            for (std::size_t j = 0; j < joint_count; ++j) {
+                auto sampled = sample_clip_pose_for_joint(*clip.value(), group[0].time_seconds,
+                    skin.joint_names[j], rest[j], apply_sagittal_handedness);
+                if (!sampled) return Result<std::vector<JointLocalPose>>::failure(sampled.error());
+                blended[j] = sampled.value();
+            }
+            return Result<std::vector<JointLocalPose>>::success(std::move(blended));
         }
-        return Result<std::vector<JointLocalPose>>::success(std::move(out));
-    }
 
-    std::vector<std::vector<JointLocalPose>> per_clip(active.size());
-    for (std::size_t i = 0; i < active.size(); ++i) {
-        auto clip = find_clip(library, project_root, active[i]);
-        if (!clip) return Result<std::vector<JointLocalPose>>::failure(clip.error());
-        per_clip[i].resize(joint_count);
-        for (std::size_t j = 0; j < joint_count; ++j) {
-            auto sampled = sample_clip_pose_for_joint(*clip.value(), active[i].time_seconds,
-                skin.joint_names[j], rest_pose_for(skin, j), apply_sagittal_handedness);
-            if (!sampled) return Result<std::vector<JointLocalPose>>::failure(sampled.error());
-            per_clip[i][j] = sampled.value();
-        }
-    }
-
-    for (std::size_t j = 0; j < joint_count; ++j) {
-        JointLocalPose blended{};
-        blended.translation = {0, 0, 0};
-        blended.scale = {0, 0, 0};
-        blended.rotation = per_clip[0][j].rotation;
-        float rot_weight = 0.0f;
-        for (std::size_t i = 0; i < active.size(); ++i) {
-            const float w = active[i].weight / total_weight;
-            const auto& pose = per_clip[i][j];
-            blended.translation[0] += pose.translation[0] * w;
-            blended.translation[1] += pose.translation[1] * w;
-            blended.translation[2] += pose.translation[2] * w;
-            blended.scale[0] += pose.scale[0] * w;
-            blended.scale[1] += pose.scale[1] * w;
-            blended.scale[2] += pose.scale[2] * w;
-            if (i == 0) {
-                blended.rotation = pose.rotation;
-                rot_weight = w;
-            } else {
-                const float t = (rot_weight + w) > 0.0f ? (w / (rot_weight + w)) : 0.0f;
-                blended.rotation = slerp_quat(blended.rotation, pose.rotation, t);
-                rot_weight += w;
+        std::vector<std::vector<JointLocalPose>> per_clip(group.size());
+        for (std::size_t i = 0; i < group.size(); ++i) {
+            auto clip = find_clip(library, project_root, group[i]);
+            if (!clip) return Result<std::vector<JointLocalPose>>::failure(clip.error());
+            per_clip[i].resize(joint_count);
+            for (std::size_t j = 0; j < joint_count; ++j) {
+                auto sampled = sample_clip_pose_for_joint(*clip.value(), group[i].time_seconds, skin.joint_names[j],
+                    rest[j], apply_sagittal_handedness);
+                if (!sampled) return Result<std::vector<JointLocalPose>>::failure(sampled.error());
+                per_clip[i][j] = sampled.value();
             }
         }
-        out[j] = blended;
+
+        for (std::size_t j = 0; j < joint_count; ++j) {
+            JointLocalPose pose{};
+            pose.translation = {0, 0, 0};
+            pose.scale = {0, 0, 0};
+            pose.rotation = per_clip[0][j].rotation;
+            float rot_weight = 0.0f;
+            for (std::size_t i = 0; i < group.size(); ++i) {
+                const float w = group[i].weight / group_weight;
+                const auto& src = per_clip[i][j];
+                pose.translation[0] += src.translation[0] * w;
+                pose.translation[1] += src.translation[1] * w;
+                pose.translation[2] += src.translation[2] * w;
+                pose.scale[0] += src.scale[0] * w;
+                pose.scale[1] += src.scale[1] * w;
+                pose.scale[2] += src.scale[2] * w;
+                if (i == 0) {
+                    pose.rotation = src.rotation;
+                    rot_weight = w;
+                } else {
+                    const float t = (rot_weight + w) > 0.0f ? (w / (rot_weight + w)) : 0.0f;
+                    pose.rotation = slerp_quat(pose.rotation, src.rotation, t);
+                    rot_weight += w;
+                }
+            }
+            blended[j] = pose;
+        }
+        return Result<std::vector<JointLocalPose>>::success(std::move(blended));
+    };
+
+    bool layered = false;
+    for (const auto& clip : active) {
+        if (!clip.mask_joints.empty()) layered = true;
+        if (clip.layer != active.front().layer) layered = true;
+    }
+    if (!layered) return blend_group(active);
+
+    struct LayerGroup {
+        std::string name;
+        std::vector<AnimatorClipWeight> clips;
+        std::vector<std::string> mask_joints;
+        bool mask_include_children = true;
+    };
+    std::vector<LayerGroup> groups;
+    for (const auto& clip : active) {
+        if (groups.empty() || groups.back().name != clip.layer) {
+            LayerGroup group;
+            group.name = clip.layer;
+            group.mask_joints = clip.mask_joints;
+            group.mask_include_children = clip.mask_include_children;
+            groups.push_back(std::move(group));
+        }
+        groups.back().clips.push_back(clip);
+        if (!clip.mask_joints.empty()) {
+            groups.back().mask_joints = clip.mask_joints;
+            groups.back().mask_include_children = clip.mask_include_children;
+        }
+    }
+
+    auto composed = blend_group(groups.front().clips);
+    if (!composed) return composed;
+    auto out = std::move(composed.value());
+    for (std::size_t g = 1; g < groups.size(); ++g) {
+        auto overlay = blend_group(groups[g].clips);
+        if (!overlay) return overlay;
+        float mix = 0.0f;
+        for (const auto& clip : groups[g].clips) mix += clip.weight;
+        mix = std::clamp(mix, 0.0f, 1.0f);
+        const auto mask = expand_joint_mask(skin, groups[g].mask_joints, groups[g].mask_include_children);
+        for (std::size_t j = 0; j < joint_count; ++j) {
+            if (j < mask.size() && mask[j]) out[j] = lerp_pose(out[j], overlay.value()[j], mix);
+        }
     }
     return Result<std::vector<JointLocalPose>>::success(std::move(out));
 }
@@ -306,6 +406,19 @@ std::optional<std::size_t> find_skin_joint_index(const ImportedSkin& skin, const
         if (skin.joint_names[i] == joint_name) return i;
     }
     return std::nullopt;
+}
+
+std::vector<JointLocalPose> remap_joint_local_poses_by_name(
+    const ImportedSkin& dst, const ImportedSkin& src,
+    const std::vector<JointLocalPose>& src_locals) {
+    std::vector<JointLocalPose> out(dst.joint_names.size());
+    for (std::size_t j = 0; j < dst.joint_names.size(); ++j) {
+        out[j] = rest_pose_for(dst, j);
+        const auto src_index = find_skin_joint_index(src, dst.joint_names[j]);
+        if (src_index && *src_index < src_locals.size())
+            out[j] = src_locals[*src_index];
+    }
+    return out;
 }
 
 Result<void> cpu_skin_positions(const ImportedMesh& mesh, std::size_t skin_index,

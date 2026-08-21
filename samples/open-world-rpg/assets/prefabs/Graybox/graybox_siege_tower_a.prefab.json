@@ -1,0 +1,126 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.3400000035762787,
+          0.23999999463558197,
+          0.1599999964237213
+        ],
+        "primitive": "cube"
+      },
+      "name": "Frame",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          5,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          4,
+          10,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.30000001192092896,
+          0.2199999988079071,
+          0.14000000059604645
+        ],
+        "primitive": "cube"
+      },
+      "name": "Platform",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          10,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          5,
+          0.6,
+          5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2199999988079071,
+          0.18000000715255737,
+          0.14000000059604645
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "WheelL",
+      "parent": null,
+      "transform": {
+        "position": [
+          -2,
+          1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0.707,
+          0.707
+        ],
+        "scale": [
+          1.2,
+          0.3,
+          1.2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2199999988079071,
+          0.18000000715255737,
+          0.14000000059604645
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "WheelR",
+      "parent": null,
+      "transform": {
+        "position": [
+          2,
+          1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0.707,
+          0.707
+        ],
+        "scale": [
+          1.2,
+          0.3,
+          1.2
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

@@ -1,0 +1,3550 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "09f132f5-8715-4356-8b53-8b5c157967f4",
+      "name": "appearance_vista_depth_1",
+      "transform": {
+        "position": [
+          -4.5165557861328125,
+          3.171722888946533,
+          41.489376068115234
+        ],
+        "rotation": [
+          0.0,
+          0.624811053276062,
+          0.0,
+          -0.7807760238647461
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_wide.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.399999976158142,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.9500000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "0b12eb47-5c41-41ea-bd16-bfb3d722d1b3",
+      "name": "appearance_vista_depth_16",
+      "transform": {
+        "position": [
+          -4.810973167419434,
+          2.011686325073242,
+          23.44868278503418
+        ],
+        "rotation": [
+          0.0,
+          0.6077848076820374,
+          0.0,
+          0.7941017746925354
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_wide.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.399999976158142,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.9500000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "0cec6eca-b6f0-4fc1-830f-844f2d0c3440",
+      "name": "appearance_vista_oak_mid_r",
+      "transform": {
+        "position": [
+          8.0,
+          2.4171738624572754,
+          23.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/oak_young.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.100000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.399999976158142,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "0dbffba0-1480-479d-a0dc-2aa8965d4af4",
+      "name": "appearance_torch_back_l",
+      "transform": {
+        "position": [
+          -8.199999809265137,
+          2.450000047683716,
+          7.150000095367432
+        ],
+        "rotation": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "0feb49fd-f6a3-4a3e-9438-91594b8b8649",
+      "name": "appearance_vista_depth_15",
+      "transform": {
+        "position": [
+          4.026702880859375,
+          1.5220081806182861,
+          28.795551300048828
+        ],
+        "rotation": [
+          0.0,
+          0.8300901055335999,
+          0.0,
+          0.5576293468475342
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/bush.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "10beaffe-91c3-4e34-b41f-7d64c470ef90",
+      "name": "appearance_vista_depth_5",
+      "transform": {
+        "position": [
+          -12.383329391479492,
+          1.6483163833618164,
+          30.266647338867188
+        ],
+        "rotation": [
+          0.0,
+          0.5104579925537109,
+          0.0,
+          0.8599026799201965
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/bush_tall.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.699999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "121bbe95-8010-4d39-b558-4ad8b8b952d4",
+      "name": "graybox_appearance_floor",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.6200000047683716,
+          1.0,
+          1.4199999570846558
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_appearance_floor.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "12443809-f5c2-4432-a81c-2a369dbe5e4e",
+      "name": "appearance_banner_runecaster",
+      "transform": {
+        "position": [
+          -9.399999618530273,
+          0.0,
+          -2.299999952316284
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/tessera_banner_pole.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.399999976158142,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.2199999988079071,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.7000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "1c6068fc-9f9b-428d-989c-f17335d9c6a8",
+      "name": "appearance_tower_sw",
+      "transform": {
+        "position": [
+          -9.859999656677246,
+          0.0,
+          -7.590000152587891
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/corner_tower_stub.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              1.4500000476837158,
+              2.700000047683716,
+              2.0
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                2.700000047683716,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "1cb2752e-b211-49c9-bb17-78b72482b1c1",
+      "name": "appearance_torch_r3",
+      "transform": {
+        "position": [
+          9.720000267028809,
+          2.450000047683716,
+          -2.200000047683716
+        ],
+        "rotation": [
+          0.0,
+          -0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "21484001-ca3f-4366-aa9c-a24acbc9d665",
+      "name": "graybox_appearance_mannequin_outrider",
+      "transform": {
+        "position": [
+          -7.550000190734863,
+          0.0,
+          1.2999999523162842
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_appearance_mannequin_outrider.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "2817b54a-9824-4c5e-b493-6721cdc893e6",
+      "name": "appearance_vista_depth_4",
+      "transform": {
+        "position": [
+          3.551706314086914,
+          1.417621374130249,
+          35.099205017089844
+        ],
+        "rotation": [
+          0.0,
+          0.42594870924949646,
+          0.0,
+          -0.9047473073005676
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_young.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.100000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.399999976158142,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "29516e5f-af8d-4f18-af79-a8bc0cf21c95",
+      "name": "appearance_vista_depth_9",
+      "transform": {
+        "position": [
+          -17.25895881652832,
+          0.4304858446121216,
+          17.8051700592041
+        ],
+        "rotation": [
+          0.0,
+          0.3020534813404083,
+          0.0,
+          0.9532909989356995
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_young.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.100000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.399999976158142,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "2c7fa366-4d42-44b4-8573-be87dd2688e1",
+      "name": "appearance_rear_lip",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          8.550000190734863
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.7599999904632568,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Graybox/appearance_rear_lip.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "2eaa9dae-aef2-4912-931c-d3c309328cc8",
+      "name": "appearance_vista_supply_barrel",
+      "transform": {
+        "position": [
+          10.0,
+          0.8509790897369385,
+          15.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/barrel.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.05000000074505806,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.44999998807907104,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "30ca076c-4f43-4993-ba5a-43a4dd2b8d54",
+      "name": "appearance_workbench",
+      "transform": {
+        "position": [
+          9.0,
+          0.0,
+          4.550000190734863
+        ],
+        "rotation": [
+          0.0,
+          -0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/workbench_table.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              1.149999976158142,
+              0.5249999761581421,
+              0.8500000238418579
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5249999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "32fde8f5-e29f-4f83-937d-e99ea82c6491",
+      "name": "graybox_appearance_wall_r",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          -0.8999999761581421
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.7000000476837158,
+          1.0,
+          1.2200000286102295
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_appearance_wall_r.prefab.json",
+        "cell": [
+          0,
+          -1
+        ]
+      }
+    },
+    {
+      "id": "346881a6-6261-499a-af8e-21de6af58e23",
+      "name": "appearance_barrel_a",
+      "transform": {
+        "position": [
+          7.670433044433594,
+          0.17369508743286133,
+          6.849999904632568
+        ],
+        "rotation": [
+          -0.0,
+          0.0,
+          -0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/barrel.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.05000000074505806,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.44999998807907104,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "3a207188-3788-4499-b853-b0cf2c7ea804",
+      "name": "appearance_torch_r2",
+      "transform": {
+        "position": [
+          9.720000267028809,
+          2.450000047683716,
+          -0.20000000298023224
+        ],
+        "rotation": [
+          0.0,
+          -0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "3f1df800-6fc6-4bf3-bb14-735e1f629910",
+      "name": "appearance_crate_b",
+      "transform": {
+        "position": [
+          9.25,
+          0.30000001192092896,
+          7.099999904632568
+        ],
+        "rotation": [
+          0.0,
+          -0.15000000596046448,
+          0.0,
+          0.9887999892234802
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/crate.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "4d866d1f-e15f-4b52-ae4a-7f0356d0aeb5",
+      "name": "appearance_vista_campfire",
+      "transform": {
+        "position": [
+          -9.0,
+          1.204667091369629,
+          16.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/campfire.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-solid",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.2199999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-solid",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "id": "collision-interact",
+            "interaction": "use_campfire",
+            "layer": "trigger",
+            "radius": 1.0,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.4000000059604645,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": true
+          },
+          "id": "collision-interact",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "58a339d5-879a-4e1f-8a51-d8bfa6229e3e",
+      "name": "appearance_vista_depth_7",
+      "transform": {
+        "position": [
+          13.182340621948242,
+          1.4925799369812012,
+          26.67867660522461
+        ],
+        "rotation": [
+          0.0,
+          0.10776049643754959,
+          0.0,
+          -0.9941768646240234
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/bush.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "5aeeb5ac-edd9-4ddf-8db0-ba2da26fb489",
+      "name": "appearance_vista_depth_13",
+      "transform": {
+        "position": [
+          -11.397438049316406,
+          2.964378833770752,
+          35.75940704345703
+        ],
+        "rotation": [
+          0.0,
+          0.281040757894516,
+          0.0,
+          -0.9596958160400391
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/bush_tall.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.699999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "5bcd0c13-7e0c-4374-8b96-75eee51b5659",
+      "name": "appearance_torch_l3",
+      "transform": {
+        "position": [
+          -9.720000267028809,
+          2.450000047683716,
+          -2.299999952316284
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "60b27a46-6bd7-4f1e-8a70-c68a62f91ba7",
+      "name": "appearance_vista_oak_far_l",
+      "transform": {
+        "position": [
+          -16.0,
+          2.758166551589966,
+          40.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/oak_wide.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.399999976158142,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.9500000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "652b5fa6-3d98-4543-81bc-224bcd57f0cf",
+      "name": "appearance_cam_establishing",
+      "transform": {
+        "position": [
+          0.0,
+          4.199999809265137,
+          -8.399999618530273
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.009999999776482582,
+          0.009999999776482582,
+          0.009999999776482582
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/camera_marker.prefab.json",
+        "cell": [
+          0,
+          -1
+        ]
+      }
+    },
+    {
+      "id": "65766340-5460-4c7c-959b-4980c2130131",
+      "name": "appearance_tower_ne",
+      "transform": {
+        "position": [
+          9.859999656677246,
+          0.0,
+          8.09000015258789
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/corner_tower_stub.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              1.4500000476837158,
+              2.700000047683716,
+              2.0
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                2.700000047683716,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "68adf8d4-655d-4e1c-b992-78a4b4d283cb",
+      "name": "appearance_vista_depth_2",
+      "transform": {
+        "position": [
+          16.22571563720703,
+          0.6367678642272949,
+          21.86991310119629
+        ],
+        "rotation": [
+          0.0,
+          0.93259596824646,
+          0.0,
+          0.36092209815979004
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_wide.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.399999976158142,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.9500000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "6c4dc677-e32a-4d67-ae0e-1bc108590b1d",
+      "name": "appearance_vista_depth_12",
+      "transform": {
+        "position": [
+          -11.454301834106445,
+          2.594886541366577,
+          47.750770568847656
+        ],
+        "rotation": [
+          0.0,
+          0.5003765821456909,
+          0.0,
+          -0.865807831287384
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/bush.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "6d1cde19-89e7-46f5-bcca-22cb7e806b78",
+      "name": "appearance_vista_oak_mid_l",
+      "transform": {
+        "position": [
+          -8.0,
+          2.6008858680725098,
+          22.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/oak_young.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.100000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.399999976158142,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "6dadd2ac-e1d3-43ea-9bda-94bce67887be",
+      "name": "appearance_vista_bush_far_r",
+      "transform": {
+        "position": [
+          12.0,
+          1.9292888641357422,
+          29.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/bush.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "70590633-4734-4bcf-8252-6cf7aaa644f5",
+      "name": "appearance_tower_se",
+      "transform": {
+        "position": [
+          9.859999656677246,
+          0.0,
+          -7.590000152587891
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/corner_tower_stub.prefab.json",
+        "cell": [
+          0,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              1.4500000476837158,
+              2.700000047683716,
+              2.0
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                2.700000047683716,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "724a0986-1310-4d6a-8d01-dd581aeb7da7",
+      "name": "graybox_appearance_wall_l",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          -0.8999999761581421
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.7000000476837158,
+          1.0,
+          1.2200000286102295
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_appearance_wall_l.prefab.json",
+        "cell": [
+          0,
+          -1
+        ]
+      }
+    },
+    {
+      "id": "74c0df49-28bf-4818-88ec-60279f810efb",
+      "name": "appearance_banner_ashfell",
+      "transform": {
+        "position": [
+          -9.399999618530273,
+          0.0,
+          4.900000095367432
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/tessera_banner_pole.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.399999976158142,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.2199999988079071,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.7000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "77055dc5-bcfd-4cd0-8321-803c32441ba2",
+      "name": "appearance_vista_depth_8",
+      "transform": {
+        "position": [
+          3.6401405334472656,
+          1.472646951675415,
+          20.571739196777344
+        ],
+        "rotation": [
+          0.0,
+          0.9359057545661926,
+          0.0,
+          0.3522505462169647
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_wide.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.399999976158142,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.9500000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "7cddf9f8-6e5d-49bd-9d61-a80a6d27113f",
+      "name": "appearance_vista_depth_3",
+      "transform": {
+        "position": [
+          8.35177993774414,
+          3.4609732627868652,
+          40.950111389160156
+        ],
+        "rotation": [
+          0.0,
+          0.958149790763855,
+          0.0,
+          -0.28626736998558044
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/bush_tall.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.699999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "8c6b94be-56cf-4b3d-9a6e-53226a94668e",
+      "name": "appearance_vista_depth_6",
+      "transform": {
+        "position": [
+          -12.384197235107422,
+          1.4135768413543701,
+          19.19919776916504
+        ],
+        "rotation": [
+          0.0,
+          0.04166103154420853,
+          0.0,
+          0.9991317987442017
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_young.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.100000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.399999976158142,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "903e29ac-77fc-4ff5-9f13-64ff589322cc",
+      "name": "appearance_torch_l2",
+      "transform": {
+        "position": [
+          -9.720000267028809,
+          2.450000047683716,
+          1.2999999523162842
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "9bd8d4ae-aeb1-4499-81fd-1e8712cd6d62",
+      "name": "appearance_vista_depth_10",
+      "transform": {
+        "position": [
+          16.91675567626953,
+          3.6378231048583984,
+          39.10395812988281
+        ],
+        "rotation": [
+          0.0,
+          0.6868919730186462,
+          0.0,
+          0.7267595529556274
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_wide.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.399999976158142,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.9500000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "9c79d7ed-27e6-4e09-b0e9-4d3f2f69bcb1",
+      "name": "graybox_appearance_pedestal",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_appearance_pedestal.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "a1a3fa1f-ba0d-4e45-a314-8fab6328ac66",
+      "name": "graybox_appearance_mannequin_ashfell",
+      "transform": {
+        "position": [
+          -7.550000190734863,
+          0.0,
+          4.900000095367432
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_appearance_mannequin_ashfell.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "aa48b4e2-399c-4528-a184-1972d07aa360",
+      "name": "appearance_cam_look_target",
+      "transform": {
+        "position": [
+          0.0,
+          1.7000000476837158,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.009999999776482582,
+          0.009999999776482582,
+          0.009999999776482582
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/camera_marker.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "b4490ba3-5fff-414e-82fa-4f067e25de69",
+      "name": "appearance_vista_bush_r",
+      "transform": {
+        "position": [
+          8.199999809265137,
+          0.09218931198120117,
+          12.399999618530273
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/bush_tall.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.699999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "bb06ac82-4b3d-4d31-a984-966131ea69fb",
+      "name": "appearance_vista_oak_far_r",
+      "transform": {
+        "position": [
+          16.0,
+          3.313476085662842,
+          41.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/oak_asymmetric.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.350000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.41999998688697815,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.7699999809265137,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "bc5e491b-9f0f-45ff-a929-6cf5c9ffb484",
+      "name": "appearance_player_preview",
+      "transform": {
+        "position": [
+          0.0,
+          0.797224760055542,
+          0.0
+        ],
+        "rotation": [
+          -0.0,
+          0.0,
+          -0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/player/player.prefab.json",
+        "cell": [
+          0,
+          0
+        ],
+        "characterAsset": "assets/characters/player.character.json"
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 0.6000000238418579,
+            "id": "collision-0",
+            "layer": "dynamic",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                0.8999999761581421,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        },
+        {
+          "data": {
+            "controller": "assets/animators/player.animator.json",
+            "defaultState": "idle"
+          },
+          "id": "animator-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "animator"
+        },
+        {
+          "data": {
+            "angularDamping": 0.05000000074505806,
+            "freezeRotation": true,
+            "linearDamping": 0.05000000074505806,
+            "mass": 70.0,
+            "motionType": "dynamic",
+            "useGravity": true
+          },
+          "id": "rigidbody-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "rigidbody"
+        }
+      ]
+    },
+    {
+      "id": "c32019a4-7a4c-4902-85d4-90b10286e282",
+      "name": "appearance_tower_nw",
+      "transform": {
+        "position": [
+          -9.859999656677246,
+          0.0,
+          8.09000015258789
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/corner_tower_stub.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              1.4500000476837158,
+              2.700000047683716,
+              2.0
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                2.700000047683716,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "c7fbe3d4-e56c-47be-8c22-c5393f2b0232",
+      "name": "graybox_appearance_mannequin_runecaster",
+      "transform": {
+        "position": [
+          -7.550000190734863,
+          0.0,
+          -2.299999952316284
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/graybox/graybox_appearance_mannequin_runecaster.prefab.json",
+        "cell": [
+          -1,
+          -1
+        ]
+      }
+    },
+    {
+      "id": "cdafd2a5-5dcc-47f0-9ee2-5060319a5571",
+      "name": "appearance_vista_bush_l",
+      "transform": {
+        "position": [
+          -8.199999809265137,
+          0.1884371042251587,
+          12.399999618530273
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/bush_tall.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.699999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "d1a6aa37-6b70-460f-8d54-026135bbe0f7",
+      "name": "appearance_vista_depth_11",
+      "transform": {
+        "position": [
+          11.967935562133789,
+          3.399625778198242,
+          46.033687591552734
+        ],
+        "rotation": [
+          0.0,
+          0.37407058477401733,
+          0.0,
+          0.9274002313613892
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/bush_tall.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.699999988079071,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "da06aa06-7d36-4617-8fae-6da87e9d0c00",
+      "name": "appearance_crate_c",
+      "transform": {
+        "position": [
+          7.283478260040283,
+          0.031158447265625,
+          5.7459797859191895
+        ],
+        "rotation": [
+          -0.0,
+          0.3499876856803894,
+          -0.0,
+          0.9367543458938599
+        ],
+        "scale": [
+          0.9999770522117615,
+          1.0,
+          0.9999770522117615
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/crate.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "dbf8fcdd-bcc4-444b-9d45-18c8e161a470",
+      "name": "appearance_vista_bush_far_l",
+      "transform": {
+        "position": [
+          -12.0,
+          1.1166852712631226,
+          28.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/bush.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.550000011920929,
+            "shape": "sphere",
+            "transform": {
+              "position": [
+                0.0,
+                0.550000011920929,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "ddcc87f3-aebd-4747-ba25-301f8c9ebf19",
+      "name": "appearance_crate_a",
+      "transform": {
+        "position": [
+          8.822136878967285,
+          0.11879938840866089,
+          2.4142587184906006
+        ],
+        "rotation": [
+          -0.0,
+          0.20000073313713074,
+          -0.0,
+          0.9797956943511963
+        ],
+        "scale": [
+          1.0000005960464478,
+          1.0,
+          1.0000005960464478
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/crate.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "de8f007c-ece3-419a-9495-ea94b1512696",
+      "name": "appearance_torch_back_r",
+      "transform": {
+        "position": [
+          8.199999809265137,
+          2.450000047683716,
+          7.150000095367432
+        ],
+        "rotation": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "e805369e-313a-4e1f-9361-1b306e4411a7",
+      "name": "appearance_torch_l1",
+      "transform": {
+        "position": [
+          -9.720000267028809,
+          2.450000047683716,
+          4.900000095367432
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "ea544b85-ebed-4fdc-8db3-b6a5452c9e1a",
+      "name": "appearance_banner_outrider",
+      "transform": {
+        "position": [
+          -9.399999618530273,
+          0.0,
+          1.2999999523162842
+        ],
+        "rotation": [
+          0.0,
+          0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/tessera_banner_pole.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.399999976158142,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.2199999988079071,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.7000000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "f7f95e8a-700c-47a6-b27e-b8d5f2984d5e",
+      "name": "appearance_weapon_rack",
+      "transform": {
+        "position": [
+          9.149999618530273,
+          0.0,
+          -0.20000000298023224
+        ],
+        "rotation": [
+          0.0,
+          -0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/weapon_rack.prefab.json",
+        "cell": [
+          0,
+          -1
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              1.2999999523162842,
+              1.0750000476837158,
+              0.44999998807907104
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                1.0750000476837158,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "fddabb2d-ab3f-4332-ae70-adddf109fb44",
+      "name": "appearance_vista_supply_crate",
+      "transform": {
+        "position": [
+          8.800000190734863,
+          0.6222708225250244,
+          15.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/crate.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.5,
+              0.5,
+              0.5099999904632568
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "fe66e8ba-de06-425c-8ea3-894b6b39d6ac",
+      "name": "appearance_torch_r1",
+      "transform": {
+        "position": [
+          9.720000267028809,
+          2.450000047683716,
+          4.550000190734863
+        ],
+        "rotation": [
+          0.0,
+          -0.707099974155426,
+          0.0,
+          0.707099974155426
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/scene assets/wall_torch.prefab.json",
+        "cell": [
+          0,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfExtent": [
+              0.11999999731779099,
+              0.3199999928474426,
+              0.18000000715255737
+            ],
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "shape": "box",
+            "transform": {
+              "position": [
+                0.0,
+                0.3499999940395355,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    },
+    {
+      "id": "ff1d3776-9317-4a50-bd9a-1b6b03ee4f43",
+      "name": "appearance_vista_depth_14",
+      "transform": {
+        "position": [
+          -6.5,
+          2.0215859413146973,
+          18.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parent": null,
+      "placement": {
+        "prefab": "assets/prefabs/Scene Assets/oak_young.prefab.json",
+        "cell": [
+          -1,
+          0
+        ]
+      },
+      "components": [
+        {
+          "data": {
+            "halfHeight": 1.100000023841858,
+            "id": "collision-0",
+            "layer": "staticWorld",
+            "radius": 0.30000001192092896,
+            "shape": "capsule",
+            "transform": {
+              "position": [
+                0.0,
+                1.399999976158142,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "trigger": false
+          },
+          "id": "collision-0",
+          "overridden": false,
+          "source": "prefab",
+          "type": "collider"
+        }
+      ]
+    }
+  ],
+  "worldId": "appearance-courtyard-a0-02",
+  "name": "Appearance Courtyard",
+  "presentation": "cinematic_instance",
+  "partition": {
+    "worldSizeMeters": [
+      16000.0,
+      16000.0
+    ],
+    "cellSizeMeters": 128.0
+  }
+}

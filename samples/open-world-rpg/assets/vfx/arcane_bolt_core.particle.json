@@ -1,0 +1,118 @@
+{
+  "acceleration": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "aspectRatio": 1.0,
+  "blend": "additive",
+  "color": {
+    "keypoints": [
+      {
+        "color": [
+          1.0,
+          0.9200000166893005,
+          1.0
+        ],
+        "t": 0.0
+      },
+      {
+        "color": [
+          1.0,
+          0.44999998807907104,
+          0.8500000238418579
+        ],
+        "t": 0.25
+      },
+      {
+        "color": [
+          0.75,
+          0.20000000298023224,
+          1.0
+        ],
+        "t": 0.6499999761581421
+      },
+      {
+        "color": [
+          0.25,
+          0.07999999821186066,
+          0.44999998807907104
+        ],
+        "t": 1.0
+      }
+    ]
+  },
+  "crossedBillboards": true,
+  "drag": 0.10000000149011612,
+  "emissionDirection": [
+    0.0,
+    0.0,
+    -1.0
+  ],
+  "enabled": true,
+  "flipbookFramerate": 20.0,
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "Loop",
+  "flipbookStartRandom": true,
+  "id": "arcane_bolt_core",
+  "lifetime": {
+    "max": 0.2199999988079071,
+    "min": 0.11999999731779099
+  },
+  "lightEmission": 0.8500000238418579,
+  "maxParticles": 12,
+  "minScreenSize": 6.0,
+  "orientation": "FacingCamera",
+  "rate": 0.0,
+  "rotation": 0.0,
+  "rotationStartRandom": true,
+  "schemaVersion": 1,
+  "shape": "sphere",
+  "shapeSize": [
+    0.014999999664723873,
+    0.014999999664723873,
+    0.014999999664723873
+  ],
+  "shapeStyle": "volume",
+  "size": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.20000000298023224
+      },
+      {
+        "t": 0.30000001192092896,
+        "value": 0.30000001192092896
+      },
+      {
+        "t": 1.0,
+        "value": 0.07000000029802322
+      }
+    ]
+  },
+  "speed": {
+    "max": 0.11999999731779099,
+    "min": 0.019999999552965164
+  },
+  "spreadAngle": [
+    4.0,
+    10.0
+  ],
+  "texture": "assets/vfx/rune_sigil_flipbook_4x4.png",
+  "transparency": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.03999999910593033
+      },
+      {
+        "t": 0.44999998807907104,
+        "value": 0.20000000298023224
+      },
+      {
+        "t": 1.0,
+        "value": 1.0
+      }
+    ]
+  }
+}

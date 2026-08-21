@@ -1,0 +1,96 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.4300000071525574,
+          0.4099999964237213,
+          0.3799999952316284
+        ],
+        "primitive": "cube"
+      },
+      "name": "a003_keep_rampart_ne_part_1",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.0,
+          8.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          18.0,
+          4.0,
+          4.0
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.36000001430511475,
+          0.33000001311302185
+        ],
+        "primitive": "cube"
+      },
+      "name": "a003_keep_rampart_ne_part_2",
+      "parent": null,
+      "transform": {
+        "position": [
+          -6.0,
+          11.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          3.0,
+          2.0,
+          3.0
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.36000001430511475,
+          0.33000001311302185
+        ],
+        "primitive": "cube"
+      },
+      "name": "a003_keep_rampart_ne_part_3",
+      "parent": null,
+      "transform": {
+        "position": [
+          6.0,
+          11.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          3.0,
+          2.0,
+          3.0
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

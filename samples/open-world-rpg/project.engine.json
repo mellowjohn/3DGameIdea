@@ -2,12 +2,16 @@
   "schemaVersion": 1,
   "projectId": "9d056849-985f-4f92-bfce-63dc8f780e56",
   "name": "Open World RPG",
-  "defaultWorld": "worlds/vertical-slice.world.json",
+  "defaultWorld": "worlds/main-menu.world.json",
   "target": {
     "platform": "windows",
     "graphicsBackend": "direct3d12",
     "resolution": [2560, 1440],
     "framesPerSecond": 60
+  },
+  "opening": {
+    "prologueWorld": "worlds/prologue-throne.world.json",
+    "menuWorld": "worlds/main-menu.world.json",
+    "appearanceWorld": "worlds/appearance-courtyard.world.json"
   }
 }
-

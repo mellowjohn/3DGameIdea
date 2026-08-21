@@ -49,15 +49,30 @@ Loaded cells refresh render and collision immediately after each stroke.
 | Action | Purpose |
 | --- | --- |
 | `set_height` | One-stroke blend toward `targetHeight` (`strength` 0–1, falloff). Prefer this over repeated flatten. |
+| `smooth` | Blend deltas toward neighborhood average (`kernelRadius` optional). |
+| `terrace` | Quantize world height to `stepSize` plateaus. |
+| `gentle_hill` / `steep_cliff` / `flatten_pad` / `smooth_natural` / `canyon` | Smart sculpt recipes that expand into the brushes above (one undo). |
 | `carve_channel` | Polyline river bed + banks: `points`, `halfWidth`, `bedDepth` or `bedHeight`, `bankOffset`, `bankWidth`, `bankHeight` or `bankClearance`, `step`, `strength` |
 | `raise_banks` | Same polyline bank raise without digging the bed |
+| `paint_along` | Polyline material paint (dirt roads / shores): `points`, `material`, `radius`, `step` |
+
+`batch` ops may include `carve_channel`, `raise_banks`, `paint_along`, `smooth`, and `terrace` (not only circular brushes).
 
 `carve_channel` clamps `bankOffset` to at least `halfWidth + bankWidth`, paints banks first, then the bed so the channel floor wins any soft-falloff overlap.
 
 Sea level defaults from the bound water store (or `seaLevel` override). Height edits reload water meshes when connected.
 
+## Scene helpers (related)
+
+`engine_scene_apply` `snap_to_terrain` (`names` / `namePrefix` / `all`, optional `groundOffset` / `groundOffsets`, default skip for flame/torch/smoke/camera on bulk snaps), `list`/`query`, and `move`/`remove` by unique `name`.
+
+## Water helpers (related)
+
+`engine_water_apply` `batch` accepts `place_along`. Water place clears foliage under the brush by default (`eraseFoliage: false` to keep).
+
 ## Limitations
 
-- Spherical brush with quadratic falloff only; no smoothing or erase-to-procedural brush yet.
+- Spherical brush with quadratic falloff only for primitive strokes; smart recipes compose multiple strokes.
 - Edits apply to 40 m terrain streaming cells, not 128 m world-partition scene cells.
 - Imported heightmap assets remain future work.
+- Full biome generators / hydraulic erosion / Terrain Director are out of scope for this MCP helper pass (see EPIC follow-ons).

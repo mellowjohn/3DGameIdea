@@ -383,10 +383,10 @@
         {
           "id": "coding_character_asset_slots",
           "title": "Character asset attach slots runtime",
-          "status": "todo",
+          "status": "wip",
           "priority": "p0",
           "workstream": "coding",
-          "notes": "Runtime for hair/outfit/weapon sockets.",
+          "notes": "Hair overlay socket (test_hair_spikes) drawing; skin/eye tint follow-on.",
           "description": "Load and apply modular kit parts on the skinned body. Prerequisite for archetype kits and creation preview.",
           "dependsOn": [
             "art_shipped_player_body"
@@ -691,6 +691,19 @@
       "id": "gameplay",
       "title": "Gameplay",
       "items": [
+        {
+          "id": "gameplay_landfall_experience_contract",
+          "title": "Landfall player-experience loop + encounter contract",
+          "status": "todo",
+          "priority": "p0",
+          "workstream": "gameplay",
+          "notes": "TICKET-0280; design gate before remaining approach/drawbridge/camp graybox integration.",
+          "description": "Lock the 20–30 minute boot-to-camp pacing map, encounter purposes and wave budgets, three-archetype contribution, optional discovery/reward, immediate Larrell/Arkand consequence, weapon-feedback checklist, and camp decompression beat. This contract refines existing implementation tickets rather than creating parallel systems.",
+          "refs": {
+            "ticketId": "TICKET-0280",
+            "storyRef": "context/story/campaign-beat-sheet.md"
+          }
+        },
         {
           "id": "gameplay_soft_gate_corridor",
           "title": "Calrenoth soft-gate tutorial corridor",

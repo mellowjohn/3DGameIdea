@@ -1,0 +1,66 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.2800000011920929,
+          0.20000000298023224,
+          0.14000000059604645
+        ],
+        "primitive": "cube"
+      },
+      "name": "bench",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.45,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          2.2,
+          0.9,
+          8
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2199999988079071,
+          0.1599999964237213,
+          0.11999999731779099
+        ],
+        "primitive": "cube"
+      },
+      "name": "back",
+      "parent": null,
+      "transform": {
+        "position": [
+          -0.9,
+          1.1,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.25,
+          1.4,
+          8
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

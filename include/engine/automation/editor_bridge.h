@@ -67,7 +67,7 @@ class EditorBridgeClient final {
 public:
     explicit EditorBridgeClient(std::filesystem::path project_root);
     [[nodiscard]] bool is_editor_running() const;
-    [[nodiscard]] EditorBridgeResponse send(const EditorBridgeRequest& request, std::uint32_t timeout_ms = 5000) const;
+    [[nodiscard]] EditorBridgeResponse send(const EditorBridgeRequest& request, std::uint32_t timeout_ms = 60000) const;
 private:
     std::filesystem::path project_root_;
 };

@@ -2,6 +2,7 @@
 
 #include "engine/core/result.h"
 #include "engine/ui/hud_runtime.h"
+#include "engine/assets/ui_theme_asset.h"
 
 #include <filesystem>
 #include <map>
@@ -58,6 +59,11 @@ class UiCanvasStack final {
 public:
     void set_texture_cache(UiTextureCache* cache);
     [[nodiscard]] UiTextureCache* texture_cache() const noexcept { return textures_; }
+    [[nodiscard]] Result<void> load_theme(const std::filesystem::path& path);
+    [[nodiscard]] Result<void> save_theme() const;
+    [[nodiscard]] UiThemeAsset& theme() noexcept { return theme_; }
+    [[nodiscard]] const UiThemeAsset& theme() const noexcept { return theme_; }
+    [[nodiscard]] const std::filesystem::path& theme_path() const noexcept { return theme_path_; }
     /// Optional live inventory for hover tooltips on `inventory.select.*` slots.
     void set_inventory_runtime(InventoryRuntime* inventory) noexcept { inventory_ = inventory; }
     [[nodiscard]] InventoryRuntime* inventory_runtime() const noexcept { return inventory_; }
@@ -74,6 +80,10 @@ public:
     [[nodiscard]] HudRuntime& hud() noexcept { return hud_; }
     [[nodiscard]] const HudRuntime& hud() const noexcept { return hud_; }
     [[nodiscard]] bool has_hud() const noexcept { return hud_.has_widgets(); }
+    /// Gameplay HUD layer visibility. Menu-only presentation (main menu preview,
+    /// front-end screens) hides it while modal canvases still draw.
+    void set_hud_visible(bool visible) noexcept { hud_visible_ = visible; }
+    [[nodiscard]] bool hud_visible() const noexcept { return hud_visible_; }
     [[nodiscard]] HudRuntime* find_canvas(const std::string& id);
     [[nodiscard]] const HudRuntime* find_canvas(const std::string& id) const;
 
@@ -97,12 +107,15 @@ private:
     void clear_drag_state() noexcept;
 
     HudRuntime hud_;
+    UiThemeAsset theme_ = UiThemeAsset::built_in();
+    std::filesystem::path theme_path_;
     std::map<std::string, std::filesystem::path> paths_;
     std::map<std::string, HudRuntime> canvases_;
     std::vector<std::string> modal_stack_;
     std::optional<std::string> modal_focus_widget_id_;
     UiTextureCache* textures_ = nullptr;
     InventoryRuntime* inventory_ = nullptr;
+    bool hud_visible_ = true;
 
     struct ModalDragState {
         bool active = false;

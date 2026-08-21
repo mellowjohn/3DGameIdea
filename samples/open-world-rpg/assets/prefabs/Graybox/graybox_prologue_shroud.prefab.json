@@ -1,0 +1,156 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.22,
+          0.2,
+          0.24
+        ],
+        "primitive": "cube"
+      },
+      "name": "stand",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.4,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.2,
+          0.8,
+          0.9
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.03,
+          0.03,
+          0.04
+        ],
+        "primitive": "cube"
+      },
+      "name": "veil",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          2.2,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1.6,
+          2.8,
+          0.2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.06,
+          0.05,
+          0.08
+        ],
+        "primitive": "sphere"
+      },
+      "name": "core",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          2.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.9,
+          1.1,
+          0.55
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.04,
+          0.04,
+          0.05
+        ],
+        "primitive": "cube"
+      },
+      "name": "tendril_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -0.9,
+          1.7,
+          0.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.25,
+          1.8,
+          0.15
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.04,
+          0.04,
+          0.05
+        ],
+        "primitive": "cube"
+      },
+      "name": "tendril_r",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.9,
+          1.7,
+          0.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          0.25,
+          1.8,
+          0.15
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

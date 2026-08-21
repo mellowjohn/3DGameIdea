@@ -35,11 +35,17 @@ Path: `samples/open-world-rpg/assets/vfx/recipes/vfx_recipes.json`
 | `torch` | `wall_torch_{core,flame,embers,smoke}.particle.json` |
 | `campfire_layer` | `campfire_{flame,embers,smoke}.particle.json` |
 | `hit_spark` | `hit_spark.particle.json` |
+| `sword_impact` | `sword_impact_flash` + `sword_impact.particle.json` (spawn via `spawn_burst`) |
 | `corrupt_aura` | `corrupt_aura.particle.json` |
 | `dodge_dust` | `dodge_dust.particle.json` (spawn via `ParticleSystem::spawn_burst`) |
 | `footstep_dust` | `footstep_dust.particle.json` (spawn via stride counter / land footstep) |
 | `arrow_trail` | `arrow_trail.particle.json` (play-test arrow wake via `spawn_burst`) |
-| `arrow_impact` | `arrow_impact.particle.json` (play-test arrow impact via `spawn_burst`) |
+| `arrow_impact` | `arrow_impact_flash` + `arrow_impact.particle.json` (play-test arrow impact via `spawn_burst`) |
+| `rune_charge` | `rune_charge_{core,rings,embers}` + `rune_cast_swirl{,_embers}` (MagicCast charge at tip + feet) |
+| `arcane_bolt` | `arcane_bolt_{core,trail,helix,embers,impact_flash,impact}.particle.json` (castRelease magenta spiral bolt) |
+| `fire_bolt` | `fire_{charge,cast,bolt}_*` orange fireball (`magic_fire`) |
+| `frost_bolt` | `frost_{charge,cast,bolt}_*` ice shard (`magic_frost`) |
+| `lightning_bolt` | `lightning_{charge,cast,bolt}_*` white-gold crack (`magic_lightning`) |
 | `stylized_flame_molten` | blobby crossed billboards (hero default) |
 | `stylized_flame_wispy` | narrow ribbon / wind-blown |
 | `stylized_flame_column` | tall cylinder column |

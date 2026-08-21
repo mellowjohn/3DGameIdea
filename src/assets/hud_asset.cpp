@@ -62,14 +62,17 @@ Result<HudImageMode> parse_image_mode(const std::string& raw) {
     const auto key = lower_copy(raw);
     if (key == "stretch") return Result<HudImageMode>::success(HudImageMode::Stretch);
     if (key == "contain") return Result<HudImageMode>::success(HudImageMode::Contain);
+    if (key == "nine_slice" || key == "nineslice" || key == "nine-slice")
+        return Result<HudImageMode>::success(HudImageMode::NineSlice);
     return Result<HudImageMode>::failure(
-        hud_error("HUD-IMAGE-MODE", "Unsupported imageMode: " + raw, "Use stretch or contain."));
+        hud_error("HUD-IMAGE-MODE", "Unsupported imageMode: " + raw, "Use stretch, contain, or nine_slice."));
 }
 
 const char* image_mode_name(HudImageMode mode) {
     switch (mode) {
     case HudImageMode::Stretch: return "stretch";
     case HudImageMode::Contain: return "contain";
+    case HudImageMode::NineSlice: return "nine_slice";
     }
     return "stretch";
 }
@@ -187,16 +190,55 @@ Result<HudAsset> HudAsset::parse(const std::string& text, const std::string& sou
                 if (!mode) return Result<HudAsset>::failure(mode.error());
                 widget.image_mode = mode.value();
             }
+            if (node.contains("imageSlice") && node["imageSlice"].is_array() &&
+                node["imageSlice"].size() >= 4) {
+                for (int i = 0; i < 4; ++i) {
+                    widget.image_slice[static_cast<std::size_t>(i)] =
+                        node["imageSlice"][i].get<float>();
+                    if (!(widget.image_slice[static_cast<std::size_t>(i)] >= 0.0f) ||
+                        !std::isfinite(widget.image_slice[static_cast<std::size_t>(i)])) {
+                        return Result<HudAsset>::failure(hud_error(
+                            "HUD-IMAGE-SLICE", "imageSlice values must be finite and >= 0: " + widget.id,
+                            "Provide [left, top, right, bottom] in texture pixels."));
+                    }
+                }
+            }
+            if (node.contains("padding") && node["padding"].is_array() && node["padding"].size() >= 4) {
+                for (int i = 0; i < 4; ++i) {
+                    widget.padding[static_cast<std::size_t>(i)] = node["padding"][i].get<float>();
+                    if (!(widget.padding[static_cast<std::size_t>(i)] >= 0.0f) ||
+                        !std::isfinite(widget.padding[static_cast<std::size_t>(i)])) {
+                        return Result<HudAsset>::failure(hud_error(
+                            "HUD-PADDING", "padding values must be finite and >= 0: " + widget.id,
+                            "Provide [left, top, right, bottom] in design pixels."));
+                    }
+                }
+            }
             if (node.contains("color") && node["color"].is_array() && node["color"].size() >= 3) {
                 widget.color[0] = node["color"][0].get<float>();
                 widget.color[1] = node["color"][1].get<float>();
                 widget.color[2] = node["color"][2].get<float>();
                 widget.color[3] = node["color"].size() >= 4 ? node["color"][3].get<float>() : 255.0f;
             }
+            widget.theme_role = node.value("themeRole", std::string{});
+            widget.color_token = node.value("colorToken", std::string{});
+            widget.text_color_token = node.value("textColorToken", std::string{});
+            if (node.contains("textColor") && node["textColor"].is_array() && node["textColor"].size() >= 3) {
+                widget.text_color[0] = node["textColor"][0].get<float>();
+                widget.text_color[1] = node["textColor"][1].get<float>();
+                widget.text_color[2] = node["textColor"][2].get<float>();
+                widget.text_color[3] = node["textColor"].size() >= 4 ? node["textColor"][3].get<float>() : 255.0f;
+            }
             widget.font_size = node.value("fontSize", 0.0f);
             if (widget.font_size < 0.0f) {
                 return Result<HudAsset>::failure(
                     hud_error("HUD-FONT", "fontSize must be >= 0: " + widget.id, "Omit fontSize or set a positive size."));
+            }
+            widget.fit_text = node.value("fitText", false);
+            widget.min_font_size = node.value("minFontSize", 0.0f);
+            if (widget.min_font_size < 0.0f) {
+                return Result<HudAsset>::failure(hud_error("HUD-MIN-FONT",
+                    "minFontSize must be >= 0: " + widget.id, "Omit minFontSize or set a positive size."));
             }
             widget.opacity = node.value("opacity", 1.0f);
             if (!(widget.opacity >= 0.0f) || !(widget.opacity <= 1.0f) || !std::isfinite(widget.opacity)) {
@@ -283,9 +325,25 @@ std::string HudAsset::to_json() const {
         if (!widget.image.empty()) node["image"] = widget.image;
         if (!widget.image_bind.empty()) node["imageBind"] = widget.image_bind;
         if (widget.image_mode != HudImageMode::Stretch) node["imageMode"] = image_mode_name(widget.image_mode);
+        if (widget.image_slice[0] > 0.0f || widget.image_slice[1] > 0.0f || widget.image_slice[2] > 0.0f ||
+            widget.image_slice[3] > 0.0f) {
+            node["imageSlice"] = {widget.image_slice[0], widget.image_slice[1], widget.image_slice[2],
+                widget.image_slice[3]};
+        }
+        if (widget.padding[0] > 0.0f || widget.padding[1] > 0.0f || widget.padding[2] > 0.0f ||
+            widget.padding[3] > 0.0f) {
+            node["padding"] = {widget.padding[0], widget.padding[1], widget.padding[2], widget.padding[3]};
+        }
         if (widget.has_color())
             node["color"] = {widget.color[0], widget.color[1], widget.color[2], widget.color[3]};
+        if (!widget.theme_role.empty()) node["themeRole"] = widget.theme_role;
+        if (!widget.color_token.empty()) node["colorToken"] = widget.color_token;
+        if (!widget.text_color_token.empty()) node["textColorToken"] = widget.text_color_token;
+        if (widget.has_text_color())
+            node["textColor"] = {widget.text_color[0], widget.text_color[1], widget.text_color[2], widget.text_color[3]};
         if (widget.font_size > 0.0f) node["fontSize"] = widget.font_size;
+        if (widget.fit_text) node["fitText"] = true;
+        if (widget.min_font_size > 0.0f) node["minFontSize"] = widget.min_font_size;
         if (widget.opacity < 1.0f) node["opacity"] = widget.opacity;
         if (!widget.visible) node["visible"] = false;
         if (!widget.enabled) node["enabled"] = false;

@@ -15,7 +15,7 @@ namespace csm {
 inline constexpr std::uint32_t k_cascade_count = 3;
 inline constexpr std::uint32_t k_map_resolution = 1024;
 // Split distances (meters from camera) — stylized outdoor readability over precision.
-inline constexpr float k_split_distances[k_cascade_count] = {22.0f, 75.0f, 220.0f};
+inline constexpr float k_split_distances[k_cascade_count] = {28.0f, 95.0f, 350.0f};
 // Constant depth bias in light clip space (0..1). Slope bias is applied on the rasterizer.
 inline constexpr float k_depth_bias = 0.0018f;
 inline constexpr float k_normal_bias_meters = 0.05f;

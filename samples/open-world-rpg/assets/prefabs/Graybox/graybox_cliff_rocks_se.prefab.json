@@ -1,0 +1,66 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.36000001430511475,
+          0.3400000035762787
+        ],
+        "primitive": "cube"
+      },
+      "name": "A",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          2,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          5,
+          4,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3400000035762787,
+          0.3199999928474426,
+          0.30000001192092896
+        ],
+        "primitive": "cube"
+      },
+      "name": "B",
+      "parent": null,
+      "transform": {
+        "position": [
+          2.5,
+          0.5,
+          -1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          3.5,
+          3,
+          3
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

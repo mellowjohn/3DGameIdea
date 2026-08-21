@@ -67,7 +67,7 @@ Typography should reinforce dark fantasy without reducing usability. Ornamental 
 
 - Flat shading versus softened normals on terrain and props.
 - Degree of texture use versus palette-driven materials.
-- ~~Outrider and Runecaster starting-kit concept references~~ — first-pass turnarounds in [character-direction.md](character-direction.md).
+- ~~Starter kit concept trio (Ashfell / Outrider / Runecaster)~~ — MVP-locked 2026-08-05 in [character-direction.md](character-direction.md); Blockbench outfits still open.
 - Final licensed font files and fallback coverage — **approved 2026-07-15** (TICKET-0144): Cinzel for in-scene game UI; Roboto for engine chrome; JetBrains Mono for diagnostics; ImGui fallback if files missing.
 - Act 3 **red ice** Luceran approach vs Nefarium **pure black** mineral (D-P2-16) — Dom lean red-ice citadel; do not mislabel red crystals as Nefarium until locked.
 - Player camp presentation after D-P1-23 / TICKET-0254 (instance vs placeable open-world base).

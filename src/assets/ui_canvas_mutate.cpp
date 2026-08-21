@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 
 namespace engine {
 namespace {
@@ -45,8 +46,10 @@ Result<HudImageMode> parse_image_mode(const std::string& raw) {
     const auto key = lower_copy(raw);
     if (key == "stretch") return Result<HudImageMode>::success(HudImageMode::Stretch);
     if (key == "contain") return Result<HudImageMode>::success(HudImageMode::Contain);
-    return Result<HudImageMode>::failure(
-        mutate_error("UICANVAS-MUTATE-IMAGE-MODE", "Unsupported imageMode: " + raw, "Use stretch or contain."));
+    if (key == "nine_slice" || key == "nineslice" || key == "nine-slice")
+        return Result<HudImageMode>::success(HudImageMode::NineSlice);
+    return Result<HudImageMode>::failure(mutate_error("UICANVAS-MUTATE-IMAGE-MODE",
+        "Unsupported imageMode: " + raw, "Use stretch, contain, or nine_slice."));
 }
 
 Result<HudAnchor> parse_anchor(const std::string& raw) {
@@ -128,16 +131,30 @@ Result<UiCanvasAsset> mutate_ui_canvas_asset(UiCanvasAsset canvas, const std::st
             widget.image = params.value("image", std::string{});
             widget.image_bind = params.value("imageBind", std::string{});
             widget.tooltip = params.value("tooltip", std::string{});
+            widget.theme_role = params.value("themeRole", std::string{});
+            widget.color_token = params.value("colorToken", std::string{});
+            widget.text_color_token = params.value("textColorToken", std::string{});
             if (params.contains("imageMode")) {
                 const auto mode = parse_image_mode(params["imageMode"].get<std::string>());
                 if (!mode) return Result<UiCanvasAsset>::failure(mode.error());
                 widget.image_mode = mode.value();
+            }
+            if (params.contains("imageSlice") && params["imageSlice"].is_array() &&
+                params["imageSlice"].size() >= 4) {
+                for (int i = 0; i < 4; ++i)
+                    widget.image_slice[static_cast<std::size_t>(i)] = params["imageSlice"][i].get<float>();
             }
             if (params.contains("color") && params["color"].is_array() && params["color"].size() >= 3) {
                 widget.color[0] = params["color"][0].get<float>();
                 widget.color[1] = params["color"][1].get<float>();
                 widget.color[2] = params["color"][2].get<float>();
                 widget.color[3] = params["color"].size() >= 4 ? params["color"][3].get<float>() : 255.0f;
+            }
+            if (params.contains("textColor") && params["textColor"].is_array() && params["textColor"].size() >= 3) {
+                widget.text_color[0] = params["textColor"][0].get<float>();
+                widget.text_color[1] = params["textColor"][1].get<float>();
+                widget.text_color[2] = params["textColor"][2].get<float>();
+                widget.text_color[3] = params["textColor"].size() >= 4 ? params["textColor"][3].get<float>() : 255.0f;
             }
             widget.font_size = params.value("fontSize", 0.0f);
             widget.opacity = std::clamp(params.value("opacity", 1.0f), 0.0f, 1.0f);
@@ -216,7 +233,24 @@ Result<UiCanvasAsset> mutate_ui_canvas_asset(UiCanvasAsset canvas, const std::st
                 widget->color[2] = params["color"][2].get<float>();
                 widget->color[3] = params["color"].size() >= 4 ? params["color"][3].get<float>() : 255.0f;
             }
+            if (params.contains("clearColor") && params["clearColor"].get<bool>()) {
+                widget->color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+            }
+            if (params.contains("textColor") && params["textColor"].is_array() && params["textColor"].size() >= 3) {
+                widget->text_color[0] = params["textColor"][0].get<float>();
+                widget->text_color[1] = params["textColor"][1].get<float>();
+                widget->text_color[2] = params["textColor"][2].get<float>();
+                widget->text_color[3] = params["textColor"].size() >= 4 ? params["textColor"][3].get<float>() : 255.0f;
+            }
+            if (params.contains("clearTextColor") && params["clearTextColor"].get<bool>()) {
+                widget->text_color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+            }
+            if (params.contains("themeRole")) widget->theme_role = params["themeRole"].get<std::string>();
+            if (params.contains("colorToken")) widget->color_token = params["colorToken"].get<std::string>();
+            if (params.contains("textColorToken")) widget->text_color_token = params["textColorToken"].get<std::string>();
             if (params.contains("fontSize")) widget->font_size = params["fontSize"].get<float>();
+            if (params.contains("fitText")) widget->fit_text = params["fitText"].get<bool>();
+            if (params.contains("minFontSize")) widget->min_font_size = params["minFontSize"].get<float>();
             if (params.contains("label")) widget->label = params["label"].get<std::string>();
             if (params.contains("text")) widget->text = params["text"].get<std::string>();
             if (params.contains("opacity"))
@@ -233,6 +267,22 @@ Result<UiCanvasAsset> mutate_ui_canvas_asset(UiCanvasAsset canvas, const std::st
                 const auto mode = parse_image_mode(params["imageMode"].get<std::string>());
                 if (!mode) return Result<UiCanvasAsset>::failure(mode.error());
                 widget->image_mode = mode.value();
+            }
+            if (params.contains("imageSlice") && params["imageSlice"].is_array() &&
+                params["imageSlice"].size() >= 4) {
+                for (int i = 0; i < 4; ++i)
+                    widget->image_slice[static_cast<std::size_t>(i)] = params["imageSlice"][i].get<float>();
+            }
+            if (params.contains("padding") && params["padding"].is_array() && params["padding"].size() >= 4) {
+                for (int i = 0; i < 4; ++i) {
+                    const float value = params["padding"][i].get<float>();
+                    if (!(value >= 0.0f) || !std::isfinite(value)) {
+                        return Result<UiCanvasAsset>::failure(mutate_error("UICANVAS-MUTATE-PADDING",
+                            "padding values must be finite and >= 0",
+                            "Provide [left, top, right, bottom] in design pixels."));
+                    }
+                    widget->padding[static_cast<std::size_t>(i)] = value;
+                }
             }
             if (params.contains("anchor")) {
                 const auto anchor = parse_anchor(params["anchor"].get<std::string>());

@@ -1,6 +1,6 @@
 # Animator Controller Assets
 
-Versioned `*.animator.json` assets describe C++-owned animation graphs: parameters, layers, states, transitions, and 1D blend trees ([DEC-0022](../decisions/index.md#dec-0022-c-animator-backend-with-lua-drive-api), TICKET-0103). Clips remain glTF sources ([`animation-clip-assets.md`](animation-clip-assets.md)).
+Versioned `*.animator.json` assets describe C++-owned animation graphs: parameters, layers, states, transitions, and 1D/2D blend trees ([DEC-0022](../decisions/index.md#dec-0022-c-animator-backend-with-lua-drive-api), [DEC-0061](../decisions/index.md#dec-0061-masked-override-animator-layers-upper-body-overlay), TICKET-0103 / TICKET-0282 / TICKET-0283). Clips remain glTF sources ([`animation-clip-assets.md`](animation-clip-assets.md)).
 
 ## Contract
 
@@ -13,19 +13,50 @@ Versioned `*.animator.json` assets describe C++-owned animation graphs: paramete
 | `rootJoint` | Optional joint name (fallback `Root`, then `Hip`) |
 | `rootMotionY` | When `true`, Y comes from root; default `false` (gravity/jump stay on controller) |
 | `parameters[]` | `name`, `type` (`float` / `bool` / `trigger`), optional `default` |
-| `layers[]` | Named layers with `defaultState`, `blendMode` (`override` only in v1), `states`, `transitions` |
+| `layers[]` | Named layers with `defaultState`, `blendMode` (`override` only), optional `weight` (default `1`), optional `mask`, `states`, `transitions` |
 | `timelineEvents[]` | Optional markers ([DEC-0031](../decisions/index.md#dec-0031-controller-authored-animation-timeline-events)): `state`, `time` (seconds into state), `name`, optional `layer`, optional `payload` object |
 
 ### Default state convention
 
-- Each layer’s `defaultState` should be an **idle** (rest pose) state unless the controller is specialty-only (e.g. a one-shot cinematic).
-- Prefer the state id `idle` (snake_case), matching other authored ids.
-- The entity/prefab `animator` component may optionally override with `defaultState`; in the editor this is a **dropdown** of states from the selected controller (plus `(controller default)`), not free text. Idle is sorted to the top of that list.
+- Each layer’s `defaultState` should be an **idle** (rest pose) state unless the layer is an overlay. Overlay passthrough uses state id `empty` with `motion.type = "none"`.
+- Prefer the state id `idle` (snake_case) on the **base** layer, matching other authored ids.
+- The entity/prefab `animator` component may optionally override with `defaultState`; that override applies only to the **first** layer. In the editor this is a **dropdown** of states from the selected controller (plus `(controller default)`), not free text. Idle is sorted to the top of that list.
+
+### Layer mask (TICKET-0283 / DEC-0061)
+
+- Optional `mask.joints[]` of skin joint names. Empty / omitted = the layer writes the whole skeleton (base-layer behavior).
+- `mask.includeChildren` (default `true`) also overrides descendants of listed joints using the imported skin parent links. Typical upper-body overlay lists `Spine` (plus shoulder/arm roots if those are siblings of Spine).
+- Later override layers lerp masked joints toward that layer’s pose by clip weight (crossfade) × `layer.weight`. Unmasked joints keep the previous layer. Sample player: Block + Attack/Attack2/Attack3 + BowDraw/BowAim/BowRelease on `upperBody`.
+- Masked layers do **not** contribute root motion.
+- `motion.type = "none"`: no clips; used for overlay `empty` so the base layer shows through.
 
 ### States / motion
 
+- `motion.type = "none"`: passthrough (no clip). Overlay idle/empty.
 - `motion.type = "clip"`: `clipSource` (project-relative glTF/GLB), `clip` (animation name), optional `loop` / `speed`
 - `motion.type = "blendTree1D"`: float `parameter` + sorted `children[]` with `threshold` + clip fields
+- `motion.type = "blendTree2D"`: float `parameterX` / `parameterY` + `children[]` with `position: [x, y]` + clip fields (TICKET-0282). Runtime Delaunay-triangulates positions at parse; samples barycentric weights inside a triangle (up to 3 clips) or closest-edge 1D lerp outside the hull. Invalid trees fail closed (`ANIM-CTRL-BLEND-*`).
+
+Example locomotion freeform tree (facing-relative `moveX` / `moveZ`, same normalized space as `speed`):
+
+```json
+{
+  "type": "blendTree2D",
+  "parameterX": "moveX",
+  "parameterY": "moveZ",
+  "children": [
+    { "position": [0.0, 0.35], "clipSource": "assets/models/player.gltf", "clip": "Walk", "loop": true },
+    { "position": [-0.35, 0.0], "clipSource": "assets/models/player.gltf", "clip": "WalkStrafeLeft", "loop": true },
+    { "position": [0.35, 0.0], "clipSource": "assets/models/player.gltf", "clip": "WalkStrafeRight", "loop": true },
+    { "position": [0.0, -0.35], "clipSource": "assets/models/player.gltf", "clip": "Walk", "loop": true },
+    { "position": [0.0, 1.0], "clipSource": "assets/models/player.gltf", "clip": "Run", "loop": true },
+    { "position": [-1.0, 0.0], "clipSource": "assets/models/player.gltf", "clip": "RunStrafeLeft", "loop": true },
+    { "position": [1.0, 0.0], "clipSource": "assets/models/player.gltf", "clip": "RunStrafeRight", "loop": true }
+  ]
+}
+```
+
+Idle remains a separate state; do not put Idle in the 2D tree. Walk-radius points (~0.35) cover A/D at walk; run-radius (±1,0) cover full-speed lateral with lean.
 
 ### Transitions
 
@@ -53,6 +84,8 @@ Versioned `*.animator.json` assets describe C++-owned animation graphs: paramete
 | Code | Condition |
 | --- | --- |
 | `ANIM-CTRL-*` | Schema / id / layers / states / params / transitions / timeline events invalid |
+| `ANIM-CTRL-MASK-JOINT` | `mask.joints` entry missing or empty |
+| `ANIM-CTRL-LAYER-WEIGHT` | `weight` is NaN or `< 0` |
 | Missing clips at runtime | `ANIM-CLIP-*` / `ANIM-CLIP-MISSING` — fail closed; prior state kept when transition target cannot resolve |
 
 ## Animator component
@@ -86,7 +119,7 @@ Headers: `include/engine/assets/animator_controller_asset.h`, `include/engine/an
 
 - Auto-enable combat volumes from events (scripts/MCP may); IK/retarget (0106)
 - Visual in-place root zeroing for GPU skinning / viewport preview polish
-- Additive layers, 2D blend trees
+- Additive layers (delta-from-reference). Masked **override** overlay is in ([DEC-0061](../decisions/index.md#dec-0061-masked-override-animator-layers-upper-body-overlay)).
 - Lua-authored transition graphs (rejected by DEC-0022)
 
 ## Related

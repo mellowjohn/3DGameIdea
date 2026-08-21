@@ -1,0 +1,110 @@
+{
+  "acceleration": [
+    0.0,
+    0.800000011920929,
+    0.0
+  ],
+  "aspectRatio": 1.0,
+  "blend": "additive",
+  "color": {
+    "keypoints": [
+      {
+        "color": [
+          1.0,
+          0.8500000238418579,
+          1.0
+        ],
+        "t": 0.0
+      },
+      {
+        "color": [
+          0.699999988079071,
+          0.4000000059604645,
+          1.0
+        ],
+        "t": 0.5
+      },
+      {
+        "color": [
+          0.25,
+          0.15000000596046448,
+          0.550000011920929
+        ],
+        "t": 1.0
+      }
+    ]
+  },
+  "crossedBillboards": false,
+  "drag": 0.3499999940395355,
+  "emissionDirection": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "enabled": true,
+  "flipbookFramerate": 20.0,
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "OneShot",
+  "flipbookStartRandom": true,
+  "id": "rune_cast_swirl_embers",
+  "lifetime": {
+    "max": 0.6000000238418579,
+    "min": 0.30000001192092896
+  },
+  "lightEmission": 0.6499999761581421,
+  "maxParticles": 16,
+  "minScreenSize": 0.0,
+  "orientation": "FacingCamera",
+  "rate": 0.0,
+  "rotation": 0.0,
+  "rotationStartRandom": true,
+  "schemaVersion": 1,
+  "shape": "disc",
+  "shapeSize": [
+    0.4000000059604645,
+    0.05000000074505806,
+    0.4000000059604645
+  ],
+  "shapeStyle": "volume",
+  "size": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.03999999910593033
+      },
+      {
+        "t": 0.25,
+        "value": 0.07999999821186066
+      },
+      {
+        "t": 1.0,
+        "value": 0.019999999552965164
+      }
+    ]
+  },
+  "speed": {
+    "max": 1.399999976158142,
+    "min": 0.4000000059604645
+  },
+  "spreadAngle": [
+    15.0,
+    45.0
+  ],
+  "texture": "assets/vfx/ember_flipbook_4x4.png",
+  "transparency": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.07999999821186066
+      },
+      {
+        "t": 0.5,
+        "value": 0.30000001192092896
+      },
+      {
+        "t": 1.0,
+        "value": 1.0
+      }
+    ]
+  }
+}

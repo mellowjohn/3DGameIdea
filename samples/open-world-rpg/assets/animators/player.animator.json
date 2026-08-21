@@ -22,29 +22,58 @@
           "motion": {
             "children": [
               {
-                "clip": "Idle",
+                "clip": "Walk",
                 "clipSource": "assets/models/player.gltf",
                 "loop": true,
-                "speed": 1.0,
-                "threshold": 0.0
+                "position": [0.0, 0.35],
+                "speed": 1.0
+              },
+              {
+                "clip": "WalkStrafeLeft",
+                "clipSource": "assets/models/player.gltf",
+                "loop": true,
+                "position": [-0.35, 0.0],
+                "speed": 1.0
+              },
+              {
+                "clip": "WalkStrafeRight",
+                "clipSource": "assets/models/player.gltf",
+                "loop": true,
+                "position": [0.35, 0.0],
+                "speed": 1.0
               },
               {
                 "clip": "Walk",
                 "clipSource": "assets/models/player.gltf",
                 "loop": true,
-                "speed": 1.0,
-                "threshold": 0.3499999940395355
+                "position": [0.0, -0.35],
+                "speed": 1.0
               },
               {
                 "clip": "Run",
                 "clipSource": "assets/models/player.gltf",
                 "loop": true,
-                "speed": 1.0,
-                "threshold": 1.0
+                "position": [0.0, 1.0],
+                "speed": 1.0
+              },
+              {
+                "clip": "RunStrafeLeft",
+                "clipSource": "assets/models/player.gltf",
+                "loop": true,
+                "position": [-1.0, 0.0],
+                "speed": 1.0
+              },
+              {
+                "clip": "RunStrafeRight",
+                "clipSource": "assets/models/player.gltf",
+                "loop": true,
+                "position": [1.0, 0.0],
+                "speed": 1.0
               }
             ],
-            "parameter": "speed",
-            "type": "blendTree1D"
+            "parameterX": "moveX",
+            "parameterY": "moveZ",
+            "type": "blendTree2D"
           },
           "name": "locomotion"
         },
@@ -77,26 +106,6 @@
             "type": "clip"
           },
           "name": "land"
-        },
-        {
-          "motion": {
-            "clip": "Attack",
-            "clipSource": "assets/models/player.gltf",
-            "loop": false,
-            "speed": 1.0,
-            "type": "clip"
-          },
-          "name": "attack"
-        },
-        {
-          "motion": {
-            "clip": "Block",
-            "clipSource": "assets/models/player.gltf",
-            "loop": true,
-            "speed": 1.0,
-            "type": "clip"
-          },
-          "name": "block"
         },
         {
           "motion": {
@@ -187,36 +196,6 @@
             "type": "clip"
           },
           "name": "revive"
-        },
-        {
-          "motion": {
-            "clip": "BowDraw",
-            "clipSource": "assets/models/player.gltf",
-            "loop": false,
-            "speed": 1.0,
-            "type": "clip"
-          },
-          "name": "bowDraw"
-        },
-        {
-          "motion": {
-            "clip": "BowAim",
-            "clipSource": "assets/models/player.gltf",
-            "loop": true,
-            "speed": 1.0,
-            "type": "clip"
-          },
-          "name": "bowAim"
-        },
-        {
-          "motion": {
-            "clip": "BowRelease",
-            "clipSource": "assets/models/player.gltf",
-            "loop": false,
-            "speed": 1.0,
-            "type": "clip"
-          },
-          "name": "bowRelease"
         }
       ],
       "transitions": [
@@ -265,164 +244,6 @@
           "exitTime": 0.8999999761581421,
           "from": "hitReact",
           "hasExitTime": true,
-          "to": "idle"
-        },
-        {
-          "conditions": [
-            {
-              "op": "trigger",
-              "parameter": "attack"
-            }
-          ],
-          "duration": 0.05000000074505806,
-          "exitTime": 1.0,
-          "from": "*",
-          "hasExitTime": false,
-          "to": "attack"
-        },
-        {
-          "conditions": [],
-          "duration": 0.10000000149011612,
-          "exitTime": 0.8999999761581421,
-          "from": "attack",
-          "hasExitTime": true,
-          "to": "idle"
-        },
-        {
-          "conditions": [
-            {
-              "op": "equal",
-              "parameter": "bowDrawn",
-              "value": true
-            },
-            {
-              "op": "equal",
-              "parameter": "grounded",
-              "value": true
-            }
-          ],
-          "duration": 0.08,
-          "exitTime": 1.0,
-          "from": "idle",
-          "hasExitTime": false,
-          "to": "bowDraw"
-        },
-        {
-          "conditions": [
-            {
-              "op": "equal",
-              "parameter": "bowDrawn",
-              "value": true
-            },
-            {
-              "op": "equal",
-              "parameter": "grounded",
-              "value": true
-            }
-          ],
-          "duration": 0.08,
-          "exitTime": 1.0,
-          "from": "locomotion",
-          "hasExitTime": false,
-          "to": "bowDraw"
-        },
-        {
-          "conditions": [
-            {
-              "op": "trigger",
-              "parameter": "shoot"
-            }
-          ],
-          "duration": 0.05,
-          "exitTime": 1.0,
-          "from": "*",
-          "hasExitTime": false,
-          "to": "bowDraw"
-        },
-        {
-          "conditions": [
-            {
-              "op": "equal",
-              "parameter": "bowDrawn",
-              "value": true
-            }
-          ],
-          "duration": 0.1,
-          "exitTime": 0.92,
-          "from": "bowDraw",
-          "hasExitTime": true,
-          "to": "bowAim"
-        },
-        {
-          "conditions": [
-            {
-              "op": "equal",
-              "parameter": "bowDrawn",
-              "value": false
-            }
-          ],
-          "duration": 0.06,
-          "exitTime": 1.0,
-          "from": "bowDraw",
-          "hasExitTime": false,
-          "to": "bowRelease"
-        },
-        {
-          "conditions": [
-            {
-              "op": "equal",
-              "parameter": "bowDrawn",
-              "value": false
-            }
-          ],
-          "duration": 0.06,
-          "exitTime": 1.0,
-          "from": "bowAim",
-          "hasExitTime": false,
-          "to": "bowRelease"
-        },
-        {
-          "conditions": [],
-          "duration": 0.12,
-          "exitTime": 0.9,
-          "from": "bowRelease",
-          "hasExitTime": true,
-          "to": "idle"
-        },
-        {
-          "conditions": [
-            {
-              "floatValue": 0.0,
-              "op": "equal",
-              "parameter": "block",
-              "value": true
-            },
-            {
-              "floatValue": 0.0,
-              "op": "equal",
-              "parameter": "grounded",
-              "value": true
-            }
-          ],
-          "duration": 0.07999999821186066,
-          "exitTime": 1.0,
-          "from": "*",
-          "hasExitTime": false,
-          "to": "block"
-        },
-        {
-          "conditions": [
-            {
-              "floatValue": 0.0,
-              "op": "equal",
-              "parameter": "block",
-              "value": false
-            }
-          ],
-          "duration": 0.10000000149011612,
-          "exitTime": 1.0,
-          "from": "block",
-          "hasExitTime": false,
           "to": "idle"
         },
         {
@@ -650,36 +471,6 @@
           ],
           "duration": 0.07999999821186066,
           "exitTime": 1.0,
-          "from": "attack",
-          "hasExitTime": false,
-          "to": "fall"
-        },
-        {
-          "conditions": [
-            {
-              "floatValue": 0.0,
-              "op": "equal",
-              "parameter": "grounded",
-              "value": false
-            }
-          ],
-          "duration": 0.07999999821186066,
-          "exitTime": 1.0,
-          "from": "block",
-          "hasExitTime": false,
-          "to": "fall"
-        },
-        {
-          "conditions": [
-            {
-              "floatValue": 0.0,
-              "op": "equal",
-              "parameter": "grounded",
-              "value": false
-            }
-          ],
-          "duration": 0.07999999821186066,
-          "exitTime": 1.0,
           "from": "dodge",
           "hasExitTime": false,
           "to": "fall"
@@ -813,12 +604,497 @@
           "to": "idle"
         }
       ]
+    },
+    {
+      "blendMode": "override",
+      "defaultState": "empty",
+      "mask": {
+        "includeChildren": true,
+        "joints": [
+          "Spine",
+          "Chest",
+          "Neck",
+          "Head",
+          "LeftShoulder",
+          "RightShoulder",
+          "LeftUpperArm",
+          "RightUpperArm"
+        ]
+      },
+      "name": "upperBody",
+      "states": [
+        {
+          "motion": {
+            "type": "none"
+          },
+          "name": "empty"
+        },
+        {
+          "motion": {
+            "clip": "Block",
+            "clipSource": "assets/models/player.gltf",
+            "loop": true,
+            "speed": 1.0,
+            "type": "clip"
+          },
+          "name": "block"
+        },
+        {
+          "motion": {
+            "clip": "Attack",
+            "clipSource": "assets/models/player.gltf",
+            "loop": false,
+            "speed": 1.0,
+            "type": "clip"
+          },
+          "name": "attack"
+        },
+        {
+          "motion": {
+            "clip": "Attack2",
+            "clipSource": "assets/models/player.gltf",
+            "loop": false,
+            "speed": 1.0,
+            "type": "clip"
+          },
+          "name": "attack2"
+        },
+        {
+          "motion": {
+            "clip": "Attack3",
+            "clipSource": "assets/models/player.gltf",
+            "loop": false,
+            "speed": 1.0,
+            "type": "clip"
+          },
+          "name": "attack3"
+        },
+        {
+          "motion": {
+            "clip": "BowDraw",
+            "clipSource": "assets/models/player.gltf",
+            "loop": false,
+            "speed": 1.0,
+            "type": "clip"
+          },
+          "name": "bowDraw"
+        },
+        {
+          "motion": {
+            "clip": "BowAim",
+            "clipSource": "assets/models/player.gltf",
+            "loop": true,
+            "speed": 1.0,
+            "type": "clip"
+          },
+          "name": "bowAim"
+        },
+        {
+          "motion": {
+            "clip": "BowRelease",
+            "clipSource": "assets/models/player.gltf",
+            "loop": false,
+            "speed": 1.0,
+            "type": "clip"
+          },
+          "name": "bowRelease"
+        },
+        {
+          "motion": {
+            "clip": "MagicCast",
+            "clipSource": "assets/models/player.gltf",
+            "loop": false,
+            "speed": 1.0,
+            "type": "clip"
+          },
+          "name": "magicCast"
+        }
+      ],
+      "transitions": [
+        {
+          "conditions": [
+            {
+              "op": "trigger",
+              "parameter": "attack"
+            }
+          ],
+          "duration": 0.05000000074505806,
+          "exitTime": 1.0,
+          "from": "empty",
+          "hasExitTime": false,
+          "to": "attack"
+        },
+        {
+          "conditions": [
+            {
+              "op": "trigger",
+              "parameter": "attack"
+            }
+          ],
+          "duration": 0.05000000074505806,
+          "exitTime": 1.0,
+          "from": "block",
+          "hasExitTime": false,
+          "to": "attack"
+        },
+        {
+          "conditions": [
+            {
+              "op": "trigger",
+              "parameter": "attack2"
+            }
+          ],
+          "duration": 0.05999999865889549,
+          "exitTime": 1.0,
+          "from": "attack",
+          "hasExitTime": false,
+          "to": "attack2"
+        },
+        {
+          "conditions": [
+            {
+              "op": "trigger",
+              "parameter": "attack3"
+            }
+          ],
+          "duration": 0.05999999865889549,
+          "exitTime": 1.0,
+          "from": "attack2",
+          "hasExitTime": false,
+          "to": "attack3"
+        },
+        {
+          "conditions": [],
+          "duration": 0.10000000149011612,
+          "exitTime": 0.8999999761581421,
+          "from": "attack",
+          "hasExitTime": true,
+          "to": "empty"
+        },
+        {
+          "conditions": [],
+          "duration": 0.10000000149011612,
+          "exitTime": 0.8999999761581421,
+          "from": "attack2",
+          "hasExitTime": true,
+          "to": "empty"
+        },
+        {
+          "conditions": [],
+          "duration": 0.10000000149011612,
+          "exitTime": 0.8999999761581421,
+          "from": "attack3",
+          "hasExitTime": true,
+          "to": "empty"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "grounded",
+              "value": false
+            }
+          ],
+          "duration": 0.07999999821186066,
+          "exitTime": 1.0,
+          "from": "attack",
+          "hasExitTime": false,
+          "to": "empty"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "grounded",
+              "value": false
+            }
+          ],
+          "duration": 0.07999999821186066,
+          "exitTime": 1.0,
+          "from": "attack2",
+          "hasExitTime": false,
+          "to": "empty"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "grounded",
+              "value": false
+            }
+          ],
+          "duration": 0.07999999821186066,
+          "exitTime": 1.0,
+          "from": "attack3",
+          "hasExitTime": false,
+          "to": "empty"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "block",
+              "value": true
+            }
+          ],
+          "duration": 0.07999999821186066,
+          "exitTime": 1.0,
+          "from": "empty",
+          "hasExitTime": false,
+          "to": "block"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "block",
+              "value": false
+            }
+          ],
+          "duration": 0.10000000149011612,
+          "exitTime": 1.0,
+          "from": "block",
+          "hasExitTime": false,
+          "to": "empty"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "bowDrawn",
+              "value": true
+            },
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "grounded",
+              "value": true
+            }
+          ],
+          "duration": 0.07999999821186066,
+          "exitTime": 1.0,
+          "from": "empty",
+          "hasExitTime": false,
+          "to": "bowDraw"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "bowDrawn",
+              "value": true
+            },
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "grounded",
+              "value": true
+            }
+          ],
+          "duration": 0.07999999821186066,
+          "exitTime": 1.0,
+          "from": "block",
+          "hasExitTime": false,
+          "to": "bowDraw"
+        },
+        {
+          "conditions": [
+            {
+              "op": "trigger",
+              "parameter": "shoot"
+            }
+          ],
+          "duration": 0.05000000074505806,
+          "exitTime": 1.0,
+          "from": "empty",
+          "hasExitTime": false,
+          "to": "bowDraw"
+        },
+        {
+          "conditions": [
+            {
+              "op": "trigger",
+              "parameter": "shoot"
+            }
+          ],
+          "duration": 0.05000000074505806,
+          "exitTime": 1.0,
+          "from": "block",
+          "hasExitTime": false,
+          "to": "bowDraw"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "bowDrawn",
+              "value": true
+            }
+          ],
+          "duration": 0.10000000149011612,
+          "exitTime": 0.9200000166893005,
+          "from": "bowDraw",
+          "hasExitTime": true,
+          "to": "bowAim"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "bowDrawn",
+              "value": false
+            }
+          ],
+          "duration": 0.05999999865889549,
+          "exitTime": 1.0,
+          "from": "bowDraw",
+          "hasExitTime": false,
+          "to": "bowRelease"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "bowDrawn",
+              "value": false
+            }
+          ],
+          "duration": 0.05999999865889549,
+          "exitTime": 1.0,
+          "from": "bowAim",
+          "hasExitTime": false,
+          "to": "bowRelease"
+        },
+        {
+          "conditions": [],
+          "duration": 0.11999999731779099,
+          "exitTime": 0.8999999761581421,
+          "from": "bowRelease",
+          "hasExitTime": true,
+          "to": "empty"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "grounded",
+              "value": false
+            }
+          ],
+          "duration": 0.07999999821186066,
+          "exitTime": 1.0,
+          "from": "bowDraw",
+          "hasExitTime": false,
+          "to": "empty"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "grounded",
+              "value": false
+            }
+          ],
+          "duration": 0.07999999821186066,
+          "exitTime": 1.0,
+          "from": "bowAim",
+          "hasExitTime": false,
+          "to": "empty"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "grounded",
+              "value": false
+            }
+          ],
+          "duration": 0.07999999821186066,
+          "exitTime": 1.0,
+          "from": "bowRelease",
+          "hasExitTime": false,
+          "to": "empty"
+        },
+        {
+          "conditions": [
+            {
+              "op": "trigger",
+              "parameter": "cast"
+            }
+          ],
+          "duration": 0.05000000074505806,
+          "exitTime": 1.0,
+          "from": "empty",
+          "hasExitTime": false,
+          "to": "magicCast"
+        },
+        {
+          "conditions": [
+            {
+              "op": "trigger",
+              "parameter": "cast"
+            }
+          ],
+          "duration": 0.05000000074505806,
+          "exitTime": 1.0,
+          "from": "block",
+          "hasExitTime": false,
+          "to": "magicCast"
+        },
+        {
+          "conditions": [],
+          "duration": 0.10000000149011612,
+          "exitTime": 0.8999999761581421,
+          "from": "magicCast",
+          "hasExitTime": true,
+          "to": "empty"
+        },
+        {
+          "conditions": [
+            {
+              "floatValue": 0.0,
+              "op": "equal",
+              "parameter": "grounded",
+              "value": false
+            }
+          ],
+          "duration": 0.07999999821186066,
+          "exitTime": 1.0,
+          "from": "magicCast",
+          "hasExitTime": false,
+          "to": "empty"
+        }
+      ],
+      "weight": 1.0
     }
   ],
   "parameters": [
     {
       "default": 0.0,
       "name": "speed",
+      "type": "float"
+    },
+    {
+      "default": 0.0,
+      "name": "moveX",
+      "type": "float"
+    },
+    {
+      "default": 0.0,
+      "name": "moveZ",
       "type": "float"
     },
     {
@@ -832,6 +1108,18 @@
     },
     {
       "name": "attack",
+      "type": "trigger"
+    },
+    {
+      "name": "attack2",
+      "type": "trigger"
+    },
+    {
+      "name": "attack3",
+      "type": "trigger"
+    },
+    {
+      "name": "cast",
       "type": "trigger"
     },
     {
@@ -889,31 +1177,67 @@
   "schemaVersion": 1,
   "timelineEvents": [
     {
-      "layer": "base",
+      "layer": "upperBody",
       "name": "hitFrame",
       "payload": {
         "phase": "strike"
       },
       "state": "attack",
+      "time": 0.5199999809265137
+    },
+    {
+      "layer": "upperBody",
+      "name": "hitFrame",
+      "payload": {
+        "phase": "strike"
+      },
+      "state": "attack2",
+      "time": 0.2199999988079071
+    },
+    {
+      "layer": "upperBody",
+      "name": "hitFrame",
+      "payload": {
+        "phase": "strike"
+      },
+      "state": "attack3",
+      "time": 0.5799999833106995
+    },
+    {
+      "layer": "upperBody",
+      "name": "castCharge",
+      "payload": {
+        "phase": "charge"
+      },
+      "state": "magicCast",
       "time": 0.2800000011920929
     },
     {
-      "layer": "base",
+      "layer": "upperBody",
+      "name": "castRelease",
+      "payload": {
+        "phase": "release"
+      },
+      "state": "magicCast",
+      "time": 0.800000011920929
+    },
+    {
+      "layer": "upperBody",
       "name": "nockArrow",
       "payload": {
         "phase": "nock"
       },
       "state": "bowDraw",
-      "time": 0.12
+      "time": 0.11999999731779099
     },
     {
-      "layer": "base",
+      "layer": "upperBody",
       "name": "releaseArrow",
       "payload": {
         "phase": "release"
       },
       "state": "bowRelease",
-      "time": 0.05
+      "time": 0.05000000074505806
     },
     {
       "layer": "base",

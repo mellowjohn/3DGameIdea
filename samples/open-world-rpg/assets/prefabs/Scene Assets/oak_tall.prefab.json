@@ -54,5 +54,7 @@
       }
     }
   ],
+  "lod1Mesh": "assets/models/oak_young.gltf",
+  "lod2Mesh": "assets/models/oak_young.gltf",
   "schemaVersion": 2
 }

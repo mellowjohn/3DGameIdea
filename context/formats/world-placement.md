@@ -57,3 +57,17 @@ The prefab path must be project-relative and begin with `assets/`. Cell ownershi
 `place-world-object`, `move-world-object`, `remove-world-object`, and entity component add/remove/set run through `CommandHistory`. Each supports undo/redo and reports a deterministic action summary plus changed entity UUIDs. Moving an object across a 128 m boundary updates cell ownership in the same transaction. Removing an object with children is rejected until hierarchical removal semantics are explicitly implemented.
 
 This layer is the authoritative backend for editor drag-and-drop, transform gizmos, deletion, save operations, and AI automation. The GUI must not mutate ECS components directly.
+
+## World document footer
+
+Optional top-level fields alongside `entities`:
+
+| Field | Role |
+| --- | --- |
+| `worldId` / `name` | Document identity |
+| `partition` | `worldSizeMeters` / `cellSizeMeters` (DEC-0054) |
+| `presentation` | `open_world` (default), `menu`, or `cinematic_instance` — see [`../features/cinematic-instance-worlds.md`](../features/cinematic-instance-worlds.md) |
+| `terrainData` | Optional per-world `{ "edits", "paint", "foliage" }` project-relative terrain stores. Required for cinematic-instance terrain authored through MCP (DEC-0056). `open_world` pads may set it too (`worlds/combat-sandbox.world.json`) so flatten/paint does not rewrite the campaign heightfield. |
+
+`terrainData` is intentionally three files so sculpted heights, material paint, and foliage density remain independently diffable. The paths must be project-relative under `assets/terrain/`; missing files begin as empty terrain data for that instance.
+

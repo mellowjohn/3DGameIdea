@@ -39,27 +39,74 @@
       ]
     },
     {
-      "id": "dlg_act0_meet_arkand",
+      "id": "dlg_act0_prologue",
       "parentQuestId": "mq_act0_calrenoth",
-      "displayName": "Act 0 — Meet Arkand (siege approach)",
+      "displayName": "Act 0 — Prologue (Frangitur narration)",
       "canonStatus": "draft",
-      "summary": "Frangitur omen + meet Arkand outside Calrenoth. Ends before entering the keep.",
-      "storyRef": "context/story/sources/wrathful-conquest-act0.twee",
-      "entryNodeId": "prologue",
+      "summary": "A0-01 Frangitur narration from inside the Nefarium Shroud. Spoken lines only (stage directions stay in story docs). Boot UI currently drives this beat via prologue.uicanvas.json; this tree is the World Forge / future cinematic source.",
+      "storyRef": "context/story/prologue-and-opening.md",
+      "entryNodeId": "frangitur_taunt",
       "nodes": [
         {
-          "id": "prologue",
-          "speakerId": "narrator",
-          "line": "Frangitur Whispers: “Luceran… oh Luceran, you find your sanguine thirst for control justified by your righteous claim of the shroud. A fool's folly, as for your torment shall be ever prolonged by the Imperium’s own unstoppable tide. It is only I, Luceran, who really knows the truth behind Tessera’s never ending onslaught and self-destruction. As for you who seeks to control the chaos, it cannot be controlled. I gave Tessera its freedom long ago, only to be betrayed by those who misuse my gift for their own perverted gains. \n\nDo you understand adventurers? This clown believed he could withstand the Shrouds' corruption! To save Tessera, you must rip it apart, you have to!\n\nPlease, if you don’t then I will! \n\nTheThrone Room, Usurper is shown sitting on the throne.\n\nThe camera slowly zooms out as we can slowly hear Frangitur’s whispers come to life.\n\nWhen Frangitur talks about himself, the camera then cuts to a glass panel full of blood.\n\nAfter, once he talks directly to the adventurers, the background disappears into a white silhouette with the shroud floating above a gray figure\n\nThe last sentence will ignite the background into flames as it transitions into the character creation screen.",
+          "id": "frangitur_taunt",
+          "speakerId": "frangitur",
+          "line": "Luceran… oh Luceran, you find your sanguine thirst for control justified by your righteous claim of the shroud. A fool's folly, as for your torment shall be ever prolonged by the Imperium’s own unstoppable tide. It is only I, Luceran, who really knows the truth behind Tessera’s never ending onslaught and self-destruction. As for you who seeks to control the chaos, it cannot be controlled. I gave Tessera its freedom long ago, only to be betrayed by those who misuse my gift for their own perverted gains.",
           "choices": [
             {
-              "id": "prologue_c1",
-              "text": "Tutorial",
-              "nextNodeId": "tutorial",
+              "id": "frangitur_taunt_c1",
+              "text": "Continue",
+              "nextNodeId": "frangitur_address",
               "setFlags": []
             }
           ]
         },
+        {
+          "id": "frangitur_address",
+          "speakerId": "frangitur",
+          "line": "Do you understand adventurers? This clown believed he could withstand the Shrouds' corruption! To save Tessera, you must rip it apart, you have to!",
+          "choices": [
+            {
+              "id": "frangitur_address_c1",
+              "text": "Continue",
+              "nextNodeId": "frangitur_threat",
+              "setFlags": []
+            }
+          ]
+        },
+        {
+          "id": "frangitur_threat",
+          "speakerId": "frangitur",
+          "line": "Please, if you don’t then I will!",
+          "choices": [
+            {
+              "id": "frangitur_threat_c1",
+              "text": "Begin",
+              "nextNodeId": "",
+              "setFlags": []
+            }
+          ]
+        }
+      ],
+      "acts": [
+        "act0"
+      ],
+      "tags": [
+        "main",
+        "act0",
+        "prologue",
+        "cinematic"
+      ],
+      "openQuestions": []
+    },
+    {
+      "id": "dlg_act0_meet_arkand",
+      "parentQuestId": "mq_act0_calrenoth",
+      "displayName": "Act 0 — Meet Arkand (siege approach)",
+      "canonStatus": "draft",
+      "summary": "Meet Arkand outside Calrenoth (prologue narration lives in dlg_act0_prologue). Ends before entering the keep.",
+      "storyRef": "context/story/sources/wrathful-conquest-act0.twee",
+      "entryNodeId": "tutorial",
+      "nodes": [
         {
           "id": "close",
           "speakerId": "narrator",

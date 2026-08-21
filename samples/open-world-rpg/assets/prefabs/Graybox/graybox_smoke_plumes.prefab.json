@@ -1,0 +1,96 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.22,
+          0.22,
+          0.24
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "plume_a",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          14,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4,
+          28,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.28,
+          0.28,
+          0.3
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "plume_b",
+      "parent": null,
+      "transform": {
+        "position": [
+          3.5,
+          18,
+          2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3.2,
+          22,
+          3.2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.18,
+          0.18,
+          0.2
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "plume_c",
+      "parent": null,
+      "transform": {
+        "position": [
+          -2.5,
+          20,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.8,
+          18,
+          2.8
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

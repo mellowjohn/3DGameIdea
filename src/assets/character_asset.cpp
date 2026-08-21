@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <fstream>
 #include <sstream>
@@ -17,7 +18,102 @@ EngineError character_asset_error(std::string code, std::string message) {
 
 bool positive(float value) { return std::isfinite(value) && value > 0.0f; }
 
+std::string lower_copy(std::string_view text) {
+    std::string out(text);
+    for (char& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return out;
+}
+
+bool option_matches(const AppearanceOption& option, std::string_view value) {
+    const auto needle = lower_copy(value);
+    return needle == lower_copy(option.id) || needle == lower_copy(option.display);
+}
+
+std::array<float, 3> read_rgb(const nlohmann::json& root, const char* key, std::array<float, 3> fallback) {
+    if (!root.contains(key) || !root[key].is_array() || root[key].size() < 3) return fallback;
+    return {root[key][0].get<float>(), root[key][1].get<float>(), root[key][2].get<float>()};
+}
+
+nlohmann::json rgb_json(const std::array<float, 3>& rgb) { return nlohmann::json::array({rgb[0], rgb[1], rgb[2]}); }
+
 } // namespace
+
+const std::vector<AppearanceOption>& appearance_hair_options() {
+    static const std::vector<AppearanceOption> k_options{
+        {"short", "Short Brown"},
+        {"cropped", "Cropped Black"},
+        {"blonde", "Ash Blonde"},
+        {"shaved", "Shaved"},
+    };
+    return k_options;
+}
+
+const std::vector<AppearanceOption>& appearance_skin_options() {
+    static const std::vector<AppearanceOption> k_options{
+        {"warm_tan", "Warm Tan"},
+        {"fair", "Fair"},
+        {"olive", "Olive"},
+        {"deep_brown", "Deep Brown"},
+    };
+    return k_options;
+}
+
+const std::vector<AppearanceOption>& appearance_eye_options() {
+    static const std::vector<AppearanceOption> k_options{
+        {"brown", "Brown"},
+        {"green", "Green"},
+        {"blue", "Blue"},
+        {"hazel", "Hazel"},
+    };
+    return k_options;
+}
+
+std::string appearance_option_id(const std::vector<AppearanceOption>& options, std::string_view value) {
+    for (const auto& option : options) {
+        if (option_matches(option, value)) return option.id;
+    }
+    return options.empty() ? std::string{} : options.front().id;
+}
+
+CharacterAppearance appearance_from_option_ids(std::string_view hair, std::string_view skin, std::string_view eyes) {
+    CharacterAppearance appearance;
+    auto hair_id = appearance_option_id(appearance_hair_options(), hair);
+    if (hair_id == "spikes")
+        hair_id = "short";
+    if (hair_id == "shaved") {
+        appearance.hair_mesh.clear();
+        appearance.hair_tint = {1.0f, 1.0f, 1.0f};
+    } else {
+        appearance.hair_mesh = "assets/models/test_hair_spikes.gltf";
+        if (hair_id == "cropped")
+            appearance.hair_tint = {0.22f, 0.16f, 0.12f};
+        else if (hair_id == "blonde")
+            appearance.hair_tint = {1.35f, 1.15f, 0.62f};
+        else
+            appearance.hair_tint = {1.0f, 0.78f, 0.42f};
+    }
+
+    const auto skin_id = appearance_option_id(appearance_skin_options(), skin);
+    if (skin_id == "fair")
+        appearance.skin_tint = {1.12f, 0.96f, 0.92f};
+    else if (skin_id == "olive")
+        appearance.skin_tint = {0.78f, 0.82f, 0.52f};
+    else if (skin_id == "deep_brown")
+        appearance.skin_tint = {0.42f, 0.28f, 0.18f};
+    else
+        appearance.skin_tint = {1.0f, 0.90f, 0.78f};
+
+    const auto eye_id = appearance_option_id(appearance_eye_options(), eyes);
+    if (eye_id == "green")
+        appearance.eye_tint = {0.22f, 0.55f, 0.18f};
+    else if (eye_id == "blue")
+        appearance.eye_tint = {0.18f, 0.32f, 0.72f};
+    else if (eye_id == "hazel")
+        appearance.eye_tint = {0.42f, 0.28f, 0.10f};
+    else
+        appearance.eye_tint = {0.22f, 0.12f, 0.06f};
+    return appearance;
+}
 
 Result<void> CharacterAsset::validate() const {
     if (schema_version != 1)
@@ -47,6 +143,11 @@ std::string CharacterAsset::to_json() const {
                                 {"gravity", gravity},
                                 {"jumpVelocity", jump_velocity}};
     if (!rig.empty()) root["rig"] = rig;
+    nlohmann::ordered_json appearance_json{{"hairMesh", appearance.hair_mesh},
+                                           {"hairTint", rgb_json(appearance.hair_tint)},
+                                           {"skinTint", rgb_json(appearance.skin_tint)},
+                                           {"eyeTint", rgb_json(appearance.eye_tint)}};
+    root["appearance"] = std::move(appearance_json);
     return root.dump(2) + "\n";
 }
 
@@ -64,6 +165,14 @@ Result<CharacterAsset> CharacterAsset::from_json(const std::string& text) {
         value.max_speed = root.value("maxSpeed", 6.0f);
         value.gravity = root.value("gravity", 9.81f);
         value.jump_velocity = root.value("jumpVelocity", 5.0f);
+        value.appearance = appearance_from_option_ids("short", "warm_tan", "brown");
+        if (root.contains("appearance") && root["appearance"].is_object()) {
+            const auto& appearance = root["appearance"];
+            value.appearance.hair_mesh = appearance.value("hairMesh", value.appearance.hair_mesh);
+            value.appearance.hair_tint = read_rgb(appearance, "hairTint", value.appearance.hair_tint);
+            value.appearance.skin_tint = read_rgb(appearance, "skinTint", value.appearance.skin_tint);
+            value.appearance.eye_tint = read_rgb(appearance, "eyeTint", value.appearance.eye_tint);
+        }
         if (const auto valid = value.validate(); !valid) return Result<CharacterAsset>::failure(valid.error());
         return Result<CharacterAsset>::success(std::move(value));
     } catch (const std::exception& exception) {

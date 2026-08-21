@@ -26,7 +26,9 @@ class StreamedWaterField final {
 public:
     static constexpr std::uint32_t k_resolution = WaterStore::k_resolution;
     static constexpr float k_cell_size = WaterStore::k_cell_size;
-    static constexpr std::uint32_t k_default_radius = 2;
+    static constexpr std::uint32_t k_default_radius = 4;
+    /** Match `StreamedTerrainField::k_editor_view_radius` for Scene/menu previews. */
+    static constexpr std::uint32_t k_editor_view_radius = 6;
     /** Runtime hitch budget: build at most one new water cell mesh per update while streaming. */
     static constexpr std::size_t k_default_max_new_cells_per_update = 1;
     /** Runtime hitch budget: upload at most one dirty water cell mesh per frame. */

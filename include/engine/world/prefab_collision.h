@@ -51,7 +51,17 @@ private:
         TransformComponent motion_local{}; // solid collider local TR used for write-back (scale baked into shape)
         std::optional<CollisionBody> motion_body;
         std::vector<CollisionBody> bodies; // sensors + motion (motion also in motion_body)
+        /// Hurt/interaction sensors that must follow the entity pose each write-back.
+        struct FollowSensor {
+            CollisionBody body;
+            TransformComponent local{};
+        };
+        std::vector<FollowSensor> follow_sensors;
     };
+
+    void follow_sensor_transforms(CollisionWorld& world, const TrackedPlacement& tracked);
+    void teleport_physics_driven(CollisionWorld& world, TrackedPlacement& tracked,
+        const TransformComponent& entity_pose);
 
     std::map<std::string, TrackedPlacement> tracked_;
     InteractionVolumeRegistry interaction_registry_;

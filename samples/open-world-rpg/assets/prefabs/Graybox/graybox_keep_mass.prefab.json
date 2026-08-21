@@ -1,0 +1,606 @@
+{
+  "collision": [
+    {
+      "halfExtent": [
+        25,
+        12,
+        22
+      ],
+      "id": "keep_footprint",
+      "layer": "staticWorld",
+      "shape": "box",
+      "transform": {
+        "position": [
+          0,
+          12,
+          -3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "trigger": false
+    }
+  ],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.42,
+          0.4,
+          0.37
+        ],
+        "primitive": "cube"
+      },
+      "name": "keep_hall",
+      "parent": null,
+      "transform": {
+        "position": [
+          2,
+          12,
+          6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          24,
+          24,
+          20
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.32,
+          0.3,
+          0.28
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "keep_roof",
+      "parent": null,
+      "transform": {
+        "position": [
+          2,
+          28,
+          6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          26,
+          10,
+          22
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cube"
+      },
+      "name": "keep_wing",
+      "parent": null,
+      "transform": {
+        "position": [
+          -16,
+          8,
+          2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          14,
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3,
+          0.28,
+          0.26
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "keep_wing_roof",
+      "parent": null,
+      "transform": {
+        "position": [
+          -16,
+          18,
+          2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          15,
+          6,
+          17
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.41,
+          0.39,
+          0.36
+        ],
+        "primitive": "cube"
+      },
+      "name": "keep_wing_e",
+      "parent": null,
+      "transform": {
+        "position": [
+          16,
+          7,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          12,
+          14,
+          14
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3,
+          0.28,
+          0.26
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "keep_wing_e_roof",
+      "parent": null,
+      "transform": {
+        "position": [
+          16,
+          16,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          13,
+          5,
+          15
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4,
+          0.38,
+          0.35
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "keep_turret",
+      "parent": null,
+      "transform": {
+        "position": [
+          10,
+          16,
+          -8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          7,
+          20,
+          7
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.28,
+          0.26,
+          0.24
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "keep_turret_cap",
+      "parent": null,
+      "transform": {
+        "position": [
+          10,
+          28,
+          -8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          8,
+          6,
+          8
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.38,
+          0.36,
+          0.33
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_a",
+      "parent": null,
+      "transform": {
+        "position": [
+          -8,
+          26,
+          14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3,
+          3,
+          3
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.38,
+          0.36,
+          0.33
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_b",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          26,
+          14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3,
+          3,
+          3
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.38,
+          0.36,
+          0.33
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_c",
+      "parent": null,
+      "transform": {
+        "position": [
+          8,
+          26,
+          14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3,
+          3,
+          3
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.38,
+          0.36,
+          0.33
+        ],
+        "primitive": "cube"
+      },
+      "name": "merlon_d",
+      "parent": null,
+      "transform": {
+        "position": [
+          12,
+          26,
+          -2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3,
+          3,
+          3
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.39,
+          0.37,
+          0.34
+        ],
+        "primitive": "cube"
+      },
+      "name": "bailey_shed_a",
+      "parent": null,
+      "transform": {
+        "position": [
+          -18,
+          3.5,
+          -14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          12,
+          7,
+          10
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3,
+          0.28,
+          0.26
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "bailey_shed_a_roof",
+      "parent": null,
+      "transform": {
+        "position": [
+          -18,
+          8.5,
+          -14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          13,
+          4,
+          11
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.39,
+          0.37,
+          0.34
+        ],
+        "primitive": "cube"
+      },
+      "name": "bailey_shed_b",
+      "parent": null,
+      "transform": {
+        "position": [
+          18,
+          3,
+          -12
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          10,
+          6,
+          12
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3,
+          0.28,
+          0.26
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "bailey_shed_b_roof",
+      "parent": null,
+      "transform": {
+        "position": [
+          18,
+          7.5,
+          -12
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          11,
+          3.5,
+          13
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.43,
+          0.41,
+          0.38
+        ],
+        "primitive": "cube"
+      },
+      "name": "gate_inner_wall",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          6,
+          -20
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          22,
+          12,
+          4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.36,
+          0.34,
+          0.31
+        ],
+        "primitive": "cube"
+      },
+      "name": "buttress_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -12,
+          8,
+          -16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4,
+          16,
+          6
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.36,
+          0.34,
+          0.31
+        ],
+        "primitive": "cube"
+      },
+      "name": "buttress_r",
+      "parent": null,
+      "transform": {
+        "position": [
+          12,
+          8,
+          -16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          4,
+          16,
+          6
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

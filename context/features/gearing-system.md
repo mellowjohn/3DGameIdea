@@ -1,7 +1,7 @@
 # Terraria-shaped gearing system
 
 - Status: planned (design locked)
-- Decisions: [DEC-0048](../decisions/index.md#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity), [DEC-0050](../decisions/index.md#dec-0050-inventory-ux-item-kinds-and-positive-soft-affinity), [DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux)
+- Decisions: [DEC-0048](../decisions/index.md#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity), [DEC-0050](../decisions/index.md#dec-0050-inventory-ux-item-kinds-and-positive-soft-affinity), [DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux), [DEC-0057](../decisions/index.md#dec-0057-marble-bag-rng-for-gameplay-rolls)
 - Epic: [EPIC-0018](../planning/epics.md) (TICKET-0231+)
 - Related: [DEC-0009](../decisions/index.md#dec-0009-starting-archetype-character-creation), [DEC-0044](../decisions/index.md#dec-0044-starting-archetype-lane-orgs-and-rename), [DEC-0032](../decisions/index.md#dec-0032-open-world-travel-discovery-map-and-dual-soft-gates), TICKET-0111, EPIC-0011 melee slice
 - Provenance: Dom + John design recordings / chat 2026-07-27 (transcript “Ledgerport” → canon **Ledgeport**; “Thraador” → **Thrator**); inventory UX lock 2026-07-29 ([`../design/recording_item_system_2026-07-29.md`](../design/recording_item_system_2026-07-29.md))
@@ -50,6 +50,7 @@ Do **not** implement hard “cannot equip” gates for lane mismatch.
 - **Obscure rares** may exceed their act band and remain useful into later acts.
 - First-time playthrough should rarely stumble into the wildest rares without deep exploration or external knowledge; story completion must not require them.
 - Bosses support **common + rare** tables and optional farm replay when systems allow.
+- Table rolls use **marble bags** ([DEC-0057](../decisions/index.md#dec-0057-marble-bag-rng-for-gameplay-rolls), [`marble-bag-rng.md`](marble-bag-rng.md)): integer counts, draw without replacement, refill when empty. Independent `math.random` weights (current Act 0 pouch/chest Lua) are not the shipping contract.
 
 ## Acquisition loops
 
@@ -80,7 +81,10 @@ Ids from display names. Concepts: [`../art/concepts/README.md`](../art/concepts/
 | --- | --- | --- | --- |
 | `ashfell_arming_sword` | Ashfell Arming Sword | weapon | Starter — Ashfell Blade |
 | `outrider_shortbow` | Outrider Shortbow | weapon | Starter — Outrider |
-| `guild_rune_focus` | Guild Rune Focus | weapon | Starter — Runecaster |
+| `guild_rune_focus` | Guild Rune Focus | weapon | Starter — Runecaster (arcane bolt) |
+| `guild_rune_focus_fire` | Guild Fire Focus | weapon | Sandbox clone — fire bolt + burn DoT |
+| `guild_rune_focus_frost` | Guild Frost Focus | weapon | Sandbox clone — frost bolt + Slow |
+| `guild_rune_focus_lightning` | Guild Lightning Focus | weapon | Sandbox clone — lightning bolt + chain hops |
 | `field_bandage` | Field Bandage | consumable (`healing`) | Common / combat drop |
 | `soldiers_scrap_pouch` | Soldier's Scrap Pouch | consumable / material flavor | Approach find |
 | `vein_iron_pendant` | Vein-Iron Pendant | trinket | Obscure Act 0 rare (**ship**) |
@@ -92,29 +96,39 @@ Ids from display names. Concepts: [`../art/concepts/README.md`](../art/concepts/
 
 **Runtime gate:** thin inventory grant + equip/hotbar (extends TICKET-0111 / TICKET-0232 / DEC-0050) so “get” is playable, not lore-only. Positive soft-affinity multipliers can land with that thin path or immediately after.
 
-**Runtime (TICKET-0237 + follow-on):** `InventoryRuntime` + `ItemCatalogAsset` load `assets/items/*.json`. Lua `engine.inventory_*` (incl. `inventory_move`) + MCP `engine_inventory_call` (`move` kind). **Play-test starter** is selected by `play_test_starter_archetype_id` (default `ashfell_blade`) and grants that lane’s weapon to hotbar 0 + field bandages. Until character creation ships, set it from **Diagnostics → Console** (`starter outrider`, `give …`, `hotbar …`) or with MCP:
+**Item stats (2026-08-20):** catalog `stats` on Act 0 weapons, iron test armor, trinkets, and healing consumables. Inventory hover tooltip + properties pane show damage range, DPS, heal, and modifiers. Format: [`../formats/item-catalog-assets.md`](../formats/item-catalog-assets.md). Combat still uses play-test gates; these numbers are the UI contract for gear comparison.
 
 ```json
 {"kind":"set_starter_archetype","archetypeId":"outrider"}
 ```
 
-Aliases: `ashfell` / `melee`, `outrider` / `bow` / `archer`, `runecaster` / `magic`. Status reports `starterArchetypeId` + `starterWeaponItemId`. `apply_starter` swaps hotbar 0 without restarting play-test. World Forge → Archetypes author `starterWeaponItemId` per row; built-in defaults match the three starters. Loot bag/chest call `inventory_grant`. Inventory modal aligned to `inventory-ui.pen` (equip + 4 trinkets + bag grid + footer hotbar 8; bag-upgrade stubs). **Drag-and-drop** between bag / hotbar / equip slots (select click still works).
+Aliases: `ashfell` / `melee`, `outrider` / `bow` / `archer`, `runecaster` / `magic`. Status reports `starterArchetypeId` + `starterWeaponItemId`. `apply_starter` swaps hotbar 0 without restarting play-test. World Forge → Archetypes author `starterWeaponItemId` per row; built-in defaults match the three starters. Loot bag/chest call `inventory_grant`. Combat sandbox `weapon_crate` uses a session **container** region (8 slots, drag to bag/hotbar). Inventory modal aligned to `inventory-ui.pen` (equip + 4 trinkets + bag grid + footer hotbar 8; bag-upgrade stubs). **Drag-and-drop** between bag / hotbar / equip / open crate slots (select click still works).
+
+**Live player stats (2026-08-20):** Equipped armor/trinkets plus the **active hotbar weapon** feed `InventoryRuntime::compute_player_stats`. Baseline 100 health / 100 stamina. **Strength** scales melee and adds +2 health/point; **Agility** scales ranged and **+2% crit chance per point**; **Intellect** scales magic. **Rune pips** are magicka/focus: they show while a magic weapon is held (any lane) and hide otherwise. Stamina stays for dodge. Armor is physical resist; magic/poison/blight/holy/shadow resists use the same curve. Crit chance (gear `critChance` + agility) is a marble bag shown as % + mix. **Hit damage** draws an integer marble from the attribute-scaled `damageMin`…`damageMax` bag (not a fixed midpoint), then may crit ([DEC-0057](../decisions/index.md#dec-0057-marble-bag-rng-for-gameplay-rolls)). Open inventory (I): right-hand **Character** column (scrollable).
 
 **Hotbar equip feedback (2026-07-31):** Selecting a hotbar slot (keys **1–8** / keypad, Terraria-shaped) *is* equipping. HUD + inventory footer tint the active slot gold; detail pane shows `EQUIPPED` for the active hotbar item. Keys work while the Game tab is focused (SDL edge + ImGui), not only when an ImGui window has focus. Active hotbar items with `worldMesh` draw as an unskinned hand-attached mesh. While the weld gizmo is enabled, play-test combat triggers (Attack / Block / Dodge) are suppressed so LMB can drag the gizmo.
 
 **Bone welds (2026-07-31, TICKET-0246):** hand attach is a **weld** — `engine::BoneWeld` in [`include/engine/animation/bone_attachment.h`](../../include/engine/animation/bone_attachment.h), the engine analogue of a Roblox Motor6D C0. The socket chain is `entity placement → skinned mesh prefab part transform → joint global`, so a weld inherits the authored character scale (0.655 on the player prefab); `handAttach.gripScale` multiplies on top of that when a prop bake is the wrong size. `weld_from_world_transform` is the exact inverse used for manipulator write-back.
 
-**Preferred authoring (TICKET-0250 / 0251):** **Animation** viewport → Diagnostics **Animation** → Held item combo + **Held Weapon Weld**. Same joint dropdown / grip fields / Move-Rotate-Scale gizmo / **Save handAttach**, but on the sandbox subject (studio-session equip — does not mutate play-test inventory bags). Gizmo draws in the Animation camera.
+**Preferred authoring (TICKET-0250 / 0251):** **Animation** viewport → Diagnostics **Animation** → Held item combo + **Held Weapon Weld**, plus **Armor slots** (head / chest / legs). Skinned armor inherits the player bake bind (`matchPlayerBake`) and the 0.655 prefab scale — do not use instance `armorAttach` scale. Studio-session equip does not mutate play-test inventory bags. Gizmo draws in the Animation camera.
 
 **Play-test fallback:** Inspector → **Held Weapon Weld** still works on the active hotbar item (Scene or Game view; **G**/**R**/**T**/**X** — not 1–2). The socket **freezes for the duration of a drag** so an animating joint cannot pull the handles out from under the cursor; Pause (F6) still freezes body and weld together for a fully static pose.
 
 Default joint for an item with no authored `handAttach` is `RightHand`. Welds read the same joint globals the skin does, so they inherit the sagittal clip mirror from the RH→LH import (see [`../testing/findings.md`](../testing/findings.md)): while a clip plays, `RightHand` is the on-screen right hand, but an un-animated bind pose puts that joint on the opposite side. Author welds while a clip is sampled (Play / scrub), not against the bind pose.
 
-**Player combat anim gate (2026-07-31):** Attack (LMB) and Block (Q hold) require the **active hotbar** weapon to carry tags `one_handed` + `melee` (Ashfell arming sword). Dodge (Shift, directional WASD variants), Jump/Land/Fall, HitReact/Death/Revive, and Interact/InteractPickup do not require that gate.
+**Player combat anim gate (2026-07-31):** Attack (LMB) and Block (Q hold) require the **active hotbar** weapon to carry tags `one_handed` + `melee` (Ashfell arming sword). With Ashfell equipped, LMB drives a buffered 3-hit light string (`attack` → `attack2` → `attack3`; TICKET-0268). Each committed swing costs **15** stamina; insufficient stamina blocks the next step. Dodge (Shift, directional WASD variants), Jump/Land/Fall, HitReact/Death/Revive, and Interact/InteractPickup do not require that gate.
 
-**Play-test dodge (2026-07-31):** Shift edge while grounded spends **20** from the HUD secondary resource (`player.resource` stamina/magic), fires the matching dodge animator trigger, dashes ~**3.5 m** over **0.25 s** along camera-relative move wish (facing forward if idle), and spawns `dodge_dust` via `ParticleSystem::spawn_burst`. Insufficient resource blocks anim/dash/VFX. Resource regen is **25/s** after a **0.4 s** delay from the last spend (no regen mid-dash). Lock-on / attack costs remain TICKET-0127.
+**Melee movement (2026-08-20):** Ashfell Attack/Attack2/Attack3 live on the same `upperBody` overlay as Block, so Walk/Run keep the legs at full wish speed while the swings play on spine/arms. Dodge still owns displacement while the dash timer is active. Overlay swings cancel on dodge/hit/death/interact (full-body base states) and when ungrounded. Outrider BowDraw/BowAim/BowRelease use the same overlay, so aiming no longer freezes the legs. Runecaster MagicCast is on that overlay too: the focus arm coils back then thrusts forward while locomotion stays on base.
+
+**Play-test dodge (2026-07-31):** Shift edge while grounded spends **20** from the HUD secondary resource (`player.resource` stamina), fires the matching dodge animator trigger, dashes ~**3.5 m** over **0.25 s** along camera-relative move wish (facing forward if idle), and spawns `dodge_dust` via `ParticleSystem::spawn_burst`. Insufficient resource blocks anim/dash/VFX. Resource regen is **25/s** after a **0.4 s** delay from the last spend (no regen mid-dash). Melee swings share this stamina pool and regen delay.
+
+**Play-test bow ammo (2026-08-05):** Outrider starts with **20** `crude_arrow`. Draw is gated when ammo is empty; `releaseArrow` consumes one and skips the projectile if none remain. Ammo lives in its own inventory region (deep stacks, `kInventoryAmmoMaxStack`), so it never lands in the bag grid — the inventory panel renders it in a dedicated **Ammo** row (`inventory.ammo.N.icon` / `.count`) under Bags, and `engine_inventory_call status` reports it as `ammo`.
+
+**Play-test Runecaster runes (2026-08-05):** Five discrete rune charges under the stamina bar (`hud_rune_pip_*`). Cast is gated at 0 charges; `castRelease` spends one; charges regenerate **+1 every 2 s**. Stamina remains for dodge.
 
 **Art / acquisition stub (2026-07-30):** starter weapons + arrow + loot bag ship as sandbox Scene Assets. Trinkets / consumables are **icon-only** for now (`assets/ui/icons/items/` + `assets/items/act0_landfall_items.json`) and come from **loot bag** (`open_loot_bag`) or **supply chest** crate stand-in (`open_supply_chest`) — now granted into session inventory. No per-trinket world meshes.
+
+**Owner lock (2026-08-05):** Act 0 starter weapons vertical is **in** — Ashfell / Outrider / Runecaster meshes + play-test cadence (melee string + stamina, bow draw/ammo, MagicCast + rune pips). Dedicated ammo icons: `crude_arrow.png`, `outrider_arrow.png` (no longer reuse the shortbow icon). HandAttach grip polish and further attack polish are deferred. Readiness: `art_starter_weapons` + `combat_weapon_feel` → done.
 
 Checklist: `gameplay_act0_loot_slice` + `coding_inventory_thin_act0` in `act0_mvp_readiness.worldforge.json` (TICKET-0237) — **wip**.
 
@@ -146,7 +160,7 @@ See [side-quest-catalog.md](../story/side-quest-catalog.md) **SQ-13**.
 3. **Story / act milestones** — ability unlocks alongside archetype quests
 4. **Soft affinity + on-equip** — matching archetype bonuses; gear/trinkets may grant archetype-gated abilities while equipped ([DEC-0048](../decisions/index.md#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity) / [DEC-0050](../decisions/index.md#dec-0050-inventory-ux-item-kinds-and-positive-soft-affinity))
 
-Provenance: [`../design/recording_archetype_quests_power_progression_2026-07-29.md`](../design/recording_archetype_quests_power_progression_2026-07-29.md). Act 0 boss list still open.
+Provenance: [`../design/recording_archetype_quests_power_progression_2026-07-29.md`](../design/recording_archetype_quests_power_progression_2026-07-29.md). Act 0: **no named chapter boss** (2026-08-05); loot-band via Landfall completion milestones; first main-story boss = Pneumyra (A1-05).
 
 ## Out of scope (v1 of this epic)
 
@@ -159,3 +173,4 @@ Provenance: [`../design/recording_archetype_quests_power_progression_2026-07-29.
 - Weight-based encumbrance
 - Gear durability / repair sinks
 - Traditional XP / player-level systems ([DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux))
+- Independent Bernoulli loot/crit RNG (`math.random` / `if random < p`); gameplay rolls are marble bags ([DEC-0057](../decisions/index.md#dec-0057-marble-bag-rng-for-gameplay-rolls))

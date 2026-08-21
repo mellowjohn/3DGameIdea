@@ -1,0 +1,32 @@
+{
+  "components": [
+    {
+      "data": {
+        "halfExtent": [1.15, 0.525, 0.85],
+        "layer": "staticWorld",
+        "shape": "box",
+        "transform": {
+          "position": [0, 0.525, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "trigger": false
+      },
+      "id": "collision-0",
+      "type": "collider"
+    }
+  ],
+  "entities": [
+    {
+      "mesh": { "asset": "assets/models/workbench_table.gltf" },
+      "name": "WorkbenchTable",
+      "parent": null,
+      "transform": {
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

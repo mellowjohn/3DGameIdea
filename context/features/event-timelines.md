@@ -30,7 +30,7 @@ Data-driven **event timeline sequences** for Act 0 Landfall theatrical beats (an
 
 ## Editor
 
-Diagnostics **Show event zones** (on by default) draws authored interaction/event trigger volumes in violet with interaction-id labels on **Scene** / **Sculpt** only (hidden on Game) — independent of full **Show collision debug**.
+Diagnostics **Show event zones** (off by default) draws authored interaction/event trigger volumes in violet with interaction-id labels on **Scene** / **Sculpt** only (hidden on Game) — independent of full **Show collision debug**.
 
 ## Follow-ons
 

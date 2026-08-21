@@ -24,4 +24,12 @@ inline constexpr const char* kAct0StarterBandageItemId = "field_bandage";
 inline constexpr int kAct0StarterBandageCount = 2;
 inline constexpr const char* kDefaultPlayTestStarterArchetypeId = "ashfell_blade";
 
+/// Play-test starter combat economy (vertical slice).
+inline constexpr const char* kAct0StarterArrowItemId = "crude_arrow";
+inline constexpr int kAct0OutriderStarterArrowCount = 20;
+inline constexpr double kAct0MeleeAttackStaminaCost = 15.0;
+inline constexpr float kAct0ResourceRegenDelaySeconds = 0.4f;
+inline constexpr int kAct0RuneChargesMax = 5;
+inline constexpr float kAct0RuneRegenSeconds = 2.0f;
+
 } // namespace engine

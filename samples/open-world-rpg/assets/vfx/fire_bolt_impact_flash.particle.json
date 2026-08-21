@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "fire_bolt_impact_flash",
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [1.0, 0.98, 0.82] },
+      { "t": 0.2, "color": [1.0, 0.55, 0.12] },
+      { "t": 1.0, "color": [0.7, 0.18, 0.04] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.7 },
+      { "t": 0.18, "value": 1.45 },
+      { "t": 1.0, "value": 1.95 }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.0 },
+      { "t": 0.32, "value": 0.25 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.14, "max": 0.26 },
+  "speed": { "min": 0.02, "max": 0.2 },
+  "rate": 0,
+  "spreadAngle": [0, 10],
+  "shape": "sphere",
+  "shapeStyle": "volume",
+  "shapeSize": [0.03, 0.03, 0.03],
+  "orientation": "FacingCamera",
+  "lightEmission": 1.0,
+  "blend": "additive",
+  "crossedBillboards": true,
+  "maxParticles": 12,
+  "enabled": true,
+  "emissionDirection": [0.0, 1.0, 0.0],
+  "minScreenSize": 32,
+  "softOcclusion": false
+}

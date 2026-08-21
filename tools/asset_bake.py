@@ -13,11 +13,15 @@ target yet: it caches a normalized copy of the source under tools/art/<id>/ and 
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import shutil
 import subprocess
+import struct
 import sys
+import tempfile
 import time
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +33,45 @@ if str(REPO / "tools") not in sys.path:
     sys.path.insert(0, str(REPO / "tools"))
 
 import asset_bake_verify as verify  # noqa: E402
+
+
+def _gltf_named_joint_world(gltf: dict, joint_name: str) -> tuple[float, float, float]:
+    from bake_player_v2_gltf import joint_world_matrices
+
+    worlds = joint_world_matrices(gltf)
+    nodes = gltf.get("nodes") or []
+    for skin in gltf.get("skins") or []:
+        for joint in skin.get("joints") or []:
+            if not isinstance(joint, int) or joint < 0 or joint >= len(nodes):
+                continue
+            if nodes[joint].get("name") != joint_name:
+                continue
+            mat = worlds[joint]
+            return (float(mat[12]), float(mat[13]), float(mat[14]))
+    raise RuntimeError(f"joint {joint_name!r} not found")
+
+
+def _match_player_bake_transform(project: Path, source_gltf: Path) -> tuple[float, tuple[float, float, float]]:
+    """Reuse the player's height-normalize scale + Hips alignment so kit shells share bind space."""
+    player_report = project / "assets" / "models" / "player.bake.json"
+    player_mesh = project / "assets" / "models" / "player.gltf"
+    if not player_report.is_file() or not player_mesh.is_file():
+        raise RuntimeError("matchPlayerBake needs assets/models/player.bake.json and player.gltf")
+    report = json.loads(player_report.read_text(encoding="utf-8"))
+    bake = report.get("bake") or report
+    scale = float(bake.get("scale") or 0.0)
+    if scale <= 1e-8:
+        raise RuntimeError("player.bake.json is missing a usable scale")
+    player_gltf = json.loads(player_mesh.read_text(encoding="utf-8"))
+    armor_gltf = json.loads(source_gltf.read_text(encoding="utf-8"))
+    player_hips = _gltf_named_joint_world(player_gltf, "Hips")
+    armor_hips = _gltf_named_joint_world(armor_gltf, "Hips")
+    offset = (
+        player_hips[0] - scale * armor_hips[0],
+        player_hips[1] - scale * armor_hips[1],
+        player_hips[2] - scale * armor_hips[2],
+    )
+    return scale, offset
 
 
 def load_catalog() -> dict:
@@ -264,22 +307,99 @@ def run_generic_static(target: dict, project: Path) -> None:
 def run_generic_skinned(target: dict, project: Path) -> dict[str, Any]:
     """Bake an imported skinned model, preserving the skeleton and every animation clip."""
     import bake_generic_gltf
+    import export_goodplayer_bbmodel_gltf as bbmodel_exporter
 
     generic = target.get("generic") or {}
     outputs = target.get("outputs") or {}
-    return bake_generic_gltf.bake_skinned(
-        source=REPO / target["defaultSource"],
-        mesh_out=project / outputs["mesh"],
-        atlas_out=project / outputs["atlas"],
-        generator=generic.get("generator", f"AI RPG Engine {target['id']} generic skinned bake"),
-        target_height=generic.get("targetHeight"),
+    source = REPO / target["defaultSource"]
+    atlas_policy = generic.get("atlasPolicy", "")
+    if generic.get("requireDedicatedAtlas"):
+        if atlas_policy not in {"dedicated_embedded", "dedicated_material"}:
+            raise RuntimeError(
+                f"{target['id']}: modular skinned assets require atlasPolicy "
+                "dedicated_embedded or dedicated_material")
+        if atlas_policy == "dedicated_material" and not generic.get("flatAtlasRgb"):
+            raise RuntimeError(
+                f"{target['id']}: dedicated_material requires flatAtlasRgb "
+                "until a painted dedicated atlas is supplied")
+    bake_kwargs = {
+        "mesh_out": project / outputs["mesh"],
+        "atlas_out": project / outputs["atlas"],
+        "generator": generic.get("generator", f"AI RPG Engine {target['id']} generic skinned bake"),
+        "target_height": generic.get("targetHeight"),
+    }
+
+    def apply_player_bind_space(source_gltf: Path) -> None:
+        if not generic.get("matchPlayerBake"):
+            return
+        scale, offset = _match_player_bake_transform(project, source_gltf)
+        bake_kwargs["uniform_scale"] = scale
+        bake_kwargs["uniform_offset"] = offset
+    def apply_flat_atlas(result: dict[str, Any]) -> dict[str, Any]:
+        # Modular gear copied from a character may retain its UV layout while
+        # opting into a single material color. This avoids sampling skin/face
+        # pixels from the original full-body player atlas.
+        rgb = generic.get("flatAtlasRgb")
+        if not rgb:
+            return result
+        if not isinstance(rgb, list) or len(rgb) != 3:
+            raise RuntimeError(f"{target['id']}: flatAtlasRgb must be [r,g,b]")
+        color = bytes(max(0, min(255, int(channel))) for channel in rgb)
+        width = height = 16
+        raw = b"".join(b"\x00" + color * width for _ in range(height))
+        def png_chunk(kind: bytes, payload: bytes) -> bytes:
+            return (struct.pack(">I", len(payload)) + kind + payload +
+                    struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF))
+        png = (b"\x89PNG\r\n\x1a\n" +
+               png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)) +
+               png_chunk(b"IDAT", zlib.compress(raw, 9)) + png_chunk(b"IEND", b""))
+        bake_kwargs["atlas_out"].write_bytes(png)
+        result["flatAtlasRgb"] = list(color)
+        result["atlasPolicy"] = atlas_policy
+        return result
+
+    if source.suffix.lower() != ".bbmodel":
+        apply_player_bind_space(source)
+        return apply_flat_atlas(bake_generic_gltf.bake_skinned(source=source, **bake_kwargs))
+
+    # Blockbench's generic glTF codec does not serialize a free-format armature.  Convert the
+    # authored .bbmodel in a temporary bake workspace, preserving it as the catalog source.
+    data = json.loads(source.read_text(encoding="utf-8"))
+    texture_source = next(
+        (texture.get("source", "") for texture in data.get("textures") or []
+         if str(texture.get("source", "")).startswith("data:image/")),
+        "",
     )
+    if not texture_source or "base64," not in texture_source:
+        raise RuntimeError(f"{source}: no embedded texture available for skinned Blockbench bake")
+    with tempfile.TemporaryDirectory(prefix=f"{target['id']}_bbmodel_") as temp_dir:
+        temp = Path(temp_dir)
+        atlas = temp / "atlas.png"
+        atlas.write_bytes(base64.b64decode(texture_source.split("base64,", 1)[1]))
+        intermediate = temp / f"{target['id']}.gltf"
+        keep_meshes = generic.get("keepMeshes")
+        if keep_meshes is not None and not isinstance(keep_meshes, list):
+            raise RuntimeError(f"{target['id']}: keepMeshes must be a list of mesh names")
+        bbmodel_exporter.export(
+            source,
+            atlas,
+            [intermediate],
+            keep_mesh_names=[str(name) for name in keep_meshes] if keep_meshes else None,
+        )
+        apply_player_bind_space(intermediate)
+        result = apply_flat_atlas(
+            bake_generic_gltf.bake_skinned(source=intermediate, **bake_kwargs))
+    result["authoringSource"] = str(source)
+    return result
 
 
-def run_script(script_rel: str) -> None:
+def run_script(script_rel: str, extra_args: list[str] | None = None) -> None:
     script = REPO / script_rel
+    cmd = [sys.executable, str(script)]
+    if extra_args:
+        cmd.extend(extra_args)
     proc = subprocess.run(
-        [sys.executable, str(script)],
+        cmd,
         cwd=str(REPO),
         capture_output=True,
         text=True,
@@ -598,7 +718,8 @@ def cmd_bake(project: Path, target_id: str, source: Path | None, as_json: bool) 
         elif baker == "tier1":
             run_tier1(target_id)
         elif baker == "script":
-            run_script(target["script"])
+            extra = target.get("scriptArgs")
+            run_script(target["script"], extra if isinstance(extra, list) else None)
         elif baker == "generic_static":
             run_generic_static(target, project)
         elif baker == "generic_skinned":

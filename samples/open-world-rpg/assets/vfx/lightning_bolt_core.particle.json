@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "lightning_bolt_core",
+  "blend": "additive",
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [1.0, 1.0, 0.95] },
+      { "t": 0.25, "color": [0.85, 0.92, 1.0] },
+      { "t": 0.65, "color": [0.45, 0.65, 1.0] },
+      { "t": 1.0, "color": [0.15, 0.22, 0.55] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.16 },
+      { "t": 0.25, "value": 0.28 },
+      { "t": 1.0, "value": 0.05 }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.0 },
+      { "t": 0.4, "value": 0.15 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.08, "max": 0.16 },
+  "speed": { "min": 0.04, "max": 0.2 },
+  "rate": 0,
+  "spreadAngle": [2, 8],
+  "shape": "sphere",
+  "shapeStyle": "volume",
+  "shapeSize": [0.01, 0.01, 0.01],
+  "orientation": "FacingCamera",
+  "lightEmission": 1.0,
+  "crossedBillboards": true,
+  "drag": 0.05,
+  "maxParticles": 12,
+  "enabled": true,
+  "emissionDirection": [0.0, 0.0, -1.0],
+  "minScreenSize": 10
+}

@@ -1,0 +1,401 @@
+{
+  "designResolution": [
+    1920.0,
+    1080.0
+  ],
+  "id": "character_creation",
+  "schemaVersion": 1,
+  "widgets": [
+    {
+      "anchor": "center",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        255.0
+      ],
+      "id": "cc_underlay",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        2400.0,
+        1400.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "cc_backdrop",
+      "image": "assets/ui/menu/creation/class-backdrop.png",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        1920.0,
+        1080.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        8.0,
+        6.0,
+        10.0,
+        100.0
+      ],
+      "id": "cc_dim",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        1920.0,
+        1080.0
+      ],
+      "type": "panel"
+    },
+    {
+      "anchor": "center",
+      "id": "cc_sel_ashfell",
+      "image": "assets/ui/menu/creation/creation-glass-card-select-glow.png",
+      "imageMode": "contain",
+      "offset": [
+        -460.0,
+        -230.0
+      ],
+      "size": [
+        311.0,
+        451.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "id": "cc_sel_outrider",
+      "image": "assets/ui/menu/creation/creation-glass-card-select-glow.png",
+      "imageMode": "contain",
+      "offset": [
+        0.0,
+        -230.0
+      ],
+      "size": [
+        311.0,
+        451.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "cc_sel_runecaster",
+      "image": "assets/ui/menu/creation/creation-glass-card-select-glow.png",
+      "imageMode": "contain",
+      "offset": [
+        460.0,
+        -230.0
+      ],
+      "size": [
+        311.0,
+        451.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "cc_card_ashfell_art",
+      "image": "assets/ui/menu/creation/glass-card-ashfell-blade.png",
+      "imageMode": "contain",
+      "offset": [
+        -460.0,
+        -230.0
+      ],
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation.pick.ashfell_blade",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "id": "cc_pick_ashfell_blade",
+      "offset": [
+        -460.0,
+        -230.0
+      ],
+      "opacity": 0.009999999776482582,
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "id": "cc_card_outrider_art",
+      "image": "assets/ui/menu/creation/glass-card-outrider-v4.png",
+      "imageMode": "contain",
+      "offset": [
+        0.0,
+        -230.0
+      ],
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation.pick.outrider",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "id": "cc_pick_outrider",
+      "offset": [
+        0.0,
+        -230.0
+      ],
+      "opacity": 0.009999999776482582,
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "id": "cc_card_runecaster_art",
+      "image": "assets/ui/menu/creation/glass-card-runecaster-v4.png",
+      "imageMode": "contain",
+      "offset": [
+        460.0,
+        -230.0
+      ],
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation.pick.runecaster",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "id": "cc_pick_runecaster",
+      "offset": [
+        460.0,
+        -230.0
+      ],
+      "opacity": 0.009999999776482582,
+      "size": [
+        280.0,
+        420.0
+      ],
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "id": "cc_detail_panel",
+      "image": "assets/ui/menu/creation/prologue-glass-dialogue-plate.png",
+      "offset": [
+        0.0,
+        300.0
+      ],
+      "size": [
+        1040.0,
+        340.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation.detail.title",
+      "color": [
+        247.0,
+        234.0,
+        208.0,
+        255.0
+      ],
+      "fontSize": 36.0,
+      "id": "cc_detail_title",
+      "offset": [
+        0.0,
+        255.0
+      ],
+      "size": [
+        900.0,
+        46.0
+      ],
+      "text": "Ashfell Blade",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation.detail.lane",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 16.0,
+      "id": "cc_detail_lane",
+      "offset": [
+        0.0,
+        292.0
+      ],
+      "size": [
+        900.0,
+        24.0
+      ],
+      "text": "Melee · House Ashfell · Fighter / Brawler",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation.detail.body",
+      "color": [
+        232.0,
+        224.0,
+        212.0,
+        255.0
+      ],
+      "fitText": true,
+      "fontSize": 15.0,
+      "id": "cc_detail_body",
+      "minFontSize": 12.0,
+      "offset": [
+        0.0,
+        315.0
+      ],
+      "padding": [
+        48.0,
+        6.0,
+        48.0,
+        4.0
+      ],
+      "size": [
+        900.0,
+        50.0
+      ],
+      "text": "House steel under Asher's levy—close combat and duty beneath the Ashfell banner. You were drafted into House Ashfell's war line, where disciplined fighters and hardened brawlers serve Tessera through blood and obligation. Calrenoth was supposed to hold. You arrive as reinforcement—not yet a hero.",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "character_creation.detail.abilities",
+      "color": [
+        196.0,
+        162.0,
+        74.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "cc_detail_abilities",
+      "offset": [
+        0.0,
+        348.0
+      ],
+      "padding": [
+        48.0,
+        2.0,
+        48.0,
+        2.0
+      ],
+      "size": [
+        900.0,
+        36.0
+      ],
+      "text": "Examples · Guarded Strike · Banner Push · Close Quarters",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "bottom_left",
+      "bind": "character_creation.back",
+      "color": [
+        236.0,
+        234.0,
+        228.0,
+        255.0
+      ],
+      "fontSize": 22.0,
+      "id": "cc_back",
+      "image": "assets/ui/menu/glass-menu-btn-secondary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        72.0,
+        56.0
+      ],
+      "size": [
+        210.0,
+        62.0
+      ],
+      "text": "Back",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "bottom_right",
+      "bind": "character_creation.next",
+      "color": [
+        247.0,
+        234.0,
+        208.0,
+        255.0
+      ],
+      "fontSize": 24.0,
+      "id": "cc_next",
+      "image": "assets/ui/menu/glass-menu-btn-primary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        -72.0,
+        56.0
+      ],
+      "size": [
+        290.0,
+        68.0
+      ],
+      "text": "Next",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "lightning_charge_core",
+  "blend": "additive",
+  "color": {
+    "keypoints": [
+      { "t": 0.0, "color": [1.0, 1.0, 0.9] },
+      { "t": 0.4, "color": [0.7, 0.85, 1.0] },
+      { "t": 1.0, "color": [0.3, 0.45, 1.0] }
+    ]
+  },
+  "size": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.22 },
+      { "t": 0.3, "value": 0.42 },
+      { "t": 1.0, "value": 0.18 }
+    ]
+  },
+  "transparency": {
+    "keypoints": [
+      { "t": 0.0, "value": 0.05 },
+      { "t": 0.4, "value": 0.18 },
+      { "t": 1.0, "value": 1.0 }
+    ]
+  },
+  "lifetime": { "min": 0.35, "max": 0.6 },
+  "speed": { "min": 0.04, "max": 0.16 },
+  "rate": 0,
+  "spreadAngle": [8, 18],
+  "shape": "sphere",
+  "shapeStyle": "volume",
+  "shapeSize": [0.025, 0.025, 0.025],
+  "orientation": "FacingCamera",
+  "lightEmission": 0.95,
+  "crossedBillboards": true,
+  "drag": 0.2,
+  "maxParticles": 28,
+  "enabled": true,
+  "emissionDirection": [0.0, 1.0, 0.0],
+  "minScreenSize": 10
+}

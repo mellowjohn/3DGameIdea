@@ -27,7 +27,7 @@ Owner walked Dom through the quest/progression questionnaire. Locked: **no tradi
 
 ## Locks (→ [DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux))
 
-See decision body for full policy. Leftovers: Act 0 boss presence (Dom interrupted); HUD chip screen corner (top-left draft remains); schema `kind: archetype` ship timing (journal locked; enum widen when lane seeds land).
+See decision body for full policy. Leftovers: ~~Act 0 boss presence~~ **locked 2026-08-05** (none; Pneumyra first); HUD chip screen corner (top-left draft remains); schema `kind: archetype` ship timing (journal locked; enum widen when lane seeds land).
 
 ## Transcript
 

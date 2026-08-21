@@ -1,0 +1,96 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.2800000011920929,
+          0.2199999988079071,
+          0.25999999046325684
+        ],
+        "primitive": "cube"
+      },
+      "name": "threshold_arch",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.0,
+          8.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          20.0,
+          1.2000000476837158,
+          1.0
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.25,
+          0.20000000298023224,
+          0.23999999463558197
+        ],
+        "primitive": "cube"
+      },
+      "name": "threshold_pier_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -19.0,
+          7.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.399999976158142,
+          7.0,
+          1.399999976158142
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.25,
+          0.20000000298023224,
+          0.23999999463558197
+        ],
+        "primitive": "cube"
+      },
+      "name": "threshold_pier_r",
+      "parent": null,
+      "transform": {
+        "position": [
+          19.0,
+          7.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.399999976158142,
+          7.0,
+          1.399999976158142
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

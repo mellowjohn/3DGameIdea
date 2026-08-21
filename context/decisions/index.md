@@ -18,10 +18,10 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 
 ### DEC-0001: Product and platform target
 
-- Status: accepted
+- Status: accepted (world extent superseded by [DEC-0054](#dec-0054-continent-scale-seamless-world--stream-budget))
 - Date: 2026-07-02
 - Context: The engine needs a concrete product and release target.
-- Decision: Build a Windows 10/11, single-player, offline, third-person action RPG engine for a seamless 4×4 km open world.
+- Decision: Build a Windows 10/11, single-player, offline, third-person action RPG engine for a seamless open world (original v1 footprint was 4×4 km; see DEC-0054).
 - Rationale: A game-specific target keeps the engine testable and prevents general-purpose scope expansion.
 - Consequences: Multiplayer, consoles, non-Windows releases, and runtime generative AI are outside v1.
 - Supersedes: none
@@ -408,9 +408,9 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Decision:
   1. **Tessera** is the named primary land of the setting — the Middle-earth-scale geography where the campaign takes place. It is the world-map name; do not invent a separate continent title above it.
   2. **Kingdom of Tessera** is a political power *within* Tessera (dominant human occupying power), not a synonym for the whole land. Other factions and regions (Imperium, Cristallo, Arrotrebae, orc warbands, wilds, etc.) also inhabit Tessera.
-  3. Lands or seas beyond Tessera remain unspecified; v1’s seamless 4×4 km slice is authored inside Tessera and does not require mapped outer continents.
+  3. Lands or seas beyond Tessera remain unspecified. The seamless playable world **is** the official Tessera continent map window ([DEC-0054](#dec-0054-continent-scale-seamless-world--stream-budget)) — not a tiny inset slice that leaves most of the illustrated land off-map.
 - Rationale: Resolves the kingdom-vs-setting naming clash with a Tolkien-shaped split (land vs polities) without inventing extra geography.
-- Consequences: Update [`story-vision.md`](../story/story-vision.md), [`factions.md`](../story/factions.md), and open-questions that treated the world-map name as TBD.
+- Consequences: Update [`story-vision.md`](../story/story-vision.md), [`factions.md`](../story/factions.md), and open-questions that treated the world-map name as TBD. Item 3 world-extent wording updated 2026-08-06 for DEC-0054.
 - Supersedes: DEC-0032 item 10 (world-map name TBD)
 
 ### DEC-0035: World Forge Hierarchy authorship
@@ -684,7 +684,7 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
      - There is **no** pure XP talent tree.
   3. **Archetype quest rewards** are **per-quest authored**: signature gear, signature ability, or both. Act 1 vs Act 3 rewards scale in power; do not force one reward type for every quest.
   4. **Archetype quests are optional for main-story completion** but are the path to **full lane / archetype power**. Players who skip stay viable via gear; players who want max lane power should run the lines.
-  5. **Loot-band unlocks** are gated by **known main-storyline bosses**, including **mid-act chapter bosses** (not only act finales). Completing act main-quest beats may also advance bands. Bosses should be **player-visible / well-known**. Boss tables remain **farmable** for gear ([DEC-0048](#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity)). Exact Act 0 boss list deferred (session interrupted).
+  5. **Loot-band unlocks** are gated by **known main-storyline bosses**, including **mid-act chapter bosses** (not only act finales). Completing act main-quest beats may also advance bands. Bosses should be **player-visible / well-known**. Boss tables remain **farmable** for gear ([DEC-0048](#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity)). **Act 0:** no named chapter boss (Luceran A0-07 theatrical); band advance via Landfall completion; first main-story boss = Pneumyra (A1-05) — owner lock 2026-08-05.
   6. **Journal tabs (locked):** **Main · Side · Faction · Archetype** (+ Completed). Primary filtration; more tabs later only with owner ask.
   7. **Faction tab** holds standing quests for **Cristallo**, **Arrotrebae**, Kingdom of **Tessera**, and other major polities — same tab, separate quest lists. A quest may **blend** (e.g. archetype + Cristallo) when story-fit: one primary `kind` plus optional `factionId` / lane refs or tags so it can surface under multiple filters.
   8. **World markers:** classic floating **`?`** (available) and **`!`** (active / turn-in), with a light bob animation. Generate UI icons later.
@@ -693,7 +693,7 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
   11. **Events:** quests are the **parent**; cinematic / EventTimeline steps are **children** quests may reference/trigger by id (start / objective / complete).
   12. **Complete panel:** shows reward copy, optional **lore journal** beat, **items** (hover for effects), gold/consumables, and **standing ±** for affected factions. **`standingRewards` apply on quest complete** via QuestRuntime (closes prior “scripts must call standing_adjust” gap for authored rewards).
 - Rationale: Removes cheese-leveling while keeping Terraria gear fantasy; separates lane power (archetype lines) from campaign spine; keeps journal filters transparent; binds standing to completion for predictable authoring.
-- Consequences: Update gearing + character-creation + quest format + `quest-ui.pen` + open-questions. Schema: widen `kind` with `archetype` when lane-org seeds land; wire `standingRewards` on complete (QuestRuntime follow-up). Journal/map markers remain TICKET-0062. Act 0 boss presence still open.
+- Consequences: Update gearing + character-creation + quest format + `quest-ui.pen` + open-questions. Schema: widen `kind` with `archetype` when lane-org seeds land; wire `standingRewards` on complete (QuestRuntime follow-up). Journal/map markers remain TICKET-0062. ~~Act 0 boss presence~~ **locked 2026-08-05** (none; Pneumyra first).
 - Supersedes: none (amends quest standing-apply gap noted in [`../formats/world-forge-quests.md`](../formats/world-forge-quests.md))
 
 ### DEC-0052: Dual-edit animation clips (engine override + sync to glTF)
@@ -726,3 +726,114 @@ Accepted decisions are append-only. A later decision may supersede an earlier on
 - Consequences: Implement under EPIC-0020 / TICKET-0257. Document workflow in content-vs-engine and [`../features/game-module-hot-reload.md`](../features/game-module-hot-reload.md). `engine_core` changes still require the kill → rebuild → restart loop.
 - Supersedes: none (complements DEC-0023; does not replace it)
 
+### DEC-0054: Continent-scale seamless world + stream budget
+
+- Status: accepted
+- Date: 2026-08-06
+- Context: Owner wants the playable seamless world to **encapsulate the official Tessera continent map** (not a 4×4 km inset), feel like a real open-world RPG (Skyrim-class Act 0 density), and raise streaming/view distance with a proper stress test while staying amortize-bounded.
+- Measured map: master `4096×2730` (aspect **~1.500**); Cartography `local_calrenoth` plate is **~37%×37%** of that frame. Scaling so that opening theater ≈ **6 km** across (Skyrim-hold / Act 0 corridor) implies a full-continent plate of **~16.2×10.8 km**.
+- Decision:
+  1. **Playable world extent:** seamless square **16×16 km** (`worldSizeMeters: [16000,16000]`, partition half-extent **8000 m**, 128 m cells). Contains the cartography plate with north/south ocean padding.
+  2. **Cartography plate:** **16000×10667 m** (map aspect), centered on the playable window — the official continent PNG is the full overland, not a backdrop for a smaller slice.
+  3. **Play stream budget:** terrain/water neighborhood radius **4** / support **2** (~160–200 m resident ring) with existing view-bias + amortize + look-gate. Scene/Sculpt + main-menu preview may use a wider full-disc radius (editor view radius ≥5) for establishing shots.
+  4. **View distance LOD:** raise placed-mesh far cull and foliage scatter falloff to match the wider stream (near ~280 m / far cull ~360 m; foliage falloff ~200–340 m). Keep hitch amortization; do not load the whole continent.
+  5. **Stress:** suite walks the **256 km²** extent at coarse step and asserts resident cell count stays within the designed neighborhood bound for the new radius.
+- Rationale: Compresses Middle-earth-shaped Tessera into a shippable seamless playable map while keeping Act 0 Calrenoth corridor Skyrim-scale; streaming stays a ring around the camera, not whole-map residency.
+- Consequences: Update partition defaults, sample worlds, `map.worldforge.json` plate, streaming/LOD docs, architecture overview, and terrain stress expectations. Density/landmark guidance in map-design-language scales with area. Follow-on: relocate Act 0 content across the plate as LD locks coords (D-P2-08).
+- Supersedes: DEC-0001 world-extent wording (4×4 km / 16 km²); DEC-0034 item 3 “4×4 km slice inside Tessera”
+
+### DEC-0055: Reloadable-native gameplay is the default C++ iteration path
+
+- Status: accepted
+- Date: 2026-08-10
+- Context: The initial game-module boundary (DEC-0053) proves that a native C++ DLL can reload without restarting the editor, but its v1 log/blackboard API is too narrow to prevent many ordinary gameplay edits from landing in `engine_core` and triggering full rebuilds.
+- Decision:
+  1. For new native **gameplay-facing** work, first evaluate whether it can be authored in Lua/project data; if it must be C++, it should default to the reloadable `game_module` boundary.
+  2. Grow the host API deliberately through versioned, POD-only C ABI tables: gameplay commands, read-only queries, events, timers, opaque stable handles, and reload-state serialization are allowed directions. Each addition must define ownership, lifetime, invalid-handle behavior, threading, and reload semantics.
+  3. `engine_core` remains the owner of D3D12, ImGui, Jolt, EnTT, Lua, editor/MCP, save I/O, and low-level runtime lifecycle. Do not expose their objects, STL types, C++ classes, raw engine pointers, or allocator ownership across the DLL ABI.
+  4. Engine-core changes remain appropriate when a feature changes core capability, schema, engine/editor behavior, rendering, physics, or a cross-system runtime contract. Arbitrary in-place hot swapping of `engine_core` is not a goal.
+- Rationale: Makes fast native gameplay iteration the normal path while retaining an ABI that can fail closed instead of corrupting a running editor after a DLL reload.
+- Consequences: EPIC-0020 should prioritize safe gameplay API slices over a wider but unsafe plugin surface. New gameplay tickets must state why Lua is insufficient, which ABI capability they use or add, and their reload-state verification. This amends DEC-0053's MVP-only scope; existing first-class core runtimes are not migrated merely for hot reload.
+- Supersedes: none (amends DEC-0053 iteration routing; its ownership and C-ABI restrictions remain in force)
+
+### DEC-0056: Per-cinematic-instance terrain data
+
+- Status: accepted
+- Date: 2026-08-10
+- Context: Appearance Courtyard is a self-contained cinematic instance. Its MCP-authored terrain was sharing the open-world sculpt, paint, and foliage stores, which let one presentation's visual work affect another world.
+- Decision: Each `cinematic_instance` world owns a separate terrain data set. When MCP terrain sculpt, paint, or foliage operations run while such a world is active, they load and save only that instance's terrain files. Open-world and menu worlds retain the shared terrain stores.
+- Rationale: A cinematic instance is a self-contained presentation; its authored exterior needs independently repeatable terrain without contaminating the overland or other instances.
+- Consequences: The editor, terrain MCP context, renderer streaming, validation, and save routing must resolve terrain storage from the active world presentation. Opening another cinematic instance must swap its terrain stores and refresh streamed cells; missing instance terrain files begin empty. Water remains out of this scope until an instance needs it.
+- Supersedes: none.
+
+### DEC-0057: Marble-bag RNG for gameplay rolls
+
+- Status: accepted
+- Date: 2026-08-19
+- Context: Owner wants a single, predictable fairness model for every **gameplay** random system (loot, crits, procs, drop counts, encounter/table rolls, and similar). Independent Bernoulli rolls (`math.random()`, per-hit 20% crit, weighted loot with replacement) produce long droughts and lucky streaks that fight the Terraria-shaped loot fantasy ([DEC-0048](#dec-0048-terraria-shaped-gearing-with-soft-archetype-affinity)) and Souls-lite combat feel. Act 0 pouch/chest Lua currently uses independent weighted picks (`loot_container_interaction.lua`) — that path is **non-canon** until it draws from bags.
+- Decision:
+  1. **Gameplay RNG is marble-bag only.** Authored outcomes are **integer marble counts** in a named bag. A roll **draws without replacement**. When the bag is empty (or cannot satisfy the requested draw), it **refills** to the authored composition and continues. Multiple grants from one interaction (e.g. two loot items) are **sequential draws from the same bag**, not independent re-rolls of the full table.
+  2. **Named bags, not one universe bag.** Each table/stat owns a bag id (loot table, crit bag, proc bag, …). Authors may **share** a bag id across surfaces when they want one pity/cycle to cover both; they must not silently merge unrelated systems.
+  3. **C++ owns the draw.** A single engine runtime (commands + tests) shuffles/draws, persists remaining marbles, and exposes Lua/MCP APIs. Content authors composition and bag ids; scripts **must not** call `math.random` / `rand` for gameplay outcomes. Fail closed if a gameplay path would roll outside a bag.
+  4. **Save the remainder.** Remaining marble state is part of the RPG save (per player / per bag id) so reload and co-op profiles keep pity/cycle progress. Tests use a seeded shuffle so a given seed + composition is deterministic.
+  5. **Player UI is hidden in v1.** Feel comes from the cycle itself; no required on-HUD marble count. Diagnostics / MCP may dump remaining counts. A later visible pity UI needs a separate lock.
+  6. **Out of scope (not marble bags):** visual/simulation noise — particle spawn, foliage scatter, flipbook start, camera shake, editor yaw randomize. Those stay independent (seeded where the feature already requires determinism).
+- Rationale: Marble bags bound droughts and jackpot streaks while staying authorable as integer weights. One engine API keeps loot, combat, and future tables honest instead of each Lua handler inventing odds.
+- Consequences: Feature note [`../features/marble-bag-rng.md`](../features/marble-bag-rng.md). Migrate Act 0 loot Lua off independent picks when the runtime ships. Combat crit/proc work must draw bags, not `if random < p`. Schema + save stub land with the implementing ticket (EPIC-0018 / combat slice). Do not treat current `math.random` loot as the shipping contract.
+- Supersedes: none (overrides the Act 0 loot script’s independent-weight behavior as product intent; does not change DEC-0048 acquisition loops)
+
+### DEC-0058: Shared UI theme tokens
+
+- Status: accepted
+- Date: 2026-08-19
+- Context: Inventory chrome buttons authored `color` as the plate fill, and the HUD draw path reused that same RGBA for the label — gold on gold. Authors and MCP also had no single object to restyle iron/gold chrome across canvases.
+- Decision:
+  1. Project UI chrome lives in `assets/ui/ui-theme.json`: named **tokens** (RGBA) plus **roles** (`primaryButton`, `secondaryButton`, `title`, …) that point at tokens.
+  2. Widgets may set `themeRole` / `colorToken` / `textColorToken` / `textColor`. Literal `color` still wins for fill when present.
+  3. Button labels never copy fill. Unspecified label color uses the role’s text token, else luminance contrast (ink on gold, chrome on iron).
+  4. MCP writes the theme via `engine_asset_apply` `kind: ui_theme`; mutate `style` can assign roles; Lua `ui_theme_set_token` tweaks live values. The editor UI tab exposes token color pickers and role dropdowns.
+- Rationale: Matches existing JSON asset + MCP apply patterns without inventing a second chrome language. One file restyles inventory (and later pause/HUD) without rewriting every widget.
+- Consequences: Format [`../formats/ui-theme-assets.md`](../formats/ui-theme-assets.md). Sample inventory chrome buttons use `themeRole` instead of gold-on-gold plates. Draw defaults in `hud_runtime.cpp` remain fallbacks when a canvas has no theme loaded.
+- Supersedes: none
+
+### DEC-0060: Status effects runtime + typed combat text
+
+- Status: accepted
+- Date: 2026-08-20
+- Context: Owner wants melee combo damage (hit 1 min → hit 3 max), test weapons with poison/bleed, DoT ticks as colored floating `-N` text, and status modifiers on the player health bar.
+- Decision:
+  1. **C++ `StatusEffectRuntime`** owns DoT timers (poison/bleed v1). Catalog weapons may list `stats.onHit[]` (`status`, `damagePerTick`, `duration`, `tickInterval`). Lua applies via `engine.status_apply` / clears via `status_clear`.
+  2. **Melee combo damage:** `CombatContactEvent.attacker_combo_step` 1/2/3 maps to attribute-scaled weapon min / mid / max. Step 0 (ranged / unknown) keeps the damage marble bag ([DEC-0057](../decisions/index.md#dec-0057-marble-bag-rng-for-gameplay-rolls)).
+  3. **`CombatTextRuntime` kinds:** hit / crit / bleed / poison / heal with distinct colors; DoT ticks use a minus prefix. Spawn above the target name plate ([DEC-0059](../decisions/index.md#dec-0059-world-anchored-combat-text-floaters)).
+  4. **Stacking + target HUD:** each apply of the **same** kind adds a stack (soft cap 10), refreshes duration, and scales tick damage by stacks. **Bleed and poison run together.** Afflicted **targets** show status droplet icons above their world HP chip (remaining-seconds ticker + duration bar; stack badge when `stacks > 1`) — not on the player vitals bar. Player DoT damage applies in C++ with resist curves; world targets react via optional Lua `on_status_tick`.
+- Rationale: Matches DEC-0011 (C++ capability / Lua content) and keeps Act 0 sandbox testable with cloned bleed sword / poison bow items.
+- Consequences: Feature [`../features/status-effects.md`](../features/status-effects.md). Sample `assets/items/status_test_weapons.json` plus school foci burn/slow. Lightning chain hops are a MagicCast combat proc (`chainHop` on `CombatContactEvent`), not a lasting status. HUD art: `assets/ui/hud/hud-status-bleed.png` / `hud-status-poison.png`. Extend kinds later (blight) without changing the apply/tick contract.
+- Supersedes: none
+
+### DEC-0059: World-anchored combat text floaters
+
+- Status: accepted
+- Date: 2026-08-20
+- Context: Hits need readable damage feedback with juice (impact scale, rise, fade). Crits need distinct color and a bigger punch. Persistent world billboards already cover NPC name/HP chips; they are not ephemeral damage floaters.
+- Decision:
+  1. **C++ owns** a `CombatTextRuntime` pool of short-lived world-projected numbers (impact → rise → fade). Not a UI canvas widget and not the HP billboard chip.
+  2. **Lua spawns** via `engine.combat_text({x,y,z,amount|text,crit})` from combat hurt handlers.
+  3. **Anchor above the name:** floaters spawn just above the enemy/NPC name (and HP chip label stack), not at the contact point and not on top of the name glyphs.
+  4. **Crit styling:** gold accent text, larger base size, stronger impact peak / rest scale than normal hits (chrome text).
+- Rationale: Matches DEC-0011 (C++ capability / Lua content), reuses world projection like billboards, and keeps name plates readable while damage pops above them.
+- Consequences: Feature [`../features/combat-text.md`](../features/combat-text.md). Wire Act 0 dummy sandbox first; other hurt scripts call the same API. Heal/miss/block glyphs may reuse `text=` later.
+- Supersedes: none
+
+### DEC-0061: Masked override animator layers (upper-body overlay)
+
+- Status: accepted
+- Date: 2026-08-20
+- Context: Player Block was a full-body base-layer state, so holding guard replaced Walk/Run and froze the legs. Owner chose an upper-body overlay over extra walk-while-blocking clips.
+- Decision:
+  1. Animator layers remain **override** (not additive). A layer may author `mask.joints[]` plus `includeChildren` (default true). Skinning applies later layers only on masked joints; the first layer is the full-body base.
+  2. `motion.type = "none"` is a passthrough state (no clips). Overlay default is `empty`.
+  3. `animator` `defaultState` override applies only to the **first** layer so overlay defaults stay `empty`.
+  4. Root motion ignores masked overlay layers. Additive blending stays deferred.
+- Rationale: One Block hold clip can sit on spine/arms/head while the existing locomotion blend tree keeps the legs. Matches the requested walk-and-block read without a second locomotion set.
+- Consequences: Format [`../formats/animator-controller-assets.md`](../formats/animator-controller-assets.md); sample `player.animator.json` `upperBody` layer (Block + Attack/Attack2/Attack3 + BowDraw/BowAim/BowRelease + MagicCast). TICKET-0283. Additive / per-joint weights remain follow-on.
+- Supersedes: none (extends DEC-0022 layer contract; TICKET-0103 v1 was override-only with no mask)

@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "id": "status_test_weapons",
+  "notes": "Cloned Act 0 weapons with onHit bleed/poison for combat sandbox status testing.",
+  "entities": [
+    {
+      "displayName": "Ashfell Bleed Sword",
+      "handAttach": {
+        "gripEulerDeg": [
+          -89.98021697998047,
+          35.312347412109375,
+          -35.31233215332031
+        ],
+        "gripOffset": [
+          0.0,
+          -0.05999999865889549,
+          0.20000000298023224
+        ],
+        "gripScale": [
+          1.0000004768371582,
+          1.2999999523162842,
+          0.9999996423721313
+        ],
+        "joint": "LeftHand"
+      },
+      "icon": "assets/ui/icons/items/ashfell_arming_sword.png",
+      "id": "ashfell_bleed_sword",
+      "kind": "weapon",
+      "source": "status_test_clone",
+      "notes": "Clone of ashfell_arming_sword with bleed onHit for DoT testing.",
+      "tags": [
+        "one_handed",
+        "melee",
+        "status_test"
+      ],
+      "stats": {
+        "damageMin": 16,
+        "damageMax": 22,
+        "attacksPerSecond": 1.1,
+        "modifiers": {
+          "strength": 2
+        },
+        "onHit": [
+          {
+            "status": "bleed",
+            "damagePerTick": 3,
+            "duration": 6,
+            "tickInterval": 1
+          }
+        ]
+      },
+      "worldMesh": "assets/models/ashfell_arming_sword.gltf"
+    },
+    {
+      "displayName": "Outrider Poison Bow",
+      "handAttach": {
+        "gripEulerDeg": [
+          -4.8189377784729,
+          88.26234436035156,
+          100.64341735839844
+        ],
+        "gripOffset": [
+          -0.12529489398002625,
+          0.034397900104522705,
+          -0.6801880598068237
+        ],
+        "gripScale": [
+          1.2999999523162842,
+          1.3749995231628418,
+          1.100000023841858
+        ],
+        "joint": "LeftHand",
+        "drawClip": "bow_draw"
+      },
+      "icon": "assets/ui/icons/items/outrider_shortbow.png",
+      "id": "outrider_poison_bow",
+      "kind": "weapon",
+      "source": "status_test_clone",
+      "notes": "Clone of outrider_shortbow with poison onHit for DoT testing.",
+      "tags": [
+        "two_handed",
+        "ranged",
+        "status_test"
+      ],
+      "stats": {
+        "damageMin": 14,
+        "damageMax": 20,
+        "attacksPerSecond": 0.65,
+        "modifiers": {
+          "agility": 2,
+          "maxStamina": 4
+        },
+        "onHit": [
+          {
+            "status": "poison",
+            "damagePerTick": 2,
+            "duration": 8,
+            "tickInterval": 1.25
+          }
+        ]
+      },
+      "worldMesh": "assets/models/outrider_shortbow.gltf"
+    }
+  ]
+}

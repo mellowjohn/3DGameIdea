@@ -12,6 +12,7 @@ Agents edit HUD **layout** as `*.hud.json` / `*.uicanvas.json` and HUD **values*
 | --- | --- |
 | Widget primitives (`bar` / `text` / `panel`) | C++ `HudRuntime` overlay on Game viewport |
 | World billboards (prompts / floating bars) | C++ `WorldUiBillboardRuntime` + Lua `world_ui_*` |
+| Combat floating damage numbers | C++ `CombatTextRuntime` + Lua `combat_text` ([combat-text.md](combat-text.md)) |
 | Layout asset | Prefer `assets/ui/*.uicanvas.json` via `engine_hud_apply`; legacy `*.hud.json` shim |
 | Values | Lua `engine.hud_*` / `set_health` / `set_resource` / `apply_archetype_hud` |
 
@@ -23,7 +24,8 @@ Screen-space always-on canvas (`player.uicanvas.json`) — Dragon Age–inspired
 
 - **Safe margin:** 40 design-px from the 1920×1080 letterbox edges
 - Bottom-left circular face viewport ring (hollow PNG + fill well; placeholder until live face RT)
-- `player.name` (Cinzel) beside stacked **Health** then **Stamina/Magic** bars with resource-bar chrome
+- `player.name` (Cinzel) beside stacked **Health** then **Stamina** bars with resource-bar chrome
+- **Rune pips** (`hud_rune_pip_1`…`5`) under the stamina bar while a **magic** weapon is held (any lane) — ready glow vs dim while recharging; hidden for melee/ranged
 - Bottom-centered hotbar slots 1–6 (ability-slot chrome; icons on 1–3)
 - Top-right circular minimap frame (centered player dot)
 - Top-left quest objective chip(s) — up to **3** tracked ([DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux)); kind filter; hidden when empty
@@ -38,6 +40,11 @@ World-space billboards (`WorldUiBillboardRuntime`):
 
 - Interaction prompts (`interact.*` blackboard → parchment “Press E …” chip)
 - Optional floating text/bar chips via `engine.world_ui_upsert` (NPC health, etc.)
+
+Combat floating numbers (`CombatTextRuntime`, [DEC-0059](../decisions/index.md#dec-0059-world-anchored-combat-text-floaters)):
+
+- Spawn above the NPC **name** plate via `engine.combat_text` (impact scale → rise → fade; crits gold + bigger)
+- See [`combat-text.md`](combat-text.md)
 
 ## Live loop
 
@@ -57,13 +64,23 @@ World-space billboards (`WorldUiBillboardRuntime`):
 | `engine.hud_set_enabled(widget_id, bool)` | Active/inactive (inactive draws dimmed) |
 | `engine.set_health(current, max)` | Sugar for `player.health` / `player.healthMax` / `player.healthText` |
 | `engine.get_health()` | Returns `current, max` |
-| `engine.set_resource(current, max)` | Secondary class resource binds |
+| `engine.set_resource(current, max)` | Secondary stamina binds |
 | `engine.get_resource()` | Returns `current, max` |
-| `engine.apply_archetype_hud(archetypeId)` | Seeds stamina vs magic label/color (`ashfell_blade`/`outrider` → stamina; `runecaster` → magic) |
-| `engine.world_ui_upsert(id, {x,y,z,text,barCurrent,barMax,visible})` | World-anchored billboard chip |
+| `engine.apply_archetype_hud(archetypeId)` | Seeds shared **Stamina** bar for all lanes. Runecaster still seeds five rune pips at character select; live gear (`apply_player_stats_to_hud`) shows/hides pips while a magic weapon is held. |
+| `engine.world_ui_upsert(id, {x,y,z,text,barCurrent,barMax,hitJuice,visible})` | World-anchored billboard chip; `hitJuice=true` flashes the bar, pulses scale, and trails a gold ghost fill |
 | `engine.world_ui_clear(id?)` | Remove one billboard or clear all |
+| `engine.combat_text({x,y,z,amount|text,crit})` | Ephemeral floating damage number above the target name ([combat-text.md](combat-text.md), [DEC-0059](../decisions/index.md#dec-0059-world-anchored-combat-text-floaters)) |
 
-Play-test dodge spends **20** from `player.resource` and regenerates at **25/s** after a **0.4 s** delay (see [`gearing-system.md`](gearing-system.md)). There is still no general sprint/attack stamina economy (TICKET-0127).
+Play-test combat economy (Act 0 vertical slice):
+
+| Lane | Cost | Regen |
+| --- | --- | --- |
+| Dodge (all) | **20** stamina | **25/s** after **0.4 s** delay |
+| Ashfell light swing | **15** stamina per committed hit | same stamina regen |
+| Outrider bow | **1** `crude_arrow` on `releaseArrow` (draw gated at 0 ammo); play-test starts with **20** | inventory grant |
+| Runecaster cast | **1** rune charge on `castRelease` (cast gated at 0); max **5** | **+1** every **2 s** |
+
+See [`gearing-system.md`](gearing-system.md).
 
 ## Interact blackboard (prompt UX)
 
@@ -80,6 +97,7 @@ Scripts set these on enter/exit; the Game viewport syncs them into the `interact
 
 - Layout: `samples/open-world-rpg/assets/ui/player.uicanvas.json`
 - Damage: `assets/scripts/combat_hurt.lua` (−10 HP)
+- Dummy health chips: `assets/scripts/dummy_hurt.lua` (`world_ui_upsert` at pad head anchors; combat sandbox; never dies, 150 HP/s regen, HitReact). Chips use a small label plate + separately bordered HP bar (no shared grey panel); hits pass `hitJuice` for flash / pulse / ghost trail.
 - Rest: `assets/scripts/campfire_interaction.lua` (+15 HP on **use**)
 - Talk / investigate: `talk_*_interaction.lua`, `event_zone_sandbox_interaction.lua`
 

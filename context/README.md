@@ -4,14 +4,16 @@ This directory is durable memory for humans and AI agents. Source code remains a
 
 ## Index
 
-- `formats/` — versioned project and asset format contracts (includes [`formats/rpg-save.md`](formats/rpg-save.md), [`formats/animator-controller-assets.md`](formats/animator-controller-assets.md), [`formats/world-forge-pantheon.md`](formats/world-forge-pantheon.md), [`formats/world-forge-archetypes.md`](formats/world-forge-archetypes.md), [`formats/world-forge-acts.md`](formats/world-forge-acts.md), [`formats/world-forge-mvp-readiness.md`](formats/world-forge-mvp-readiness.md), [`formats/world-forge-factions.md`](formats/world-forge-factions.md), [`formats/world-forge-relationships.md`](formats/world-forge-relationships.md), [`formats/world-forge-map.md`](formats/world-forge-map.md), [`formats/world-forge-quests.md`](formats/world-forge-quests.md), [`formats/world-forge-mcp.md`](formats/world-forge-mcp.md), [`formats/project-git-sync.md`](formats/project-git-sync.md))
+- `formats/` — versioned project and asset format contracts (includes [`formats/rpg-save.md`](formats/rpg-save.md), [`formats/item-catalog-assets.md`](formats/item-catalog-assets.md), [`formats/ui-theme-assets.md`](formats/ui-theme-assets.md), [`formats/animator-controller-assets.md`](formats/animator-controller-assets.md), [`formats/world-forge-pantheon.md`](formats/world-forge-pantheon.md), [`formats/world-forge-archetypes.md`](formats/world-forge-archetypes.md), [`formats/world-forge-acts.md`](formats/world-forge-acts.md), [`formats/world-forge-mvp-readiness.md`](formats/world-forge-mvp-readiness.md), [`formats/world-forge-factions.md`](formats/world-forge-factions.md), [`formats/world-forge-relationships.md`](formats/world-forge-relationships.md), [`formats/world-forge-map.md`](formats/world-forge-map.md), [`formats/world-forge-quests.md`](formats/world-forge-quests.md), [`formats/world-forge-mcp.md`](formats/world-forge-mcp.md), [`formats/project-git-sync.md`](formats/project-git-sync.md))
 
 - `architecture/overview.md` — system boundaries and constraints
 - `architecture/components.md` — entity component catalog (core ECS + authored types, inherit/override, authoring matrix)
 - `architecture/content-vs-engine-workflows.md` — when to edit C++ engine code vs MCP-driven project content
+- `architecture/agent-work-graph.md` — graph-engineering roles, cohesion cuts, shared locks, subagent vs same-chat policy
 - `decisions/index.md` — accepted and superseded decisions
 - `features/index.md` — feature inventory, status, and acceptance links
 - `features/gearing-system.md` — Terraria-shaped gearing + soft affinity + Thrator (EPIC-0018 / DEC-0048)
+- `features/marble-bag-rng.md` — gameplay RNG is named marble bags (loot, crits, procs; DEC-0057)
 - `features/authoring-git-sync.md` — multi-author project sync via git + in-editor Project Sync (EPIC-0014 / DEC-0037)
 - `features/world-forge-scope.md` — World Forge vs editor/MCP boundary (EPIC-0002 / TICKET-0010)
 - `story/index.md` — narrative premise, setting, characters, factions, and other story canon
@@ -20,6 +22,7 @@ This directory is durable memory for humans and AI agents. Source code remains a
 - `design/dom-open-questions.md` — prioritized P0/P1/P2 world-design questions Dom still needs to answer
 - `design/dom-answered-questions.md` — archive of Dom + owner locks
 - `art/character-direction.md` — player-character art references and starter-kit direction
+- `art/animation-craft.md` — animation vocabulary, Disney principles, combat windows, intent descriptors for Studio/MCP authoring (skill: [`skills/author-character-animation/SKILL.md`](../skills/author-character-animation/SKILL.md))
 - `art/blockbench-asset-list.md` — prioritized Blockbench production backlog (Act 0 → early Act 1)
 
 - `art/theme-palette.md` — open-world slice color swatches (terrain, foliage, reserved Nefarium accents)

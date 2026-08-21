@@ -67,6 +67,9 @@ struct ParticleDrawInstance {
 
     float flipbook_blend = 0.0f; // 0 = uv, 1 = uv2 (soft frame crossfade)
 
+    /// 1 = apply scene-depth soft occlusion; 0 = always draw (weapon impacts).
+    float soft_occlusion = 1.0f;
+
     std::uint32_t blend_mode = 0; // ParticleBlendMode
 
 };

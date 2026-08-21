@@ -1,0 +1,66 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.4000000059604645,
+          0.3799999952316284,
+          0.36000001430511475
+        ],
+        "primitive": "cube"
+      },
+      "name": "BeamA",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          1.2,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0.35,
+          0.94
+        ],
+        "scale": [
+          0.25,
+          3,
+          0.25
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4000000059604645,
+          0.3799999952316284,
+          0.36000001430511475
+        ],
+        "primitive": "cube"
+      },
+      "name": "BeamB",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          1.2,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          -0.35,
+          0.94
+        ],
+        "scale": [
+          0.25,
+          3,
+          0.25
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

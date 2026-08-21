@@ -11,6 +11,7 @@
 #include "engine/world/water_store.h"
 #include "engine/world/foliage_density.h"
 #include "engine/world/foliage_layers.h"
+#include "engine/world/navigation_grid.h"
 #include "engine/world/scene.h"
 #include "engine/world/terrain_edits.h"
 #include "engine/world/terrain_paint.h"
@@ -34,6 +35,7 @@ class FlagRuntime;
 class InventoryRuntime;
 class DialogueRuntime;
 class HudRuntime;
+class McpJobQueue;
 
 struct EditorSessionContext {
     Scene* scene = nullptr;
@@ -64,12 +66,15 @@ struct EditorSessionContext {
     TerrainEditStore* terrain_edits = nullptr;
     TerrainEditHistory* terrain_history = nullptr;
     bool* terrain_edits_dirty = nullptr;
+    std::filesystem::path terrain_edits_path;
     TerrainPaintStore* terrain_paint = nullptr;
     TerrainPaintHistory* terrain_paint_history = nullptr;
     bool* terrain_paint_dirty = nullptr;
+    std::filesystem::path terrain_paint_path;
     FoliageDensityStore* foliage_density = nullptr;
     FoliageDensityHistory* foliage_density_history = nullptr;
     bool* foliage_density_dirty = nullptr;
+    std::filesystem::path foliage_density_path;
     FoliageLayerPalette* foliage_layers = nullptr;
     /// Invoked after height/paint strokes or undo/redo. Argument is true when collision heightfields must reload.
     std::function<void(bool height_changed)> reload_terrain;
@@ -85,6 +90,10 @@ struct EditorSessionContext {
     bool test_session_active = false;
     std::string test_session_state;
     std::optional<std::string> selected_entity_id;
+    /// Async MCP recipe queue (owned by EditorState when live).
+    McpJobQueue* mcp_jobs = nullptr;
+    /// Optional live nav field (play-test / editor). Offline pathfinding builds a temporary field.
+    StreamedNavigationField* navigation_field = nullptr;
 };
 
 struct ScenePlanResult {

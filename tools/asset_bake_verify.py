@@ -195,6 +195,31 @@ def animator_clip_names(animator_path: Path) -> list[str]:
     return sorted(found)
 
 
+def animation_override_clip_names(project_root: Path, baked_mesh: Path) -> set[str]:
+    """Return valid DEC-0052 sidecar clips that runtime merges over this mesh."""
+    try:
+        mesh_source = baked_mesh.relative_to(project_root).as_posix()
+    except ValueError:
+        mesh_source = baked_mesh.as_posix()
+
+    names: set[str] = set()
+    for path in baked_mesh.parent.glob(f"{baked_mesh.stem}.*.anim.json"):
+        try:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if doc.get("kind") != "animationClipOverride" or doc.get("schemaVersion") != 1:
+            continue
+        if doc.get("clipSource") not in (None, "", mesh_source):
+            continue
+        name = doc.get("clipName")
+        channels = doc.get("channels")
+        duration = doc.get("durationSeconds", 0)
+        if isinstance(name, str) and name and isinstance(channels, list) and channels and duration > 0:
+            names.add(name)
+    return names
+
+
 def rig_joint_names(rig_path: Path) -> list[str]:
     if not rig_path.exists():
         return []
@@ -523,13 +548,15 @@ def verify_bake(
         if anim_path:
             required_clips |= set(animator_clip_names(project_root / anim_path))
         baked_clips = {n: a for n, a in zip(clip_names(g), g.get("animations") or [])}
-        missing_clips = sorted(c for c in required_clips if c not in baked_clips)
+        override_clips = animation_override_clip_names(project_root, baked_mesh)
+        available_clips = set(baked_clips) | override_clips
+        missing_clips = sorted(required_clips - available_clips)
         results.append(
             gate(
                 "ASSET-BAKE-CLIP-MISSING",
                 not missing_clips,
-                f"missing={missing_clips} have={sorted(baked_clips)}",
-                "Re-export glTF with animations; do not overwrite from clip-stripped export.",
+                f"missing={missing_clips} gltf={sorted(baked_clips)} overrides={sorted(override_clips)}",
+                "Re-export glTF with animations or restore a valid engine clip override sidecar.",
             )
         )
 

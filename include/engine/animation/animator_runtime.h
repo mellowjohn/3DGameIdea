@@ -20,6 +20,9 @@ struct AnimatorClipWeight {
     float weight = 0.0f;
     float time_seconds = 0.0f;
     bool loop = true;
+    std::string layer;
+    std::vector<std::string> mask_joints;
+    bool mask_include_children = true;
 };
 
 struct AnimatorLayerStatus {

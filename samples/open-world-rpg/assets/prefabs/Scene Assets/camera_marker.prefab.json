@@ -1,0 +1,1 @@
+{"schemaVersion":2,"entities":[{"name":"Camera Marker","transform":{"position":[0.0,0.0,0.0],"rotation":[0.0,0.0,0.0,1.0],"scale":[0.2,0.2,0.2]},"parent":null,"mesh":{"primitive":"sphere","color":[0.35,0.75,0.95]}}],"collision":[]}

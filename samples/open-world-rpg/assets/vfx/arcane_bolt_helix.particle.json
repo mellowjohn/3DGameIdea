@@ -1,0 +1,121 @@
+{
+  "acceleration": [
+    0.0,
+    0.05000000074505806,
+    0.0
+  ],
+  "aspectRatio": 2.200000047683716,
+  "blend": "softLight",
+  "color": {
+    "keypoints": [
+      {
+        "color": [
+          0.8500000238418579,
+          0.44999998807907104,
+          1.0
+        ],
+        "t": 0.0
+      },
+      {
+        "color": [
+          0.3499999940395355,
+          0.10000000149011612,
+          0.550000011920929
+        ],
+        "t": 0.4000000059604645
+      },
+      {
+        "color": [
+          0.05000000074505806,
+          0.019999999552965164,
+          0.11999999731779099
+        ],
+        "t": 1.0
+      }
+    ]
+  },
+  "crossedBillboards": false,
+  "drag": 0.550000011920929,
+  "emissionDirection": [
+    0.0,
+    0.09950371831655502,
+    -0.9950371384620667
+  ],
+  "enabled": true,
+  "flipbookFramerate": 18.0,
+  "flipbookLayout": "Grid4x4",
+  "flipbookMode": "OneShot",
+  "flipbookStartRandom": true,
+  "id": "arcane_bolt_helix",
+  "lifetime": {
+    "max": 0.4000000059604645,
+    "min": 0.20000000298023224
+  },
+  "lightEmission": 0.3499999940395355,
+  "maxParticles": 16,
+  "minScreenSize": 0.0,
+  "orientation": "VelocityParallel",
+  "rate": 0.0,
+  "rotation": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.0
+      },
+      {
+        "t": 1.0,
+        "value": 180.0
+      }
+    ]
+  },
+  "rotationStartRandom": true,
+  "schemaVersion": 1,
+  "shape": "disc",
+  "shapeSize": [
+    0.11999999731779099,
+    0.029999999329447746,
+    0.11999999731779099
+  ],
+  "shapeStyle": "surface",
+  "size": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.10000000149011612
+      },
+      {
+        "t": 0.25,
+        "value": 0.18000000715255737
+      },
+      {
+        "t": 1.0,
+        "value": 0.05000000074505806
+      }
+    ]
+  },
+  "speed": {
+    "max": 1.399999976158142,
+    "min": 0.3499999940395355
+  },
+  "spreadAngle": [
+    35.0,
+    75.0
+  ],
+  "texture": "assets/vfx/smoke_flipbook_4x4.png",
+  "transparency": {
+    "keypoints": [
+      {
+        "t": 0.0,
+        "value": 0.20000000298023224
+      },
+      {
+        "t": 0.44999998807907104,
+        "value": 0.44999998807907104
+      },
+      {
+        "t": 1.0,
+        "value": 1.0
+      }
+    ]
+  }
+}

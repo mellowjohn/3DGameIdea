@@ -1,0 +1,126 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.3199999928474426,
+          0.30000001192092896,
+          0.33000001311302185
+        ],
+        "primitive": "cube"
+      },
+      "name": "plate_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -8.75,
+          25.25,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0.3827,
+          0.9239
+        ],
+        "scale": [
+          25.2,
+          1.2,
+          46
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3199999928474426,
+          0.30000001192092896,
+          0.33000001311302185
+        ],
+        "primitive": "cube"
+      },
+      "name": "plate_r",
+      "parent": null,
+      "transform": {
+        "position": [
+          8.75,
+          25.25,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          -0.3827,
+          0.9239
+        ],
+        "scale": [
+          25.2,
+          1.2,
+          46
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.33000001311302185,
+          0.25999999046325684
+        ],
+        "primitive": "cube"
+      },
+      "name": "ridge",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          34.8,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3.2,
+          2,
+          46
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.1599999964237213,
+          0.14000000059604645,
+          0.17000000178813934
+        ],
+        "primitive": "cube"
+      },
+      "name": "gable_throne",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          24,
+          -23
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          40,
+          30,
+          3
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

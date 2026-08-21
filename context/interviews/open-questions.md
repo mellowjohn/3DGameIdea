@@ -37,7 +37,7 @@ Filed from TICKET-0021 review. Full gap list: [`context/story/factions.md`](../s
 - Imperium heraldry: dark-crusade / fractured-creator art shipped (`heraldry-chaotic_imperium.png`); owner lock vs revise.
 - **Act 1 dual-path intro (locked draft):** Arrotrebae/Thalassar path ↔ Cristallo path by travel; light standing in Act 1.
 - **Act 1 assassination / succession (draft locks):** lieutenant boss leads plot; trials + champion path + Underflow usurper; person names **TBD**; quest id + standing rewards open — Dom rows **D-P1-12** / **D-P1-15** / **D-P1-16** in [`dom-open-questions.md`](../design/dom-open-questions.md); beat sheet [`campaign-beat-sheet.md`](../story/campaign-beat-sheet.md).
-- **Act 0+ cast / hub authoring:** ~~Underflow war-chief~~ **Drul’gath** locked; ~~Grenge/Larrell/Damius fates~~ survive-by-default (D-P0-12); ~~optional hostage~~ **Larrell** if not saved (D-P0-12b); ~~Asher–Luceran kinship~~ **established** half-brothers (D-P0-13); ~~camp tutorial~~ Arkand-guided (D-P1-19); ~~Creotar honesty~~ **partially true** (D-P2-14); ~~crystal name~~ **Claritas** (D-P2-02b); ~~Underflow stance~~ coerced ally (D-P0-14); ~~House Ashfell name~~ confirmed (D-P1-21); ~~Landfall title~~ **final** (D-P0-15). Leftovers: coords **D-P2-08**, faces **D-P1-21b** / **D-P1-22** in [`dom-open-questions.md`](../design/dom-open-questions.md).
+- **Act 0+ cast / hub authoring:** ~~Underflow war-chief~~ **Drul’gath** locked; ~~Grenge/Larrell/Damius fates~~ survive-by-default (D-P0-12); ~~optional hostage~~ **Larrell** if not saved (D-P0-12b); ~~Asher–Luceran kinship~~ **established** half-brothers (D-P0-13); ~~camp tutorial~~ Arkand-guided (D-P1-19); ~~Creotar honesty~~ **partially true** (D-P2-14); ~~crystal name~~ **Claritas** (D-P2-02b); ~~Underflow stance~~ coerced ally (D-P0-14); ~~House Ashfell name~~ confirmed (D-P1-21); ~~Landfall title~~ **final** (D-P0-15); ~~Act 0 beat sheet A0-01…A0-09~~ **MVP-locked** + ~~no Act 0 chapter boss~~ (D-P0-16, 2026-08-05). Leftovers: coords **D-P2-08**, faces **D-P1-21b** / **D-P1-22** in [`dom-open-questions.md`](../design/dom-open-questions.md).
 
 **Update 2026-07-15:** Open-world vs chapter-lock **resolved** as [DEC-0021](../decisions/index.md#dec-0021-soft-gates-with-rare-optional-instances). Beat sheet: [`campaign-beat-sheet.md`](../story/campaign-beat-sheet.md). Remaining story opens from Act 0 Twine:
 
@@ -54,21 +54,23 @@ Filed from TICKET-0021 review. Full gap list: [`context/story/factions.md`](../s
 
 Still open:
 
-- Combat **systems** and party/build **comps** per lane (readiness `archetype_systems_comps_pass`)
+- Combat **systems** and party/build **comps** per lane (readiness `archetype_systems_comps_pass`). **Crit/proc odds** must be marble bags when those systems ship ([DEC-0057](../decisions/index.md#dec-0057-marble-bag-rng-for-gameplay-rolls)); exact bag sizes / per-weapon vs per-player bag ids remain authoring.
 - ~~Confirm/rename House Ashfell~~ — **confirmed** 2026-07-29; name Lodge/Guild/house **faces** (D-P1-21b / D-P1-22)
 - First home-org quest seeds (`archetype_lane_org_quests`) — journal **Archetype** tab locked ([DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux)); optional for main story, needed for full lane power; rewards per-quest gear and/or ability
 - ~~What an archetype-quest **unlock** grants~~ — **locked:** per-quest gear and/or ability, act-scaled ([DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux))
 - Schema `kind: archetype` widen when seeds land
-- ~~Outrider + Runecaster kit turnarounds~~ — first-pass sheets in `context/art/reference/` (revise after Blockbench kit pass)
+- ~~Starter kit concept trio (Ashfell / Outrider / Runecaster)~~ — MVP-locked 2026-08-05 via `act0-char-{ashfell-blade,outrider,runecaster}.png` (+ lineup); Blockbench outfit meshes still open (`art_*_outfit`)
 - Advanced specialization lists (post-demo)
 
 ## Character power progression (XP / levels)
 
 **Resolved 2026-07-29** as [DEC-0051](../decisions/index.md#dec-0051-no-xp-power-progression-and-quest-ux): **no traditional XP / player level**. Power from gear, boss/act loot bands, archetype quests, and story milestones; abilities also from gear/trinket archetype affinity. Provenance: [`../design/recording_archetype_quests_power_progression_2026-07-29.md`](../design/recording_archetype_quests_power_progression_2026-07-29.md).
 
+**Gameplay RNG (locked 2026-08-19)** as [DEC-0057](../decisions/index.md#dec-0057-marble-bag-rng-for-gameplay-rolls): loot, crits, procs, and other gameplay rolls use named **marble bags** (draw without replacement, refill, persist remainder). Visual noise (particles, foliage) stays independent. Feature: [`../features/marble-bag-rng.md`](../features/marble-bag-rng.md).
+
 Still open (implementation / content, not product fork):
 
-- Exact Act 0 boss presence (session interrupted)
+- ~~Exact Act 0 boss presence~~ — **locked 2026-08-05:** no named Act 0 chapter boss; Luceran A0-07 is theatrical; first main-story boss = Pneumyra (A1-05); Act 0 loot-band via Landfall completion milestones
 - Numeric act loot-band thresholds / which chapter bosses bump which band
 - Schema ship timing for `kind: archetype` enum (journal UX locked; widen when lane-org seeds land)
 - HUD chip screen corner polish (top-left draft)
@@ -84,10 +86,12 @@ Still open from beat sheet / Act 0 Twine import:
 - ~~Whether Calrenoth remains ruined on the seamless map after Act 0~~ — **resolved** DEC-0032: yes, ruined/impacted revisit.
 - ~~Creotar identity vs Creo/Frangitur~~ — **resolved 2026-07-20:** Creotar = Creo; Frangitur = fallen form ([frangitur-the-great-evil.md](../story/frangitur-the-great-evil.md)).
 - ~~Wild God revival chronology vs Calrenoth Act 0 spine~~ — **resolved** for default spine: Act 0 Calrenoth / **Landfall** final title (Wild God remains alternate/open).
+- ~~Act 0 beat sheet A0-01…A0-09~~ — **MVP-locked** 2026-08-05 ([campaign-beat-sheet.md](../story/campaign-beat-sheet.md)); playable copy polish still open.
 - Vanessa introduction beat timing.
 - Morality thresholds and ending matrix (Act 4) — soft Shroud destroy-vs-control sketch 2026-07-29.
-- Twine draft orc names (Grul’thaz / Shadowpaw) — not established until owner review (also TICKET-0021).
+- Twine draft orc names (Grul’thaz / Shadowpaw) — first-war bearer **locked**; later fate open (D-P2-11).
 - ~~Act 0 supporting cast survival~~ — survive-by-default; optional hostage = **Larrell** if not saved (D-P0-12b).
+- ~~Act 0 named chapter boss~~ — **none** (2026-08-05); first main-story boss = Pneumyra.
 
 ## UI canvas scale modes (non-blocking)
 
@@ -179,7 +183,8 @@ Still open (implementation tune / content polish, not product forks):
 - Bag upgrade **steps**, soft **max** capacity, and whether upgrade bags are consumed, equipped, or permanent unlocks.
 - Numeric **lane bonus** magnitudes (positive multipliers / which stats).
 - Vendor price curves and Ledgeport undermarket catalog (post–Act 0).
-- Whether `soldiers_scrap_pouch` opens into scrap rolls vs is a single consumable/material entry.
+- Whether `soldiers_scrap_pouch` opens into scrap rolls vs is a single consumable/material entry (scrap rolls would be a marble bag, not `math.random`).
+- Marble-bag **schema field names**, default bag sizes, and whether a player-facing pity/marble HUD ships later (v1 hidden per DEC-0057).
 - Full craft UI loop timing (TICKET-0235 materials stub first).
 - Act 0 starter **armor** pieces (if any beyond cloth kits that are appearance-only).
 

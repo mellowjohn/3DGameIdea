@@ -1,0 +1,32 @@
+{
+  "components": [
+    {
+      "data": {
+        "halfExtent": [1.3, 1.075, 0.45],
+        "layer": "staticWorld",
+        "shape": "box",
+        "transform": {
+          "position": [0, 1.075, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "trigger": false
+      },
+      "id": "collision-0",
+      "type": "collider"
+    }
+  ],
+  "entities": [
+    {
+      "mesh": { "asset": "assets/models/weapon_rack.gltf" },
+      "name": "WeaponRack",
+      "parent": null,
+      "transform": {
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

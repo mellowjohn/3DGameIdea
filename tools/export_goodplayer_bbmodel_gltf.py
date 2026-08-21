@@ -50,15 +50,56 @@ def euler_deg_to_quat(x: float, y: float, z: float) -> list[float]:
     return [qx, qy, qz, qw]
 
 
-def export(bb_path: Path, png_path: Path | None, out_paths: list[Path]) -> None:
+def export(
+    bb_path: Path,
+    png_path: Path | None,
+    out_paths: list[Path],
+    keep_mesh_names: list[str] | None = None,
+) -> None:
     data = json.loads(bb_path.read_text(encoding="utf-8"))
-    bones = {
-        e["name"]: e
-        for e in data["elements"]
-        if e.get("type") == "armature_bone" and e.get("name")
-    }
+    bones: dict[str, dict] = {}
+    for e in data["elements"]:
+        if e.get("type") != "armature_bone" or not e.get("name"):
+            continue
+        name = e["name"]
+        if name not in bones:
+            bones[name] = e
+            continue
+        existing = bones[name]
+        merged_weights = dict(existing.get("vertex_weights") or {})
+        merged_weights.update(e.get("vertex_weights") or {})
+        if len(e.get("children") or []) > len(existing.get("children") or []):
+            existing["children"] = e.get("children") or []
+        existing["vertex_weights"] = merged_weights
     by_uuid = {e["uuid"]: e for e in data["elements"] if e.get("uuid")}
     meshes = [e for e in data["elements"] if e.get("type") == "mesh" and "vertices" in e]
+    keep = {name for name in (keep_mesh_names or []) if name}
+    if keep:
+        densest: dict[str, dict] = {}
+        for mesh in meshes:
+            name = str(mesh.get("name") or "")
+            if name not in keep:
+                continue
+            verts = mesh.get("vertices") or {}
+            prev = densest.get(name)
+            if prev is None or len(verts) > len(prev.get("vertices") or {}):
+                densest[name] = mesh
+        missing = sorted(keep - densest.keys())
+        if missing:
+            raise RuntimeError(f"{bb_path}: keepMeshes missing {missing}")
+        meshes = [densest[str(name)] for name in keep_mesh_names if str(name) in densest]
+    else:
+        # Combined kit files may paste the same shell twice; keep the first.
+        deduped: list[dict] = []
+        seen: set[str] = set()
+        for mesh in meshes:
+            name = str(mesh.get("name") or "")
+            key = name or str(mesh.get("uuid") or len(deduped))
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(mesh)
+        meshes = deduped
     if not bones or "Hips" not in bones:
         raise SystemExit("bbmodel missing Hips armature bone")
 
@@ -134,7 +175,7 @@ def export(bb_path: Path, png_path: Path | None, out_paths: list[Path]) -> None:
             normals.append([0.0, 1.0, 0.0])
             uvs.append([0.0, 0.0])
             witems = weights_for(mesh["uuid"], vkey)
-            joints0.append([bone_index[n] for n, _ in witems])
+            joints0.append([bone_index.get(n, bone_index["Hips"]) for n, _ in witems])
             weights0.append([w for _, w in witems])
         for face in (mesh.get("faces") or {}).values():
             ids = face["vertices"]

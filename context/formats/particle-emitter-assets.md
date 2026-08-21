@@ -65,6 +65,7 @@ Versioned JSON emitters (`*.particle.json`) for the CPU particle MVP (TICKET-012
 | `rotationStartRandom` | bool | Random 0..360° spawn offset (default true) |
 | `crossedBillboards` | bool | Draw two world-locked upright quads 90° apart around Y (classic + volume; not camera-edge-on) |
 | `minScreenSize` | number | Minimum on-screen height in pixels (`0` = off). Raises world size with distance so fire stays readable far away without growing up close |
+| `softOcclusion` | bool | Default `true`. Soft-particle depth fade / hide-behind. Set `false` for weapon impact bursts so hurt-mesh contacts stay visible |
 | `lightEmission` | 0..1 | Additive weight |
 | `blend` | `alpha` \| `additive` \| `softLight` | SoftLight is default for fire |
 | `acceleration` | `[x,y,z]` | World-space |

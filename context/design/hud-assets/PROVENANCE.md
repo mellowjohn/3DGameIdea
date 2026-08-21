@@ -24,8 +24,16 @@ Reference prompts keyed to `context/art/ui-chrome-direction.md`, `visual-directi
 | `hud-icon-sword.png` | Ability icon — attack |
 | `hud-icon-shield.png` | Ability icon — block |
 | `hud-icon-sprint.png` | Ability icon — sprint |
+| `hud-rune-pip-ready.png` | Runecaster cast charge — ready / glow |
+| `hud-rune-pip-dim.png` | Runecaster cast charge — spent / recharging |
+| `hud-status-bleed.png` | Player status chip — bleed DoT (faceted crimson droplet, true RGBA) |
+| `hud-status-poison.png` | Player status chip — poison DoT (faceted green droplet + purple glint, true RGBA) |
 
 Synced to `samples/open-world-rpg/assets/ui/hud/`.
+
+Rune pips are procedural diamond glyphs (Pillow), magic-blue palette aligned to `ui-chrome-direction.md` (`#465AA0`). Runtime swaps ready/dim via `HudRuntime::set_rune_charges`.
+
+Status droplets are procedural faceted icons (`tools/art/_make_status_hud_icons.py`) — corner alpha 0; drawn above afflicted **target** HP chips with remaining-seconds text + duration bar while `StatusEffectRuntime` has stacks on that target.
 
 ## Post-process
 

@@ -1,0 +1,472 @@
+{
+  "designResolution": [
+    1920.0,
+    1080.0
+  ],
+  "id": "prologue",
+  "schemaVersion": 1,
+  "widgets": [
+    {
+      "anchor": "center",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        255.0
+      ],
+      "id": "prologue_underlay",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        4800.0,
+        2700.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        40.0,
+        28.0,
+        18.0,
+        255.0
+      ],
+      "id": "prologue_fx_haze",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "opacity": 0.0,
+      "size": [
+        4800.0,
+        2700.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        180.0,
+        48.0,
+        8.0,
+        255.0
+      ],
+      "id": "prologue_fx_wash",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "opacity": 0.0,
+      "size": [
+        4800.0,
+        2700.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "prologue_fx_dust",
+      "image": "assets/ui/menu/prologue/prologue-fx-dust.png",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "opacity": 0.0,
+      "size": [
+        2200.0,
+        1300.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "id": "prologue_fx_embers",
+      "image": "assets/ui/menu/prologue/prologue-fx-embers.png",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "opacity": 0.0,
+      "size": [
+        2100.0,
+        1200.0
+      ],
+      "type": "image",
+      "visible": false
+    },
+    {
+      "anchor": "top_left",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        180.0
+      ],
+      "id": "prologue_letterbox_top",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        1920.0,
+        72.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "bottom_left",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        180.0
+      ],
+      "id": "prologue_letterbox_bot",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        1920.0,
+        72.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "top_left",
+      "color": [
+        30.0,
+        28.0,
+        24.0,
+        204.0
+      ],
+      "id": "prologue_step_chip",
+      "offset": [
+        40.0,
+        40.0
+      ],
+      "size": [
+        420.0,
+        64.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "top_left",
+      "bind": "prologue.step",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 14.0,
+      "id": "prologue_step",
+      "offset": [
+        48.0,
+        32.0
+      ],
+      "size": [
+        396.0,
+        22.0
+      ],
+      "text": "07a · Dramatic pan · Beat 1 of 3",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "top_left",
+      "bind": "prologue.stepSub",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 15.0,
+      "id": "prologue_step_sub",
+      "offset": [
+        48.0,
+        56.0
+      ],
+      "size": [
+        396.0,
+        24.0
+      ],
+      "text": "Camera pulls back on Luceran · Frangitur gathers",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "color": [
+        255.0,
+        255.0,
+        255.0,
+        255.0
+      ],
+      "id": "prologue_plate",
+      "image": "assets/ui/menu/prologue/prologue-glass-dialogue-plate.png",
+      "offset": [
+        0.0,
+        270.0
+      ],
+      "size": [
+        1180.0,
+        260.0
+      ],
+      "type": "image"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        40.0,
+        34.0,
+        28.0,
+        220.0
+      ],
+      "id": "prologue_portrait",
+      "offset": [
+        -500.0,
+        240.0
+      ],
+      "size": [
+        88.0,
+        88.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "prologue.speaker",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        255.0
+      ],
+      "fontSize": 22.0,
+      "id": "prologue_speaker",
+      "offset": [
+        0.0,
+        210.0
+      ],
+      "padding": [
+        64.0,
+        6.0,
+        64.0,
+        4.0
+      ],
+      "size": [
+        1100.0,
+        30.0
+      ],
+      "text": "Frangitur",
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "prologue.role",
+      "color": [
+        180.0,
+        168.0,
+        150.0,
+        255.0
+      ],
+      "fontSize": 14.0,
+      "id": "prologue_role",
+      "offset": [
+        0.0,
+        238.0
+      ],
+      "padding": [
+        56.0,
+        2.0,
+        56.0,
+        2.0
+      ],
+      "size": [
+        1100.0,
+        22.0
+      ],
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "prologue.body",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fitText": true,
+      "fontSize": 18.0,
+      "id": "prologue_body",
+      "minFontSize": 14.0,
+      "offset": [
+        0.0,
+        310.0
+      ],
+      "padding": [
+        40.0,
+        8.0,
+        40.0,
+        8.0
+      ],
+      "size": [
+        980.0,
+        120.0
+      ],
+      "textAlign": "center",
+      "type": "text"
+    },
+    {
+      "anchor": "center",
+      "bind": "prologue.prompt",
+      "color": [
+        213.0,
+        185.0,
+        120.0,
+        220.0
+      ],
+      "fontSize": 14.0,
+      "id": "prologue_prompt",
+      "offset": [
+        0.0,
+        380.0
+      ],
+      "padding": [
+        40.0,
+        2.0,
+        40.0,
+        2.0
+      ],
+      "size": [
+        1100.0,
+        22.0
+      ],
+      "text": "Continue ▸",
+      "textAlign": "center",
+      "type": "text",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "prologue.continue",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        8.0
+      ],
+      "id": "prologue_continue",
+      "offset": [
+        0.0,
+        270.0
+      ],
+      "opacity": 0.009999999776482582,
+      "size": [
+        1180.0,
+        260.0
+      ],
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        255.0
+      ],
+      "id": "prologue_fade_cover",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        4800.0,
+        2700.0
+      ],
+      "type": "panel",
+      "visible": false
+    },
+    {
+      "anchor": "center",
+      "bind": "prologue.skip",
+      "color": [
+        241.0,
+        238.0,
+        232.0,
+        255.0
+      ],
+      "fontSize": 16.0,
+      "id": "prologue_skip",
+      "image": "assets/ui/menu/glass-menu-btn-secondary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        -130.0,
+        448.0
+      ],
+      "size": [
+        230.0,
+        54.0
+      ],
+      "text": "Skip prologue",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    },
+    {
+      "anchor": "center",
+      "bind": "prologue.continue",
+      "color": [
+        247.0,
+        234.0,
+        208.0,
+        255.0
+      ],
+      "fontSize": 20.0,
+      "id": "prologue_continue_cta",
+      "image": "assets/ui/menu/glass-menu-btn-primary-pill.png",
+      "imageMode": "nine_slice",
+      "imageSlice": [
+        64.0,
+        32.0,
+        64.0,
+        32.0
+      ],
+      "offset": [
+        130.0,
+        448.0
+      ],
+      "size": [
+        250.0,
+        60.0
+      ],
+      "text": "Continue",
+      "textAlign": "center",
+      "textVAlign": "middle",
+      "type": "button"
+    }
+  ]
+}

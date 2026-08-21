@@ -8,5 +8,11 @@
   "stepHeight": 0.35,
   "maxSpeed": 5.5,
   "gravity": 9.81,
-  "jumpVelocity": 5.5
+  "jumpVelocity": 5.5,
+  "appearance": {
+    "hairMesh": "assets/models/test_hair_spikes.gltf",
+    "hairTint": [1.0, 0.78, 0.42],
+    "skinTint": [1.0, 0.9, 0.78],
+    "eyeTint": [0.22, 0.12, 0.06]
+  }
 }

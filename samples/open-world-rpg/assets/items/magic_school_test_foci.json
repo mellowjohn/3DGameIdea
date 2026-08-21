@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "id": "magic_school_test_foci",
+  "notes": "Clones of guild_rune_focus for combat-sandbox spell-school VFX and on-hit effects (fire burn, frost slow, lightning chain). Same mesh and grip; play-test MagicCast picks bolt/charge emitters from magic_* tags.",
+  "entities": [
+    {
+      "displayName": "Guild Fire Focus",
+      "handAttach": {
+        "gripEulerDeg": [-85.0, 28.0, -30.0],
+        "gripOffset": [0.0, -0.04, 0.14],
+        "gripScale": [1.0, 1.05, 1.0],
+        "joint": "LeftHand"
+      },
+      "icon": "assets/ui/icons/items/guild_rune_focus.png",
+      "id": "guild_rune_focus_fire",
+      "kind": "weapon",
+      "source": "magic_school_test_clone",
+      "notes": "Rune-focus clone that casts a fire bolt and applies a burn DoT. Same guild mesh until school-colored foci exist.",
+      "tags": ["one_handed", "magic", "magic_fire", "magic_school_test"],
+      "stats": {
+        "damageMin": 16,
+        "damageMax": 24,
+        "attacksPerSecond": 0.65,
+        "modifiers": { "intellect": 2, "maxHealth": 6 },
+        "onHit": [
+          { "status": "burn", "damagePerTick": 3, "duration": 6, "tickInterval": 1 }
+        ]
+      },
+      "worldMesh": "assets/models/guild_rune_focus.gltf"
+    },
+    {
+      "displayName": "Guild Frost Focus",
+      "handAttach": {
+        "gripEulerDeg": [-85.0, 28.0, -30.0],
+        "gripOffset": [0.0, -0.04, 0.14],
+        "gripScale": [1.0, 1.05, 1.0],
+        "joint": "LeftHand"
+      },
+      "icon": "assets/ui/icons/items/guild_rune_focus.png",
+      "id": "guild_rune_focus_frost",
+      "kind": "weapon",
+      "source": "magic_school_test_clone",
+      "notes": "Rune-focus clone that casts a frost bolt and applies Slow. Same guild mesh until school-colored foci exist.",
+      "tags": ["one_handed", "magic", "magic_frost", "magic_school_test"],
+      "stats": {
+        "damageMin": 14,
+        "damageMax": 18,
+        "attacksPerSecond": 0.8,
+        "modifiers": { "intellect": 2, "maxHealth": 6 },
+        "onHit": [
+          { "status": "slow", "damagePerTick": 0, "duration": 4, "tickInterval": 1 }
+        ]
+      },
+      "worldMesh": "assets/models/guild_rune_focus.gltf"
+    },
+    {
+      "displayName": "Guild Lightning Focus",
+      "handAttach": {
+        "gripEulerDeg": [-85.0, 28.0, -30.0],
+        "gripOffset": [0.0, -0.04, 0.14],
+        "gripScale": [1.0, 1.05, 1.0],
+        "joint": "LeftHand"
+      },
+      "icon": "assets/ui/icons/items/guild_rune_focus.png",
+      "id": "guild_rune_focus_lightning",
+      "kind": "weapon",
+      "source": "magic_school_test_clone",
+      "notes": "Rune-focus clone that casts a lightning bolt that chains to nearby foes. Same guild mesh until school-colored foci exist.",
+      "tags": ["one_handed", "magic", "magic_lightning", "magic_school_test"],
+      "stats": {
+        "damageMin": 12,
+        "damageMax": 20,
+        "attacksPerSecond": 0.95,
+        "modifiers": { "intellect": 2, "maxHealth": 6 }
+      },
+      "worldMesh": "assets/models/guild_rune_focus.gltf"
+    }
+  ]
+}

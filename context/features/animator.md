@@ -15,7 +15,7 @@ Status: active (TICKET-0103) — design locked by [DEC-0022](../decisions/index.
 
 1. **Controller asset** (`*.animator.json`): named states → clips or 1D blend trees, transitions with conditions, override layers. Contract: [`../formats/animator-controller-assets.md`](../formats/animator-controller-assets.md).
 2. **`animator` component** on prefabs/entities: `controller` path, optional `defaultState`.
-3. **`AnimatorRuntime`**: attach/detach, param setters, automatic transitions, crossfade, `tick`, status with active clip weights.
+3. **`AnimatorRuntime`**: attach/detach, param setters, automatic transitions, crossfade, `tick`, status with active clip weights. Motions: single clips, **none** (passthrough), **1D** blend trees, and **2D** freeform trees (`blendTree2D` / TICKET-0282 — Delaunay + barycentric / edge clamp). Layers: full-body override plus optional **masked overlay** (`mask.joints` / `includeChildren`, TICKET-0283 / [DEC-0061](../decisions/index.md#dec-0061-masked-override-animator-layers-upper-body-overlay)).
 4. **Lua drive API**: `animator_set_float` / `animator_set_bool` / `animator_set_trigger` / `animator_crossfade` / `animator_get_state`.
 
 ## M5 exit verification (TICKET-0110)
@@ -54,7 +54,8 @@ Controllers may author `timelineEvents[]` (state + time + name + optional layer/
 ## Out of scope
 
 - Play-test **GPU LBS skinning** (TICKET-0227 / DEC-0047): per-entity `AnimatorRuntime` attach for every scene entity with an `animator` component (propagate prefab components first so `npc_test` inherits its controller); CPU skin matrices upload into a **16-slot bone CB ring**; prop/shadow draws bind the entity’s slot via `skin_entity_id`. Locomotion/combat params still drive only the spawn entity. Player visual uses yaw π (mesh −Z vs loco +Z); because the right-handed Blockbench glTF is imported verbatim into the left-handed runtime, `sample_clip_pose_for_joint` samples the sagittal counterpart joint and reflects the local pose through the YZ plane, so Attack reads right-handed in-engine exactly as it does in Blockbench (see `context/testing/findings.md`, 2026-07-31). Catalog-wide / Animation tools viewport polish remain follow-on.
-- Sample `player.animator.json` drives Idle/Walk/Run + Jump/Fall/Land, Attack/Block (one-handed melee hotbar gate), directional Dodge (Shift + stamina spend + scripted dash + dodge_dust burst), HitReact/Death/Revive, Interact/InteractPickup from play-test input + locomotion grounded/speed.
+- Sample `player.animator.json` drives Idle + directional locomotion (`moveX`/`moveZ` `blendTree2D` with Walk / WalkStrafeLeft / WalkStrafeRight / Walk back-stand-in / Run / RunStrafeLeft / RunStrafeRight) + Jump/Fall/Land, **upper-body** Attack/Attack2/Attack3 light string, Block, and BowDraw/BowAim/BowRelease overlay (Q / LMB with one-handed melee or ranged; legs stay on idle/loco), directional Dodge (Shift + stamina spend + scripted dash + dodge_dust burst), HitReact/Death/Revive, Interact/InteractPickup from play-test input + locomotion grounded/speed.
+- Additive layers (delta-from-reference). Masked override overlay is in (TICKET-0283).
 - Runtime IK solve (metadata only today — [`../formats/rig-assets.md`](../formats/rig-assets.md), TICKET-0106).
 - Auto combat-volume enable from events; play-session animator wiring polish.
 - Lua-authored state machines (rejected unless a new decision supersedes DEC-0022).

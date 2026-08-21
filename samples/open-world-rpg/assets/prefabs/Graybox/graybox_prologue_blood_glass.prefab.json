@@ -1,0 +1,96 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.3499999940395355,
+          0.2800000011920929,
+          0.18000000715255737
+        ],
+        "primitive": "cube"
+      },
+      "name": "frame",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          2.1,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.9,
+          2.6,
+          0.18
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.44999998807907104,
+          0.05000000074505806,
+          0.07999999821186066
+        ],
+        "primitive": "cube"
+      },
+      "name": "pane",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          2.1,
+          0.05
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.5,
+          2.2,
+          0.08
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.25,
+          0.2199999988079071,
+          0.20000000298023224
+        ],
+        "primitive": "cube"
+      },
+      "name": "stand",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.35,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.8,
+          0.7,
+          0.5
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

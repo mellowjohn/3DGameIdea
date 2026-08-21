@@ -4,7 +4,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
+#include <limits>
 #include <unordered_set>
 
 namespace engine {
@@ -65,6 +67,153 @@ Result<AnimatorClipRef> parse_clip_ref(const nlohmann::json& value, const char* 
     return Result<AnimatorClipRef>::success(std::move(clip));
 }
 
+Result<void> parse_blend_tree_2d_position(const nlohmann::json& child_json, float& out_x, float& out_y) {
+    if (child_json.contains("position") && child_json["position"].is_array()
+        && child_json["position"].size() >= 2) {
+        out_x = child_json["position"][0].get<float>();
+        out_y = child_json["position"][1].get<float>();
+        return Result<void>::success();
+    }
+    if (child_json.contains("x") || child_json.contains("y")) {
+        out_x = child_json.value("x", 0.0f);
+        out_y = child_json.value("y", 0.0f);
+        return Result<void>::success();
+    }
+    return Result<void>::failure(
+        controller_error("ANIM-CTRL-BLEND-POSITION", "blendTree2D child requires position [x,y]"));
+}
+
+/// Bowyer–Watson Delaunay triangulation over blend-tree child positions.
+Result<void> build_blend_tree_2d_triangles(AnimatorBlendTree2D& tree) {
+    tree.triangles.clear();
+    const auto n = tree.children.size();
+    if (n < 3)
+        return Result<void>::failure(controller_error("ANIM-CTRL-BLEND-CHILDREN",
+            "blendTree2D requires at least 3 children"));
+
+    struct Pt {
+        float x = 0.0f;
+        float y = 0.0f;
+        bool super = false;
+    };
+    std::vector<Pt> pts;
+    pts.reserve(n + 3);
+    float min_x = tree.children[0].position_x;
+    float max_x = min_x;
+    float min_y = tree.children[0].position_y;
+    float max_y = min_y;
+    for (const auto& child : tree.children) {
+        pts.push_back({child.position_x, child.position_y, false});
+        min_x = std::min(min_x, child.position_x);
+        max_x = std::max(max_x, child.position_x);
+        min_y = std::min(min_y, child.position_y);
+        max_y = std::max(max_y, child.position_y);
+    }
+    const float dx = std::max(max_x - min_x, 1.0f);
+    const float dy = std::max(max_y - min_y, 1.0f);
+    const float mid_x = 0.5f * (min_x + max_x);
+    const float mid_y = 0.5f * (min_y + max_y);
+    const float pad = 20.0f * std::max(dx, dy);
+    pts.push_back({mid_x - pad, mid_y - pad, true});
+    pts.push_back({mid_x + pad, mid_y - pad, true});
+    pts.push_back({mid_x, mid_y + pad, true});
+
+    struct Tri {
+        int a = 0;
+        int b = 0;
+        int c = 0;
+    };
+    std::vector<Tri> tris;
+    const int s0 = static_cast<int>(n);
+    const int s1 = s0 + 1;
+    const int s2 = s0 + 2;
+    tris.push_back({s0, s1, s2});
+
+    auto circumcircle_contains = [&](const Tri& tri, float px, float py) {
+        const float ax = pts[static_cast<std::size_t>(tri.a)].x;
+        const float ay = pts[static_cast<std::size_t>(tri.a)].y;
+        const float bx = pts[static_cast<std::size_t>(tri.b)].x;
+        const float by = pts[static_cast<std::size_t>(tri.b)].y;
+        const float cx = pts[static_cast<std::size_t>(tri.c)].x;
+        const float cy = pts[static_cast<std::size_t>(tri.c)].y;
+        const float a = ax * (by - cy) - ay * (bx - cx) + bx * cy - cx * by;
+        if (std::fabs(a) < 1e-12f) return false;
+        const float a_sq = ax * ax + ay * ay;
+        const float b_sq = bx * bx + by * by;
+        const float c_sq = cx * cx + cy * cy;
+        const float ux = (a_sq * (by - cy) + b_sq * (cy - ay) + c_sq * (ay - by)) / (2.0f * a);
+        const float uy = (a_sq * (cx - bx) + b_sq * (ax - cx) + c_sq * (bx - ax)) / (2.0f * a);
+        const float r2 = (ax - ux) * (ax - ux) + (ay - uy) * (ay - uy);
+        const float d2 = (px - ux) * (px - ux) + (py - uy) * (py - uy);
+        return d2 <= r2 + 1e-8f;
+    };
+
+    auto orient = [&](int i, int j, int k) {
+        const float ax = pts[static_cast<std::size_t>(i)].x;
+        const float ay = pts[static_cast<std::size_t>(i)].y;
+        const float bx = pts[static_cast<std::size_t>(j)].x;
+        const float by = pts[static_cast<std::size_t>(j)].y;
+        const float cx = pts[static_cast<std::size_t>(k)].x;
+        const float cy = pts[static_cast<std::size_t>(k)].y;
+        return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+    };
+
+    for (int pi = 0; pi < static_cast<int>(n); ++pi) {
+        const float px = pts[static_cast<std::size_t>(pi)].x;
+        const float py = pts[static_cast<std::size_t>(pi)].y;
+        std::vector<std::pair<int, int>> edges;
+        std::vector<Tri> next;
+        next.reserve(tris.size());
+        for (const auto& tri : tris) {
+            if (circumcircle_contains(tri, px, py)) {
+                edges.push_back({tri.a, tri.b});
+                edges.push_back({tri.b, tri.c});
+                edges.push_back({tri.c, tri.a});
+            } else {
+                next.push_back(tri);
+            }
+        }
+        std::vector<std::pair<int, int>> unique;
+        for (std::size_t i = 0; i < edges.size(); ++i) {
+            auto e = edges[i];
+            if (e.first > e.second) std::swap(e.first, e.second);
+            bool dup = false;
+            for (std::size_t j = 0; j < edges.size(); ++j) {
+                if (i == j) continue;
+                auto o = edges[j];
+                if (o.first > o.second) std::swap(o.first, o.second);
+                if (e == o) {
+                    dup = true;
+                    break;
+                }
+            }
+            if (!dup) unique.push_back(edges[i]);
+        }
+        for (const auto& e : unique) {
+            Tri t{e.first, e.second, pi};
+            if (orient(t.a, t.b, t.c) < 0.0f) std::swap(t.b, t.c);
+            next.push_back(t);
+        }
+        tris = std::move(next);
+    }
+
+    for (const auto& tri : tris) {
+        if (pts[static_cast<std::size_t>(tri.a)].super || pts[static_cast<std::size_t>(tri.b)].super
+            || pts[static_cast<std::size_t>(tri.c)].super)
+            continue;
+        if (std::fabs(orient(tri.a, tri.b, tri.c)) < 1e-10f) continue;
+        AnimatorBlendTree2DTriangle out;
+        out.i0 = static_cast<std::uint32_t>(tri.a);
+        out.i1 = static_cast<std::uint32_t>(tri.b);
+        out.i2 = static_cast<std::uint32_t>(tri.c);
+        tree.triangles.push_back(out);
+    }
+    if (tree.triangles.empty())
+        return Result<void>::failure(controller_error("ANIM-CTRL-BLEND-TRIANGULATE",
+            "blendTree2D children are collinear or degenerate; need a non-degenerate 2D hull"));
+    return Result<void>::success();
+}
+
 Result<AnimatorMotion> parse_motion(const nlohmann::json& value) {
     if (!value.is_object())
         return Result<AnimatorMotion>::failure(controller_error("ANIM-CTRL-MOTION-INVALID", "motion must be an object"));
@@ -75,6 +224,10 @@ Result<AnimatorMotion> parse_motion(const nlohmann::json& value) {
         const auto clip = parse_clip_ref(value, "clip motion");
         if (!clip) return Result<AnimatorMotion>::failure(clip.error());
         motion.clip = clip.value();
+        return Result<AnimatorMotion>::success(std::move(motion));
+    }
+    if (type == "none" || type == "passthrough" || type == "empty") {
+        motion.type = AnimatorMotionType::None;
         return Result<AnimatorMotion>::success(std::move(motion));
     }
     if (type == "blendtree1d" || type == "blend_tree_1d" || type == "blendtree") {
@@ -98,6 +251,31 @@ Result<AnimatorMotion> parse_motion(const nlohmann::json& value) {
             [](const AnimatorBlendTreeChild& a, const AnimatorBlendTreeChild& b) {
                 return a.threshold < b.threshold;
             });
+        return Result<AnimatorMotion>::success(std::move(motion));
+    }
+    if (type == "blendtree2d" || type == "blend_tree_2d") {
+        motion.type = AnimatorMotionType::BlendTree2D;
+        motion.blend_tree_2d.parameter_x =
+            value.value("parameterX", value.value("parameter_x", std::string{}));
+        motion.blend_tree_2d.parameter_y =
+            value.value("parameterY", value.value("parameter_y", std::string{}));
+        if (motion.blend_tree_2d.parameter_x.empty() || motion.blend_tree_2d.parameter_y.empty())
+            return Result<AnimatorMotion>::failure(
+                controller_error("ANIM-CTRL-BLEND-PARAM", "blendTree2D requires parameterX and parameterY"));
+        if (!value.contains("children") || !value["children"].is_array())
+            return Result<AnimatorMotion>::failure(
+                controller_error("ANIM-CTRL-BLEND-CHILDREN", "blendTree2D requires children array"));
+        for (const auto& child_json : value["children"]) {
+            AnimatorBlendTree2DChild child;
+            const auto pos = parse_blend_tree_2d_position(child_json, child.position_x, child.position_y);
+            if (!pos) return Result<AnimatorMotion>::failure(pos.error());
+            const auto clip = parse_clip_ref(child_json, "blendTree2D child");
+            if (!clip) return Result<AnimatorMotion>::failure(clip.error());
+            child.clip = clip.value();
+            motion.blend_tree_2d.children.push_back(std::move(child));
+        }
+        if (const auto built = build_blend_tree_2d_triangles(motion.blend_tree_2d); !built)
+            return Result<AnimatorMotion>::failure(built.error());
         return Result<AnimatorMotion>::success(std::move(motion));
     }
     return Result<AnimatorMotion>::failure(controller_error("ANIM-CTRL-MOTION-TYPE", "Unsupported motion type: " + type));
@@ -128,10 +306,21 @@ nlohmann::json write_clip_ref(const AnimatorClipRef& clip) {
 }
 
 nlohmann::json write_motion(const AnimatorMotion& motion) {
+    if (motion.type == AnimatorMotionType::None) return {{"type", "none"}};
     if (motion.type == AnimatorMotionType::Clip) {
         auto json = write_clip_ref(motion.clip);
         json["type"] = "clip";
         return json;
+    }
+    if (motion.type == AnimatorMotionType::BlendTree2D) {
+        nlohmann::json children = nlohmann::json::array();
+        for (const auto& child : motion.blend_tree_2d.children) {
+            auto entry = write_clip_ref(child.clip);
+            entry["position"] = nlohmann::json::array({child.position_x, child.position_y});
+            children.push_back(std::move(entry));
+        }
+        return {{"type", "blendTree2D"}, {"parameterX", motion.blend_tree_2d.parameter_x},
+            {"parameterY", motion.blend_tree_2d.parameter_y}, {"children", std::move(children)}};
     }
     nlohmann::json children = nlohmann::json::array();
     for (const auto& child : motion.blend_tree.children) {
@@ -170,6 +359,8 @@ const char* to_string(AnimatorMotionType value) noexcept {
     switch (value) {
     case AnimatorMotionType::Clip: return "clip";
     case AnimatorMotionType::BlendTree1D: return "blendTree1D";
+    case AnimatorMotionType::BlendTree2D: return "blendTree2D";
+    case AnimatorMotionType::None: return "none";
     }
     return "clip";
 }
@@ -206,6 +397,14 @@ Result<void> AnimatorControllerAsset::validate() const {
         if (layer.states.empty())
             return Result<void>::failure(
                 controller_error("ANIM-CTRL-STATES", "Layer '" + layer.name + "' requires at least one state"));
+        if (!(layer.weight >= 0.0f) || !std::isfinite(layer.weight))
+            return Result<void>::failure(controller_error(
+                "ANIM-CTRL-LAYER-WEIGHT", "Layer '" + layer.name + "' weight must be finite and >= 0"));
+        for (const auto& joint : layer.mask.joints) {
+            if (joint.empty())
+                return Result<void>::failure(
+                    controller_error("ANIM-CTRL-MASK-JOINT", "Layer '" + layer.name + "' mask joint is empty"));
+        }
         if (layer.default_state.empty())
             return Result<void>::failure(
                 controller_error("ANIM-CTRL-DEFAULT", "Layer '" + layer.name + "' requires defaultState"));
@@ -225,6 +424,24 @@ Result<void> AnimatorControllerAsset::validate() const {
                 if (!param || param->type != AnimatorParameterType::Float)
                     return Result<void>::failure(controller_error("ANIM-CTRL-BLEND-PARAM-TYPE",
                         "blendTree1D parameter must be float: " + state.motion.blend_tree.parameter));
+            }
+            if (state.motion.type == AnimatorMotionType::BlendTree2D) {
+                const auto& tree = state.motion.blend_tree_2d;
+                if (!param_names.count(tree.parameter_x) || !param_names.count(tree.parameter_y))
+                    return Result<void>::failure(controller_error("ANIM-CTRL-BLEND-PARAM-MISSING",
+                        "blendTree2D parameterX/parameterY must be declared"));
+                const auto* px = find_parameter(tree.parameter_x);
+                const auto* py = find_parameter(tree.parameter_y);
+                if (!px || px->type != AnimatorParameterType::Float || !py
+                    || py->type != AnimatorParameterType::Float)
+                    return Result<void>::failure(controller_error("ANIM-CTRL-BLEND-PARAM-TYPE",
+                        "blendTree2D parameterX and parameterY must be float"));
+                if (tree.children.size() < 3)
+                    return Result<void>::failure(controller_error("ANIM-CTRL-BLEND-CHILDREN",
+                        "blendTree2D requires at least 3 children"));
+                if (tree.triangles.empty())
+                    return Result<void>::failure(controller_error("ANIM-CTRL-BLEND-TRIANGULATE",
+                        "blendTree2D has no triangulation"));
             }
         }
         if (!state_names.count(layer.default_state))
@@ -354,6 +571,24 @@ Result<AnimatorControllerAsset> AnimatorControllerAsset::parse(const std::string
             return Result<AnimatorControllerAsset>::failure(
                 controller_error("ANIM-CTRL-BLEND-MODE", "Unsupported blendMode (v1 supports override only)"));
         layer.blend_mode = AnimatorLayerBlendMode::Override;
+        layer.weight = layer_json.value("weight", 1.0f);
+        if (layer_json.contains("mask") && layer_json["mask"].is_object()) {
+            const auto& mask_json = layer_json["mask"];
+            layer.mask.include_children =
+                mask_json.value("includeChildren", mask_json.value("include_children", true));
+            if (mask_json.contains("joints") && mask_json["joints"].is_array()) {
+                for (const auto& joint_json : mask_json["joints"]) {
+                    if (!joint_json.is_string())
+                        return Result<AnimatorControllerAsset>::failure(
+                            controller_error("ANIM-CTRL-MASK-JOINT", "mask.joints entries must be strings"));
+                    const auto name = joint_json.get<std::string>();
+                    if (name.empty())
+                        return Result<AnimatorControllerAsset>::failure(
+                            controller_error("ANIM-CTRL-MASK-JOINT", "mask.joints entries must be non-empty"));
+                    layer.mask.joints.push_back(name);
+                }
+            }
+        }
 
         if (!layer_json.contains("states") || !layer_json["states"].is_array())
             return Result<AnimatorControllerAsset>::failure(
@@ -442,7 +677,10 @@ std::string AnimatorControllerAsset::to_json() const {
     nlohmann::json layers_json = nlohmann::json::array();
     for (const auto& layer : layers) {
         nlohmann::json layer_json{{"name", layer.name}, {"defaultState", layer.default_state},
-            {"blendMode", to_string(layer.blend_mode)}};
+            {"blendMode", to_string(layer.blend_mode)}, {"weight", layer.weight}};
+        if (!layer.mask.joints.empty()) {
+            layer_json["mask"] = {{"joints", layer.mask.joints}, {"includeChildren", layer.mask.include_children}};
+        }
         nlohmann::json states_json = nlohmann::json::array();
         for (const auto& state : layer.states) {
             states_json.push_back({{"name", state.name}, {"motion", write_motion(state.motion)}});

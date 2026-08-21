@@ -1,0 +1,186 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.3199999928474426,
+          0.2800000011920929
+        ],
+        "primitive": "cube"
+      },
+      "name": "bracket_bl",
+      "parent": null,
+      "transform": {
+        "position": [
+          -3.1,
+          2.45,
+          5.05
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.2,
+          0.25,
+          0.4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          1.0,
+          0.550000011920929,
+          0.11999999731779099
+        ],
+        "primitive": "sphere"
+      },
+      "name": "flame_bl",
+      "parent": null,
+      "transform": {
+        "position": [
+          -3.1,
+          2.9,
+          5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.25,
+          0.38,
+          0.25
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.3199999928474426,
+          0.2800000011920929
+        ],
+        "primitive": "cube"
+      },
+      "name": "bracket_br",
+      "parent": null,
+      "transform": {
+        "position": [
+          3.1,
+          2.45,
+          5.05
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.2,
+          0.25,
+          0.4
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          1.0,
+          0.550000011920929,
+          0.11999999731779099
+        ],
+        "primitive": "sphere"
+      },
+      "name": "flame_br",
+      "parent": null,
+      "transform": {
+        "position": [
+          3.1,
+          2.9,
+          5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.25,
+          0.38,
+          0.25
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.3199999928474426,
+          0.2800000011920929
+        ],
+        "primitive": "cube"
+      },
+      "name": "bracket_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -5.85,
+          2.4,
+          1.4
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.4,
+          0.25,
+          0.2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          1.0,
+          0.550000011920929,
+          0.11999999731779099
+        ],
+        "primitive": "sphere"
+      },
+      "name": "flame_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -5.85,
+          2.85,
+          1.4
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.25,
+          0.38,
+          0.25
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

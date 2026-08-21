@@ -1,0 +1,66 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.25,
+          0.2199999988079071,
+          0.20000000298023224
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "a003_banner_keep_gate_part_1",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.0,
+          8.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.4000000059604645,
+          16.0,
+          0.4000000059604645
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.550000011920929,
+          0.11999999731779099,
+          0.11999999731779099
+        ],
+        "primitive": "cube"
+      },
+      "name": "a003_banner_keep_gate_part_2",
+      "parent": null,
+      "transform": {
+        "position": [
+          2.0,
+          14.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          4.0,
+          5.0,
+          0.11999999731779099
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

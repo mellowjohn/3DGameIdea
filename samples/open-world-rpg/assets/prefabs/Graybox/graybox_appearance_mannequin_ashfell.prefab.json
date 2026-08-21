@@ -1,0 +1,246 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.44999998807907104,
+          0.3499999940395355,
+          0.25
+        ],
+        "primitive": "cube"
+      },
+      "name": "plinth",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.18,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.85,
+          0.35,
+          0.85
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.550000011920929,
+          0.5199999809265137,
+          0.5
+        ],
+        "primitive": "cube"
+      },
+      "name": "legs",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.7,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.45,
+          0.7,
+          0.3
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.5799999833106995,
+          0.550000011920929,
+          0.5199999809265137
+        ],
+        "primitive": "cube"
+      },
+      "name": "torso",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          1.35,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.6,
+          0.75,
+          0.38
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.5199999809265137,
+          0.47999998927116394,
+          0.44999998807907104
+        ],
+        "primitive": "sphere"
+      },
+      "name": "head",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          1.95,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.28,
+          0.3,
+          0.28
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.5,
+          0.44999998807907104,
+          0.4000000059604645
+        ],
+        "primitive": "cube"
+      },
+      "name": "shield",
+      "parent": null,
+      "transform": {
+        "position": [
+          -0.5,
+          1.25,
+          0.05
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.1,
+          0.75,
+          0.6
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.8199999928474426,
+          0.699999988079071,
+          0.2800000011920929
+        ],
+        "primitive": "cube"
+      },
+      "name": "emblem",
+      "parent": null,
+      "transform": {
+        "position": [
+          -0.56,
+          1.3,
+          0.05
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.04,
+          0.28,
+          0.28
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.7200000286102295,
+          0.7200000286102295,
+          0.75
+        ],
+        "primitive": "cube"
+      },
+      "name": "blade",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.42,
+          1.35,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.07,
+          0.95,
+          0.12
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.4000000059604645,
+          0.2800000011920929,
+          0.1599999964237213
+        ],
+        "primitive": "cube"
+      },
+      "name": "hilt",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.42,
+          0.78,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.12,
+          0.2,
+          0.12
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

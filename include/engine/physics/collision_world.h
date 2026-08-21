@@ -102,9 +102,13 @@ public:
     [[nodiscard]] Result<void> set_linear_velocity(CollisionBody body, const std::array<float, 3>& velocity);
     [[nodiscard]] Result<void> set_transform(CollisionBody body, WorldPosition position,
         const std::array<float, 4>& rotation = {0.0f, 0.0f, 0.0f, 1.0f});
+    /// Updates a body's contact response without replacing its Jolt shape.
+    [[nodiscard]] Result<void> set_material(CollisionBody body,
+        const PhysicalMaterialProperties& material);
     void unload_cell(CellCoord cell);
     [[nodiscard]] Result<void> step(float seconds);
-    [[nodiscard]] Result<std::optional<RayHit>> ray_cast(WorldPosition origin, LocalPosition direction) const;
+    [[nodiscard]] Result<std::optional<RayHit>> ray_cast(WorldPosition origin, LocalPosition direction,
+        const CollisionQueryFilter& filter = {}) const;
     [[nodiscard]] Result<std::vector<OverlapHit>> overlap_sphere(WorldPosition center, float radius,
         const CollisionQueryFilter& filter = {}) const;
     [[nodiscard]] Result<std::vector<OverlapHit>> overlap_box(WorldPosition center, LocalPosition half_extent,

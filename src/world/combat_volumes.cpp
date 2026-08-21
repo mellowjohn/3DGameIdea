@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string_view>
 
 namespace engine {
 
@@ -47,7 +48,7 @@ std::vector<CollisionBody> CombatVolumeRegistry::bodies_for_role(CombatVolumeRol
 }
 
 std::vector<CombatContactEvent> query_combat_hits(const std::string& attacker_id, WorldPosition center, float radius,
-    const CollisionWorld& world, const CombatVolumeRegistry& registry) {
+    const CollisionWorld& world, const CombatVolumeRegistry& registry, std::string_view ignore_placement_entity_id) {
     std::vector<CombatContactEvent> events;
     if (attacker_id.empty() || !(radius > 0)) return events;
 
@@ -59,6 +60,9 @@ std::vector<CombatContactEvent> query_combat_hits(const std::string& attacker_id
     for (const auto& hit : overlaps.value()) {
         const auto binding = registry.find(hit.body);
         if (!binding || binding->role != CombatVolumeRole::Hurt) continue;
+        if (!ignore_placement_entity_id.empty() &&
+            binding->placement_entity_id == ignore_placement_entity_id)
+            continue;
         CombatContactEvent event;
         event.attacker_id = attacker_id;
         event.hurt_placement_entity_id = binding->placement_entity_id;
@@ -70,8 +74,38 @@ std::vector<CombatContactEvent> query_combat_hits(const std::string& attacker_id
     return events;
 }
 
+std::vector<CombatContactEvent> query_combat_hits_along_segment(const std::string& attacker_id, WorldPosition from,
+    WorldPosition to, float radius, const CollisionWorld& world, const CombatVolumeRegistry& registry,
+    std::string_view ignore_placement_entity_id) {
+    std::vector<CombatContactEvent> events;
+    if (attacker_id.empty() || !(radius > 0)) return events;
+
+    const double dx = to.x - from.x;
+    const double dy = to.y - from.y;
+    const double dz = to.z - from.z;
+    const float length = static_cast<float>(std::sqrt(dx * dx + dy * dy + dz * dz));
+    const float spacing = std::max(0.28f, radius * 1.35f);
+    const int samples =
+        std::clamp(1 + static_cast<int>(std::ceil(length / spacing)), 1, 24);
+
+    std::vector<std::string> seen;
+    for (int i = 0; i < samples; ++i) {
+        const float t = (samples == 1) ? 1.0f : static_cast<float>(i) / static_cast<float>(samples - 1);
+        const WorldPosition center{from.x + dx * static_cast<double>(t), from.y + dy * static_cast<double>(t),
+            from.z + dz * static_cast<double>(t)};
+        for (auto& contact :
+            query_combat_hits(attacker_id, center, radius, world, registry, ignore_placement_entity_id)) {
+            if (contact.hurt_placement_entity_id.empty()) continue;
+            if (std::find(seen.begin(), seen.end(), contact.hurt_placement_entity_id) != seen.end()) continue;
+            seen.push_back(contact.hurt_placement_entity_id);
+            events.push_back(std::move(contact));
+        }
+    }
+    return events;
+}
+
 std::vector<CombatContactEvent> query_combat_hits_from_body(const std::string& attacker_id, CollisionBody hit_body,
-    const CollisionWorld& world, const CombatVolumeRegistry& registry) {
+    const CollisionWorld& world, const CombatVolumeRegistry& registry, std::string_view ignore_placement_entity_id) {
     if (!registry.is_hit_body(hit_body)) return {};
 
     WorldPosition center{};
@@ -86,7 +120,7 @@ std::vector<CombatContactEvent> query_combat_hits_from_body(const std::string& a
         }
         break;
     }
-    return query_combat_hits(attacker_id, center, radius, world, registry);
+    return query_combat_hits(attacker_id, center, radius, world, registry, ignore_placement_entity_id);
 }
 
 } // namespace engine

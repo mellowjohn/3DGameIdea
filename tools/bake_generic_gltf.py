@@ -169,6 +169,8 @@ def bake_skinned(
     atlas_out: Path,
     generator: str,
     target_height: float | None = None,
+    uniform_scale: float | None = None,
+    uniform_offset: tuple[float, float, float] | None = None,
     fix_winding: bool = False,
     double_sided_thin: bool = False,
     clean_backdrop: bool = False,
@@ -254,16 +256,23 @@ def bake_skinned(
     # rescaled without decomposing them, so leave such a model at authored scale instead of
     # silently corrupting its bind poses.
     matrix_nodes = any("matrix" in node for node in gltf.get("nodes") or [])
-    normalize_scale = bool(target_height) and not matrix_nodes
+    matched_player = uniform_scale is not None
+    if matched_player and matrix_nodes:
+        raise RuntimeError(f"{source}: matchPlayerBake cannot rescale nodes that store baked matrices")
+    normalize_scale = (matched_player or bool(target_height)) and not matrix_nodes
 
     scale = 1.0
     offset = (0.0, 0.0, 0.0)
     if normalize_scale:
-        if raw_height > 1e-6:
-            scale = float(target_height) / raw_height
-        center_x = 0.5 * (min(xs) + max(xs))
-        center_z = 0.5 * (min(zs) + max(zs))
-        offset = (-scale * center_x, -scale * min(ys), -scale * center_z)
+        if matched_player:
+            scale = float(uniform_scale)
+            offset = uniform_offset or (0.0, 0.0, 0.0)
+        else:
+            if raw_height > 1e-6:
+                scale = float(target_height) / raw_height
+            center_x = 0.5 * (min(xs) + max(xs))
+            center_z = 0.5 * (min(zs) + max(zs))
+            offset = (-scale * center_x, -scale * min(ys), -scale * center_z)
 
         for index, values in positions.items():
             write_f32_accessor(
@@ -333,9 +342,11 @@ def bake_skinned(
         "sourceClips": source_clips,
         "bakedClips": baked_clips,
         "scale": scale,
+        "offset": list(offset),
         "rawHeight": raw_height,
-        "targetHeight": target_height if normalize_scale else None,
+        "targetHeight": target_height if normalize_scale and not matched_player else None,
         "normalized": normalize_scale,
+        "matchedPlayerBake": matched_player,
         "joints": sum(len(skin.get("joints") or []) for skin in skins),
         **face_meta,
     }

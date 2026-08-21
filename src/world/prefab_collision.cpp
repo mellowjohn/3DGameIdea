@@ -41,8 +41,15 @@ CollisionBodySettings settings_from_rigidbody(const RigidbodyComponentData& rigi
 }
 
 Result<std::vector<CollisionBody>> spawn_sensor_volumes(CollisionWorld& world,
-    const std::vector<PrefabCollisionVolume>& volumes, const TransformComponent& placement, CellCoord cell) {
+    const std::vector<PrefabCollisionVolume>& volumes, const TransformComponent& placement, CellCoord cell,
+    bool follow_motion) {
     std::vector<CollisionBody> bodies;
+    CollisionBodySettings settings = CollisionBodySettings::make_static();
+    if (follow_motion) {
+        settings = CollisionBodySettings::make_kinematic();
+        settings.use_gravity = false;
+        settings.freeze_rotation = true;
+    }
     for (const auto& volume : volumes) {
         if (!is_sensor_volume(volume)) continue;
         const auto world_transform = multiply_transforms(placement, volume.transform);
@@ -50,19 +57,19 @@ Result<std::vector<CollisionBody>> spawn_sensor_volumes(CollisionWorld& world,
         const CollisionLayer layer = CollisionLayer::Trigger;
         if (volume.shape == PrefabCollisionShape::Box) {
             const auto half = scale_half_extent(volume.half_extent, world_transform.scale);
-            const auto body = world.add_box(position, half, layer, false, cell, world_transform.rotation);
+            const auto body = world.add_box(position, half, layer, settings, cell, world_transform.rotation);
             if (!body) return Result<std::vector<CollisionBody>>::failure(body.error());
             bodies.push_back(body.value());
         } else if (volume.shape == PrefabCollisionShape::Capsule) {
             const auto radius = scale_radius(volume.radius, world_transform.scale);
             const float half_height = volume.capsule_half_height *
                 std::max({std::abs(world_transform.scale[0]), std::abs(world_transform.scale[1]), std::abs(world_transform.scale[2])});
-            const auto body = world.add_capsule(position, radius, half_height, layer, false, cell, world_transform.rotation);
+            const auto body = world.add_capsule(position, radius, half_height, layer, settings, cell, world_transform.rotation);
             if (!body) return Result<std::vector<CollisionBody>>::failure(body.error());
             bodies.push_back(body.value());
         } else {
             const auto radius = scale_radius(volume.radius, world_transform.scale);
-            const auto body = world.add_sphere(position, radius, layer, false, cell, world_transform.rotation);
+            const auto body = world.add_sphere(position, radius, layer, settings, cell, world_transform.rotation);
             if (!body) return Result<std::vector<CollisionBody>>::failure(body.error());
             bodies.push_back(body.value());
         }
@@ -165,6 +172,7 @@ void PlacementCollisionTracker::remove_bodies(CollisionWorld& world, TrackedPlac
         (void)world.remove(body);
     }
     placement.bodies.clear();
+    placement.follow_sensors.clear();
     placement.motion_body.reset();
     placement.physics_driven = false;
     placement.motion_local = {};
@@ -199,11 +207,21 @@ Result<void> PlacementCollisionTracker::sync(CollisionWorld& world, const Scene&
             const bool transform_matches = tracked.transform.position == transform->position &&
                 tracked.transform.rotation == transform->rotation && tracked.transform.scale == transform->scale;
             if (tracked.prefab_path == placement->prefab_asset && tracked.cell == placement->cell &&
-                tracked.components_generation == generation && tracked.simulate_dynamics == simulate_dynamics &&
-                (tracked.physics_driven ? true : transform_matches)) {
-                if (!tracked.physics_driven) tracked.transform = *transform;
-                tracked.entity_id = id;
-                return Result<bool>::success(false);
+                tracked.components_generation == generation && tracked.simulate_dynamics == simulate_dynamics) {
+                if (tracked.physics_driven) {
+                    // Authored gizmo/MCP/Inspector moves bump the scene while physics-driven
+                    // sync used to ignore the new pose. Capsules/hurt sensors stayed at spawn
+                    // and write-back snapped the mesh back (or a later save wrote a cell mismatch).
+                    if (!transform_matches)
+                        teleport_physics_driven(world, tracked, *transform);
+                    tracked.entity_id = id;
+                    return Result<bool>::success(false);
+                }
+                if (transform_matches) {
+                    tracked.transform = *transform;
+                    tracked.entity_id = id;
+                    return Result<bool>::success(false);
+                }
             }
         }
         if (rebuilds_left == 0) {
@@ -224,10 +242,13 @@ Result<void> PlacementCollisionTracker::sync(CollisionWorld& world, const Scene&
         const bool unchanged = tracked.prefab_path == resolved && tracked.cell == placement->cell &&
             tracked.components_generation == generation && tracked.simulate_dynamics == simulate_dynamics &&
             tracked.physics_driven == physics_driven &&
-            (physics_driven ? true : transform_matches);
+            (physics_driven || transform_matches);
         if (unchanged) {
             tracked.entity_id = id;
-            if (!physics_driven) tracked.transform = *transform;
+            if (physics_driven && !transform_matches)
+                teleport_physics_driven(world, tracked, *transform);
+            else if (!physics_driven)
+                tracked.transform = *transform;
             return Result<bool>::success(false);
         }
         --rebuilds_left;
@@ -258,9 +279,18 @@ Result<void> PlacementCollisionTracker::sync(CollisionWorld& world, const Scene&
                 tracked.motion_local = solid->transform;
                 tracked.motion_local.scale = {1.0f, 1.0f, 1.0f};
             }
-            const auto sensors = spawn_sensor_volumes(world, volumes, *transform, placement->cell);
+            const auto sensors = spawn_sensor_volumes(world, volumes, *transform, placement->cell, true);
             if (!sensors) return Result<bool>::failure(sensors.error());
             for (const auto& body : sensors.value()) tracked.bodies.push_back(body);
+            tracked.follow_sensors.clear();
+            std::uint32_t spawned_sensor = 0;
+            for (const auto& volume : volumes) {
+                if (!is_sensor_volume(volume)) continue;
+                if (spawned_sensor >= sensors.value().size()) break;
+                tracked.follow_sensors.push_back(
+                    TrackedPlacement::FollowSensor{sensors.value()[spawned_sensor], volume.transform});
+                ++spawned_sensor;
+            }
         } else {
             const auto spawned = spawn_collision_volumes(world, volumes, *transform, placement->cell);
             if (!spawned) return Result<bool>::failure(spawned.error());
@@ -355,6 +385,28 @@ void PlacementCollisionTracker::write_back_transforms(Scene& scene, CollisionWor
         tracked.transform = entity_pose;
         // Physics follow must not bump edit_revision or sync would rebuild every frame.
         (void)scene.set_transform(entity, entity_pose, false);
+        follow_sensor_transforms(world, tracked);
+    }
+}
+
+void PlacementCollisionTracker::teleport_physics_driven(
+    CollisionWorld& world, TrackedPlacement& tracked, const TransformComponent& entity_pose) {
+    tracked.transform = entity_pose;
+    if (tracked.motion_body && tracked.motion_body->valid()) {
+        const auto world_xf = multiply_transforms(entity_pose, tracked.motion_local);
+        const WorldPosition position{world_xf.position[0], world_xf.position[1], world_xf.position[2]};
+        (void)world.set_transform(*tracked.motion_body, position, world_xf.rotation);
+        (void)world.set_linear_velocity(*tracked.motion_body, {0.0f, 0.0f, 0.0f});
+    }
+    follow_sensor_transforms(world, tracked);
+}
+
+void PlacementCollisionTracker::follow_sensor_transforms(CollisionWorld& world, const TrackedPlacement& tracked) {
+    for (const auto& sensor : tracked.follow_sensors) {
+        if (!sensor.body.valid()) continue;
+        const auto world_xf = multiply_transforms(tracked.transform, sensor.local);
+        const WorldPosition position{world_xf.position[0], world_xf.position[1], world_xf.position[2]};
+        (void)world.set_transform(sensor.body, position, world_xf.rotation);
     }
 }
 

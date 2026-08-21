@@ -1,0 +1,96 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.30000001192092896,
+          0.2800000011920929,
+          0.27000001072883606
+        ],
+        "primitive": "cube"
+      },
+      "name": "step1",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.12,
+          0.55
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          5.2,
+          0.25,
+          1.1
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2800000011920929,
+          0.25999999046325684,
+          0.25
+        ],
+        "primitive": "cube"
+      },
+      "name": "step2",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.32,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          4.6,
+          0.25,
+          1
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.25999999046325684,
+          0.23999999463558197,
+          0.23000000417232513
+        ],
+        "primitive": "cube"
+      },
+      "name": "step3",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          0.52,
+          -0.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          4.2,
+          0.25,
+          0.9
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

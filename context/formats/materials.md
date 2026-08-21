@@ -35,7 +35,7 @@ Opaque materials drive a Cook-Torrance (GGX) lighting path:
 - Parts that reference a **masked** material draw with **alpha clip** (`opacityCutoff`): textured albedo uses texture alpha; untextured uses `baseColor` alpha (TICKET-0239). **Blended** non-water materials are still not drawn (fail closed).
 - Terrain always draws through the opaque path: if the terrain material’s `opacityMode` is masked/blended, roughness/metallic/emissive fall back to dielectric defaults (`1` / `0` / `0`) and no transparency is simulated.
 - Foliage and meshes without a material reference use dielectric defaults (`roughness=1`, `metallic=0`, no emissive).
-- `doubleSided` remains informational; the current mesh pipeline already disables back-face culling.
+- Prefab/prop draws disable back-face culling so mixed CW kit meshes and CCW graybox primitives both stay solid. `doubleSided` remains informational until materials drive per-draw cull overrides.
 - `opacityCutoff` drives masked clip when `opacityMode` is `masked`.
 
 CPU reference evaluation lives in `include/engine/rendering/pbr_lighting.h` and is covered by the `assets` suite.

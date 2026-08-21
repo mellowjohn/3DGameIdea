@@ -98,9 +98,30 @@ struct PrefabAudioSource {
     float max_distance = 40.0f;
 };
 
+/// Optional play-test NPC brain on a prefab (TICKET-0284). Empty `kind` = none.
+struct PrefabNpcAi {
+    std::string kind; // "hostile"
+    std::string display_name = "Hostile";
+    std::string held_item_id;
+    float aggro_radius = 16.0f;
+    float lose_aggro_radius = 22.0f;
+    float attack_range = 1.9f;
+    float attack_cooldown = 1.35f;
+    float move_speed = 3.5f;
+    /// Local XZ offsets from placement spawn for idle patrol loops.
+    std::vector<std::array<float, 2>> patrol_waypoints;
+    float patrol_arrive = 1.25f;
+
+    [[nodiscard]] bool is_hostile() const { return kind == "hostile"; }
+};
+
 struct PrefabAsset {
     int schema_version = 1;
     std::string mesh;
+    /// Optional mid-distance mesh (TICKET-0277). Empty = keep full mesh until far cull.
+    std::string lod1_mesh;
+    /// Optional far-distance / landmark stand-in mesh. Empty = hold LOD1 or full until cull.
+    std::string lod2_mesh;
     std::vector<PrefabPart> parts;
     std::vector<PrefabCollisionVolume> collision;
     std::vector<PrefabScriptBinding> script_bindings;
@@ -113,6 +134,7 @@ struct PrefabAsset {
     /// Legacy single attachment kept for round-trip of older prefabs; prefer `particles`.
     std::optional<PrefabParticleEmitter> particle;
     std::optional<std::string> character_asset;
+    std::optional<PrefabNpcAi> npc_ai;
 
     [[nodiscard]] bool is_compositional() const { return schema_version >= 2 && !parts.empty(); }
 

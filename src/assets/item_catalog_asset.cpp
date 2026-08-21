@@ -5,9 +5,11 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 #include <system_error>
 
@@ -26,7 +28,199 @@ void rebuild_index(ItemCatalogAsset& asset) {
     }
 }
 
+void parse_item_stats(const nlohmann::json& node, ItemStats& stats) {
+    if (!node.contains("stats") || !node["stats"].is_object()) return;
+    const auto& st = node["stats"];
+    stats.damage_min = st.value("damageMin", 0.0f);
+    stats.damage_max = st.value("damageMax", 0.0f);
+    stats.attacks_per_second = st.value("attacksPerSecond", 0.0f);
+    stats.heal = st.value("heal", 0.0f);
+    if (stats.damage_min > stats.damage_max && stats.damage_max > 0.0f) {
+        std::swap(stats.damage_min, stats.damage_max);
+    }
+    if (st.contains("modifiers") && st["modifiers"].is_object()) {
+        for (auto it = st["modifiers"].begin(); it != st["modifiers"].end(); ++it) {
+            if (!it.value().is_number()) continue;
+            const float value = it.value().get<float>();
+            if (std::fabs(value) < 1e-4f) continue;
+            stats.modifiers.push_back(ItemStatModifier{it.key(), value});
+        }
+    }
+    if (st.contains("onHit") && st["onHit"].is_array()) {
+        for (const auto& entry : st["onHit"]) {
+            if (!entry.is_object()) continue;
+            ItemOnHitStatus hit;
+            hit.status = entry.value("status", std::string{});
+            hit.damage_per_tick = entry.value("damagePerTick", 1.0f);
+            hit.duration_seconds = entry.value("duration", 6.0f);
+            hit.tick_interval_seconds = entry.value("tickInterval", 1.0f);
+            if (hit.status.empty() || !(hit.duration_seconds > 0.0f)) continue;
+            if (hit.status != "slow" && !(hit.damage_per_tick > 0.0f)) continue;
+            stats.on_hit.push_back(std::move(hit));
+        }
+    }
+}
+
+int modifier_rank(const std::string& id) {
+    if (id == "strength") return 0;
+    if (id == "agility") return 1;
+    if (id == "intellect" || id == "intelligence") return 2;
+    if (id == "armor") return 3;
+    if (id == "maxHealth") return 4;
+    if (id == "maxStamina" || id == "stamina") return 5;
+    if (id == "maxMagicka" || id == "magicka") return 6;
+    if (id == "critChance" || id == "crit") return 7;
+    if (id == "magicResist" || id == "resistMagic") return 8;
+    if (id == "poisonResist" || id == "resistPoison") return 9;
+    if (id == "blightResist" || id == "resistBlight") return 10;
+    if (id == "holyResist" || id == "resistHoly") return 11;
+    if (id == "shadowResist" || id == "resistShadow") return 12;
+    return 50;
+}
+
+std::string format_stat_number(float value) {
+    const float rounded = std::round(value * 10.0f) / 10.0f;
+    if (std::fabs(rounded - std::round(rounded)) < 0.05f) {
+        return std::to_string(static_cast<int>(std::lround(rounded)));
+    }
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(1) << rounded;
+    return oss.str();
+}
+
 } // namespace
+
+std::string item_stat_display_name(const std::string& id) {
+    if (id == "maxHealth") return "Max Health";
+    if (id == "maxStamina" || id == "stamina") return "Max Stamina";
+    if (id == "armor") return "Armor";
+    if (id == "strength") return "Strength";
+    if (id == "agility") return "Agility";
+    if (id == "intellect" || id == "intelligence") return "Intellect";
+    if (id == "maxMagicka" || id == "magicka") return "Max Magicka";
+    if (id == "critChance" || id == "crit") return "Crit Chance";
+    if (id == "magicResist" || id == "resistMagic") return "Magic Resist";
+    if (id == "poisonResist" || id == "resistPoison") return "Poison Resist";
+    if (id == "blightResist" || id == "resistBlight") return "Blight Resist";
+    if (id == "holyResist" || id == "resistHoly") return "Holy Resist";
+    if (id == "shadowResist" || id == "resistShadow") return "Shadow Resist";
+    std::string out;
+    out.reserve(id.size() + 4);
+    for (std::size_t i = 0; i < id.size(); ++i) {
+        const char c = id[i];
+        if (c == '_' || c == '-') {
+            if (!out.empty() && out.back() != ' ') out.push_back(' ');
+            continue;
+        }
+        if (i > 0 && std::isupper(static_cast<unsigned char>(c)) &&
+            std::islower(static_cast<unsigned char>(id[i - 1]))) {
+            out.push_back(' ');
+        }
+        if (out.empty() || out.back() == ' ') {
+            out.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
+        } else {
+            out.push_back(c);
+        }
+    }
+    return out.empty() ? id : out;
+}
+
+MagicElement magic_element_from_tags(const std::vector<std::string>& tags) noexcept {
+    for (const auto& tag : tags) {
+        if (tag == "magic_fire") return MagicElement::Fire;
+        if (tag == "magic_frost") return MagicElement::Frost;
+        if (tag == "magic_lightning") return MagicElement::Lightning;
+    }
+    return MagicElement::Arcane;
+}
+
+const char* magic_element_id(MagicElement element) noexcept {
+    switch (element) {
+    case MagicElement::Fire: return "fire";
+    case MagicElement::Frost: return "frost";
+    case MagicElement::Lightning: return "lightning";
+    case MagicElement::Arcane: return "arcane";
+    }
+    return "arcane";
+}
+
+const char* magic_element_display_name(MagicElement element) noexcept {
+    switch (element) {
+    case MagicElement::Fire: return "Fire";
+    case MagicElement::Frost: return "Frost";
+    case MagicElement::Lightning: return "Lightning";
+    case MagicElement::Arcane: return "Arcane";
+    }
+    return "Arcane";
+}
+
+std::vector<std::string> format_item_stat_lines(const ItemDef& def) {
+    std::vector<std::string> lines;
+    const ItemStats& stats = def.stats;
+    bool is_magic = false;
+    for (const auto& tag : def.tags) {
+        if (tag == "magic") {
+            is_magic = true;
+            break;
+        }
+    }
+    if (is_magic) {
+        const MagicElement element = magic_element_from_tags(def.tags);
+        lines.push_back(std::string("Spell  ") + magic_element_display_name(element));
+        if (element == MagicElement::Lightning) {
+            lines.push_back("On hit  Chains to nearby foes");
+        }
+    }
+    if (stats.has_weapon_damage()) {
+        const float lo = stats.damage_min > 0.0f ? stats.damage_min : stats.damage_max;
+        const float hi = stats.damage_max > 0.0f ? stats.damage_max : stats.damage_min;
+        if (std::fabs(hi - lo) < 0.05f) {
+            lines.push_back("Damage  " + format_stat_number(lo));
+        } else {
+            lines.push_back("Damage  " + format_stat_number(lo) + "–" + format_stat_number(hi));
+        }
+        const float dps = stats.dps();
+        if (dps > 0.0f) {
+            lines.push_back("DPS  " + format_stat_number(dps));
+        }
+    }
+    if (stats.heal > 0.0f) {
+        lines.push_back("Restores  " + format_stat_number(stats.heal) + " Health");
+    }
+    auto mods = stats.modifiers;
+    std::stable_sort(mods.begin(), mods.end(), [](const ItemStatModifier& a, const ItemStatModifier& b) {
+        const int ra = modifier_rank(a.id);
+        const int rb = modifier_rank(b.id);
+        if (ra != rb) return ra < rb;
+        return a.id < b.id;
+    });
+    for (const auto& mod : mods) {
+        const std::string sign = mod.value >= 0.0f ? "+" : "";
+        lines.push_back(sign + format_stat_number(mod.value) + " " + item_stat_display_name(mod.id));
+    }
+    for (const auto& hit : stats.on_hit) {
+        std::string label = hit.status;
+        if (!label.empty()) label[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(label[0])));
+        if (hit.damage_per_tick > 0.0f) {
+            lines.push_back("On hit  " + label + " " + format_stat_number(hit.damage_per_tick) + "/tick "
+                + format_stat_number(hit.duration_seconds) + "s");
+        } else {
+            lines.push_back("On hit  " + label + " " + format_stat_number(hit.duration_seconds) + "s");
+        }
+    }
+    return lines;
+}
+
+std::string format_item_stat_text(const ItemDef& def) {
+    const auto lines = format_item_stat_lines(def);
+    if (lines.empty()) return {};
+    std::ostringstream oss;
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+        if (i > 0) oss << '\n';
+        oss << lines[i];
+    }
+    return oss.str();
+}
 
 const ItemDef* ItemCatalogAsset::find(const std::string& item_id) const {
     const auto it = by_id.find(item_id);
@@ -110,6 +304,25 @@ Result<ItemCatalogAsset> ItemCatalogAsset::parse(const std::string& text, const 
                 }
                 def.hand_attach.draw_clip = ha.value("drawClip", std::string{});
             }
+            if (node.contains("armorAttach") && node["armorAttach"].is_object()) {
+                const auto& aa = node["armorAttach"];
+                if (aa.contains("localOffset") && aa["localOffset"].is_array() && aa["localOffset"].size() >= 3) {
+                    def.armor_attach.local_offset = {aa["localOffset"][0].get<float>(),
+                        aa["localOffset"][1].get<float>(), aa["localOffset"][2].get<float>()};
+                }
+                if (aa.contains("localEulerDeg") && aa["localEulerDeg"].is_array() && aa["localEulerDeg"].size() >= 3) {
+                    def.armor_attach.local_euler_deg = {aa["localEulerDeg"][0].get<float>(),
+                        aa["localEulerDeg"][1].get<float>(), aa["localEulerDeg"][2].get<float>()};
+                }
+                if (aa.contains("localScale") && aa["localScale"].is_array() && aa["localScale"].size() >= 3) {
+                    def.armor_attach.local_scale = {aa["localScale"][0].get<float>(),
+                        aa["localScale"][1].get<float>(), aa["localScale"][2].get<float>()};
+                }
+                for (float& axis : def.armor_attach.local_scale) {
+                    if (!(std::fabs(axis) > 1e-4f)) axis = 1.0f;
+                }
+            }
+            parse_item_stats(node, def.stats);
             asset.entities.push_back(std::move(def));
         }
     }
@@ -240,6 +453,57 @@ Result<void> save_item_hand_attach(const std::filesystem::path& project_root, co
             "Failed to replace item catalog: " + absolute.generic_string() + " (" + ec.message() + ")",
             "Close other editors using the file and retry."));
     }
+    return Result<void>::success();
+}
+
+Result<void> save_item_armor_attach(const std::filesystem::path& project_root, const ItemDef& def) {
+    if (def.id.empty() || def.source_path.empty()) {
+        return Result<void>::failure(catalog_error("ITEM-SAVE-SOURCE",
+            "Armor item has no id or source catalog", "Reload the item catalog and select equipped armor."));
+    }
+    const auto absolute = (project_root / def.source_path).lexically_normal();
+    nlohmann::json json;
+    {
+        std::ifstream input(absolute, std::ios::binary);
+        if (!input) return Result<void>::failure(catalog_error("ITEM-SAVE-IO",
+            "Failed to open item catalog for write: " + absolute.generic_string(), "Check the file exists."));
+        try { input >> json; }
+        catch (const std::exception& ex) {
+            return Result<void>::failure(catalog_error("ITEM-SAVE-PARSE",
+                std::string("Failed to parse catalog before save: ") + ex.what(), "Fix JSON syntax."));
+        }
+    }
+    bool found = false;
+    if (json.contains("entities") && json["entities"].is_array()) {
+        for (auto& node : json["entities"]) {
+            if (!node.is_object() || node.value("id", std::string{}) != def.id) continue;
+            node["armorAttach"] = {
+                {"localOffset", def.armor_attach.local_offset},
+                {"localEulerDeg", def.armor_attach.local_euler_deg},
+                {"localScale", def.armor_attach.local_scale},
+            };
+            found = true;
+            break;
+        }
+    }
+    if (!found) return Result<void>::failure(catalog_error("ITEM-SAVE-MISSING",
+        "Item id not found in " + def.source_path, "Confirm the armor item lives in that catalog file."));
+    const auto temp = absolute.string() + ".tmp";
+    {
+        std::ofstream output(temp, std::ios::trunc | std::ios::binary);
+        if (!output) return Result<void>::failure(catalog_error("ITEM-SAVE-WRITE",
+            "Failed to write item catalog temp: " + temp, "Check directory write permissions."));
+        output << json.dump(2) << '\n';
+    }
+    std::error_code ec;
+    std::filesystem::rename(temp, absolute, ec);
+    if (ec) {
+        std::error_code remove_ec;
+        std::filesystem::remove(absolute, remove_ec);
+        std::filesystem::rename(temp, absolute, ec);
+    }
+    if (ec) return Result<void>::failure(catalog_error("ITEM-SAVE-WRITE",
+        "Failed to replace item catalog: " + absolute.generic_string(), "Close other editors using the file and retry."));
     return Result<void>::success();
 }
 

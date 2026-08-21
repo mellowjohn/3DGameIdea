@@ -18,7 +18,8 @@ struct CellCoord {
 
 struct PartitionConfig {
     double cell_size = 128.0;
-    double world_half_extent = 2000.0;
+    /** Half-width of the square world AABB on X/Z (meters). Default 8 km → 16×16 km world (DEC-0054). */
+    double world_half_extent = 8000.0;
     double rebase_threshold = 512.0;
 };
 

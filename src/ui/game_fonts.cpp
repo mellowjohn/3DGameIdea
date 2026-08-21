@@ -45,7 +45,16 @@ ImFont* add_font(ImGuiIO& io, const std::filesystem::path& path, float size_px, 
             std::string(role) + " font missing");
         return nullptr;
     }
-    ImFont* font = io.Fonts->AddFontFromFileTTF(path.string().c_str(), size_px);
+    // Default ImGui Latin range stops at 0x00FF and drops em/en dashes + arrows → "?".
+    static const ImWchar k_ui_ranges[] = {
+        0x0020, 0x00FF, // Basic Latin + Latin-1 Supplement (includes ·)
+        0x2010, 0x2027, // Hyphen, en/em dash, bullet, …
+        0x2030, 0x203A, // Per mille, primes, guillemets
+        0x2190, 0x2193, // ←↑→↓
+        0x25B8, 0x25B8, // ▸ continue chevron
+        0,
+    };
+    ImFont* font = io.Fonts->AddFontFromFileTTF(path.string().c_str(), size_px, nullptr, k_ui_ranges);
     if (!font) {
         Logger::instance().write(Severity::Warning, "game-fonts",
             std::string("Failed to load ") + role + ": " + path.generic_string());

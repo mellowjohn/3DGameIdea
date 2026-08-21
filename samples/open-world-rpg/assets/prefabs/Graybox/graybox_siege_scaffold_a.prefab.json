@@ -1,0 +1,66 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.44999998807907104,
+          0.4300000071525574,
+          0.4000000059604645
+        ],
+        "primitive": "cube"
+      },
+      "name": "graybox_siege_scaffold_a_part_1",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          4,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          10,
+          8,
+          6
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.44999998807907104,
+          0.4300000071525574,
+          0.4000000059604645
+        ],
+        "primitive": "cube"
+      },
+      "name": "graybox_siege_scaffold_a_part_2",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          10,
+          0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          12,
+          2,
+          8
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

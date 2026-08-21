@@ -1,0 +1,126 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.41999998688697815,
+          0.4000000059604645,
+          0.3700000047683716
+        ],
+        "primitive": "cylinder"
+      },
+      "name": "a003_keep_gate_tower_l_part_1",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.0,
+          9.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          5.0,
+          18.0,
+          5.0
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3499999940395355,
+          0.33000001311302185,
+          0.30000001192092896
+        ],
+        "primitive": "pyramid"
+      },
+      "name": "a003_keep_gate_tower_l_part_2",
+      "parent": null,
+      "transform": {
+        "position": [
+          0.0,
+          20.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          6.0,
+          4.0,
+          6.0
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.36000001430511475,
+          0.33000001311302185
+        ],
+        "primitive": "cube"
+      },
+      "name": "a003_keep_gate_tower_l_part_3",
+      "parent": null,
+      "transform": {
+        "position": [
+          -2.0,
+          18.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          2.0,
+          2.0,
+          2.0
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.3799999952316284,
+          0.36000001430511475,
+          0.33000001311302185
+        ],
+        "primitive": "cube"
+      },
+      "name": "a003_keep_gate_tower_l_part_4",
+      "parent": null,
+      "transform": {
+        "position": [
+          2.0,
+          18.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          2.0,
+          2.0,
+          2.0
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}

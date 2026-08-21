@@ -12,7 +12,7 @@ description: >-
 
 Judge whether work meets its ticket acceptance **from evidence in the repo**, not chat history. Produce an owner-ready verdict or an agent pre-handoff gap list.
 
-Pair with [`engine-ticket-workflow`](../engine-ticket-workflow/SKILL.md) (implementation lifecycle) and [`signal-to-noise-optimizer`](../signal-to-noise-optimizer/SKILL.md) (concise output).
+Pair with [`engine-ticket-workflow`](../engine-ticket-workflow/SKILL.md) (implementation lifecycle) and [`signal-to-noise-optimizer`](../signal-to-noise-optimizer/SKILL.md) (concise output). Official supervisor pass: **fresh chat + different model** than the executor — see [`agent-work-graph.md`](../../context/architecture/agent-work-graph.md#supervisor-model-policy). Executor may run a quick self-check with this skill; that does not replace the separate-model pass.
 
 ## When to use
 

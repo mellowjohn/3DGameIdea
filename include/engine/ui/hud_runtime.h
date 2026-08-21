@@ -15,19 +15,29 @@ struct ImVec2;
 namespace engine {
 
 class UiTextureCache;
+struct UiThemeAsset;
 
 class HudRuntime final {
 public:
     void set_texture_cache(UiTextureCache* cache) noexcept { textures_ = cache; }
     [[nodiscard]] UiTextureCache* texture_cache() const noexcept { return textures_; }
+    void set_theme(const UiThemeAsset* theme) noexcept { theme_ = theme; }
+    [[nodiscard]] const UiThemeAsset* theme() const noexcept { return theme_; }
 
     [[nodiscard]] Result<void> load(const std::filesystem::path& path);
     [[nodiscard]] Result<void> load_from_json(const std::string& text, const std::string& source_name = "hud.json");
     void clear();
 
     void reset_player_health(double current = 100.0, double max = 100.0);
-    /// Secondary class resource: `stamina` (Ashfell/Outrider) or `magic` (Runecaster).
+    /// Secondary shared resource (stamina) — dodge + melee. All archetypes use stamina.
     void set_resource(double current, double max);
+    /// Magicka / focus bar — visible while a magic weapon is held (Terraria-style).
+    void set_magicka(double current, double max);
+    /// Runecaster discrete cast charges (0..max, max typically 5). Syncs pip widgets.
+    void set_rune_charges(int current, int max = 5);
+    [[nodiscard]] int rune_charges() const;
+    [[nodiscard]] int rune_charges_max() const;
+    /// Seeds stamina bar for all lanes; shows regenerating rune pips for Runecaster only.
     void apply_archetype_hud(const std::string& archetype_id);
     void set_number(const std::string& bind, double value);
     void set_bool(const std::string& bind, bool value);
@@ -47,6 +57,15 @@ public:
     /// Runtime RGBA 0–255 override for a widget's fill/text color (cleared on load).
     void set_color(const std::string& widget_id, float r, float g, float b, float a = 255.0f);
     void clear_color(const std::string& widget_id);
+    /// Runtime design-space offset override (cleared on load). Used for cinematic pans.
+    void set_offset(const std::string& widget_id, float x, float y);
+    void clear_offset(const std::string& widget_id);
+    /// Runtime design-space size override (cleared on load). Used for Ken Burns zoom.
+    void set_size(const std::string& widget_id, float w, float h);
+    void clear_size(const std::string& widget_id);
+    /// Runtime draw opacity override 0–1 (cleared on load). Multiplies authored opacity.
+    void set_opacity(const std::string& widget_id, float opacity01);
+    void clear_opacity(const std::string& widget_id);
     void set_health(double current, double max);
 
     [[nodiscard]] std::optional<double> get_number(const std::string& bind) const;
@@ -78,15 +97,25 @@ private:
     std::map<std::string, std::string> texts_;
     std::map<std::string, std::string> images_;
     std::map<std::string, std::string> typed_full_;
+    // Number of UTF-8 code points revealed (rather than bytes). Keeping this separate
+    // from the UTF-8 storage avoids showing partial multi-byte characters mid-line.
     std::map<std::string, float> typed_chars_;
     std::map<std::string, float> typed_cps_;
     mutable std::map<std::string, float> text_scroll_y_;
     std::map<std::string, bool> visibility_;
     std::map<std::string, bool> enabled_;
     std::map<std::string, std::array<float, 4>> color_overrides_;
+    std::map<std::string, std::array<float, 2>> offset_overrides_;
+    std::map<std::string, std::array<float, 2>> size_overrides_;
+    std::map<std::string, float> opacity_overrides_;
     /// 0..1 hover amount per widget id (eased each draw).
     mutable std::map<std::string, float> button_hover_t_;
+    /// 0 = idle; else 0..1 click-bounce progress keyed by pick button id.
+    mutable std::map<std::string, float> button_bounce_t_;
+    /// ImGui frame stamp so hover/bounce advance once per pick even if art+rim both draw.
+    mutable std::map<std::string, int> button_card_fx_frame_;
     UiTextureCache* textures_ = nullptr;
+    const UiThemeAsset* theme_ = nullptr;
 };
 
 } // namespace engine

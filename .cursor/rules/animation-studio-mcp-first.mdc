@@ -13,13 +13,13 @@ When authoring or polishing **Animation Studio** content (player/NPC clips, `*.a
 | --- | --- |
 | Open subject | `open` / `set_subject` / `set_controller` |
 | Preview state | `set_state` → `seek` / `play` / `pause` / `step` |
-| Keyframes | `edit_clip` → `upsert_key` **or batch `upsert_keys`** / `delete_key` → **`save_override`** (disk + library reload). Pass `joint` on each key (overrides Studio selection). Rotation accepts `values` quat xyzw **or** `eulerDeg` local XYZ. |
+| Keyframes | `edit_clip` → `upsert_key` **or batch `upsert_keys`** / `delete_key` → **`save_override`** (disk + library reload). Pass `joint` on each key (overrides Studio selection). Rotation accepts `values` quat xyzw **or** `eulerDeg` local XYZ. **`undo` / `redo`** for the open edit-clip buffer. |
 | New clip / state | `create_clip` (+ optional `create_state`) |
 | Timeline events | `list_events` / `add_event` / `update_event` / `remove_event` / `save_events` |
 | Held mesh weld | `set_held` / `set_weld` / `set_weld_gizmo` / `save_weld` |
 | Verify pose | `seek` + `engine_editor_screenshot` (or Animation viewport) |
 
-Skill: `skills/live-editor-mcp/SKILL.md`. Feature notes: `context/features/animation-studio.md`.
+Skill: `skills/live-editor-mcp/SKILL.md`. Craft: `skills/author-character-animation/SKILL.md`. Feature notes: `context/features/animation-studio.md`. Vocabulary: `context/art/animation-craft.md`.
 
 ## Banned habits
 

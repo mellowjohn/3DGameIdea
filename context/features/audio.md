@@ -26,7 +26,7 @@ Paths must stay under the project root (e.g. `assets/audio/campfire_crackle.wav`
 ## Sample project
 
 - `samples/open-world-rpg/assets/audio/campfire_crackle.wav` — procedural crackle (project-owned)
-- `assets/scripts/campfire_interaction.lua` — plays crackle on interaction **enter**
+- `assets/scripts/campfire_interaction.lua` — plays crackle on interaction **use**
 
 ## Verification
 

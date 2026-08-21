@@ -1,0 +1,216 @@
+{
+  "collision": [],
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0.18000000715255737,
+          0.1599999964237213,
+          0.20000000298023224
+        ],
+        "primitive": "cube"
+      },
+      "name": "wall",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          18,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          40,
+          36,
+          2.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.14000000059604645,
+          0.11999999731779099,
+          0.1599999964237213
+        ],
+        "primitive": "cube"
+      },
+      "name": "apse",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          18,
+          1.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          14,
+          30,
+          2
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.2800000011920929,
+          0.23999999463558197,
+          0.18000000715255737
+        ],
+        "primitive": "cube"
+      },
+      "name": "frieze",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          35.2,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          38,
+          1,
+          2.8
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.20000000298023224,
+          0.17000000178813934,
+          0.15000000596046448
+        ],
+        "primitive": "cube"
+      },
+      "name": "apse_arch_l",
+      "parent": null,
+      "transform": {
+        "position": [
+          -3.5,
+          28,
+          2.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0.3827,
+          0.9239
+        ],
+        "scale": [
+          8,
+          0.7,
+          1
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.20000000298023224,
+          0.17000000178813934,
+          0.15000000596046448
+        ],
+        "primitive": "cube"
+      },
+      "name": "apse_arch_r",
+      "parent": null,
+      "transform": {
+        "position": [
+          3.5,
+          28,
+          2.2
+        ],
+        "rotation": [
+          0,
+          0,
+          -0.3827,
+          0.9239
+        ],
+        "scale": [
+          8,
+          0.7,
+          1
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.23999999463558197,
+          0.20000000298023224,
+          0.17000000178813934
+        ],
+        "primitive": "cube"
+      },
+      "name": "apse_key",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          32.5,
+          2.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          2.2,
+          1.2,
+          1
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0.1599999964237213,
+          0.14000000059604645,
+          0.18000000715255737
+        ],
+        "primitive": "cube"
+      },
+      "name": "peak_plug",
+      "parent": null,
+      "transform": {
+        "position": [
+          0,
+          33,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          8,
+          8,
+          3
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 2
+}
